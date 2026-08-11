@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /
+
+# HICONIQUE Internal Hub — chặn index.
+# Trang này chỉ truy cập được qua Cloudflare Zero Trust sau khi xác thực email công ty.

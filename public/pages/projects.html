@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0B0D10" />
+  <title>Dự án & Công việc · HICONIQUE</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/reset.css" />
+  <link rel="stylesheet" href="/css/tokens.css" />
+  <link rel="stylesheet" href="/css/portal.css" />
+  <link rel="stylesheet" href="/css/subpage.css" />
+  <link rel="stylesheet" href="/css/projects.css" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/" class="brand">
+        <span class="brand-mark">H</span>
+        <span class="brand-name">
+          <span class="brand-name-1">HICONIQUE</span>
+          <span class="brand-name-2">Design</span>
+        </span>
+      </a>
+      <nav class="primary-nav">
+        <a href="/#tools" class="nav-link">Công cụ</a>
+        <a href="/pages/wiki.html" class="nav-link">Tài liệu</a>
+        <a href="/pages/projects.html" class="nav-link" style="color:var(--color-text)">Dự án</a>
+        <a href="/pages/notices.html" class="nav-link">Thông báo</a>
+        <a href="/pages/team.html" class="nav-link">Team</a>
+      </nav>
+      <div class="header-actions">
+        <button class="theme-toggle" aria-label="Chuyển đổi sáng/tối" data-theme-toggle>
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" stroke-linecap="round" />
+          </svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+        <span class="clock"><span class="clock-time" data-clock>15:01</span><span class="clock-meta">GMT+7</span></span>
+        <button class="avatar"><span>HQ</span></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="projects-main">
+    <!-- Sidebar -->
+    <aside class="projects-sidebar">
+      <div class="sidebar-header">
+        <h2>Dự án</h2>
+        <button class="btn-add-project" aria-label="Thêm dự án">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+      <nav class="project-nav">
+        <a href="#" class="project-nav-item active" data-project="all">
+          <span class="project-icon">📋</span>
+          <span>Tất cả dự án</span>
+          <span class="project-count">12</span>
+        </a>
+        <a href="#" class="project-nav-item" data-project="design">
+          <span class="project-icon">🎨</span>
+          <span>Thiết kế</span>
+          <span class="project-count">5</span>
+        </a>
+        <a href="#" class="project-nav-item" data-project="construction">
+          <span class="project-icon">🏗️</span>
+          <span>Thi công</span>
+          <span class="project-count">4</span>
+        </a>
+        <a href="#" class="project-nav-item" data-project="admin">
+          <span class="project-icon">📄</span>
+          <span>Hành chính</span>
+          <span class="project-count">3</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-section">
+        <h3>Lọc</h3>
+        <label class="filter-checkbox">
+          <input type="checkbox" checked>
+          <span>Việc của tôi</span>
+        </label>
+        <label class="filter-checkbox">
+          <input type="checkbox">
+          <span>Đến hạn hôm nay</span>
+        </label>
+        <label class="filter-checkbox">
+          <input type="checkbox">
+          <span>Quá hạn</span>
+        </label>
+        <label class="filter-checkbox">
+          <input type="checkbox">
+          <span>Đã hoàn thành</span>
+        </label>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>Thành viên</h3>
+        <div class="member-list">
+          <div class="member-chip"><span class="avatar-sm" style="background:#B08D57">HQ</span> Trần Minh Quân</div>
+          <div class="member-chip"><span class="avatar-sm" style="background:#8E7CC3">HN</span> Nguyễn Hiếu</div>
+          <div class="member-chip"><span class="avatar-sm" style="background:#C7A464">PH</span> Phạm Hoàng</div>
+          <div class="member-chip"><span class="avatar-sm" style="background:#4F6F52">TM</span> Trần Mạnh</div>
+          <div class="member-chip"><span class="avatar-sm" style="background:#3B6B8C">GP</span> Giản Phương</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="projects-content">
+      <!-- View Toggle -->
+      <div class="content-header">
+        <div class="view-tabs">
+          <button class="view-tab active" data-view="board">📊 Board</button>
+          <button class="view-tab" data-view="list">📝 List</button>
+          <button class="view-tab" data-view="timeline">📅 Timeline</button>
+        </div>
+        <div class="content-actions">
+          <button class="btn-filter">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Lọc
+          </button>
+          <button class="btn-sort">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M6 12h12M9 18h6" stroke-linecap="round"/></svg>
+            Sắp xếp
+          </button>
+          <button class="btn-primary btn-new-task">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+            Việc mới
+          </button>
+        </div>
+      </div>
+
+      <!-- Board View (Kanban) -->
+      <div class="kanban-board" id="kanban-board">
+        <!-- Column: Chưa bắt đầu -->
+        <div class="kanban-column">
+          <div class="column-header">
+            <span class="column-dot" style="background:var(--color-text-faint)"></span>
+            <h3>Chưa bắt đầu</h3>
+            <span class="column-count">3</span>
+          </div>
+          <div class="column-tasks">
+            <div class="task-card" draggable="true" data-priority="high">
+              <div class="task-priority priority-high">Cao</div>
+              <h4 class="task-title">Lên concept 3D Showroom HCM</h4>
+              <p class="task-project">Showroom HCM · Thiết kế</p>
+              <div class="task-meta">
+                <span class="task-assignee">
+                  <span class="avatar-xs" style="background:#3B6B8C">GP</span>
+                </span>
+                <span class="task-date due-soon">20/08</span>
+              </div>
+            </div>
+
+            <div class="task-card" draggable="true" data-priority="medium">
+              <div class="task-priority priority-medium">Trung bình</div>
+              <h4 class="task-title">Check vật liệu Marble Biệt thự Đà Lạt</h4>
+              <p class="task-project">Biệt thự Đà Lạt · Thi công</p>
+              <div class="task-meta">
+                <span class="task-assignee">
+                  <span class="avatar-xs" style="background:#C7A464">PH</span>
+                </span>
+                <span class="task-date">25/08</span>
+              </div>
+            </div>
+
+            <div class="task-card" draggable="true" data-priority="low">
+              <div class="task-priority priority-low">Thấp</div>
+              <h4 class="task-title">Cập nhật bảng giá dịch vụ 2026</h4>
+              <p class="task-project">Hành chính</p>
+              <div class="task-meta">
+                <span class="task-assignee">
+                  <span class="avatar-xs" style="background:#B08D57">HQ</span>
+                </span>
+                <span class="task-date">30/08</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Column: Đang làm -->
+        <div class="kanban-column">
+          <div class="column-header">
+            <span class="column-dot" style="background:var(--color-blue)"></span>
+            <h3>Đang làm</h3>
+            <span class="column-count">4</span>
+          </div>
+          <div class="column-tasks">
+            <div class="task-card" draggable="true" data-priority="high">
+              <div class="task-priority priority-high">Cao</div>
+              <h4 class="task-title">Hoàn thiện bản vẽ thiết kế Vinhouse</h4>
+              <p class="task-project">Vinhouse Mỹ Đình · Thiết kế</p>
+              <div class="task-meta">
+                <span class="task-assignee">
+                  <span class="avatar-xs" style="background:#8E7CC3">HN</span>
+                </span>
+                <span class="task-date due-soon">18/08</span>
+              </div>
+              <div class="task-progress">
+                <div class="progress-bar"><span style="width:65%"></span></div>
+                <span class="progress-text">65%</span>
+              </div>
+            </div>
+
+            <div class="task-card" draggable="true" data-priority="high">
+              <div class="task-priority priority-high">Cao</div>
+              <h4 class="task-title">Giám sát thi công nội thất Penthouse</h4>
+              <p class="task-project">Penthouse Hải Phòng · Thi công</p>
+              <div class="task-meta">
+                <span class="task-assignee">
+                  <span class="avatar-xs" style="background:#C7A464">PH</span>
+                </span>
+                <span class="task-date due-soon">15/09</span>
+              </div>
+              <div class="task-progress">
+                <div class="progress-bar"><span style="width:40%"></span></div>
+                <span class="progress-text">40%</span>
+              </div>
+            </div>
+
+            <div class="task-card" draggable="true" data-priority="medium">
+              <div class="task-priority priority-medium">Trung bình</div>
+              <h4 class="task-title">Thiết kế layout quán cafe</h4>
+              <p class="task-project">Project mới · Thiết kế</p>
+              <div class="task-meta">
+                <span class="task-assignee">
+                  <span class="avatar-xs" style="background:#8C6F40">TM</span>
+                </span>
+                <span class="task-date">10/09</span>
+              </div>
+              <div class="task-progress">
+                <div class="progress-bar"><span style="width:25%"></span></div>
+                <span class="progress-text">25%</span>
+              </div>
+            </div>
+
+            <div class="task-card" draggable="true" data-priority="medium">
+              <div class="task-priority priority-medium">Trung bình</div>
+              <h4 class="task-title">Viết content fanpage tháng 8</h4>
+              <p class="task-project">Marketing · Hành chính</p>
+              <div class="task-meta">
+                <span class="task-assignee">
+                  <span class="avatar-xs" style="background:#4F6F52">TM</span>
+                </span>
+                <span class="task-date">22/08</span>
+              </div>
+              <div class="task-progress">
+                <div class="progress-bar"><span style="width:80%"></span></div>
+                <span class="progress-text">80%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Column: Chờ duyệt -->
+        <div class="kanban-column">
+          <div class="column-header">
+            <span class="column-dot" style="background:var(--color-terracotta)"></span>
+            <h3>Chờ duyệt</h3>
+            <span class="column-count">2</span>
+          </div>
+          <div class="column-tasks">
+            <div class="task-card" draggable="true" data-priority="high">
+              <div class="task-priority priority-high">Cao</div>
+              <h4 class="task-title">Nghiệm thu giai đoạn 1 Vinhouse</h4>
+              <p class="task-project">Vinhouse Mỹ Đình · Thi công</p>
+              <div class="task-meta">
+                <span class="task-assignee">
+                  <span class="avatar-xs" style="background:#C7A464">PH</span>
+                </span>
+                <span class="task-date due-soon">18/08</span>
+              </div>
+              <div class="task-tags">
+                <span class="task-tag">🔍 Cần review</span>
+              </div>
+            </div>
+
+            <div class="task-card" draggable="true" data-priority="medium">
+              <div class="task-priority priority-medium">Trung bình</div>
+              <h4 class="task-title">Phê duyệt báo giá vật liệu</h4>
+              <p class="task-project">Biệt thự Đà Lạt · Thi công</p>
+              <div class="task-meta">
+                <span class="task-assignee">
+                  <span class="avatar-xs" style="background:#B08D57">HQ</span>
+                </span>
+                <span class="task-date">20/08</span>
+              </div>
+              <div class="task-tags">
+                <span class="task-tag">💰 Báo giá</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Column: Hoàn thành -->
+        <div class="kanban-column column-done">
+          <div class="column-header">
+            <span class="column-dot" style="background:var(--color-success)"></span>
+            <h3>Hoàn thành</h3>
+            <span class="column-count">3</span>
+          </div>
+          <div class="column-tasks">
+            <div class="task-card task-done" draggable="true" data-priority="high">
+              <div class="task-priority priority-high">Cao</div>
+              <h4 class="task-title">Hoàn thiện concept Penthouse Hải Phòng</h4>
+              <p class="task-project">Penthouse Hải Phòng · Thiết kế</p>
+              <div class="task-meta">
+                <span class="task-assignee">
+                  <span class="avatar-xs" style="background:#8E7CC3">HN</span>
+                </span>
+                <span class="task-date done-date">✓ 10/08</span>
+              </div>
+            </div>
+
+            <div class="task-card task-done" draggable="true" data-priority="medium">
+              <div class="task-priority priority-medium">Trung bình</div>
+              <h4 class="task-title">Setup workspace Lark team</h4>
+              <p class="task-project">Hành chính</p>
+              <div class="task-meta">
+                <span class="task-assignee">
+                  <span class="avatar-xs" style="background:#B08D57">HQ</span>
+                </span>
+                <span class="task-date done-date">✓ 05/08</span>
+              </div>
+            </div>
+
+            <div class="task-card task-done" draggable="true" data-priority="low">
+              <div class="task-priority priority-low">Thấp</div>
+              <h4 class="task-title">Cập nhật brand guidelines</h4>
+              <p class="task-project">Marketing</p>
+              <div class="task-meta">
+                <span class="task-assignee">
+                  <span class="avatar-xs" style="background:#4F6F52">TM</span>
+                </span>
+                <span class="task-date done-date">✓ 01/08</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- List View (hidden by default) -->
+      <div class="list-view" id="list-view" style="display:none">
+        <table class="task-table">
+          <thead>
+            <tr>
+              <th>Việc</th>
+              <th>Dự án</th>
+              <th>Người làm</th>
+              <th>Ngày đến hạn</th>
+              <th>Trạng thái</th>
+              <th>Ưu tiên</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <label class="task-checkbox">
+                  <input type="checkbox">
+                  <span>Lên concept 3D Showroom HCM</span>
+                </label>
+              </td>
+              <td><span class="project-tag">Showroom HCM</span></td>
+              <td><span class="avatar-xs" style="background:#3B6B8C">GP</span> Giản Phương</td>
+              <td class="due-soon">20/08</td>
+              <td><span class="status-badge status-todo">Chưa bắt đầu</span></td>
+              <td><span class="priority-badge priority-high">Cao</span></td>
+            </tr>
+            <tr>
+              <td>
+                <label class="task-checkbox">
+                  <input type="checkbox">
+                  <span>Hoàn thiện bản vẽ thiết kế Vinhouse</span>
+                </label>
+              </td>
+              <td><span class="project-tag">Vinhouse Mỹ Đình</span></td>
+              <td><span class="avatar-xs" style="background:#8E7CC3">HN</span> Nguyễn Hiếu</td>
+              <td class="due-soon">18/08</td>
+              <td><span class="status-badge status-progress">Đang làm (65%)</span></td>
+              <td><span class="priority-badge priority-high">Cao</span></td>
+            </tr>
+            <tr>
+              <td>
+                <label class="task-checkbox">
+                  <input type="checkbox">
+                  <span>Giám sát thi công nội thất Penthouse</span>
+                </label>
+              </td>
+              <td><span class="project-tag">Penthouse HP</span></td>
+              <td><span class="avatar-xs" style="background:#C7A464">PH</span> Phạm Hoàng</td>
+              <td class="due-soon">15/09</td>
+              <td><span class="status-badge status-progress">Đang làm (40%)</span></td>
+              <td><span class="priority-badge priority-high">Cao</span></td>
+            </tr>
+            <tr>
+              <td>
+                <label class="task-checkbox">
+                  <input type="checkbox">
+                  <span>Nghiệm thu giai đoạn 1 Vinhouse</span>
+                </label>
+              </td>
+              <td><span class="project-tag">Vinhouse Mỹ Đình</span></td>
+              <td><span class="avatar-xs" style="background:#C7A464">PH</span> Phạm Hoàng</td>
+              <td class="due-soon">18/08</td>
+              <td><span class="status-badge status-review">Chờ duyệt</span></td>
+              <td><span class="priority-badge priority-high">Cao</span></td>
+            </tr>
+            <tr>
+              <td>
+                <label class="task-checkbox" style="text-decoration:line-through">
+                  <input type="checkbox" checked>
+                  <span>Hoàn thiện concept Penthouse Hải Phòng</span>
+                </label>
+              </td>
+              <td><span class="project-tag">Penthouse HP</span></td>
+              <td><span class="avatar-xs" style="background:#8E7CC3">HN</span> Nguyễn Hiếu</td>
+              <td>10/08</td>
+              <td><span class="status-badge status-done">✓ Hoàn thành</span></td>
+              <td><span class="priority-badge priority-high">Cao</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Timeline View (hidden by default) -->
+      <div class="timeline-view" id="timeline-view" style="display:none">
+        <div class="timeline-header">
+          <button class="timeline-nav">← Tháng trước</button>
+          <h3>Tháng 8 / 2026</h3>
+          <button class="timeline-nav">Tháng sau →</button>
+        </div>
+        <div class="timeline-body">
+          <div class="timeline-row">
+            <div class="timeline-date">12/08</div>
+            <div class="timeline-events">
+              <div class="timeline-event" style="border-left-color:var(--color-blue)">
+                <span class="event-time">09:00</span>
+                <span class="event-title">Họp kickoff Showroom HCM</span>
+                <span class="event-project">Showroom HCM</span>
+              </div>
+            </div>
+          </div>
+          <div class="timeline-row">
+            <div class="timeline-date">15/08</div>
+            <div class="timeline-events">
+              <div class="timeline-event" style="border-left-color:var(--color-terracotta)">
+                <span class="event-time">14:00</span>
+                <span class="event-title">Review concept Penthouse</span>
+                <span class="event-project">Penthouse HP</span>
+              </div>
+            </div>
+          </div>
+          <div class="timeline-row timeline-today">
+            <div class="timeline-date">11/08</div>
+            <div class="timeline-events">
+              <div class="timeline-event" style="border-left-color:var(--color-bronze)">
+                <span class="event-time">Hôm nay</span>
+                <span class="event-title">Cập nhật tiến độ Vinhouse</span>
+                <span class="event-project">Vinhouse Mỹ Đình</span>
+              </div>
+            </div>
+          </div>
+          <div class="timeline-row">
+            <div class="timeline-date">18/08</div>
+            <div class="timeline-events">
+              <div class="timeline-event" style="border-left-color:var(--color-destructive)">
+                <span class="event-time">Deadline</span>
+                <span class="event-title">Nộp bản vẽ thiết kế Vinhouse</span>
+                <span class="event-project">Vinhouse Mỹ Đình</span>
+              </div>
+              <div class="timeline-event" style="border-left-color:var(--color-warning)">
+                <span class="event-time">Deadline</span>
+                <span class="event-title">Nghiệm thu giai đoạn 1</span>
+                <span class="event-project">Vinhouse Mỹ Đình</span>
+              </div>
+            </div>
+          </div>
+          <div class="timeline-row">
+            <div class="timeline-date">20/08</div>
+            <div class="timeline-events">
+              <div class="timeline-event" style="border-left-color:var(--color-blue)">
+                <span class="event-time">10:00</span>
+                <span class="event-title">Bàn giao vật liệu Biệt thự Đà Lạt</span>
+                <span class="event-project">Biệt thự Đà Lạt</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- New Task Modal -->
+  <div class="modal-overlay" id="task-modal" hidden>
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Tạo việc mới</h3>
+        <button class="modal-close" aria-label="Đóng">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <form class="modal-body">
+        <div class="form-group">
+          <label for="task-name">Tên việc *</label>
+          <input type="text" id="task-name" placeholder="Nhập tên việc..." required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="task-project">Dự án</label>
+            <select id="task-project">
+              <option value="">Chọn dự án...</option>
+              <option value="vinhouse">Vinhouse Mỹ Đình</option>
+              <option value="penthouse">Penthouse Hải Phòng</option>
+              <option value="dalat">Biệt thự Đà Lạt</option>
+              <option value="showroom">Showroom HCM</option>
+              <option value="admin">Hành chính</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="task-assignee">Người phụ trách</label>
+            <select id="task-assignee">
+              <option value="">Chọn người...</option>
+              <option value="HQ">Trần Minh Quân</option>
+              <option value="HN">Nguyễn Hiếu</option>
+              <option value="PH">Phạm Hoàng</option>
+              <option value="TM">Trần Mạnh</option>
+              <option value="GP">Giản Phương</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="task-priority">Độ ưu tiên</label>
+            <select id="task-priority">
+              <option value="low">Thấp</option>
+              <option value="medium" selected>Trung bình</option>
+              <option value="high">Cao</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="task-due">Ngày đến hạn</label>
+            <input type="date" id="task-due">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="task-desc">Mô tả</label>
+          <textarea id="task-desc" rows="3" placeholder="Nhập mô tả công việc..."></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary modal-cancel">Hủy</button>
+          <button type="submit" class="btn-primary">Tạo việc</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <p>© 2026 HICONIQUE Vietnam · Internal use only</p>
+      <p class="footer-meta"><span>build — v1.0</span><span>·</span><span>11/8/2026</span></p>
+    </div>
+  </footer>
+
+  <script src="/js/portal.js" defer></script>
+  <script src="/js/projects.js" defer></script>
+</body>
+</html>

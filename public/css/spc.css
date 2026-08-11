@@ -1,0 +1,67 @@
+/* SPC (Standards Page Cards) */
+.spc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-md);
+  margin-top: var(--space-xl);
+}
+.spc-card {
+  padding: var(--space-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: all var(--dur-base) var(--ease);
+}
+.spc-card:hover {
+  border-color: var(--color-bronze);
+  background: var(--color-surface-2);
+}
+.spc-card header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+}
+.spc-id {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  color: var(--color-bronze);
+  padding: 4px 8px;
+  border: 1px solid var(--color-bronze);
+}
+.spc-card h3 {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--color-text);
+  letter-spacing: -0.01em;
+}
+.spc-value {
+  font-family: var(--font-serif);
+  font-size: 2.5rem;
+  font-weight: 500;
+  color: var(--color-bronze);
+  line-height: 1.1;
+  margin-bottom: var(--space-md);
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.25em;
+}
+.spc-value span { color: var(--color-text-muted); font-weight: 400; }
+.spc-value small {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  margin-left: 0.25em;
+}
+.spc-note {
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--color-text-muted);
+}
