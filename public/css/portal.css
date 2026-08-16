@@ -183,12 +183,13 @@ main { flex: 1; }
 }
 .theme-toggle-slider {
   position: absolute;
+  top: 4px;
   left: 4px;
   width: 32px;
   height: 28px;
   background: var(--color-bronze);
   border-radius: 14px;
-  transition: all var(--dur-base) var(--ease);
+  transition: transform var(--dur-base) var(--ease), background var(--dur-base) var(--ease);
   z-index: 1;
 }
 /* Light mode - slider moves to right */
