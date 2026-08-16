@@ -8,7 +8,7 @@
   'use strict';
 
   // ----- Theme Toggle -----
-  var themeToggle = document.querySelector('[data-theme-toggle]');
+  var themeToggle = document.querySelectorAll('[data-theme-toggle]');
   var html = document.documentElement;
 
   function setTheme(theme) {
@@ -16,25 +16,28 @@
       html.setAttribute('data-theme', 'light');
       localStorage.setItem('hiconique-theme', 'light');
     } else {
-      html.setAttribute('data-theme', 'dark');
+      html.removeAttribute('data-theme');
       localStorage.setItem('hiconique-theme', 'dark');
     }
   }
 
   function initTheme() {
     var saved = localStorage.getItem('hiconique-theme');
-    if (saved) {
-      setTheme(saved);
-    } else if (window.matchMedia('(prefers-color-scheme: light)').matches) {
-      setTheme('light');
+    if (saved === 'light') {
+      html.setAttribute('data-theme', 'light');
+    } else if (!saved && window.matchMedia('(prefers-color-scheme: light)').matches) {
+      html.setAttribute('data-theme', 'light');
     }
   }
 
   initTheme();
 
-  themeToggle && themeToggle.addEventListener('click', function () {
-    var current = html.getAttribute('data-theme');
-    setTheme(current === 'light' ? 'dark' : 'light');
+  // Add click handlers for all theme toggles
+  themeToggle.forEach(function(toggle) {
+    toggle.addEventListener('click', function () {
+      var current = html.getAttribute('data-theme');
+      setTheme(current === 'light' ? 'dark' : 'light');
+    });
   });
 
   // ----- Clock (live) -----

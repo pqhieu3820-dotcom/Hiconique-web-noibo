@@ -144,42 +144,57 @@ main { flex: 1; }
   gap: var(--space-md);
 }
 
-/* Theme toggle */
-.theme-toggle {
+/* Theme toggle - Pill style with slider */
+.theme-toggle-pill {
   position: relative;
-  width: 38px;
-  height: 38px;
-  display: grid;
-  place-items: center;
-  color: var(--color-text-muted);
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
+  width: 80px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 20px;
   cursor: pointer;
   transition: all var(--dur-base) var(--ease);
 }
-.theme-toggle:hover {
+.theme-toggle-pill:hover {
+  border-color: var(--color-bronze);
+  box-shadow: var(--shadow-glow-bronze);
+}
+.theme-toggle-icon {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  transition: all var(--dur-base) var(--ease);
+  z-index: 2;
+}
+.theme-toggle-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.theme-icon-light {
+  color: var(--color-warning);
+}
+.theme-icon-dark {
   color: var(--color-blue);
-  border-color: var(--color-border);
-  background: var(--color-surface);
 }
-.theme-toggle svg {
-  width: 18px;
-  height: 18px;
-  transition: transform var(--dur-base) var(--ease);
-}
-.theme-toggle:hover svg {
-  transform: rotate(15deg);
-}
-.theme-toggle .icon-sun,
-.theme-toggle .icon-moon {
+.theme-toggle-slider {
   position: absolute;
+  left: 4px;
+  width: 32px;
+  height: 28px;
+  background: var(--color-bronze);
+  border-radius: 14px;
+  transition: all var(--dur-base) var(--ease);
+  z-index: 1;
 }
-.theme-toggle .icon-moon { display: none; }
-[data-theme="light"] .theme-toggle .icon-sun { display: none; }
-[data-theme="light"] .theme-toggle .icon-moon { display: block; }
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) .theme-toggle .icon-sun { display: none; }
-  :root:not([data-theme="dark"]) .theme-toggle .icon-moon { display: block; }
+/* Light mode - slider moves to right */
+[data-theme="light"] .theme-toggle-slider {
+  transform: translateX(40px);
+  background: var(--color-blue);
 }
 
 /* Header - uses transparency with backdrop for both themes */

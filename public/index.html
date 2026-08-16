@@ -36,6 +36,7 @@
 
       <nav class="primary-nav" aria-label="Chính">
         <a href="#tools" class="nav-link">Công cụ</a>
+        <a href="/pages/tasks-manager.html" class="nav-link">Tasks</a>
         <a href="/pages/projects.html" class="nav-link">Dự án</a>
         <a href="#wiki" class="nav-link">Tài liệu</a>
         <a href="#ai" class="nav-link">AI</a>
@@ -50,14 +51,19 @@
             <path d="m20 20-3.5-3.5" stroke-linecap="round" />
           </svg>
         </button>
-        <button class="theme-toggle" aria-label="Chuyển đổi sáng/tối" data-theme-toggle>
-          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-            <circle cx="12" cy="12" r="4" />
-            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" stroke-linecap="round" />
-          </svg>
-          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
+        <button class="theme-toggle-pill" aria-label="Chuyển đổi sáng/tối" data-theme-toggle>
+          <span class="theme-toggle-icon theme-icon-light">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="12" cy="12" r="4"/>
+              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <span class="theme-toggle-slider"></span>
+          <span class="theme-toggle-icon theme-icon-dark">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
         </button>
         <a href="/pages/notices.html" class="icon-btn icon-btn-bell" aria-label="Thông báo mới">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
