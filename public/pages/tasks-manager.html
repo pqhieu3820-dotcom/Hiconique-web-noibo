@@ -32,14 +32,19 @@
         <a href="/pages/team.html" class="nav-link">Team</a>
       </nav>
       <div class="header-actions">
-        <button class="theme-toggle" aria-label="Chuyển đổi sáng/tối" data-theme-toggle>
-          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-            <circle cx="12" cy="12" r="4" />
-            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" stroke-linecap="round" />
-          </svg>
-          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
+        <button class="theme-toggle-pill" aria-label="Chuyển đổi sáng/tối" data-theme-toggle>
+          <span class="theme-toggle-icon theme-icon-light">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="12" cy="12" r="4"/>
+              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <span class="theme-toggle-slider"></span>
+          <span class="theme-toggle-icon theme-icon-dark">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
         </button>
         <span class="clock"><span class="clock-time" data-clock>15:01</span><span class="clock-meta">GMT+7</span></span>
         <button class="avatar"><span>HQ</span></button>
