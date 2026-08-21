@@ -1,10 +1,9 @@
 /**
- * Google Sheets Configuration
- * Replace YOUR_SHEET_ID with your Google Sheet ID
+ * Google Sheets Configuration - HICONIQUE Task Manager
  */
 const GSHEETS_CONFIG = {
-  // ID của Google Sheet (lấy từ URL: docs.google.com/spreadsheets/d/[ID]/edit)
-  SPREADSHEET_ID: 'YOUR_SHEET_ID',
+  // ID của Google Sheet
+  SPREADSHEET_ID: '1usLh4pt5F7r1XY-SLbWPfajYuZ5mDNGaaa4neYG84nY',
 
   // Tên các tabs trong sheet
   SHEETS: {
@@ -14,14 +13,22 @@ const GSHEETS_CONFIG = {
     PROPOSALS: 'Proposals'
   },
 
-  // Link Google Apps Script Web App (sẽ tạo sau)
-  API_URL: 'YOUR_GOOGLE_APPS_SCRIPT_URL'
+  // CSV export URLs (dùng để đọc dữ liệu trực tiếp)
+  // Cách lấy: File > Share > Publish to web > CSV
+  CSV_URLS: {
+    PROJECTS: 'https://docs.google.com/spreadsheets/d/1usLh4pt5F7r1XY-SLbWPfajYuZ5mDNGaaa4neYG84nY/gviz/tq?tqx=out:csv&sheet=Projects',
+    TASKS: 'https://docs.google.com/spreadsheets/d/1usLh4pt5F7r1XY-SLbWPfajYuZ5mDNGaaa4neYG84nY/gviz/tq?tqx=out:csv&sheet=Tasks',
+    MEMBERS: 'https://docs.google.com/spreadsheets/d/1usLh4pt5F7r1XY-SLbWPfajYuZ5mDNGaaa4neYG84nY/gviz/tq?tqx=out:csv&sheet=Members',
+    PROPOSALS: 'https://docs.google.com/spreadsheets/d/1usLh4pt5F7r1XY-SLbWPfajYuZ5mDNGaaa4neYG84nY/gviz/tq?tqx=out:csv&sheet=Proposals'
+  },
+
+  // Sử dụng localStorage hay Google Sheets
+  USE_GSHEETS: false  // Hiện tại dùng localStorage
 };
 
 /**
- * Check if using Google Sheets or localStorage fallback
+ * Check if using Google Sheets
  */
 function isUsingGSheets() {
-  return GSHEETS_CONFIG.API_URL !== 'YOUR_GOOGLE_APPS_SCRIPT_URL' &&
-         GSHEETS_CONFIG.SPREADSHEET_ID !== 'YOUR_SHEET_ID';
+  return GSHEETS_CONFIG.USE_GSHEETS;
 }
