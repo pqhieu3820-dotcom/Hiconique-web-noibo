@@ -1,34 +1,19 @@
 /**
  * Google Sheets Configuration - HICONIQUE Task Manager
+ * Sheet đã publish đầy đủ
  */
 const GSHEETS_CONFIG = {
-  // ID của Google Sheet
-  SPREADSHEET_ID: '1usLh4pt5F7r1XY-SLbWPfajYuZ5mDNGaaa4neYG84nY',
+  // Google Apps Script API URL (for write operations)
+  API_URL: 'https://script.google.com/macros/s/AKfycbzGuhLLoj_U6IG1bVlF9gmPqv2qSbZNZuZuVVMP6zCUXoaBue9UxdUM1wXElggrNuQa/exec',
 
-  // Tên các tabs trong sheet
-  SHEETS: {
-    PROJECTS: 'Projects',
-    TASKS: 'Tasks',
-    MEMBERS: 'Members',
-    PROPOSALS: 'Proposals'
+  // Published CSV URLs (for read operations)
+  DATA_URLS: {
+    PROJECTS: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQZdO-5j-EN4Yk7SMR_pSU8vmwentJ8n2jkKoHKz66o2sRNU9kgQK3dmt-Ac-0aBe0Doqd1Q9B_jWP5/pub?output=csv&gid=0',
+    TASKS: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQZdO-5j-EN4Yk7SMR_pSU8vmwentJ8n2jkKoHKz66o2sRNU9kgQK3dmt-Ac-0aBe0Doqd1Q9B_jWP5/pub?output=csv&gid=2088597336',
+    MEMBERS: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQZdO-5j-EN4Yk7SMR_pSU8vmwentJ8n2jkKoHKz66o2sRNU9kgQK3dmt-Ac-0aBe0Doqd1Q9B_jWP5/pub?output=csv&gid=1872059656',
+    PROPOSALS: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQZdO-5j-EN4Yk7SMR_pSU8vmwentJ8n2jkKoHKz66o2sRNU9kgQK3dmt-Ac-0aBe0Doqd1Q9B_jWP5/pub?output=csv&gid=141206186'
   },
 
-  // CSV export URLs (dùng để đọc dữ liệu trực tiếp)
-  // Cách lấy: File > Share > Publish to web > CSV
-  CSV_URLS: {
-    PROJECTS: 'https://docs.google.com/spreadsheets/d/1usLh4pt5F7r1XY-SLbWPfajYuZ5mDNGaaa4neYG84nY/gviz/tq?tqx=out:csv&sheet=Projects',
-    TASKS: 'https://docs.google.com/spreadsheets/d/1usLh4pt5F7r1XY-SLbWPfajYuZ5mDNGaaa4neYG84nY/gviz/tq?tqx=out:csv&sheet=Tasks',
-    MEMBERS: 'https://docs.google.com/spreadsheets/d/1usLh4pt5F7r1XY-SLbWPfajYuZ5mDNGaaa4neYG84nY/gviz/tq?tqx=out:csv&sheet=Members',
-    PROPOSALS: 'https://docs.google.com/spreadsheets/d/1usLh4pt5F7r1XY-SLbWPfajYuZ5mDNGaaa4neYG84nY/gviz/tq?tqx=out:csv&sheet=Proposals'
-  },
-
-  // Sử dụng localStorage hay Google Sheets
-  USE_GSHEETS: false  // Hiện tại dùng localStorage
+  // Bật chế độ Google Sheets
+  USE_GSHEETS: true
 };
-
-/**
- * Check if using Google Sheets
- */
-function isUsingGSheets() {
-  return GSHEETS_CONFIG.USE_GSHEETS;
-}

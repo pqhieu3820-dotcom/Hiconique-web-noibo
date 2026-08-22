@@ -11,10 +11,162 @@
 
   // Initialize app
   function init() {
+    // Check auth first
+    var currentUser = (typeof Auth !== 'undefined') ? Auth.getCurrentUser() : null;
+
+    if (!currentUser && typeof Auth !== 'undefined') {
+      // Wait for auth to load data, then show login modal
+      setTimeout(function() {
+        Auth.init(true);
+        window.onAuthSuccess = function() {
+          window.location.reload();
+        };
+      }, 500);
+      return; // Don't render until logged in
+    }
+
     createModalStructure();
     setupEventListeners();
     renderDashboard();
+
+    // Wire sync button click handler
+    var syncBtn = document.getElementById('syncFromSheetsBtn');
+    if (syncBtn) syncBtn.addEventListener('click', syncFromSheets);
+
+    // Update user info in UI
+    if (currentUser) updateUserUIUI(currentUser);
+
+    // Update badges with real data
+    updateNavBadges();
+
+    // Start auto-polling from Google Sheets every 15s
+    startAutoPolling();
   }
+
+  // Update UI with current user info
+  function updateUserUIUI(user) {
+    // Update header avatar
+    var avatarEl = document.querySelector('.header-actions .avatar span');
+    if (avatarEl) avatarEl.textContent = user.avatar;
+
+    // Update welcome text in sidebar
+    var welcomeName = document.querySelector('.welcome-name');
+    if (welcomeName) welcomeName.textContent = user.name;
+
+    // Hide admin-only items based on permissions
+    applyPermissions(user.roleLevel);
+  }
+
+  // Apply UI permissions
+  function applyPermissions(roleLevel) {
+    var canManageMembers = roleLevel === 'admin';
+    var canAccessSettings = roleLevel === 'admin';
+    var canCreateProject = roleLevel === 'admin' || roleLevel === 'manager';
+
+    // Settings link
+    document.querySelectorAll('[data-view="settings"]').forEach(function(el) {
+      el.style.display = canAccessSettings ? '' : 'none';
+    });
+
+    // Hide "Tạo dự án" buttons for members
+    if (!canCreateProject) {
+      var style = document.createElement('style');
+      style.textContent = '.add-project-btn { display: none !important; }';
+      document.head.appendChild(style);
+    }
+  }
+
+  // Auto-poll from Google Sheets every 15s
+  function startAutoPolling() {
+    if (typeof GSHEETS_CONFIG === 'undefined' || !GSHEETS_CONFIG.USE_GSHEETS) return;
+    setInterval(function() {
+      if (!TaskManager.refreshFromGSheets) return;
+      TaskManager.refreshFromGSheets(function() {
+        updateNavBadges();
+        // Re-render if on dashboard or related view
+        var active = document.querySelector('.tm-nav-item.active');
+        if (active) {
+          var view = active.dataset.view;
+          if (view === 'dashboard') renderDashboard();
+          else if (view === 'projects') renderProjectsView();
+          else if (view === 'my-tasks') renderMyTasks();
+          else if (view === 'team') renderTeam();
+          else if (view === 'calendar') renderCalendar();
+          else if (view === 'proposals') renderProposals();
+        }
+      });
+    }, 15000);
+  }
+
+  // Update nav badge counts with real data
+  function updateNavBadges() {
+    var projects = TaskManager.getProjects();
+    var tasks = TaskManager.getTasks();
+    var proposals = TaskManager.getProposals();
+    var currentUser = TaskManager.getCurrentUser();
+
+    var projBadge = document.getElementById('projectsBadge');
+    if (projBadge) projBadge.textContent = projects.length;
+
+    var myBadge = document.getElementById('myTasksBadge');
+    if (myBadge) {
+      var myTasks = tasks.filter(t => t.assigneeId === currentUser.id);
+      myBadge.textContent = myTasks.length;
+    }
+
+    var propBadge = document.getElementById('proposalBadge');
+    if (propBadge) {
+      var pending = proposals.filter(p => p.status === 'pending');
+      propBadge.textContent = pending.length;
+    }
+  }
+
+  // Setup auto-sync button (button now in HTML)
+  function setupAutoSync() {
+    // Button already in HTML, no action needed
+  }
+
+  // Sync from Google Sheets
+  function syncFromSheets(silent) {
+    var btn = document.getElementById('syncFromSheetsBtn');
+    if (btn) {
+      btn.disabled = true;
+      btn.classList.add('spinning');
+    }
+
+    if (!TaskManager.refreshFromGSheets) {
+      if (btn) { btn.disabled = false; btn.classList.remove('spinning'); }
+      return;
+    }
+    TaskManager.refreshFromGSheets(function(success) {
+      if (btn) {
+        btn.disabled = false;
+        btn.classList.remove('spinning');
+      }
+      // Re-render current view
+      var activeNav = document.querySelector('.tm-nav-item.active');
+      if (activeNav) {
+        var text = activeNav.textContent.trim();
+        if (text.includes('Dashboard')) renderDashboard();
+        else if (text.includes('Dự án')) renderProjectsView();
+        else if (text.includes('Tasks của tôi')) renderMyTasks();
+        else if (text.includes('Team')) renderTeam();
+        else if (text.includes('Đề xuất')) renderProposals();
+      } else {
+        renderDashboard();
+      }
+
+      if (!silent) {
+        var msg = document.createElement('div');
+        msg.style.cssText = 'position: fixed; bottom: 24px; right: 24px; background: var(--color-bronze); color: #0B0D10; padding: 12px 20px; border-radius: 8px; font-size: 0.875rem; z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-weight: 500;';
+        msg.textContent = '✓ Đã đồng bộ từ Google Sheets';
+        document.body.appendChild(msg);
+        setTimeout(function() { msg.remove(); }, 2500);
+      }
+    });
+  }
+
+  window.syncFromSheets = syncFromSheets;
 
   // Create modal structure in DOM
   function createModalStructure() {
@@ -72,19 +224,19 @@
     // Nav item click
     document.addEventListener('click', function(e) {
       const navItem = e.target.closest('.tm-nav-item');
-      if (navItem && !navItem.href) {
+      if (navItem && navItem.dataset && navItem.dataset.view) {
         e.preventDefault();
         document.querySelectorAll('.tm-nav-item').forEach(i => i.classList.remove('active'));
         navItem.classList.add('active');
 
-        const text = navItem.textContent.trim();
-        if (text.includes('Dashboard')) renderDashboard();
-        else if (text.includes('Dự án')) renderProjectsView();
-        else if (text.includes('Tasks của tôi')) renderMyTasks();
-        else if (text.includes('Team')) renderTeam();
-        else if (text.includes('Đề xuất')) renderProposals();
-        else if (text.includes('Lịch')) renderCalendar();
-        else if (text.includes('Cài đặt')) renderSettings();
+        var view = navItem.dataset.view;
+        if (view === 'dashboard') renderDashboard();
+        else if (view === 'projects') renderProjectsView();
+        else if (view === 'my-tasks') renderMyTasks();
+        else if (view === 'team') renderTeam();
+        else if (view === 'calendar') renderCalendar();
+        else if (view === 'proposals') renderProposals();
+        else if (view === 'settings') renderSettings();
       }
     });
 
@@ -94,6 +246,7 @@
       if (filterTab) {
         document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
         filterTab.classList.add('active');
+        applyFilterTab(filterTab.textContent.trim());
       }
     });
 
@@ -321,6 +474,10 @@
 
     const statusLabel = task.status === 'pending' ? 'Chờ xử lý' : task.status === 'in-progress' ? 'Đang làm' : 'Hoàn thành';
 
+    // Get today's progress
+    const todayProgress = TaskManager.getTodayProgress(taskId) || { progress: task.progress || 0, note: '', done: false };
+    const dailyTasks = task.dailyTasks || [];
+
     const body = `
       <div class="task-detail-header">
         <div>
@@ -354,6 +511,56 @@
           <p style="font-size: 0.875rem; color: var(--color-text);">${creator ? creator.name : 'Không rõ'}</p>
         </div>
       </div>
+
+      <!-- Daily Progress Section -->
+      <div style="background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 10px; padding: 16px; margin-top: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h4 style="font-size: 0.875rem; font-weight: 600; color: var(--color-text); margin: 0;">📊 Cập nhật tiến độ hôm nay</h4>
+          <span style="font-size: 0.75rem; color: var(--color-text-muted);">${new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+        </div>
+
+        <div style="margin-bottom: 12px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+            <span style="font-size: 0.75rem; color: var(--color-text-muted);">Tiến độ hôm nay: <strong style="color: var(--color-bronze);">${todayProgress.progress}%</strong></span>
+            <span style="font-size: 0.75rem; color: var(--color-text-muted);">Tổng: <strong>${task.progress || 0}%</strong></span>
+          </div>
+          <div style="height: 8px; background: var(--color-border); border-radius: 4px; overflow: hidden;">
+            <div style="width: ${todayProgress.progress}%; height: 100%; background: var(--color-bronze); transition: width 0.3s;"></div>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 12px;">
+          <label style="font-size: 0.75rem; color: var(--color-text-muted); display: block; margin-bottom: 4px;">Tiến độ (%)</label>
+          <input type="range" id="dailyProgressInput" min="0" max="100" value="${todayProgress.progress}" style="width: 100%;">
+          <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--color-text-muted);">
+            <span>0%</span>
+            <span id="dailyProgressValue" style="font-weight: 600; color: var(--color-bronze);">${todayProgress.progress}%</span>
+            <span>100%</span>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 12px;">
+          <label style="font-size: 0.75rem; color: var(--color-text-muted); display: block; margin-bottom: 4px;">📝 Đã làm gì hôm nay?</label>
+          <textarea id="dailyNoteInput" placeholder="Mô tả công việc đã làm hôm nay..." style="width: 100%; min-height: 60px; padding: 8px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 6px; color: var(--color-text); font-size: 0.8125rem; resize: vertical;">${todayProgress.note || ''}</textarea>
+        </div>
+
+        <button type="button" id="saveDailyProgressBtn" class="btn btn-primary" style="width: 100%;">Lưu tiến độ hôm nay</button>
+
+        ${dailyTasks.length > 0 ? `
+          <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--color-border);">
+            <h5 style="font-size: 0.75rem; font-weight: 600; color: var(--color-text-muted); margin: 0 0 8px;">Lịch sử tiến độ</h5>
+            <div style="max-height: 150px; overflow-y: auto;">
+              ${dailyTasks.slice().reverse().map(d => `
+                <div style="display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--color-border); font-size: 0.75rem;">
+                  <span style="min-width: 80px; color: var(--color-text-muted);">${new Date(d.date).toLocaleDateString('vi-VN', { day: 'numeric', month: 'numeric' })}</span>
+                  <span style="min-width: 40px; font-weight: 600; color: ${d.done ? '#4F6F52' : 'var(--color-bronze)'};">${d.progress}%</span>
+                  <span style="flex: 1; color: var(--color-text);">${d.note || '-'}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+      </div>
     `;
 
     const footer = `
@@ -363,6 +570,29 @@
     `;
 
     openModal('Chi tiết Task', body, footer);
+
+    // Add event listeners for daily progress
+    setTimeout(function() {
+      var progressInput = document.getElementById('dailyProgressInput');
+      var progressValue = document.getElementById('dailyProgressValue');
+      var saveBtn = document.getElementById('saveDailyProgressBtn');
+
+      if (progressInput && progressValue) {
+        progressInput.addEventListener('input', function() {
+          progressValue.textContent = this.value + '%';
+        });
+      }
+
+      if (saveBtn) {
+        saveBtn.addEventListener('click', function() {
+          var progress = document.getElementById('dailyProgressInput').value;
+          var note = document.getElementById('dailyNoteInput').value;
+          TaskManager.addDailyProgress(taskId, progress, note);
+          alert('Đã lưu tiến độ!');
+          openTaskDetailModal(taskId); // Refresh
+        });
+      }
+    }, 100);
   }
 
   // Open project modal
@@ -384,10 +614,16 @@
           <label class="form-label">Loại dự án</label>
           <select class="form-select" name="type">
             <option value="Thiết kế nội thất" ${project && project.type === 'Thiết kế nội thất' ? 'selected' : ''}>Thiết kế nội thất</option>
+            <option value="Thiết kế kiến trúc" ${project && project.type === 'Thiết kế kiến trúc' ? 'selected' : ''}>Thiết kế kiến trúc</option>
             <option value="Triển khai bản vẽ" ${project && project.type === 'Triển khai bản vẽ' ? 'selected' : ''}>Triển khai bản vẽ</option>
             <option value="Thi công nội thất" ${project && project.type === 'Thi công nội thất' ? 'selected' : ''}>Thi công nội thất</option>
+            <option value="Thi công xây dựng" ${project && project.type === 'Thi công xây dựng' ? 'selected' : ''}>Thi công xây dựng</option>
+            <option value="Xây dựng dân dụng" ${project && project.type === 'Xây dựng dân dụng' ? 'selected' : ''}>Xây dựng dân dụng</option>
+            <option value="Xây dựng công nghiệp" ${project && project.type === 'Xây dựng công nghiệp' ? 'selected' : ''}>Xây dựng công nghiệp</option>
+            <option value="Cải tạo sửa chữa" ${project && project.type === 'Cải tạo sửa chữa' ? 'selected' : ''}>Cải tạo sửa chữa</option>
+            <option value="Giám sát thi công" ${project && project.type === 'Giám sát thi công' ? 'selected' : ''}>Giám sát thi công</option>
             <option value="Concept 3D" ${project && project.type === 'Concept 3D' ? 'selected' : ''}>Concept 3D</option>
-            <option value="Web design" ${project && project.type === 'Web design' ? 'selected' : ''}>Web design</option>
+            <option value="Tư vấn thiết kế" ${project && project.type === 'Tư vấn thiết kế' ? 'selected' : ''}>Tư vấn thiết kế</option>
             <option value="Khác" ${project && project.type === 'Khác' ? 'selected' : ''}>Khác</option>
           </select>
         </div>
@@ -563,11 +799,86 @@
     openModal('Chi tiết Dự án', body, footer);
   }
 
+  // Apply filter tab (bottom tabs)
+  function applyFilterTab(label) {
+    var taskListEl = document.querySelector('.task-list');
+    if (!taskListEl) return;
+
+    var tasks = TaskManager.getTasks();
+
+    if (label.includes('Tasks')) {
+      // All tasks
+      tasks = tasks;
+    } else if (label.includes('Đang làm')) {
+      tasks = tasks.filter(t => t.status === 'in-progress');
+    } else if (label.includes('Tiến độ')) {
+      // Tasks in progress
+      tasks = tasks.filter(t => t.status === 'in-progress' || t.status === 'pending');
+    } else if (label.includes('Thêm task')) {
+      openTaskModal();
+      return;
+    } else if (label.includes('Lịch')) {
+      // Tasks with deadline today
+      var today = new Date().toISOString().split('T')[0];
+      tasks = tasks.filter(t => t.deadline && t.deadline.startsWith(today));
+    }
+
+    if (tasks.length === 0) {
+      taskListEl.innerHTML = `
+        <li class="empty-state">
+          <div class="empty-state-icon">🔍</div>
+          <div class="empty-state-title">Không có task nào</div>
+        </li>
+      `;
+      return;
+    }
+
+    taskListEl.innerHTML = tasks.slice(0, 8).map(task => {
+      var assignee = TaskManager.getMember(task.assigneeId);
+      var project = task.projectId ? TaskManager.getProject(task.projectId) : null;
+      var priorityClass = task.priority === 'high' ? 'priority-high' :
+                         task.priority === 'medium' ? 'priority-medium' : 'priority-low';
+      var priorityLabel = task.priority === 'high' ? 'Cao' :
+                         task.priority === 'medium' ? 'Trung bình' : 'Thấp';
+      var deadline = task.deadline ? new Date(task.deadline).toLocaleString('vi-VN', {
+        weekday: 'short', hour: '2-digit', minute: '2-digit'
+      }) : '';
+
+      return `
+        <li class="task-row ${task.status === 'completed' ? 'done' : ''}" data-task-id="${task.id}">
+          <button class="task-check">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </button>
+          <div class="task-content">
+            <h4>${task.title}</h4>
+            <p>${project ? project.name + ' · ' : ''}${deadline}</p>
+          </div>
+          <span class="task-priority-badge ${priorityClass}">${priorityLabel}</span>
+          ${assignee ? `<span class="avatar-xs-tm" style="background:${assignee.color}">${assignee.avatar}</span>` : ''}
+        </li>
+      `;
+    }).join('');
+  }
+
   // Render functions
   function renderDashboard() {
     // Stats are rendered statically in HTML, but we can update them dynamically
     const stats = TaskManager.getStats();
     updateStats(stats);
+
+    // Insert sync button into top bar
+    var topbar = document.querySelector('.tm-topbar');
+    if (topbar && !document.getElementById('syncFromSheetsBtn')) {
+      topbar.insertAdjacentHTML('beforeend', `
+        <button id="syncFromSheetsBtn" class="sync-btn" title="Đồng bộ dữ liệu mới nhất từ Google Sheets" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; background: transparent; color: var(--color-text); border: 1px solid var(--color-border); border-radius: 6px; cursor: pointer; font-size: 0.8125rem; white-space: nowrap; margin-right: 8px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;flex-shrink:0;"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          Đồng bộ Sheet
+        </button>
+      `);
+      document.getElementById('syncFromSheetsBtn').addEventListener('click', syncFromSheets);
+    }
 
     // Render task list
     renderTaskList();
@@ -739,7 +1050,14 @@
     if (!tmContent) return;
 
     const currentUser = TaskManager.getCurrentUser();
-    const tasks = TaskManager.getTasks({ assigneeId: currentUser.id });
+    const allTasks = TaskManager.getTasks();
+    const myTasks = allTasks.filter(t => t.assigneeId === currentUser.id);
+    const allMyTasks = allTasks.filter(t => t.assigneeId === currentUser.id || t.createdBy === currentUser.id);
+
+    const pending = allMyTasks.filter(t => t.status === 'pending').length;
+    const inProgress = allMyTasks.filter(t => t.status === 'in-progress').length;
+    const completed = allMyTasks.filter(t => t.status === 'completed').length;
+    const overdue = allMyTasks.filter(t => t.status !== 'completed' && t.deadline && new Date(t.deadline) < new Date()).length;
 
     tmContent.innerHTML = `
       <div class="tm-topbar">
@@ -750,6 +1068,25 @@
           </svg>
           Thêm task
         </button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px;">
+        <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 10px; padding: 16px;">
+          <div style="font-size: 0.75rem; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Chờ xử lý</div>
+          <div style="font-size: 1.75rem; font-weight: 600; color: var(--color-text); margin-top: 4px;">${pending}</div>
+        </div>
+        <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 10px; padding: 16px;">
+          <div style="font-size: 0.75rem; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Đang làm</div>
+          <div style="font-size: 1.75rem; font-weight: 600; color: #C7A464; margin-top: 4px;">${inProgress}</div>
+        </div>
+        <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 10px; padding: 16px;">
+          <div style="font-size: 0.75rem; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Hoàn thành</div>
+          <div style="font-size: 1.75rem; font-weight: 600; color: #4F6F52; margin-top: 4px;">${completed}</div>
+        </div>
+        <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 10px; padding: 16px;">
+          <div style="font-size: 0.75rem; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Trễ hạn</div>
+          <div style="font-size: 1.75rem; font-weight: 600; color: #A04848; margin-top: 4px;">${overdue}</div>
+        </div>
       </div>
 
       <div class="filter-bar">
@@ -771,18 +1108,28 @@
             <option value="low">Thấp</option>
           </select>
         </div>
+        <div class="filter-group">
+          <span class="filter-label">Dự án:</span>
+          <select class="filter-select-tm" id="projectFilter">
+            <option value="">Tất cả</option>
+            ${TaskManager.getProjects().map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
+          </select>
+        </div>
       </div>
 
       <ul class="task-list">
-        ${tasks.length > 0 ? tasks.map(task => {
+        ${allMyTasks.length > 0 ? allMyTasks.map(task => {
           const project = task.projectId ? TaskManager.getProject(task.projectId) : null;
           const priorityClass = task.priority === 'high' ? 'priority-high' :
                               task.priority === 'medium' ? 'priority-medium' : 'priority-low';
           const priorityLabel = task.priority === 'high' ? 'Cao' :
                               task.priority === 'medium' ? 'Trung bình' : 'Thấp';
+          const statusLabel = task.status === 'pending' ? 'Chờ xử lý' :
+                              task.status === 'in-progress' ? 'Đang làm' : 'Hoàn thành';
           const deadline = task.deadline ? new Date(task.deadline).toLocaleString('vi-VN', {
             weekday: 'short', hour: '2-digit', minute: '2-digit'
           }) : 'Không có deadline';
+          const isOverdue = task.status !== 'completed' && task.deadline && new Date(task.deadline) < new Date();
 
           return `
             <li class="task-row ${task.status === 'completed' ? 'done' : ''}" data-task-id="${task.id}">
@@ -793,7 +1140,11 @@
               </button>
               <div class="task-content">
                 <h4>${task.title}</h4>
-                <p>${project ? project.name + ' · ' : ''}${deadline}</p>
+                <p style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                  ${project ? `<span>📁 ${project.name}</span>` : ''}
+                  <span ${isOverdue ? 'style="color: #A04848; font-weight: 500;"' : ''}>📅 ${deadline}</span>
+                  <span>⚙️ ${statusLabel}</span>
+                </p>
               </div>
               <span class="task-priority-badge ${priorityClass}">${priorityLabel}</span>
             </li>
@@ -807,6 +1158,57 @@
         `}
       </ul>
     `;
+
+    // Filter change handlers
+    setTimeout(() => {
+      ['statusFilter', 'priorityFilter', 'projectFilter'].forEach(id => {
+        var el = document.getElementById(id);
+        if (el) {
+          el.addEventListener('change', function() {
+            var status = document.getElementById('statusFilter').value;
+            var priority = document.getElementById('priorityFilter').value;
+            var projectId = document.getElementById('projectFilter').value;
+
+            var filtered = allMyTasks.filter(t => {
+              if (status && t.status !== status) return false;
+              if (priority && t.priority !== priority) return false;
+              if (projectId && t.projectId !== projectId) return false;
+              return true;
+            });
+
+            var listEl = document.querySelector('.task-list');
+            if (filtered.length > 0) {
+              listEl.innerHTML = filtered.map(task => {
+                var project = task.projectId ? TaskManager.getProject(task.projectId) : null;
+                var priorityClass = task.priority === 'high' ? 'priority-high' :
+                                    task.priority === 'medium' ? 'priority-medium' : 'priority-low';
+                var priorityLabel = task.priority === 'high' ? 'Cao' :
+                                    task.priority === 'medium' ? 'Trung bình' : 'Thấp';
+                var deadline = task.deadline ? new Date(task.deadline).toLocaleString('vi-VN', {
+                  weekday: 'short', hour: '2-digit', minute: '2-digit'
+                }) : 'Không có deadline';
+                return `
+                  <li class="task-row ${task.status === 'completed' ? 'done' : ''}" data-task-id="${task.id}">
+                    <button class="task-check">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                    </button>
+                    <div class="task-content">
+                      <h4>${task.title}</h4>
+                      <p>${project ? project.name + ' · ' : ''}${deadline}</p>
+                    </div>
+                    <span class="task-priority-badge ${priorityClass}">${priorityLabel}</span>
+                  </li>
+                `;
+              }).join('');
+            } else {
+              listEl.innerHTML = '<li class="empty-state"><div class="empty-state-icon">🔍</div><div class="empty-state-title">Không có task khớp bộ lọc</div></li>';
+            }
+          });
+        }
+      });
+    }, 100);
   }
 
   function renderTeam() {

@@ -188,6 +188,7 @@ main { flex: 1; }
 }
 .theme-icon-dark {
   color: var(--color-blue);
+  padding-left: 4px;
 }
 /* Light mode: invert icon colors for visibility */
 [data-theme="light"] .theme-icon-light {

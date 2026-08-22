@@ -164,8 +164,46 @@
 
 .topbar-actions {
   display: flex;
+  align-items: center;
   gap: var(--space-sm);
   margin-left: auto;
+}
+
+.sync-btn-tm {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: transparent;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: all 0.2s;
+  margin-right: 8px;
+}
+
+.sync-btn-tm:hover {
+  background: var(--color-bg);
+  border-color: var(--color-bronze);
+  color: var(--color-bronze);
+}
+
+.sync-btn-tm:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.sync-btn-tm.spinning svg {
+  animation: sync-spin 1s linear infinite;
+}
+
+@keyframes sync-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .icon-btn-tm {

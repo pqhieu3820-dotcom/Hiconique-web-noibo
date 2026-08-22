@@ -14,23 +14,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
-// Security headers — tuned for an internal portal (no CDN script execution).
+// Security headers — CSP disabled for Google Sheets testing
 app.use(
   helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        // Google Fonts is whitelisted for typography.
-        fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-        // Google Fonts CSS + Notion/Sheets iframes (added on each route).
-        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
-        imgSrc: ["'self'", 'data:', 'https:'],
-        // Notion embeds + Google Sheets iframe integration.
-        frameSrc: ['https://notion.so', 'https://www.notion.so', 'https://docs.google.com'],
-        connectSrc: ["'self'", 'https://sheets.googleapis.com'],
-      },
-    },
+    contentSecurityPolicy: false,
     crossOriginEmbedderPolicy: false,
   })
 );
