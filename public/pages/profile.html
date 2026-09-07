@@ -206,7 +206,11 @@
 
         <div class="pf-section-title">Thông tin tài khoản</div>
         <div class="pf-grid">
-          <div class="pf-field full">
+          <div class="pf-field">
+            <div class="pf-field-label">Ngân hàng</div>
+            <div class="pf-field-value" id="profileBankName">--</div>
+          </div>
+          <div class="pf-field">
             <div class="pf-field-label">Số tài khoản ngân hàng</div>
             <div class="pf-field-value" id="profileBank">--</div>
           </div>
@@ -227,8 +231,14 @@
       setTimeout(syncPfSlider, 10);
     });
 
-    var user = Auth.getCurrentUser();
-    if (!user) { Auth.showLoginModal(); return; }
+    var session = Auth.getCurrentUser();
+    if (!session) { Auth.showLoginModal(); return; }
+
+    // Session chỉ giữ vài field gọn nhẹ — lấy bản ghi đầy đủ (dob/cccd/hometown/bank...)
+    // từ danh sách thành viên khi có, fallback về session nếu chưa tải được.
+    var fullMember = (typeof TaskManager !== 'undefined' ? TaskManager.getMembers() : [])
+      .find(function (m) { return m.id === session.id; });
+    var user = fullMember || session;
 
     document.getElementById('profileAvatar').textContent = user.avatar || '--';
     document.getElementById('profileName').textContent = user.name || '--';
@@ -237,6 +247,7 @@
     document.getElementById('profileDob').textContent = user.dob ? new Date(user.dob).toLocaleDateString('vi-VN') : '--';
     document.getElementById('profileCccd').textContent = user.cccd || '--';
     document.getElementById('profileHometown').textContent = user.hometown || '--';
+    document.getElementById('profileBankName').textContent = user.bank || '--';
     document.getElementById('profileBank').textContent = user.bankAccount || '--';
     var roleLevelBadge = document.getElementById('profileRoleLevel');
     if (user.roleLevel === 'admin') roleLevelBadge.textContent = 'Quản trị viên';

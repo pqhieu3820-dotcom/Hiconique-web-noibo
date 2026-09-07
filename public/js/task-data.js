@@ -38,6 +38,7 @@ function callGSheetsAPI(action, data, id) {
 
 function syncToGSheets(type, action, data, id) {
   var actionMap = {
+    members: { add: 'addMember', update: 'updateMember', delete: 'deleteMember' },
     projects: { add: 'addProject', update: 'updateProject', delete: 'deleteProject' },
     tasks: { add: 'addTask', update: 'updateTask', delete: 'deleteTask', toggle: 'toggleTask' },
     proposals: { add: 'addProposal', update: 'updateProposal', delete: 'deleteProposal', approve: 'approveProposal', reject: 'rejectProposal' },

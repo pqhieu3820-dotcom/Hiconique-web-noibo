@@ -11,7 +11,7 @@ Spreadsheet: `HICONIQUE Task Manager` — 8 tab, mỗi tab một loại dữ li�
 
 | Tab | Dùng cho | Cột chính |
 |---|---|---|
-| `Members` | Thành viên | id, name, role, roleLevel, email, password, dob, cccd, hometown, bankAccount, color, avatar, createdAt |
+| `Members` | Thành viên | id, name, role, roleLevel, email, password, dob, cccd, hometown, bank, bankAccount, color, avatar, createdAt |
 | `Projects` | Dự án | id, name, type, color, progress, status, members, createdAt, updatedAt |
 | `Tasks` | Công việc | id, title, description, projectId, assigneeId, priority, status, startDate, deadline, createdBy, createdAt, updatedAt, progress, dailyTasks |
 | `Proposals` | Đề xuất | id, title, description, type, status, requesterId, reviewerId, amount, createdAt, reviewedAt |
@@ -50,6 +50,13 @@ Nếu thêm hẳn 1 sheet mới, xem mục "Thêm sheet mới" bên dưới.
 4. Trong `public/js/task-data.js`: thêm `STORAGE_KEYS`, case trong `getFromGSheets()`, fetch
    trong `initData()`/`refreshFromGSheets()`, và các hàm CRUD tương ứng (theo mẫu Notices/
    Documents đã có sẵn trong file).
+
+## Cột `bank` (tên ngân hàng) trên tab Members
+
+Form đăng ký thành viên mới đã có thêm trường "Ngân hàng" (tên ngân hàng, tách riêng với "Số tài
+khoản"). Giống mọi trường khác, giá trị này chỉ được lưu lại qua Google Sheets nếu tab `Members`
+đã có cột `bank` trên hàng header — nếu chưa có, tự thêm cột `bank` vào Sheet (đặt cạnh
+`bankAccount` cho dễ nhìn), không cần redeploy Apps Script.
 
 ## Cột `code` (mã tài liệu) trên tab Documents
 

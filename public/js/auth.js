@@ -359,10 +359,17 @@ const Auth = (function() {
                 style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none;">
             </div>
 
-            <div>
-              <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Số tài khoản ngân hàng</label>
-              <input type="text" id="regBankAccountInput" placeholder="Số TK ngân hàng (nhận lương)"
-                style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div>
+                <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Ngân hàng</label>
+                <input type="text" id="regBankNameInput" placeholder="Vd: Vietcombank"
+                  style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none;">
+              </div>
+              <div>
+                <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Số tài khoản</label>
+                <input type="text" id="regBankAccountInput" placeholder="Số TK nhận lương"
+                  style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none;">
+              </div>
             </div>
 
             <div id="authError" style="display: none; padding: 10px 12px; background: rgba(160,72,72,0.1); border: 1px solid rgba(160,72,72,0.3); border-radius: 6px; color: #A04848; font-size: 0.8125rem;"></div>
@@ -392,6 +399,7 @@ const Auth = (function() {
     var dobInput = document.getElementById('regDobInput');
     var cccdInput = document.getElementById('regCccdInput');
     var hometownInput = document.getElementById('regHometownInput');
+    var bankNameInput = document.getElementById('regBankNameInput');
     var bankAccountInput = document.getElementById('regBankAccountInput');
     var errorEl = document.getElementById('authError');
     var successEl = document.getElementById('authSuccess');
@@ -409,6 +417,7 @@ const Auth = (function() {
       var dob = dobInput.value;
       var cccd = cccdInput.value.trim();
       var hometown = hometownInput.value.trim();
+      var bankName = bankNameInput.value.trim();
       var bankAccount = bankAccountInput.value.trim();
       errorEl.style.display = 'none';
       successEl.style.display = 'none';
@@ -419,7 +428,7 @@ const Auth = (function() {
         return;
       }
 
-      register(name, email, role, password, dob, cccd, hometown, bankAccount, function(result) {
+      register(name, email, role, password, dob, cccd, hometown, bankName, bankAccount, function(result) {
         if (result.success) {
           successEl.textContent = '✓ Đăng ký thành công! Đang chuyển sang đăng nhập...';
           successEl.style.display = 'block';
@@ -442,7 +451,7 @@ const Auth = (function() {
   }
 
   // Register new member
-  function register(name, email, role, password, dob, cccd, hometown, bankAccount, callback) {
+  function register(name, email, role, password, dob, cccd, hometown, bankName, bankAccount, callback) {
     if (!isAllowedEmail(email)) {
       if (callback) callback({ success: false, error: 'Email không hợp lệ' });
       return;
@@ -480,6 +489,7 @@ const Auth = (function() {
       dob: dob || '',
       cccd: cccd || '',
       hometown: hometown || '',
+      bank: bankName || '',
       bankAccount: bankAccount || '',
       color: color,
       avatar: avatar,

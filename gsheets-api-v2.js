@@ -17,7 +17,7 @@ const SHEETS = {
 const HEADERS = {
   projects: ['id', 'name', 'type', 'color', 'progress', 'status', 'members', 'createdAt', 'updatedAt'],
   tasks: ['id', 'title', 'description', 'projectId', 'assigneeId', 'priority', 'status', 'startDate', 'deadline', 'createdBy', 'createdAt', 'updatedAt', 'progress', 'dailyTasks'],
-  members: ['id', 'name', 'role', 'roleLevel', 'email', 'password', 'dob', 'cccd', 'hometown', 'bankAccount', 'color', 'avatar', 'createdAt'],
+  members: ['id', 'name', 'role', 'roleLevel', 'email', 'password', 'dob', 'cccd', 'hometown', 'bank', 'bankAccount', 'color', 'avatar', 'createdAt'],
   proposals: ['id', 'title', 'description', 'type', 'status', 'requesterId', 'reviewerId', 'amount', 'createdAt', 'reviewedAt'],
   timesheet: ['id', 'memberId', 'date', 'checkinTime', 'checkoutTime', 'totalHours', 'overtimeHours', 'status'],
   notifications: ['id', 'title', 'message', 'type', 'scope', 'recurring', 'recurRule', 'active', 'createdBy', 'createdAt', 'updatedAt'],
