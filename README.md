@@ -2,6 +2,9 @@
 
 > Cổng thông tin nội bộ dành cho nhân viên **HICONIQUE Vietnam** — đội ngũ thiết kế &amp; thi công xa xỉ.
 
+> 📌 Xem [GHI_CHU_DU_AN.md](GHI_CHU_DU_AN.md) để lấy nhanh link Google Sheet, Apps Script và các
+> quy tắc làm việc — đọc file đó trước khi cần hỏi lại thông tin đã có.
+
 ---
 
 ## 1. Tổng quan

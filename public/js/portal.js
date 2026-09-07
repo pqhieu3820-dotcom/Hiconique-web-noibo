@@ -615,11 +615,6 @@
         '</div></div>';
     }
 
-    function memberOptions() {
-      var members = (TaskManager.getMembers ? TaskManager.getMembers() : []) || [];
-      return members.map(function (m) { return '<option value="' + escapeHtml(m.id) + '">' + escapeHtml(m.name) + '</option>'; }).join('');
-    }
-
     function render() {
       var items = collect();
       var canManage = TaskManager.canManageNotifications(user);
@@ -633,25 +628,6 @@
       html += '<div class="notif-list">' + (items.length ? items.map(itemRow).join('') : '<div class="notif-empty">Không có thông báo nào.</div>') + '</div>';
 
       if (canManage) {
-        html += '<div class="notif-manage">' +
-          '<button type="button" class="notif-add-btn" id="notifAddBtn">+ Tạo thông báo</button>' +
-          '<form class="notif-form" id="notifForm" hidden>' +
-            (canRules ? '<div class="notif-kind-toggle">' +
-              '<button type="button" class="notif-kind-btn active" data-kind="normal">Thông báo thường</button>' +
-              '<button type="button" class="notif-kind-btn" data-kind="recurring">Định kỳ</button>' +
-            '</div>' : '') +
-            '<input type="hidden" id="notifKind" value="normal">' +
-            '<input type="text" id="notifTitle" placeholder="Tiêu đề" required>' +
-            '<textarea id="notifMessage" placeholder="Nội dung" rows="2"></textarea>' +
-            '<div class="notif-form-row">' +
-              '<select id="notifType"><option value="system">Hệ thống</option><option value="task">Công việc</option><option value="project">Dự án</option><option value="violation">Vi phạm</option><option value="checkin">Chấm công</option><option value="payroll">Lương</option></select>' +
-              '<select id="notifScope"><option value="all">Toàn công ty</option>' + memberOptions() + '</select>' +
-            '</div>' +
-            '<input type="text" id="notifRecurWindow" placeholder="Lặp vào ngày nào trong tháng, vd 1-5" hidden>' +
-            '<button type="submit" class="notif-submit">Đăng thông báo</button>' +
-          '</form>' +
-        '</div>';
-
         if (canRules) {
           var rules = TaskManager.getNotificationRules().filter(function (n) { return n.recurring; });
           html += '<div class="notif-rules">' +
@@ -680,41 +656,6 @@
       var markAllBtn = panel.querySelector('#notifMarkAll');
       if (markAllBtn) markAllBtn.addEventListener('click', function () {
         TaskManager.markAllNotificationsRead(items.map(function (n) { return n.id; }));
-        render();
-      });
-
-      var addBtn = panel.querySelector('#notifAddBtn');
-      var form = panel.querySelector('#notifForm');
-      if (addBtn && form) addBtn.addEventListener('click', function () { form.hidden = !form.hidden; });
-
-      var kindInput = panel.querySelector('#notifKind');
-      var recurWindowInput = panel.querySelector('#notifRecurWindow');
-      panel.querySelectorAll('.notif-kind-btn').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          panel.querySelectorAll('.notif-kind-btn').forEach(function (b) { b.classList.remove('active'); });
-          btn.classList.add('active');
-          kindInput.value = btn.dataset.kind;
-          recurWindowInput.hidden = btn.dataset.kind !== 'recurring';
-        });
-      });
-
-      if (form) form.addEventListener('submit', function (e) {
-        e.preventDefault();
-        var title = panel.querySelector('#notifTitle').value.trim();
-        if (!title) return;
-        var isRecurring = kindInput && kindInput.value === 'recurring';
-        var data = {
-          title: title,
-          message: panel.querySelector('#notifMessage').value.trim(),
-          type: panel.querySelector('#notifType').value,
-          scope: panel.querySelector('#notifScope').value,
-          recurring: isRecurring
-        };
-        if (isRecurring) {
-          data.recurRule = 'monthly:' + (recurWindowInput.value.trim() || '1-5');
-          data.active = true;
-        }
-        TaskManager.createNotification(data, user);
         render();
       });
 
