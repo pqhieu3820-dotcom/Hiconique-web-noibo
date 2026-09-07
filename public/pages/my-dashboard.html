@@ -8,12 +8,12 @@
   <link rel="stylesheet" href="/css/reset.css">
   <link rel="stylesheet" href="/css/tokens.css">
   <link rel="stylesheet" href="/css/portal.css">
+  <link rel="stylesheet" href="/css/subpage.css">
   <link rel="stylesheet" href="/css/task-manager.css">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <script src="/js/gsheets-config.js"></script>
   <script src="/js/task-data.js"></script>
   <script src="/js/auth.js"></script>
-  <script src="/js/portal.js"></script>
   <style>
     :root {
       --md-bg: var(--color-bg);
@@ -31,78 +31,7 @@
       min-height: 100vh;
     }
 
-    .md-header {
-      background: var(--md-surface);
-      border-bottom: 1px solid var(--md-border);
-      padding: 14px 32px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      backdrop-filter: blur(8px);
-    }
-
-    .md-header-left { display: flex; align-items: center; gap: 16px; }
-
-    .md-logo {
-      width: 40px;
-      height: 40px;
-      background: var(--md-bronze);
-      border-radius: 10px;
-      display: grid;
-      place-items: center;
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: #0B0D10;
-      flex-shrink: 0;
-      text-decoration: none;
-    }
-
-    .md-title-group h1 {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 1.125rem;
-      font-weight: 600;
-      color: var(--md-text);
-      margin: 0;
-    }
-
-    .md-title-group p {
-      font-size: 0.75rem;
-      color: var(--md-muted);
-      margin: 2px 0 0;
-    }
-
-    .md-back {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 14px;
-      border-radius: 8px;
-      font-size: 0.875rem;
-      color: var(--md-muted);
-      text-decoration: none;
-      border: 1px solid var(--md-border);
-      background: var(--md-surface);
-      transition: all 0.15s;
-    }
-
-    .md-back:hover { color: var(--md-text); border-color: var(--md-bronze); }
-
-    .md-container { max-width: 1100px; margin: 0 auto; padding: 32px 32px 60px; }
-
-    .md-page-title {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 2rem;
-      font-weight: 600;
-      color: var(--md-text);
-      margin-bottom: 8px;
-    }
-
-    .md-page-sub { color: var(--md-muted); font-size: 0.875rem; margin-bottom: 32px; }
+    .md-container { max-width: 1100px; }
 
     .md-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
 
@@ -189,48 +118,46 @@
     @media (max-width: 768px) {
       .md-stats { grid-template-columns: repeat(2, 1fr); }
       .md-container { padding: 24px 16px 60px; }
-      .md-header { padding: 12px 16px; }
     }
   </style>
 </head>
 <body>
-  <header class="md-header">
-    <div class="md-header-left">
-      <a href="/" class="md-logo">H</a>
-      <div class="md-title-group">
-        <h1>Dashboard của tôi</h1>
-        <p>Công việc cá nhân và tiến độ</p>
-      </div>
-    </div>
-    <nav class="primary-nav">
-      <a href="/#tools" class="nav-link">Công cụ</a>
-      <a href="/pages/tasks-manager.html" class="nav-link">Tasks</a>
-      <a href="/pages/projects.html" class="nav-link">Dự án</a>
-      <a href="/pages/wiki.html" class="nav-link">Tài liệu</a>
-      <a href="/#ai" class="nav-link">AI</a>
-      <a href="/pages/notices.html" class="nav-link">Thông báo</a>
-      <a href="/pages/team.html" class="nav-link">Team</a>
-    </nav>
-    <div style="display:flex;align-items:center;gap:10px;">
-      <a href="/" class="md-back">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-        Về trang chủ
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/" class="brand">
+        <span class="brand-mark">H</span>
+        <span class="brand-name"><span class="brand-name-1">HICONIQUE</span></span>
       </a>
-      <button class="theme-toggle-pill" aria-label="Chuyển đổi sáng/tối" data-theme-toggle style="position:relative;width:64px;height:30px;display:flex;align-items:center;justify-content:space-between;padding:2px;border-radius:18px;border:1px solid var(--md-border);background:var(--md-surface);cursor:pointer;gap:0;flex-shrink:0;">
-        <span style="width:26px;height:26px;border-radius:50%;display:grid;place-items:center;z-index:2;color:var(--md-bronze);">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-        </span>
-        <span style="position:absolute;width:26px;height:26px;background:var(--md-bronze);border-radius:50%;top:2px;left:2px;transition:transform 0.2s;z-index:1;" id="mdThemeSlider"></span>
-        <span style="width:26px;height:26px;border-radius:50%;display:grid;place-items:center;z-index:2;color:#3B6B8C;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-        </span>
-      </button>
+      <nav class="primary-nav">
+        <a href="/#tools" class="nav-link">Công cụ</a>
+        <a href="/pages/tasks-manager.html" class="nav-link">Tasks</a>
+        <a href="/pages/projects.html" class="nav-link">Dự án</a>
+        <a href="/pages/wiki.html" class="nav-link">Tài liệu</a>
+        <a href="/#ai" class="nav-link">AI</a>
+        <a href="/pages/notices.html" class="nav-link">Thông báo</a>
+        <a href="/pages/team.html" class="nav-link">Team</a>
+      </nav>
+      <div class="header-actions">
+        <button class="theme-toggle" aria-label="Chuyển đổi sáng/tối" data-theme-toggle>
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" stroke-linecap="round" />
+          </svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+        <span class="clock"><span class="clock-time" data-clock>15:01</span><span class="clock-meta">GMT+7</span></span>
+        <button class="avatar"><span id="headerAvatarText">--</span></button>
+      </div>
     </div>
   </header>
 
-  <div class="md-container">
-    <h2 class="md-page-title" id="dashTitle">Dashboard của tôi</h2>
-    <p class="md-page-sub">Cập nhật công việc hàng ngày để team nắm được tiến độ.</p>
+  <main class="subpage">
+  <div class="subpage-inner md-container">
+    <p class="eyebrow">— Không gian làm việc cá nhân</p>
+    <h1 class="subpage-title" id="dashTitle">Dashboard <span class="subpage-title-italic">của tôi</span></h1>
+    <p class="subpage-lede">Cập nhật công việc hàng ngày để team nắm được tiến độ.</p>
 
     <div class="md-stats">
       <div class="md-stat">
@@ -267,21 +194,10 @@
       <div id="projectList"></div>
     </div>
   </div>
+  </main>
 
   <script>
   (function() {
-    // Sync theme slider
-    function syncMdSlider() {
-      var theme = document.documentElement.getAttribute('data-theme');
-      var slider = document.getElementById('mdThemeSlider');
-      if (slider) slider.style.transform = theme === 'dark' ? 'translateX(34px)' : 'translateX(0)';
-    }
-    syncMdSlider();
-    var mdToggle = document.querySelector('[data-theme-toggle]');
-    if (mdToggle) mdToggle.addEventListener('click', function() {
-      setTimeout(syncMdSlider, 10);
-    });
-
     function initMyDash() {
       if (typeof Auth === 'undefined' || typeof Auth.getCurrentUser === 'undefined') {
         setTimeout(initMyDash, 200);
@@ -290,7 +206,8 @@
       var user = Auth.getCurrentUser();
       if (!user) { Auth.showLoginModal(); return; }
 
-      document.getElementById('dashTitle').textContent = 'Dashboard · ' + user.name;
+      document.getElementById('headerAvatarText').textContent = user.avatar || '--';
+      document.getElementById('dashTitle').innerHTML = 'Dashboard <span class="subpage-title-italic">· ' + user.name + '</span>';
 
       var allTasks = TaskManager.getTasks();
       var myTasks = allTasks.filter(function(t) { return t.assigneeId === user.id; });
@@ -335,5 +252,7 @@
     initMyDash();
   })();
   </script>
+
+  <script src="/js/portal.js" defer></script>
 </body>
 </html>

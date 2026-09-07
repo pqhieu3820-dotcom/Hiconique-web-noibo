@@ -652,6 +652,24 @@ var TaskManager = (function() {
     return getById(STORAGE_KEYS.members, id);
   }
 
+  // Self-service profile edit (trang Thông tin cá nhân) — chỉ cho phép sửa
+  // các trường không nhạy cảm về quyền hạn (không cho đổi role/roleLevel/email
+  // qua đường này). Chủ tài khoản luôn sửa được hồ sơ của chính mình; CEO/Manager
+  // sửa được hồ sơ người khác.
+  var MEMBER_SELF_EDIT_FIELDS = ['dob', 'cccd', 'hometown', 'bank', 'bankAccount'];
+  function updateMember(id, updates, user) {
+    if (!user) return null;
+    var isSelf = user.id === id;
+    if (!isSelf && !canManageNotifications(user)) return null;
+    var safeUpdates = {};
+    MEMBER_SELF_EDIT_FIELDS.forEach(function (k) {
+      if (updates[k] !== undefined) safeUpdates[k] = updates[k];
+    });
+    var updated = update(STORAGE_KEYS.members, id, safeUpdates);
+    if (updated) syncToGSheets('members', 'update', safeUpdates, id);
+    return updated;
+  }
+
   // Proposals
   function getProposals(filters) {
     filters = filters || {};
@@ -1028,6 +1046,8 @@ var TaskManager = (function() {
 
     // Members
     getMembers: getMembers,
+    getMember: getMember,
+    updateMember: updateMember,
     getMember: getMember,
 
     // Proposals
