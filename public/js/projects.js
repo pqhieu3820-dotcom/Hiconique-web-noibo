@@ -1,160 +1,931 @@
-/* Projects Page - Lark-style functionality */
+/* Projects Dashboard — uses TaskManager + Google Sheets */
 (function () {
   'use strict';
 
-  // ----- View Toggle -----
-  var viewTabs = document.querySelectorAll('.view-tab');
-  var kanbanBoard = document.getElementById('kanban-board');
-  var listView = document.getElementById('list-view');
-  var timelineView = document.getElementById('timeline-view');
+  // ----- State -----
+  var state = {
+    viewType: 'board',
+    projectFilter: 'all',
+    quickFilters: { mine: true, dueToday: false, overdue: false, done: false },
+    memberFilter: null, // member id filter
+    sortBy: 'deadline',
+    timelineMonth: new Date().getMonth(),
+    timelineYear: new Date().getFullYear()
+  };
 
-  viewTabs.forEach(function (tab) {
-    tab.addEventListener('click', function () {
-      var view = tab.dataset.view;
+  var currentUser = null;
+  var currentDetailTaskId = null;
 
-      // Update tab active state
-      viewTabs.forEach(function (t) { t.classList.remove('active'); });
-      tab.classList.add('active');
+  // ----- Helpers -----
+  function getUser() {
+    if (typeof Auth !== 'undefined' && Auth.getCurrentUser) return Auth.getCurrentUser();
+    if (typeof TaskManager !== 'undefined' && TaskManager.getCurrentUser) return TaskManager.getCurrentUser();
+    return null;
+  }
+  function getMembers() { return (typeof TaskManager !== 'undefined' && TaskManager.getMembers) ? TaskManager.getMembers() : []; }
+  function getProjects() { return (typeof TaskManager !== 'undefined' && TaskManager.getProjects) ? TaskManager.getProjects() : []; }
+  function getTasks() { return (typeof TaskManager !== 'undefined' && TaskManager.getTasks) ? TaskManager.getTasks() : []; }
+  function getProjectById(id) { return (typeof TaskManager !== 'undefined' && TaskManager.getProject) ? TaskManager.getProject(id) : null; }
+  function getMemberById(id) { return (typeof TaskManager !== 'undefined' && TaskManager.getMember) ? TaskManager.getMember(id) : null; }
 
-      // Show/hide views
-      kanbanBoard.style.display = view === 'board' ? 'flex' : 'none';
-      listView.style.display = view === 'list' ? 'block' : 'none';
-      timelineView.style.display = view === 'timeline' ? 'block' : 'none';
-    });
-  });
+  function projectType(p) {
+    if (!p || !p.type) return 'admin';
+    var t = p.type.toLowerCase();
+    if (t.indexOf('thiết kế') !== -1 || t.indexOf('thiet ke') !== -1 || t.indexOf('design') !== -1) return 'design';
+    if (t.indexOf('thi công') !== -1 || t.indexOf('thi cong') !== -1 || t.indexOf('construction') !== -1) return 'construction';
+    return 'admin';
+  }
 
-  // ----- Project Filter -----
-  var projectNavItems = document.querySelectorAll('.project-nav-item');
+  function todayStr() {
+    var now = new Date();
+    return now.getFullYear() + '-' +
+      String(now.getMonth() + 1).padStart(2, '0') + '-' +
+      String(now.getDate()).padStart(2, '0');
+  }
+  function isToday(dateStr) { return dateStr && dateStr.indexOf(todayStr()) === 0; }
+  function isOverdue(task) {
+    if (!task.deadline || task.status === 'completed') return false;
+    return new Date(task.deadline) < new Date(todayStr() + 'T00:00');
+  }
+  function isDueToday(task) {
+    if (!task.deadline || task.status === 'completed') return false;
+    return isToday(task.deadline);
+  }
+  function fmtDate(deadline) {
+    if (!deadline) return '';
+    var d = new Date(deadline);
+    if (isNaN(d.getTime())) return deadline;
+    return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
+  }
+  function priorityLabel(p) {
+    if (p === 'high') return 'Cao';
+    if (p === 'medium') return 'Trung bình';
+    return 'Thấp';
+  }
+  function statusLabel(s) {
+    if (s === 'in-progress') return 'Đang làm';
+    if (s === 'completed') return 'Hoàn thành';
+    if (s === 'review') return 'Chờ duyệt';
+    return 'Chưa bắt đầu';
+  }
+  function statusBadgeClass(s) {
+    if (s === 'in-progress') return 'status-progress';
+    if (s === 'completed') return 'status-done';
+    if (s === 'review') return 'status-review';
+    return 'status-todo';
+  }
+  function escapeHtml(str) {
+    if (str === undefined || str === null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
 
-  projectNavItems.forEach(function (item) {
-    item.addEventListener('click', function (e) {
-      e.preventDefault();
-      projectNavItems.forEach(function (i) { i.classList.remove('active'); });
-      item.classList.add('active');
-    });
-  });
+  // ----- Filter -----
+  function getFilteredTasks() {
+    var tasks = getTasks();
+    var projects = getProjects();
 
-  // ----- Drag and Drop -----
-  var taskCards = document.querySelectorAll('.task-card');
-  var columns = document.querySelectorAll('.column-tasks');
+    if (state.projectFilter !== 'all') {
+      var allowedIds = {};
+      projects.forEach(function (p) {
+        if (projectType(p) === state.projectFilter) allowedIds[p.id] = true;
+      });
+      tasks = tasks.filter(function (t) { return allowedIds[t.projectId]; });
+    }
 
-  taskCards.forEach(function (card) {
-    card.addEventListener('dragstart', function (e) {
-      e.dataTransfer.setData('text/plain', '');
-      card.classList.add('dragging');
-    });
+    var f = state.quickFilters;
+    if (f.mine && currentUser) {
+      tasks = tasks.filter(function (t) { return t.assigneeId === currentUser.id; });
+    }
+    if (state.memberFilter) {
+      tasks = tasks.filter(function (t) { return t.assigneeId === state.memberFilter; });
+    }
+    if (f.dueToday) tasks = tasks.filter(isDueToday);
+    if (f.overdue) tasks = tasks.filter(isOverdue);
+    if (!f.done) tasks = tasks.filter(function (t) { return t.status !== 'completed'; });
 
-    card.addEventListener('dragend', function () {
-      card.classList.remove('dragging');
-    });
-  });
-
-  columns.forEach(function (column) {
-    column.addEventListener('dragover', function (e) {
-      e.preventDefault();
-      var dragging = document.querySelector('.dragging');
-      if (dragging) {
-        column.appendChild(dragging);
+    tasks.sort(function (a, b) {
+      if (state.sortBy === 'priority') {
+        var order = { high: 0, medium: 1, low: 2 };
+        return (order[a.priority] || 3) - (order[b.priority] || 3);
       }
+      if (state.sortBy === 'createdAt') {
+        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+      }
+      if (!a.deadline && !b.deadline) return 0;
+      if (!a.deadline) return 1;
+      if (!b.deadline) return -1;
+      return new Date(a.deadline) - new Date(b.deadline);
     });
-  });
 
-  // ----- Modal -----
-  var modal = document.getElementById('task-modal');
-  var modalClose = document.querySelector('.modal-close');
-  var modalCancel = document.querySelector('.modal-cancel');
-  var newTaskBtn = document.querySelector('.btn-new-task');
-  var taskForm = document.querySelector('.modal-body form');
-
-  function openModal() {
-    modal.hidden = false;
-    document.getElementById('task-name').focus();
+    return tasks;
   }
 
-  function closeModal() {
-    modal.hidden = true;
+  // ----- Stats -----
+  function renderStats() {
+    var projects = getProjects();
+    var tasks = getTasks();
+    var inProgress = tasks.filter(function (t) { return t.status === 'in-progress'; }).length;
+    var overdue = tasks.filter(isOverdue).length;
+    document.getElementById('statProjects').textContent = projects.length;
+    document.getElementById('statTasks').textContent = tasks.length;
+    document.getElementById('statInProgress').textContent = inProgress;
+    document.getElementById('statOverdue').textContent = overdue;
   }
 
-  newTaskBtn && newTaskBtn.addEventListener('click', openModal);
-  modalClose && modalClose.addEventListener('click', closeModal);
-  modalCancel && modalCancel.addEventListener('click', closeModal);
+  // ----- Sidebar -----
+  function renderSidebarCounts() {
+    var projects = getProjects();
+    var tasks = getTasks();
+    var byType = { design: 0, construction: 0, admin: 0 };
+    projects.forEach(function (p) { byType[projectType(p)]++; });
+    document.getElementById('countAll').textContent = projects.length;
+    document.getElementById('countDesign').textContent = byType.design;
+    document.getElementById('countConstruction').textContent = byType.construction;
+    document.getElementById('countAdmin').textContent = byType.admin;
 
-  modal && modal.addEventListener('click', function (e) {
-    if (e.target === modal) closeModal();
-  });
-
-  // Form submit
-  taskForm && taskForm.addEventListener('submit', function (e) {
-    e.preventDefault();
-    var name = document.getElementById('task-name').value;
-    var project = document.getElementById('task-project').value;
-    var assignee = document.getElementById('task-assigninee').value;
-    var priority = document.getElementById('task-priority').value;
-    var due = document.getElementById('task-due').value;
-
-    if (!name) return;
-
-    // Create new task card
-    var priorityClass = 'priority-' + priority;
-    var assigneeInitials = assignee ? assignee.substring(0, 2).toUpperCase() : '?';
-    var dueDate = due ? due.split('-')[2] + '/' + due.split('-')[1] : '...';
-
-    var newCard = document.createElement('div');
-    newCard.className = 'task-card';
-    newCard.draggable = true;
-    newCard.dataset.priority = priority;
-    newCard.innerHTML =
-      '<div class="task-priority ' + priorityClass + '">' +
-        (priority === 'high' ? 'Cao' : priority === 'medium' ? 'Trung bình' : 'Thấp') +
+    var members = getMembers();
+    var memberList = document.getElementById('memberList');
+    if (memberList) {
+      memberList.innerHTML = '<div class="member-chip member-chip-all' + (!state.memberFilter ? ' active' : '') + '" data-member-filter="">' +
+        '<span class="avatar-sm" style="background:var(--color-bronze)">⚡</span>' +
+        '<span>Tất cả</span>' +
       '</div>' +
-      '<h4 class="task-title">' + name + '</h4>' +
-      '<p class="task-project">' + (project || 'Chưa có dự án') + '</p>' +
-      '<div class="task-meta">' +
-        '<span class="task-assignee"><span class="avatar-xs">' + assigneeInitials + '</span></span>' +
-        '<span class="task-date">' + dueDate + '</span>' +
-      '</div>';
+      members.map(function (m) {
+        var myTaskCount = tasks.filter(function (t) { return t.assigneeId === m.id && t.status !== 'completed'; }).length;
+        var isActive = state.memberFilter === m.id;
+        return '<div class="member-chip' + (isActive ? ' active' : '') + '" data-member-filter="' + escapeHtml(m.id) + '" title="' + escapeHtml(m.email || '') + '">' +
+          '<span class="avatar-sm" style="background:' + (m.color || '#6B7280') + '">' +
+            escapeHtml(m.avatar || (m.name || '?').substring(0, 2).toUpperCase()) +
+          '</span>' +
+          '<span>' + escapeHtml(m.name || '') + '</span>' +
+          (myTaskCount > 0 ? ' <span class="member-task-count">' + myTaskCount + '</span>' : '') +
+        '</div>';
+      }).join('');
 
-    // Add to first column
-    var firstColumn = document.querySelector('.column-tasks');
-    firstColumn.appendChild(newCard);
+      // Bind member filter clicks
+      memberList.querySelectorAll('[data-member-filter]').forEach(function (el) {
+        el.addEventListener('click', function () {
+          var id = el.dataset.memberFilter;
+          state.memberFilter = id || null;
+          renderAll();
+        });
+      });
+    }
+  }
 
-    // Add drag events to new card
-    newCard.addEventListener('dragstart', function (e) {
-      e.dataTransfer.setData('text/plain', '');
-      newCard.classList.add('dragging');
-    });
-    newCard.addEventListener('dragend', function () {
-      newCard.classList.remove('dragging');
-    });
+  // ----- Render Board (Kanban) -----
+  function renderBoard() {
+    var tasks = getFilteredTasks();
+    var columns = document.querySelectorAll('.column-tasks');
+    var counts = { pending: 0, 'in-progress': 0, review: 0, completed: 0 };
 
-    // Reset form and close
-    taskForm.reset();
-    closeModal();
-  });
+    columns.forEach(function (col) { col.innerHTML = ''; });
 
-  // ----- Task Checkbox -----
-  var taskCheckboxes = document.querySelectorAll('.task-checkbox input');
-  taskCheckboxes.forEach(function (checkbox) {
-    checkbox.addEventListener('change', function () {
-      var row = checkbox.closest('tr');
-      if (checkbox.checked) {
-        row.style.opacity = '0.5';
+    if (tasks.length === 0) {
+      var firstCol = document.querySelector('.column-tasks');
+      if (firstCol) {
+        firstCol.innerHTML = '<div class="empty-column"><div class="empty-icon">📋</div><p>Không có việc nào.<br>Bấm "Việc mới" để tạo.</p></div>';
+      }
+    }
+
+    tasks.forEach(function (task) {
+      var col = document.querySelector('.column-tasks[data-status="' + task.status + '"]');
+      if (!col) return;
+      counts[task.status] = (counts[task.status] || 0) + 1;
+
+      var project = getProjectById(task.projectId);
+      var assignee = getMemberById(task.assigneeId);
+      var priorityClass = 'priority-' + (task.priority || 'medium');
+      var priorityText = priorityLabel(task.priority);
+
+      var dueClass = '';
+      var dueText = '';
+      if (task.status !== 'completed') {
+        if (isOverdue(task)) { dueClass = 'overdue'; dueText = '⚠ ' + fmtDate(task.deadline); }
+        else if (isDueToday(task)) { dueClass = 'due-soon'; dueText = fmtDate(task.deadline); }
+        else { dueText = fmtDate(task.deadline); }
       } else {
-        row.style.opacity = '1';
+        dueClass = 'done-date';
+        dueText = '✓ ' + fmtDate(task.deadline);
+      }
+
+      var progress = task.progress || 0;
+      var tagsHtml = '';
+      if (task.tags && task.tags.length) {
+        tagsHtml = '<div class="task-tags">' + task.tags.slice(0, 3).map(function (t) {
+          return '<span class="task-tag">' + escapeHtml(t) + '</span>';
+        }).join('') + '</div>';
+      }
+
+      var html = ''
+        + '<div class="task-card" draggable="true" data-task-id="' + escapeHtml(task.id) + '" data-priority="' + escapeHtml(task.priority || 'medium') + '">'
+        +   '<div class="task-card-top">'
+        +     '<span class="task-priority ' + priorityClass + '">' + priorityText + '</span>'
+        +     (project ? '<span class="task-project-tag" style="--project-color:' + (project.color || '#B08D57') + '">' + escapeHtml(project.name) + '</span>' : '')
+        +   '</div>'
+        +   '<h4 class="task-title">' + escapeHtml(task.title || '') + '</h4>'
+        +   (task.description ? '<p class="task-desc">' + escapeHtml(task.description.slice(0, 80)) + (task.description.length > 80 ? '…' : '') + '</p>' : '')
+        +   (progress > 0 ? '<div class="task-progress-bar"><div class="progress-track"><span style="width:' + progress + '%"></span></div><span class="progress-percent">' + progress + '%</span></div>' : '')
+        +   tagsHtml
+        +   '<div class="task-meta">'
+        +     (assignee ? '<span class="task-assignee"><span class="avatar-xs" style="background:' + (assignee.color || '#6B7280') + '">' + escapeHtml(assignee.avatar || (assignee.name || '?').substring(0, 2).toUpperCase()) + '</span><span class="assignee-name">' + escapeHtml(assignee.name || '') + '</span></span>' : '')
+        +     '<span class="task-date ' + dueClass + '">' + dueText + '</span>'
+        +   '</div>'
+        + '</div>';
+
+      col.insertAdjacentHTML('beforeend', html);
+    });
+
+    document.getElementById('countTodo').textContent = counts.pending || 0;
+    document.getElementById('countDoing').textContent = counts['in-progress'] || 0;
+    document.getElementById('countReview').textContent = counts.review || 0;
+    document.getElementById('countDone').textContent = counts.completed || 0;
+
+    bindDragEvents();
+  }
+
+  function renderList() {
+    var tasks = getFilteredTasks();
+    var body = document.getElementById('listBody');
+    if (!body) return;
+
+    if (tasks.length === 0) {
+      body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:3rem;color:#9AA0A6;">Không có việc nào</td></tr>';
+      return;
+    }
+
+    body.innerHTML = tasks.map(function (task) {
+      var project = getProjectById(task.projectId);
+      var assignee = getMemberById(task.assigneeId);
+      var checked = task.status === 'completed' ? 'checked' : '';
+      var titleStyle = task.status === 'completed' ? 'text-decoration:line-through' : '';
+      var dueClass = isOverdue(task) ? 'due-soon' : '';
+
+      return ''
+        + '<tr data-task-id="' + escapeHtml(task.id) + '" class="task-list-row">'
+        +   '<td>'
+        +     '<label class="task-checkbox" style="' + titleStyle + '">'
+        +       '<input type="checkbox" class="task-toggle" ' + checked + '>'
+        +       '<span>' + escapeHtml(task.title) + '</span>'
+        +     '</label>'
+        +   '</td>'
+        +   '<td>' + (project ? '<span class="project-tag" style="--project-color:' + (project.color || '#B08D57') + '">' + escapeHtml(project.name) + '</span>' : '—') + '</td>'
+        +   '<td>' + (assignee ? '<span class="avatar-xs" style="background:' + assignee.color + '">' + escapeHtml(assignee.avatar) + '</span> ' + escapeHtml(assignee.name) : '—') + '</td>'
+        +   '<td class="' + dueClass + '">' + fmtDate(task.deadline) + '</td>'
+        +   '<td><span class="status-badge ' + statusBadgeClass(task.status) + '">' + statusLabel(task.status) + '</span></td>'
+        +   '<td><span class="priority-badge priority-' + (task.priority || 'medium') + '">' + priorityLabel(task.priority) + '</span></td>'
+        + '</tr>';
+    }).join('');
+
+    body.querySelectorAll('.task-toggle').forEach(function (cb) {
+      cb.addEventListener('change', function () {
+        var row = cb.closest('tr');
+        var id = row && row.dataset.taskId;
+        if (id && typeof TaskManager !== 'undefined' && TaskManager.toggleTaskStatus) {
+          TaskManager.toggleTaskStatus(id);
+          renderAll();
+        }
+      });
+    });
+
+    body.querySelectorAll('.task-list-row').forEach(function (row) {
+      row.addEventListener('click', function (e) {
+        if (e.target.closest('.task-checkbox')) return;
+        var id = row.dataset.taskId;
+        if (id) openTaskDetail(id);
+      });
+    });
+  }
+
+  function renderTimeline() {
+    var body = document.getElementById('timelineBody');
+    var title = document.getElementById('timelineTitle');
+    if (!body || !title) return;
+
+    var tasks = getFilteredTasks();
+    title.textContent = 'Tháng ' + (state.timelineMonth + 1) + ' / ' + state.timelineYear;
+
+    var groups = {};
+    tasks.forEach(function (t) {
+      if (!t.deadline) return;
+      var d = new Date(t.deadline);
+      if (d.getMonth() !== state.timelineMonth || d.getFullYear() !== state.timelineYear) return;
+      var key = t.deadline.split('T')[0];
+      groups[key] = groups[key] || [];
+      groups[key].push(t);
+    });
+
+    var keys = Object.keys(groups).sort();
+    var today = todayStr();
+    var html = '';
+
+    if (keys.length === 0) {
+      html = '<div class="timeline-empty"><div class="empty-icon">📅</div><p>Không có deadline nào trong tháng này</p></div>';
+    } else {
+      keys.forEach(function (dateStr) {
+        var d = new Date(dateStr);
+        var dayLabel = String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
+        var isTodayClass = (dateStr === today) ? ' timeline-today' : '';
+
+        html += '<div class="timeline-row' + isTodayClass + '">';
+        html += '<div class="timeline-date">' + dayLabel + '</div>';
+        html += '<div class="timeline-events">';
+
+        groups[dateStr].forEach(function (task) {
+          var project = getProjectById(task.projectId);
+          var assignee = getMemberById(task.assigneeId);
+          var color = '#B08D57';
+          if (task.priority === 'high') color = '#DC2626';
+          else if (task.priority === 'low') color = '#059669';
+          var overdue = isOverdue(task) ? 'Quá hạn' : (task.status === 'completed' ? '✓ Hoàn thành' : 'Deadline');
+
+          html += '<div class="timeline-event" data-task-id="' + escapeHtml(task.id) + '" style="border-left-color:' + color + '">';
+          html += '<span class="event-time">' + overdue + '</span>';
+          html += '<span class="event-title">' + escapeHtml(task.title) + '</span>';
+          html += '<div class="event-meta">';
+          if (project) html += '<span class="event-project">' + escapeHtml(project.name) + '</span>';
+          if (assignee) html += '<span class="avatar-xxs" style="background:' + assignee.color + '">' + escapeHtml(assignee.avatar) + '</span>';
+          html += '</div>';
+          html += '</div>';
+        });
+
+        html += '</div></div>';
+      });
+    }
+
+    body.innerHTML = html;
+
+    body.querySelectorAll('.timeline-event').forEach(function (ev) {
+      ev.addEventListener('click', function () {
+        var id = ev.dataset.taskId;
+        if (id) openTaskDetail(id);
+      });
+    });
+  }
+
+  function renderAll() {
+    renderStats();
+    renderSidebarCounts();
+    if (state.viewType === 'board') renderBoard();
+    else if (state.viewType === 'list') renderList();
+    else if (state.viewType === 'timeline') renderTimeline();
+  }
+
+  // ----- View toggle -----
+  function bindViewTabs() {
+    var tabs = document.querySelectorAll('.view-tab');
+    tabs.forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        tabs.forEach(function (t) { t.classList.remove('active'); });
+        tab.classList.add('active');
+        state.viewType = tab.dataset.view;
+
+        document.getElementById('kanban-board').style.display = state.viewType === 'board' ? 'flex' : 'none';
+        document.getElementById('list-view').style.display = state.viewType === 'list' ? 'block' : 'none';
+        document.getElementById('timeline-view').style.display = state.viewType === 'timeline' ? 'block' : 'none';
+
+        renderAll();
+      });
+    });
+  }
+
+  function bindProjectNav() {
+    var navItems = document.querySelectorAll('.project-nav-item');
+    navItems.forEach(function (item) {
+      item.addEventListener('click', function (e) {
+        e.preventDefault();
+        navItems.forEach(function (i) { i.classList.remove('active'); });
+        item.classList.add('active');
+        state.projectFilter = item.dataset.project;
+        renderAll();
+      });
+    });
+  }
+
+  function bindQuickFilters() {
+    var map = {
+      filterMine: 'mine',
+      filterDueToday: 'dueToday',
+      filterOverdue: 'overdue',
+      filterDone: 'done'
+    };
+    Object.keys(map).forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('change', function () {
+        state.quickFilters[map[id]] = el.checked;
+        renderAll();
+      });
+    });
+  }
+
+  function bindSort() {
+    var btn = document.getElementById('btnSort');
+    var labelEl = document.getElementById('sortLabel');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      var order = ['deadline', 'priority', 'createdAt'];
+      var labels = { deadline: 'Deadline', priority: 'Ưu tiên', createdAt: 'Mới tạo' };
+      var i = order.indexOf(state.sortBy);
+      state.sortBy = order[(i + 1) % order.length];
+      if (labelEl) labelEl.textContent = 'Sắp xếp: ' + labels[state.sortBy];
+      renderAll();
+    });
+  }
+
+  function bindTimelineNav() {
+    var prev = document.getElementById('prevMonth');
+    var next = document.getElementById('nextMonth');
+    if (prev) prev.addEventListener('click', function () {
+      state.timelineMonth--;
+      if (state.timelineMonth < 0) { state.timelineMonth = 11; state.timelineYear--; }
+      renderTimeline();
+    });
+    if (next) next.addEventListener('click', function () {
+      state.timelineMonth++;
+      if (state.timelineMonth > 11) { state.timelineMonth = 0; state.timelineYear++; }
+      renderTimeline();
+    });
+  }
+
+  // ----- Drag & drop -----
+  function bindDragEvents() {
+    var cards = document.querySelectorAll('.task-card');
+    cards.forEach(function (card) {
+      card.addEventListener('dragstart', function (e) {
+        e.dataTransfer.setData('text/plain', card.dataset.taskId);
+        card.classList.add('dragging');
+      });
+      card.addEventListener('dragend', function () {
+        card.classList.remove('dragging');
+      });
+      card.addEventListener('click', function (e) {
+        if (e.target.closest('.task-progress-bar') || e.target.closest('button')) return;
+        var id = card.dataset.taskId;
+        if (id) openTaskDetail(id);
+      });
+    });
+
+    var columns = document.querySelectorAll('.column-tasks');
+    columns.forEach(function (col) {
+      col.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        col.classList.add('drag-over');
+      });
+      col.addEventListener('dragleave', function () {
+        col.classList.remove('drag-over');
+      });
+      col.addEventListener('drop', function (e) {
+        e.preventDefault();
+        col.classList.remove('drag-over');
+        var id = e.dataTransfer.getData('text/plain');
+        var newStatus = col.dataset.status;
+        if (!id || !newStatus) return;
+        if (typeof TaskManager !== 'undefined' && TaskManager.updateTask) {
+          var task = TaskManager.getTask(id);
+          if (task && task.status !== newStatus) {
+            TaskManager.updateTask(id, { status: newStatus });
+            renderAll();
+          }
+        }
+      });
+    });
+
+    // Column add buttons
+    document.querySelectorAll('.column-add-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        openTaskModalForCreate(btn.dataset.addStatus);
+      });
+    });
+  }
+
+  // ----- Task modal (create/edit) -----
+  var taskModal = null;
+  var taskForm = null;
+
+  function openTaskModalForCreate(status) {
+    var titleEl = document.getElementById('taskModalTitle');
+    if (titleEl) titleEl.textContent = 'Tạo việc mới';
+    if (taskForm) taskForm.reset();
+    delete taskForm.dataset.editingId;
+    populateTaskFormOptions();
+    if (status) {
+      var statusSel = document.getElementById('task-status');
+      if (statusSel) statusSel.value = status;
+    }
+    if (taskModal) taskModal.hidden = false;
+  }
+
+  function openEditTask(id) {
+    var task = getTasks().filter(function (t) { return t.id === id; })[0];
+    if (!task) return;
+    var titleEl = document.getElementById('taskModalTitle');
+    if (titleEl) titleEl.textContent = 'Sửa việc';
+    populateTaskFormOptions();
+
+    document.getElementById('task-name').value = task.title || '';
+    document.getElementById('task-project').value = task.projectId || '';
+    document.getElementById('task-assignee').value = task.assigneeId || '';
+    document.getElementById('task-priority').value = task.priority || 'medium';
+    document.getElementById('task-status').value = task.status || 'pending';
+    document.getElementById('task-start').value = task.startDate ? task.startDate.substring(0, 10) : '';
+    document.getElementById('task-due').value = task.deadline ? task.deadline.substring(0, 10) : '';
+    document.getElementById('task-desc').value = task.description || '';
+
+    if (taskForm) taskForm.dataset.editingId = id;
+    if (taskModal) taskModal.hidden = false;
+  }
+
+  function populateTaskFormOptions() {
+    var projectSel = document.getElementById('task-project');
+    var assigneeSel = document.getElementById('task-assignee');
+
+    if (projectSel) {
+      var projects = getProjects();
+      projectSel.innerHTML = '<option value="">Chọn dự án...</option>' +
+        projects.map(function (p) {
+          return '<option value="' + escapeHtml(p.id) + '">' + escapeHtml(p.name) + '</option>';
+        }).join('');
+    }
+    if (assigneeSel) {
+      var members = getMembers();
+      assigneeSel.innerHTML = '<option value="">Chọn người...</option>' +
+        members.map(function (m) {
+          return '<option value="' + escapeHtml(m.id) + '">' + escapeHtml(m.name) + '</option>';
+        }).join('');
+    }
+  }
+
+  function bindTaskModal() {
+    taskModal = document.getElementById('task-modal');
+    taskForm = document.getElementById('taskForm');
+    var openBtn = document.getElementById('btnNewTask');
+    var closeBtn = taskModal ? taskModal.querySelector('.modal-close') : null;
+    var cancelBtn = taskModal ? taskModal.querySelector('.modal-cancel') : null;
+
+    if (openBtn) openBtn.addEventListener('click', function () { openTaskModalForCreate(); });
+    if (closeBtn) closeBtn.addEventListener('click', function () { taskModal.hidden = true; });
+    if (cancelBtn) cancelBtn.addEventListener('click', function () { taskModal.hidden = true; });
+    if (taskModal) {
+      taskModal.addEventListener('click', function (e) {
+        if (e.target === taskModal) taskModal.hidden = true;
+      });
+    }
+    if (taskForm) {
+      taskForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var name = document.getElementById('task-name').value.trim();
+        if (!name) return;
+
+        var data = {
+          title: name,
+          projectId: document.getElementById('task-project').value,
+          assigneeId: document.getElementById('task-assignee').value,
+          priority: document.getElementById('task-priority').value,
+          status: document.getElementById('task-status').value,
+          startDate: document.getElementById('task-start').value || '',
+          deadline: document.getElementById('task-due').value || '',
+          description: document.getElementById('task-desc').value,
+          createdBy: currentUser ? currentUser.id : '',
+          createdAt: new Date().toISOString()
+        };
+
+        var editingId = taskForm.dataset.editingId;
+        if (editingId && typeof TaskManager !== 'undefined' && TaskManager.updateTask) {
+          TaskManager.updateTask(editingId, data);
+        } else if (typeof TaskManager !== 'undefined' && TaskManager.createTask) {
+          TaskManager.createTask(data);
+        }
+
+        taskModal.hidden = true;
+        renderAll();
+      });
+    }
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'n' && !e.ctrlKey && !e.metaKey) {
+        var tag = document.activeElement && document.activeElement.tagName;
+        if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') {
+          e.preventDefault();
+          openTaskModalForCreate();
+        }
+      }
+      if (e.key === 'Escape') {
+        if (taskModal && !taskModal.hidden) taskModal.hidden = true;
+        var detailModal = document.getElementById('task-detail-modal');
+        if (detailModal && !detailModal.hidden) detailModal.hidden = true;
       }
     });
-  });
+  }
 
-  // ----- Keyboard shortcuts -----
-  document.addEventListener('keydown', function (e) {
-    // Press N for new task
-    if (e.key === 'n' && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+  // ----- Task Detail Modal (with daily progress) -----
+  function openTaskDetail(taskId) {
+    var task = getTasks().filter(function (t) { return t.id === taskId; })[0];
+    if (!task) return;
+    currentDetailTaskId = taskId;
+
+    var project = getProjectById(task.projectId);
+    var assignee = getMemberById(task.assigneeId);
+    var todayProgress = (typeof TaskManager !== 'undefined' && TaskManager.getTodayProgress) ? TaskManager.getTodayProgress(taskId) : null;
+    if (!todayProgress) todayProgress = { progress: task.progress || 0, note: '', done: false };
+    var dailyTasks = task.dailyTasks || [];
+
+    document.getElementById('detailTitle').textContent = task.title;
+
+    var priorityClass = 'priority-' + (task.priority || 'medium');
+    var priorityText = priorityLabel(task.priority);
+    var dueClass = isOverdue(task) ? 'overdue' : '';
+    var dueLabel = isOverdue(task) ? '⚠ Quá hạn' : (isDueToday(task) ? '📅 Hôm nay' : '📅 ' + fmtDate(task.deadline));
+
+    var metaHtml = ''
+      + '<span class="detail-tag ' + priorityClass + '">' + priorityText + '</span>'
+      + '<span class="detail-status status-badge ' + statusBadgeClass(task.status) + '">' + statusLabel(task.status) + '</span>'
+      + '<span class="detail-due ' + dueClass + '">' + dueLabel + '</span>';
+
+    document.getElementById('detailMeta').innerHTML = metaHtml;
+
+    var bodyHtml = ''
+      + '<div class="detail-grid">'
+      +   '<div class="detail-field"><label>Dự án</label><p>' + (project ? escapeHtml(project.name) : 'Chưa có') + '</p></div>'
+      +   '<div class="detail-field"><label>Người phụ trách</label><p>' + (assignee ? escapeHtml(assignee.name) : 'Chưa giao') + '</p></div>'
+      +   '<div class="detail-field"><label>Ngày bắt đầu</label><p>' + (task.startDate ? fmtDate(task.startDate) : '—') + '</p></div>'
+      +   '<div class="detail-field"><label>Deadline</label><p>' + (task.deadline ? fmtDate(task.deadline) : '—') + '</p></div>'
+      + '</div>'
+      + (task.description ? '<div class="detail-desc">' + escapeHtml(task.description) + '</div>' : '')
+      + '<div class="daily-progress-section">'
+      +   '<div class="dps-header">'
+      +     '<h4>📊 Cập nhật tiến độ hôm nay</h4>'
+      +     '<span class="dps-date">' + new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' }) + '</span>'
+      +   '</div>'
+      +   '<div class="dps-bar-wrap">'
+      +     '<div class="dps-bar-row"><span>Tiến độ hôm nay: <strong style="color:var(--color-bronze)">' + todayProgress.progress + '%</strong></span><span>Tổng: <strong>' + (task.progress || 0) + '%</strong></span></div>'
+      +     '<div class="dps-bar"><span style="width:' + todayProgress.progress + '%"></span></div>'
+      +   '</div>'
+      +   '<div class="dps-slider-row">'
+      +     '<input type="range" id="dpSlider" min="0" max="100" value="' + todayProgress.progress + '" />'
+      +     '<span id="dpValue">' + todayProgress.progress + '%</span>'
+      +   '</div>'
+      +   '<div class="dps-note">'
+      +     '<label>📝 Đã làm gì hôm nay?</label>'
+      +     '<textarea id="dpNote" placeholder="Mô tả công việc đã làm hôm nay...">' + escapeHtml(todayProgress.note || '') + '</textarea>'
+      +   '</div>'
+      +   '<button type="button" id="dpSaveBtn" class="btn-primary dps-save">Lưu tiến độ hôm nay</button>'
+      +   (dailyTasks.length > 0 ? '<div class="dps-history"><h5>Lịch sử tiến độ</h5>' + dailyTasks.slice().reverse().slice(0, 5).map(function (d) {
+      return '<div class="dps-history-row"><span class="dps-history-date">' + new Date(d.date).toLocaleDateString('vi-VN', { day: 'numeric', month: 'numeric' }) + '</span><span class="dps-history-pct" style="color:' + (d.done ? '#4F6F52' : 'var(--color-bronze)') + '">' + d.progress + '%</span><span class="dps-history-note">' + escapeHtml(d.note || '—') + '</span></div>';
+    }).join('') + '</div>' : '')
+      + '</div>';
+
+    document.getElementById('detailBody').innerHTML = bodyHtml;
+
+    var detailModal = document.getElementById('task-detail-modal');
+    if (detailModal) detailModal.hidden = false;
+
+    // Wire up sliders and save button
+    setTimeout(function () {
+      var slider = document.getElementById('dpSlider');
+      var valueEl = document.getElementById('dpValue');
+      if (slider && valueEl) {
+        slider.addEventListener('input', function () {
+          valueEl.textContent = this.value + '%';
+        });
+      }
+      var saveBtn = document.getElementById('dpSaveBtn');
+      if (saveBtn) {
+        saveBtn.addEventListener('click', function () {
+          var progress = document.getElementById('dpSlider').value;
+          var note = document.getElementById('dpNote').value;
+          if (typeof TaskManager !== 'undefined' && TaskManager.addDailyProgress) {
+            TaskManager.addDailyProgress(taskId, progress, note);
+          }
+          // Show feedback
+          saveBtn.textContent = '✓ Đã lưu';
+          setTimeout(function () { saveBtn.textContent = 'Lưu tiến độ hôm nay'; }, 1500);
+          renderAll();
+        });
+      }
+      var editBtn = document.getElementById('btnEditTask');
+      if (editBtn) {
+        editBtn.onclick = function () { openEditTask(taskId); };
+      }
+      var delBtn = document.getElementById('btnDeleteTask');
+      if (delBtn) {
+        delBtn.onclick = function () {
+          if (confirm('Bạn có chắc chắn muốn xóa việc này?')) {
+            if (typeof TaskManager !== 'undefined' && TaskManager.deleteTask) {
+              TaskManager.deleteTask(taskId);
+            }
+            detailModal.hidden = true;
+            renderAll();
+          }
+        };
+      }
+    }, 50);
+  }
+
+  function bindDetailModal() {
+    var detailModal = document.getElementById('task-detail-modal');
+    if (!detailModal) return;
+    detailModal.querySelectorAll('.modal-close-detail').forEach(function (btn) {
+      btn.addEventListener('click', function () { detailModal.hidden = true; });
+    });
+    detailModal.addEventListener('click', function (e) {
+      if (e.target === detailModal) detailModal.hidden = true;
+    });
+  }
+
+  // ----- Project modal -----
+  function bindProjectModal() {
+    var modal = document.getElementById('project-modal');
+    var form = document.getElementById('projectForm');
+    var openBtn = document.getElementById('btnAddProject');
+    var closeBtn = modal ? modal.querySelector('.modal-close-project') : null;
+    var cancelBtn = modal ? modal.querySelector('.modal-cancel-project') : null;
+
+    if (!modal || !form) return;
+
+    // Color presets
+    var presets = ['#B08D57', '#C7A464', '#3B6B8C', '#4F6F52', '#8E7CC3', '#A04848', '#C77A40', '#475569'];
+    var presetsEl = document.getElementById('colorPresets');
+    if (presetsEl) {
+      presetsEl.innerHTML = presets.map(function (c) {
+        return '<button type="button" class="color-swatch" data-color="' + c + '" style="background:' + c + '" aria-label="Màu ' + c + '"></button>';
+      }).join('');
+      presetsEl.querySelectorAll('.color-swatch').forEach(function (sw) {
+        sw.addEventListener('click', function () {
+          var colorInput = document.getElementById('project-color');
+          if (colorInput) colorInput.value = sw.dataset.color;
+        });
+      });
+    }
+
+    // Type cards behavior
+    var typeCards = form.querySelectorAll('.type-card');
+    typeCards.forEach(function (card) {
+      card.addEventListener('click', function () {
+        typeCards.forEach(function (c) { c.classList.remove('active'); });
+        card.classList.add('active');
+        var radio = card.querySelector('input[type="radio"]');
+        if (radio) radio.checked = true;
+      });
+    });
+
+    if (openBtn) openBtn.addEventListener('click', function () {
+      form.reset();
+      delete form.dataset.editingId;
+      // Reset type cards visual
+      typeCards.forEach(function (c) { c.classList.remove('active'); });
+      var defaultCard = form.querySelector('.type-card[data-type="design"]');
+      if (defaultCard) {
+        defaultCard.classList.add('active');
+        var radio = defaultCard.querySelector('input[type="radio"]');
+        if (radio) radio.checked = true;
+      }
+      // Reset color
+      var colorInput = document.getElementById('project-color');
+      if (colorInput) colorInput.value = '#B08D57';
+      // Set default member
+      renderProjectMembers(currentUser ? [currentUser.id] : []);
+      modal.hidden = false;
+    });
+    if (closeBtn) closeBtn.addEventListener('click', function () { modal.hidden = true; });
+    if (cancelBtn) cancelBtn.addEventListener('click', function () { modal.hidden = true; });
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) modal.hidden = true;
+    });
+
+    form.addEventListener('submit', function (e) {
       e.preventDefault();
-      openModal();
+      var name = document.getElementById('project-name').value.trim();
+      if (!name) return;
+
+      var typeInput = form.querySelector('input[name="project-type"]:checked');
+      var typeVal = typeInput ? typeInput.value : 'design';
+
+      var data = {
+        name: name,
+        type: typeVal,
+        color: document.getElementById('project-color').value,
+        client: document.getElementById('project-client').value.trim(),
+        location: document.getElementById('project-location').value.trim(),
+        startDate: document.getElementById('project-start').value || '',
+        endDate: document.getElementById('project-end').value || '',
+        budget: parseInt(document.getElementById('project-budget').value, 10) || 0,
+        priority: document.getElementById('project-priority').value,
+        status: document.getElementById('project-status').value,
+        description: document.getElementById('project-desc').value,
+        progress: 0,
+        members: getSelectedMembers(),
+        createdAt: new Date().toISOString().split('T')[0]
+      };
+
+      if (typeof TaskManager !== 'undefined' && TaskManager.createProject) {
+        TaskManager.createProject(data);
+      }
+
+      modal.hidden = true;
+      renderAll();
+      showToast('✓ Đã tạo dự án: ' + name);
+    });
+  }
+
+  function renderProjectMembers(selectedIds) {
+    var container = document.getElementById('projectMembers');
+    if (!container) return;
+    var members = getMembers();
+    if (members.length === 0) {
+      container.innerHTML = '<p style="color:var(--color-text-muted);font-size:0.8125rem;">Chưa có thành viên nào.</p>';
+      return;
     }
-    // Press Escape to close modal
-    if (e.key === 'Escape' && !modal.hidden) {
-      closeModal();
+    container.innerHTML = members.map(function (m) {
+      var checked = selectedIds.indexOf(m.id) !== -1;
+      return '<label class="member-multi-item' + (checked ? ' active' : '') + '">'
+        + '<input type="checkbox" value="' + escapeHtml(m.id) + '"' + (checked ? ' checked' : '') + '>'
+        + '<span class="avatar-xs" style="background:' + (m.color || '#6B7280') + '">' + escapeHtml(m.avatar || (m.name || '?').substring(0, 2).toUpperCase()) + '</span>'
+        + '<span>' + escapeHtml(m.name || '') + '</span>'
+        + '</label>';
+    }).join('');
+
+    container.querySelectorAll('.member-multi-item').forEach(function (item) {
+      item.addEventListener('click', function (e) {
+        e.preventDefault();
+        var input = item.querySelector('input');
+        if (input) {
+          input.checked = !input.checked;
+          item.classList.toggle('active', input.checked);
+        }
+      });
+    });
+  }
+
+  function getSelectedMembers() {
+    var container = document.getElementById('projectMembers');
+    if (!container) return [];
+    var ids = [];
+    container.querySelectorAll('input[type="checkbox"]:checked').forEach(function (cb) {
+      ids.push(cb.value);
+    });
+    return ids;
+  }
+
+  // ----- Sync from Google Sheets -----
+  function bindSyncButton() {
+    var btn = document.getElementById('btnSyncSheets');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      if (typeof TaskManager === 'undefined' || !TaskManager.refreshFromGSheets) return;
+      btn.classList.add('spinning');
+      TaskManager.refreshFromGSheets(function () {
+        btn.classList.remove('spinning');
+        renderAll();
+        showToast('✓ Đã đồng bộ từ Google Sheets');
+      });
+    });
+  }
+
+  function showToast(msg) {
+    var toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(function () { toast.classList.add('show'); }, 50);
+    setTimeout(function () {
+      toast.classList.remove('show');
+      setTimeout(function () { toast.remove(); }, 300);
+    }, 2500);
+  }
+
+  // ----- Init -----
+  function init() {
+    currentUser = getUser();
+    bindViewTabs();
+    bindProjectNav();
+    bindQuickFilters();
+    bindSort();
+    bindTimelineNav();
+    bindTaskModal();
+    bindProjectModal();
+    bindDetailModal();
+    bindSyncButton();
+    renderAll();
+
+    // Listen for data refresh
+    if (typeof TaskManager !== 'undefined') {
+      setInterval(function () {
+        if (typeof TaskManager.refreshFromGSheets === 'function') {
+          TaskManager.refreshFromGSheets(function () { renderAll(); });
+        }
+      }, 30000);
     }
-  });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
 })();

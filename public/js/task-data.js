@@ -40,7 +40,8 @@ function syncToGSheets(type, action, data, id) {
   var actionMap = {
     projects: { add: 'addProject', update: 'updateProject', delete: 'deleteProject' },
     tasks: { add: 'addTask', update: 'updateTask', delete: 'deleteTask', toggle: 'toggleTask' },
-    proposals: { add: 'addProposal', update: 'updateProposal', delete: 'deleteProposal', approve: 'approveProposal', reject: 'rejectProposal' }
+    proposals: { add: 'addProposal', update: 'updateProposal', delete: 'deleteProposal', approve: 'approveProposal', reject: 'rejectProposal' },
+    timesheet: { add: 'addTimesheet', update: 'updateTimesheet' }
   };
 
   var apiAction = actionMap[type] ? actionMap[type][action] : null;
@@ -54,48 +55,36 @@ var TaskManager = (function() {
 
   // Default members
   var DEFAULT_MEMBERS = [
-    { id: 'HQ', name: 'Trần Minh Quân', role: 'CEO', roleLevel: 'admin', email: 'quan@hiconique.vn', color: '#B08D57', avatar: 'HQ' },
-    { id: 'HN', name: 'Nguyễn Hiếu', role: 'Trưởng phòng Thiết kế', roleLevel: 'manager', email: 'hieu@hiconique.vn', color: '#8E7CC3', avatar: 'HN' },
-    { id: 'PH', name: 'Phạm Hoàng', role: 'Giám sát thi công', roleLevel: 'manager', email: 'hoang@hiconique.vn', color: '#C7A464', avatar: 'PH' },
-    { id: 'TM', name: 'Trần Mạnh', role: 'Truyền thông', roleLevel: 'member', email: 'manh@hiconique.vn', color: '#4F6F52', avatar: 'TM' },
-    { id: 'GP', name: 'Giản Phương', role: 'Thiết kế đồ họa', roleLevel: 'member', email: 'phuong@hiconique.vn', color: '#3B6B8C', avatar: 'GP' },
-    { id: 'LT', name: 'Lê Thành', role: 'Kỹ sư nội thất', roleLevel: 'member', email: 'thanh@hiconique.vn', color: '#B8725A', avatar: 'LT' },
-    { id: 'NT', name: 'Ngọc Trang', role: 'Nhân sự', roleLevel: 'member', email: 'trang@hiconique.vn', color: '#6B5B95', avatar: 'NT' },
-    { id: 'VH', name: 'Vũ Hùng', role: 'Kế toán', roleLevel: 'member', email: 'hung@hiconique.vn', color: '#88B04B', avatar: 'VH' },
-    { id: 'DN', name: 'Đỗ Nam', role: 'Thiết kế nội thất', roleLevel: 'member', email: 'nam@hiconique.vn', color: '#F7CAC9', avatar: 'DN' },
-    { id: 'QM', name: 'Quách Minh', role: 'Thi công', roleLevel: 'member', email: 'minh@hiconique.vn', color: '#92A8D1', avatar: 'QM' }
+    { id: 'CEO', name: 'Phạm Quang Hiếu', role: 'CEO', roleLevel: 'admin', email: 'pqhieu3820@gmail.com', password: '123456', dob: '1990-01-15', cccd: '012345678901', hometown: 'Hà Nội', bankAccount: '1234567890', color: '#B08D57', avatar: 'HQ', createdAt: '2026-01-01' },
+    { id: 'MGR1', name: 'Nguyễn Hiếu', role: 'Quản lý thiết kế', roleLevel: 'manager', email: 'hieu@hiconique.vn', password: '123456', dob: '1992-05-20', cccd: '012345678902', hometown: 'TP.HCM', bankAccount: '1234567891', color: '#8E7CC3', avatar: 'NH', createdAt: '2026-01-01' },
+    { id: 'MGR2', name: 'Trần Mạnh', role: 'Quản lý thi công', roleLevel: 'manager', email: 'manh@hiconique.vn', password: '123456', dob: '1988-08-10', cccd: '012345678903', hometown: 'Hà Nội', bankAccount: '1234567892', color: '#4F6F52', avatar: 'TM', createdAt: '2026-01-01' },
+    { id: 'MEM1', name: 'Giản Phương', role: 'Thiết kế đồ họa', roleLevel: 'member', email: 'phuong@hiconique.vn', password: '123456', dob: '1995-03-25', cccd: '012345678904', hometown: 'Đà Nẵng', bankAccount: '1234567893', color: '#3B6B8C', avatar: 'GP', createdAt: '2026-01-01' },
+    { id: 'MEM2', name: 'Lê Thành', role: 'Kỹ sư nội thất', roleLevel: 'member', email: 'thanh@hiconique.vn', password: '123456', dob: '1993-11-08', cccd: '012345678905', hometown: 'Hải Phòng', bankAccount: '1234567894', color: '#B8725A', avatar: 'LT', createdAt: '2026-01-01' }
   ];
 
   // Default projects
   var DEFAULT_PROJECTS = [
-    { id: 'prj_001', name: 'Vinhouse Mỹ Đình', type: 'Thiết kế nội thất', progress: 65, status: 'on-track', members: ['HQ', 'HN', 'PH'], color: '#B08D57', createdAt: '2026-07-15' },
-    { id: 'prj_002', name: 'Penthouse HP', type: 'Triển khai bản vẽ', progress: 40, status: 'on-track', members: ['HN', 'PH'], color: '#3B6B8C', createdAt: '2026-07-20' },
-    { id: 'prj_003', name: 'Biệt thự Đà Lạt', type: 'Thi công nội thất', progress: 91, status: 'on-track', members: ['PH', 'TM'], color: '#B8725A', createdAt: '2026-06-01' },
-    { id: 'prj_004', name: 'Showroom HCM', type: 'Concept 3D', progress: 24, status: 'on-track', members: ['GP'], color: '#4F6F52', createdAt: '2026-08-01' },
-    { id: 'prj_005', name: 'Risk Project', type: 'Thiết kế web', progress: 30, status: 'at-risk', members: ['TM'], color: '#A04848', createdAt: '2026-07-10' },
-    { id: 'prj_006', name: '20 Landing page', type: 'Web design', progress: 85, status: 'on-track', members: ['TM', 'GP'], color: '#C7A464', createdAt: '2026-06-15' }
+    { id: 'prj_A', name: 'Dự án A', type: 'Thiết kế nội thất', progress: 50, status: 'on-track', members: ['CEO', 'MGR1', 'MEM1'], color: '#B08D57', createdAt: '2026-08-01' },
+    { id: 'prj_B', name: 'Dự án B', type: 'Thi công xây dựng', progress: 30, status: 'on-track', members: ['MGR2', 'MEM2'], color: '#3B6B8C', createdAt: '2026-08-10' },
+    { id: 'prj_C', name: 'Dự án C', type: 'Thiết kế kiến trúc', progress: 10, status: 'on-track', members: ['MGR1', 'MGR2'], color: '#4F6F52', createdAt: '2026-08-15' }
   ];
 
   // Default tasks
   var DEFAULT_TASKS = [
-    { id: 'task_001', title: 'Review design mockups cho Vinhouse', description: 'Kiểm tra và phản hồi bản mockup mới nhất', projectId: 'prj_001', assigneeId: 'HN', priority: 'high', status: 'pending', deadline: '2026-08-12T11:00', createdBy: 'HQ', createdAt: '2026-08-10', progress: 0, dailyTasks: [] },
-    { id: 'task_002', title: 'Chuẩn bị presentation khách hàng', description: 'Slide trình bày cho buổi họp với khách hàng', projectId: 'prj_001', assigneeId: 'TM', priority: 'high', status: 'in-progress', deadline: '2026-08-12T14:00', createdBy: 'HN', createdAt: '2026-08-09', progress: 30, dailyTasks: [
-      { date: '2026-08-11', progress: 30, note: 'Đã làm slide 1-5', done: true },
-      { date: '2026-08-12', progress: 0, note: '', done: false }
+    { id: 'task_001', title: 'Thiết kế phòng khách Dự án A', description: 'Hoàn thiện bản vẽ thiết kế nội thất phòng khách', projectId: 'prj_A', assigneeId: 'MGR1', priority: 'high', status: 'in-progress', deadline: '2026-08-25T17:00', createdBy: 'CEO', createdAt: '2026-08-20', progress: 50, dailyTasks: [
+      { date: '2026-08-21', progress: 30, note: 'Đã hoàn thành bản vẽ 3D', done: true },
+      { date: '2026-08-22', progress: 20, note: 'Đang chỉnh sửa theo yêu cầu', done: false }
     ]},
-    { id: 'task_003', title: 'Code review - Authentication module', description: 'Kiểm tra code module đăng nhập', projectId: 'prj_005', assigneeId: 'GP', priority: 'medium', status: 'pending', deadline: '2026-08-12T15:00', createdBy: 'HQ', createdAt: '2026-08-08', progress: 0, dailyTasks: [] },
-    { id: 'task_004', title: 'Quản lý social media', description: 'Đăng bài lên fanpage và Instagram', projectId: 'prj_006', assigneeId: 'TM', priority: 'low', status: 'in-progress', deadline: '2026-08-12T16:30', createdBy: 'HN', createdAt: '2026-08-07', progress: 50, dailyTasks: [
-      { date: '2026-08-11', progress: 25, note: 'Đăng 2 bài lên fanpage', done: true },
-      { date: '2026-08-12', progress: 25, note: 'Đăng story Instagram', done: false }
-    ]},
-    { id: 'task_005', title: 'Visual design review', description: 'Review thiết kế visual cho website', projectId: 'prj_005', assigneeId: 'GP', priority: 'low', status: 'pending', deadline: '2026-08-12T17:00', createdBy: 'TM', createdAt: '2026-08-06', progress: 0, dailyTasks: [] }
+    { id: 'task_002', title: 'Giám sát thi công Dự án B', description: 'Theo dõi tiến độ thi công tại công trường', projectId: 'prj_B', assigneeId: 'MGR2', priority: 'high', status: 'pending', deadline: '2026-08-30T08:00', createdBy: 'CEO', createdAt: '2026-08-15', progress: 0, dailyTasks: [] },
+    { id: 'task_003', title: 'Thiết kế kiến trúc Dự án C', description: 'Lập phương án thiết kế kiến trúc sơ bộ', projectId: 'prj_C', assigneeId: 'MEM1', priority: 'medium', status: 'pending', deadline: '2026-09-01T17:00', createdBy: 'MGR1', createdAt: '2026-08-18', progress: 0, dailyTasks: [] },
+    { id: 'task_004', title: 'Lập dự toán công trình', description: 'Tính toán chi phí vật liệu và nhân công', projectId: 'prj_B', assigneeId: 'MEM2', priority: 'medium', status: 'pending', deadline: '2026-08-28T17:00', createdBy: 'MGR2', createdAt: '2026-08-19', progress: 0, dailyTasks: [] }
   ];
 
   // Default proposals
   var DEFAULT_PROPOSALS = [
-    { id: 'prop_001', title: 'Mua thêm máy tính cho team design', description: 'Cần thêm 2 máy tính cấu hình mạnh cho công việc 3D', type: 'mua-sam', status: 'pending', requesterId: 'HN', reviewerId: 'HQ', amount: 50000000, createdAt: '2026-08-10' },
-    { id: 'prop_002', title: 'Đăng ký khóa học SketchUp nâng cao', description: 'Khóa học online cho 3 thành viên', type: 'dao-tao', status: 'approved', requesterId: 'GP', reviewerId: 'HN', amount: 15000000, createdAt: '2026-08-05' },
-    { id: 'prop_003', title: 'Sửa chữa máy chiếu phòng họp', description: 'Máy chiếu bị hỏng cần mang đi sửa', type: 'sua-chua', status: 'rejected', requesterId: 'NT', reviewerId: 'HQ', amount: 3000000, createdAt: '2026-08-01' }
+    { id: 'prop_001', title: 'Mua thêm máy tính cho team design', description: 'Cần thêm 2 máy tính cấu hình mạnh cho công việc 3D', type: 'mua-sam', status: 'pending', requesterId: 'MGR1', reviewerId: 'CEO', amount: 50000000, createdAt: '2026-08-10' },
+    { id: 'prop_002', title: 'Đăng ký khóa học SketchUp nâng cao', description: 'Khóa học online cho 3 thành viên', type: 'dao-tao', status: 'approved', requesterId: 'MEM1', reviewerId: 'MGR1', amount: 15000000, createdAt: '2026-08-05' },
+    { id: 'prop_003', title: 'Sửa chữa máy chiếu phòng họp', description: 'Máy chiếu bị hỏng cần mang đi sửa', type: 'sua-chua', status: 'rejected', requesterId: 'MEM2', reviewerId: 'CEO', amount: 3000000, createdAt: '2026-08-01' }
   ];
 
   // Storage keys
@@ -104,7 +93,8 @@ var TaskManager = (function() {
     tasks: 'hiconique_tasks',
     members: 'hiconique_members',
     proposals: 'hiconique_proposals',
-    settings: 'hiconique_settings'
+    settings: 'hiconique_settings',
+    timesheet: 'hiconique_timesheet'
   };
 
   // Cache for Google Sheets data
@@ -113,6 +103,7 @@ var TaskManager = (function() {
     tasks: null,
     members: null,
     proposals: null,
+    timesheet: null,
     lastFetch: 0
   };
 
@@ -581,6 +572,35 @@ var TaskManager = (function() {
     return result;
   }
 
+  // Timesheet
+  function getTimesheetEntries(filters) {
+    filters = filters || {};
+    var entries = getAll(STORAGE_KEYS.timesheet);
+    if (filters.memberId) {
+      entries = entries.filter(function(e) { return e.memberId === filters.memberId; });
+    }
+    if (filters.month && filters.year) {
+      entries = entries.filter(function(e) {
+        if (!e.date) return false;
+        var d = e.date.split('-');
+        return d[0] === String(filters.year) && d[1] === String(filters.month).padStart(2, '0');
+      });
+    }
+    return entries;
+  }
+
+  function addTimesheetEntry(entry) {
+    var newEntry = add(STORAGE_KEYS.timesheet, entry);
+    syncToGSheets('timesheet', 'add', newEntry);
+    return newEntry;
+  }
+
+  function updateTimesheetEntry(id, updates) {
+    var updated = update(STORAGE_KEYS.timesheet, id, updates);
+    if (updated) syncToGSheets('timesheet', 'update', updates, id);
+    return updated;
+  }
+
   // Statistics
   function getStats() {
     var tasks = getAll(STORAGE_KEYS.tasks);
@@ -651,6 +671,11 @@ var TaskManager = (function() {
     // Stats
     getStats: getStats,
 
+    // Timesheet
+    getTimesheetEntries: getTimesheetEntries,
+    addTimesheetEntry: addTimesheetEntry,
+    updateTimesheetEntry: updateTimesheetEntry,
+
     // Storage
     STORAGE_KEYS: STORAGE_KEYS,
 
@@ -659,6 +684,9 @@ var TaskManager = (function() {
     isUsingGSheets: isUsingGSheets
   };
 })();
+
+// Export globally so other pages can use TaskManager.*
+window.TaskManager = TaskManager;
 
 // Export for use in other scripts
 if (typeof module !== 'undefined' && module.exports) {

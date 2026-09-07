@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bảng tiến độ CT · HICONIQUE</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/reset.css">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/portal.css">
+  <link rel="stylesheet" href="/css/task-manager.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <script src="/js/gsheets-config.js"></script>
+  <script src="/js/portal.js"></script>
+  <script src="/js/task-data.js"></script>
+  <script src="/js/auth.js"></script>
+  <style>
+    :root {
+      --gantt-purple: #7C3AED;
+      --gantt-purple-light: rgba(124,58,237,0.12);
+      --gantt-blue: #2563EB;
+      --gantt-blue-light: rgba(37,99,235,0.12);
+      --gantt-green: #059669;
+      --gantt-green-light: rgba(5,150,105,0.12);
+      --gantt-amber: #D97706;
+      --gantt-amber-light: rgba(217,119,6,0.12);
+      --gantt-red: #DC2626;
+      --gantt-red-light: rgba(220,38,38,0.12);
+      --gantt-bg: #F8FAFC;
+      --gantt-surface: #FFFFFF;
+      --gantt-border: #E2E8F0;
+      --gantt-text: #1E293B;
+      --gantt-muted: #64748B;
+      --gantt-row-hover: #F1F5F9;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      background: var(--gantt-bg);
+      font-family: 'Inter', -apple-system, sans-serif;
+      min-height: 100vh;
+      color: var(--gantt-text);
+    }
+
+    /* ─── Header ─── */
+    .pb-header {
+      background: var(--gantt-surface);
+      border-bottom: 1px solid var(--gantt-border);
+      padding: 20px 32px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(8px);
+    }
+
+    .pb-header-inner {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .pb-header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .pb-logo {
+      width: 40px;
+      height: 40px;
+      background: var(--color-bronze);
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #0B0D10;
+      flex-shrink: 0;
+    }
+
+    .pb-title-group h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--gantt-text);
+      margin: 0;
+      line-height: 1.2;
+    }
+
+    .pb-title-group p {
+      font-size: 0.8125rem;
+      color: var(--gantt-muted);
+      margin: 2px 0 0;
+    }
+
+    .pb-header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .pb-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--gantt-border);
+      background: var(--gantt-surface);
+      color: var(--gantt-text);
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+
+    .pb-btn:hover {
+      background: var(--gantt-row-hover);
+      border-color: #CBD5E1;
+    }
+
+    .pb-btn svg { width: 16px; height: 16px; }
+
+    .pb-btn-primary {
+      background: var(--gantt-purple);
+      color: white;
+      border-color: var(--gantt-purple);
+    }
+
+    .pb-btn-primary:hover {
+      background: #6D28D9;
+      border-color: #6D28D9;
+    }
+
+    .pb-back-link {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      color: var(--gantt-muted);
+      text-decoration: none;
+      border: 1px solid var(--gantt-border);
+      background: var(--gantt-surface);
+      transition: all 0.15s;
+    }
+
+    .pb-back-link:hover {
+      color: var(--gantt-text);
+      border-color: #CBD5E1;
+    }
+
+    /* ─── Stats Bar ─── */
+    .pb-stats-bar {
+      max-width: 1400px;
+      margin: 24px auto 0;
+      padding: 0 32px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .pb-stat-card {
+      background: var(--gantt-surface);
+      border-radius: 14px;
+      padding: 20px 24px;
+      border: 1px solid var(--gantt-border);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .pb-stat-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+
+    .pb-stat-icon svg { width: 22px; height: 22px; }
+
+    .pb-stat-icon.purple { background: var(--gantt-purple-light); color: var(--gantt-purple); }
+    .pb-stat-icon.blue { background: var(--gantt-blue-light); color: var(--gantt-blue); }
+    .pb-stat-icon.green { background: var(--gantt-green-light); color: var(--gantt-green); }
+    .pb-stat-icon.amber { background: var(--gantt-amber-light); color: var(--gantt-amber); }
+
+    .pb-stat-value {
+      font-size: 1.625rem;
+      font-weight: 700;
+      color: var(--gantt-text);
+      line-height: 1;
+    }
+
+    .pb-stat-label {
+      font-size: 0.8125rem;
+      color: var(--gantt-muted);
+      margin-top: 4px;
+    }
+
+    /* ─── Filter Bar ─── */
+    .pb-filter-bar {
+      max-width: 1400px;
+      margin: 20px auto 0;
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .pb-filter-tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--gantt-surface);
+      border: 1px solid var(--gantt-border);
+      border-radius: 10px;
+      padding: 4px;
+    }
+
+    .pb-filter-tab {
+      padding: 6px 16px;
+      border-radius: 7px;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--gantt-muted);
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+
+    .pb-filter-tab.active {
+      background: var(--gantt-purple);
+      color: white;
+    }
+
+    .pb-filter-tab:not(.active):hover {
+      color: var(--gantt-text);
+      background: var(--gantt-row-hover);
+    }
+
+    .pb-view-toggle {
+      display: flex;
+      gap: 4px;
+      background: var(--gantt-surface);
+      border: 1px solid var(--gantt-border);
+      border-radius: 10px;
+      padding: 4px;
+    }
+
+    .pb-view-btn {
+      padding: 6px 14px;
+      border-radius: 7px;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--gantt-muted);
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: inherit;
+    }
+
+    .pb-view-btn.active {
+      background: var(--gantt-bg);
+      color: var(--gantt-text);
+    }
+
+    .pb-view-btn svg { width: 14px; height: 14px; }
+
+    /* ─── Main Container ─── */
+    .pb-main {
+      max-width: 1400px;
+      margin: 20px auto 40px;
+      padding: 0 32px;
+    }
+
+    /* ─── Gantt Card ─── */
+    .gantt-card {
+      background: var(--gantt-surface);
+      border-radius: 16px;
+      border: 1px solid var(--gantt-border);
+      overflow: hidden;
+    }
+
+    .gantt-card-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--gantt-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--gantt-bg);
+    }
+
+    .gantt-card-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--gantt-text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .gantt-card-title svg { width: 18px; height: 18px; color: var(--gantt-purple); }
+
+    .gantt-card-meta {
+      font-size: 0.8125rem;
+      color: var(--gantt-muted);
+    }
+
+    .gantt-card-meta strong { color: var(--gantt-text); }
+
+    /* ─── Legend ─── */
+    .gantt-legend {
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--gantt-border);
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .gantt-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      color: var(--gantt-muted);
+    }
+
+    .gantt-legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+    }
+
+    .gantt-legend-line {
+      width: 20px;
+      height: 2px;
+      border-radius: 1px;
+    }
+
+    /* ─── Gantt Table ─── */
+    .gantt-table-wrap {
+      overflow-x: auto;
+    }
+
+    .gantt-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 900px;
+    }
+
+    .gantt-table thead th {
+      padding: 12px 16px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--gantt-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: var(--gantt-bg);
+      border-bottom: 1px solid var(--gantt-border);
+      text-align: center;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .gantt-table thead th:first-child {
+      text-align: left;
+      width: 280px;
+      min-width: 280px;
+    }
+
+    .gantt-table thead th:last-child {
+      text-align: right;
+      padding-right: 24px;
+    }
+
+    .gantt-table thead th.gantt-col-progress {
+      text-align: center;
+      width: 100px;
+      min-width: 100px;
+    }
+
+    /* ─── Today Marker ─── */
+    .gantt-today-col {
+      width: 100px;
+      min-width: 100px;
+      text-align: center;
+    }
+
+    /* ─── Section Row ─── */
+    .gantt-section-row td {
+      background: var(--gantt-purple-light);
+      padding: 10px 16px;
+      font-size: 0.8125rem;
+      font-weight: 700;
+      color: var(--gantt-purple);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid rgba(124,58,237,0.15);
+    }
+
+    .gantt-section-row td:first-child {
+      border-radius: 0;
+    }
+
+    .gantt-section-row td:last-child {
+      background: rgba(124,58,237,0.06);
+      text-align: right;
+      padding-right: 24px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--gantt-muted);
+      border-bottom: none;
+    }
+
+    /* ─── Task Row ─── */
+    .gantt-task-row {
+      transition: background 0.12s;
+    }
+
+    .gantt-task-row:hover {
+      background: var(--gantt-row-hover);
+    }
+
+    .gantt-task-row td {
+      border-bottom: 1px solid var(--gantt-border);
+      vertical-align: middle;
+    }
+
+    .gantt-task-row:last-child td {
+      border-bottom: none;
+    }
+
+    .gantt-task-info {
+      padding: 14px 16px;
+    }
+
+    .gantt-task-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .gantt-task-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .gantt-task-title {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--gantt-text);
+      line-height: 1.3;
+    }
+
+    .gantt-task-sub {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-left: 42px;
+    }
+
+    .gantt-task-tag {
+      font-size: 0.6875rem;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .gantt-task-tag.design {
+      background: var(--gantt-purple-light);
+      color: var(--gantt-purple);
+    }
+
+    .gantt-task-tag.build {
+      background: var(--gantt-green-light);
+      color: var(--gantt-green);
+    }
+
+    .gantt-task-tag.review {
+      background: var(--gantt-amber-light);
+      color: var(--gantt-amber);
+    }
+
+    .gantt-task-deadline {
+      font-size: 0.75rem;
+      color: var(--gantt-muted);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .gantt-task-deadline svg { width: 12px; height: 12px; }
+
+    .gantt-task-deadline.overdue { color: var(--gantt-red); }
+
+    /* ─── Gantt Bar Column ─── */
+    .gantt-bar-cell {
+      position: relative;
+      padding: 8px 0;
+    }
+
+    .gantt-bar-track {
+      position: relative;
+      height: 36px;
+    }
+
+    .gantt-month-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: var(--gantt-border);
+      opacity: 0.6;
+    }
+
+    .gantt-today-line {
+      position: absolute;
+      top: -8px;
+      bottom: 0;
+      width: 2px;
+      background: #EF4444;
+      opacity: 0.8;
+      z-index: 5;
+    }
+
+    .gantt-today-line::before {
+      content: 'Hôm nay';
+      position: absolute;
+      top: -22px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.625rem;
+      font-weight: 600;
+      color: #EF4444;
+      white-space: nowrap;
+    }
+
+    .gantt-bar-item {
+      position: absolute;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: white;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: pointer;
+      transition: transform 0.12s, box-shadow 0.12s;
+      top: 4px;
+      z-index: 2;
+    }
+
+    .gantt-bar-item:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      z-index: 3;
+    }
+
+    .gantt-bar-item.purple { background: linear-gradient(135deg, #7C3AED, #6D28D9); }
+    .gantt-bar-item.blue { background: linear-gradient(135deg, #2563EB, #1D4ED8); }
+    .gantt-bar-item.green { background: linear-gradient(135deg, #059669, #047857); }
+    .gantt-bar-item.amber { background: linear-gradient(135deg, #D97706, #B45309); }
+    .gantt-bar-item.red { background: linear-gradient(135deg, #DC2626, #B91C1C); }
+
+    /* Milestone diamond */
+    .gantt-milestone {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      background: #F59E0B;
+      transform: rotate(45deg) translateY(-2px);
+      top: 11px;
+      z-index: 4;
+      border-radius: 2px;
+      box-shadow: 0 2px 6px rgba(245,158,11,0.4);
+    }
+
+    /* ─── Progress Column ─── */
+    .gantt-progress-cell {
+      text-align: center;
+      padding: 0 16px 0 0;
+    }
+
+    .gantt-progress-ring {
+      width: 44px;
+      height: 44px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    .gantt-progress-ring svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .gantt-progress-ring circle {
+      fill: none;
+      stroke-width: 3.5;
+    }
+
+    .gantt-progress-bg { stroke: var(--gantt-border); }
+    .gantt-progress-fill { stroke: var(--gantt-purple); stroke-linecap: round; transition: stroke-dashoffset 0.5s; }
+
+    /* ─── Status Badge ─── */
+    .gantt-status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.6875rem;
+      font-weight: 600;
+    }
+
+    .gantt-status-badge.on-track {
+      background: var(--gantt-green-light);
+      color: var(--gantt-green);
+    }
+
+    .gantt-status-badge.at-risk {
+      background: var(--gantt-amber-light);
+      color: var(--gantt-amber);
+    }
+
+    .gantt-status-badge.delayed {
+      background: var(--gantt-red-light);
+      color: var(--gantt-red);
+    }
+
+    .gantt-status-badge.completed {
+      background: var(--gantt-purple-light);
+      color: var(--gantt-purple);
+    }
+
+    /* ─── Quick Add ─── */
+    .gantt-add-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 16px;
+      border-top: 1px solid var(--gantt-border);
+      background: var(--gantt-bg);
+    }
+
+    .gantt-add-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8125rem;
+      color: var(--gantt-muted);
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      font-family: inherit;
+      padding: 0;
+      transition: color 0.12s;
+    }
+
+    .gantt-add-btn:hover { color: var(--gantt-purple); }
+
+    .gantt-add-btn svg { width: 16px; height: 16px; }
+
+    /* ─── Tooltip ─── */
+    .gantt-tooltip {
+      position: fixed;
+      background: var(--gantt-text);
+      color: white;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.8125rem;
+      z-index: 9999;
+      pointer-events: none;
+      max-width: 240px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .gantt-tooltip.visible { opacity: 1; }
+
+    .gantt-tooltip-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .gantt-tooltip-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      font-size: 0.75rem;
+      opacity: 0.8;
+    }
+
+    /* ─── Empty State ─── */
+    .gantt-empty {
+      text-align: center;
+      padding: 60px 24px;
+      color: var(--gantt-muted);
+    }
+
+    .gantt-empty-icon {
+      width: 56px;
+      height: 56px;
+      background: var(--gantt-border);
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      margin: 0 auto 16px;
+    }
+
+    .gantt-empty-icon svg { width: 28px; height: 28px; opacity: 0.4; }
+
+    .gantt-empty h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--gantt-text);
+      margin: 0 0 6px;
+    }
+
+    .gantt-empty p { font-size: 0.875rem; margin: 0; }
+
+    /* ─── Animations ─── */
+    @keyframes ganttSlideIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .gantt-task-row { animation: ganttSlideIn 0.25s ease-out both; }
+    .gantt-task-row:nth-child(2) { animation-delay: 0.03s; }
+    .gantt-task-row:nth-child(3) { animation-delay: 0.06s; }
+    .gantt-task-row:nth-child(4) { animation-delay: 0.09s; }
+    .gantt-task-row:nth-child(5) { animation-delay: 0.12s; }
+    .gantt-task-row:nth-child(6) { animation-delay: 0.15s; }
+
+    /* ─── Responsive ─── */
+    @media (max-width: 1024px) {
+      .pb-stats-bar { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 768px) {
+      .pb-stats-bar { grid-template-columns: 1fr 1fr; padding: 0 16px; }
+      .pb-filter-bar { padding: 0 16px; flex-wrap: wrap; }
+      .pb-main { padding: 16px 16px 40px; }
+      .pb-header { padding: 16px; }
+      .pb-title-group h1 { font-size: 1.25rem; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="pb-header">
+    <div class="pb-header-inner">
+      <div class="pb-header-left">
+        <a href="/" class="pb-logo">H</a>
+        <div class="pb-title-group">
+          <h1>Bảng tiến độ công trình</h1>
+          <p>OKR · Theo dõi tiến độ thiết kế &amp; thi công</p>
+        </div>
+      </div>
+      <div class="pb-header-right">
+        <a href="/" class="pb-back-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+          Về trang chủ
+        </a>
+        <button class="pb-btn" id="pbExportBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Xuất file
+        </button>
+        <button class="theme-toggle-pill" aria-label="Chuyển đổi sáng/tối" data-theme-toggle style="position:relative;width:64px;height:30px;display:flex;align-items:center;justify-content:space-between;padding:2px;border-radius:18px;border:1px solid var(--gantt-border);background:var(--gantt-surface);cursor:pointer;gap:0;flex-shrink:0;">
+          <span style="width:26px;height:26px;border-radius:50%;display:grid;place-items:center;z-index:2;color:var(--color-bronze);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          </span>
+          <span style="position:absolute;width:26px;height:26px;background:var(--color-bronze);border-radius:50%;top:2px;left:2px;transition:transform 0.2s;z-index:1;" id="pbThemeSlider"></span>
+          <span style="width:26px;height:26px;border-radius:50%;display:grid;place-items:center;z-index:2;color:#3B6B8C;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Stats -->
+  <div class="pb-stats-bar" id="pbStatsBar">
+    <!-- Filled by JS -->
+  </div>
+
+  <!-- Filter -->
+  <div class="pb-filter-bar">
+    <div class="pb-filter-tabs" id="pbFilterTabs">
+      <button class="pb-filter-tab active" data-filter="all">Tất cả</button>
+      <button class="pb-filter-tab" data-filter="prj_A">Dự án A</button>
+      <button class="pb-filter-tab" data-filter="prj_B">Dự án B</button>
+      <button class="pb-filter-tab" data-filter="prj_C">Dự án C</button>
+    </div>
+    <div class="pb-view-toggle">
+      <button class="pb-view-btn active" data-view="gantt" title="Gantt">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Gantt
+      </button>
+      <button class="pb-view-btn" data-view="list" title="Danh sách">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        Danh sách
+      </button>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="pb-main">
+    <div class="gantt-card">
+      <div class="gantt-card-header">
+        <div class="gantt-card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Biểu đồ Gantt — Tiến độ công trình 2026
+        </div>
+        <div class="gantt-card-meta" id="pbCardMeta">
+          <!-- Filled by JS -->
+        </div>
+      </div>
+
+      <div class="gantt-legend">
+        <div class="gantt-legend-item">
+          <div class="gantt-legend-dot" style="background:#7C3AED"></div>
+          Thiết kế
+        </div>
+        <div class="gantt-legend-item">
+          <div class="gantt-legend-dot" style="background:#059669"></div>
+          Thi công
+        </div>
+        <div class="gantt-legend-item">
+          <div class="gantt-legend-dot" style="background:#2563EB"></div>
+          Quản lý
+        </div>
+        <div class="gantt-legend-item">
+          <div class="gantt-legend-dot" style="background:#D97706"></div>
+          Review / Nghiệm thu
+        </div>
+        <div class="gantt-legend-item">
+          <div class="gantt-legend-line" style="background:#EF4444; opacity:0.8"></div>
+          Hôm nay
+        </div>
+        <div class="gantt-legend-item">
+          <div class="gantt-legend-dot" style="background:#F59E0B; transform:rotate(45deg); border-radius:2px"></div>
+          Mốc hoàn thành
+        </div>
+      </div>
+
+      <div class="gantt-table-wrap">
+        <table class="gantt-table" id="ganttTable">
+          <thead>
+            <tr>
+              <th>Công việc</th>
+              <th colspan="12" style="text-align:center">Tháng (T8/2026 – T7/2027)</th>
+              <th class="gantt-col-progress">Tiến độ</th>
+              <th style="text-align:right">Trạng thái</th>
+            </tr>
+          </thead>
+          <tbody id="ganttBody">
+            <!-- Filled by JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="gantt-add-row">
+        <button class="gantt-add-btn" id="ganttAddBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Thêm hạng mục mới
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tooltip -->
+  <div class="gantt-tooltip" id="ganttTooltip">
+    <div class="gantt-tooltip-title"></div>
+    <div class="gantt-tooltip-meta"></div>
+  </div>
+
+  <script>
+  (function() {
+    'use strict';
+
+    // ─── Config ───
+    const MONTHS = ['T8', 'T9', 'T10', 'T11', 'T12', 'T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+    const START_DATE = new Date(2026, 7, 1); // Aug 2026
+
+    // ─── Helpers ───
+    function getMonthsDiff(date1, date2) {
+      return (date2.getFullYear() - date1.getFullYear()) * 12 + (date2.getMonth() - date1.getMonth());
+    }
+
+    function getBarStyle(startDate, endDate) {
+      if (!startDate) return { left: '0%', width: '2%', visible: false };
+      var start = new Date(startDate);
+      var end = new Date(endDate);
+      var totalMonths = 12;
+      var startOffset = getMonthsDiff(START_DATE, start);
+      var duration = getMonthsDiff(start, end);
+      var left = Math.max(0, (startOffset / totalMonths) * 100);
+      var width = Math.max(2, ((duration + 1) / totalMonths) * 100);
+      return { left: left + '%', width: Math.min(100 - left, width) + '%', visible: true };
+    }
+
+    function getTodayPosition() {
+      var today = new Date();
+      if (today < START_DATE || today > new Date(2027, 6, 1)) return null;
+      var monthsPassed = getMonthsDiff(START_DATE, today);
+      return Math.max(0, Math.min(100, (monthsPassed / 12) * 100)) + '%';
+    }
+
+    function getProgressColor(p) {
+      if (p >= 100) return '#7C3AED';
+      if (p >= 75) return '#059669';
+      if (p >= 50) return '#2563EB';
+      if (p >= 25) return '#D97706';
+      return '#94A3B8';
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '--';
+      var d = new Date(dateStr);
+      return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2);
+    }
+
+    function getStatusLabel(status) {
+      var map = {
+        'on-track': 'Đúng tiến độ',
+        'at-risk': 'Có rủi ro',
+        'delayed': 'Trễ hạn',
+        'completed': 'Hoàn thành',
+        'in-progress': 'Đang làm',
+        'pending': 'Chờ xử lý'
+      };
+      return map[status] || status || 'Chờ xử lý';
+    }
+
+    function getStatusClass(status) {
+      var map = {
+        'on-track': 'on-track',
+        'at-risk': 'at-risk',
+        'delayed': 'delayed',
+        'completed': 'completed',
+        'in-progress': 'on-track',
+        'pending': 'at-risk'
+      };
+      return map[status] || 'at-risk';
+    }
+
+    // ─── Avatar color ───
+    var MEMBER_COLORS = {};
+    var members = TaskManager.getMembers();
+    members.forEach(function(m) {
+      MEMBER_COLORS[m.id] = m.color || '#7C3AED';
+    });
+
+    // ─── Build sections from tasks ───
+    var projects = TaskManager.getProjects();
+    var tasks = TaskManager.getTasks();
+    var currentFilter = 'all';
+
+    var PROJECT_COLORS = {
+      'prj_A': { bar: 'purple', name: 'Dự án A' },
+      'prj_B': { bar: 'green', name: 'Dự án B' },
+      'prj_C': { bar: 'blue', name: 'Dự án C' }
+    };
+
+    var SECTION_DEFS = [
+      {
+        id: 'design', label: 'O1 — GIAI ĐOẠN THIẾT KẾ', projects: ['prj_A', 'prj_C'],
+        tasks: [
+          { id: 'task_001', title: 'Khảo sát mặt bằng & đo đạc', assignee: 'MGR1', project: 'prj_A', start: '2026-08-01', end: '2026-08-07', progress: 100, tag: 'design' },
+          { id: 'task_002', title: 'Lên phương án thiết kế sơ bộ', assignee: 'MGR1', project: 'prj_A', start: '2026-08-08', end: '2026-08-20', progress: 75, tag: 'design' },
+          { id: 'task_003', title: 'Thiết kế phòng khách — Dự án A', assignee: 'MEM1', project: 'prj_A', start: '2026-08-21', end: '2026-09-05', progress: 50, tag: 'design' },
+          { id: 'task_004', title: 'Thiết kế kiến trúc tổng thể', assignee: 'MGR1', project: 'prj_C', start: '2026-08-15', end: '2026-09-10', progress: 30, tag: 'design' }
+        ]
+      },
+      {
+        id: 'build', label: 'O2 — GIAI ĐOẠN THI CÔNG', projects: ['prj_A', 'prj_B'],
+        tasks: [
+          { id: 'task_005', title: 'Chuẩn bị mặt bằng & nhân sự', assignee: 'MGR2', project: 'prj_B', start: '2026-08-25', end: '2026-08-30', progress: 60, tag: 'build' },
+          { id: 'task_006', title: 'Thi công phần thô — Dự án B', assignee: 'MEM2', project: 'prj_B', start: '2026-09-01', end: '2026-10-15', progress: 20, tag: 'build' },
+          { id: 'task_007', title: 'Lắp đặt hệ thống điện & nước', assignee: 'MGR2', project: 'prj_B', start: '2026-10-01', end: '2026-10-20', progress: 0, tag: 'build' }
+        ]
+      },
+      {
+        id: 'review', label: 'O3 — NGHIỆM THU & BÀN GIAO', projects: ['prj_A', 'prj_B', 'prj_C'],
+        tasks: [
+          { id: 'task_008', title: 'Review bản vẽ thiết kế final', assignee: 'CEO', project: 'prj_A', start: '2026-09-06', end: '2026-09-10', progress: 0, tag: 'review' },
+          { id: 'task_009', title: 'Nghiệm thu công trình Dự án B', assignee: 'MGR2', project: 'prj_B', start: '2026-10-21', end: '2026-10-31', progress: 0, tag: 'review' },
+          { id: 'task_010', title: 'Bàn giao & thanh quyết toán', assignee: 'CEO', project: 'prj_A', start: '2026-11-01', end: '2026-11-15', progress: 0, tag: 'review' }
+        ]
+      }
+    ];
+
+    // ─── Render ───
+    function renderStats() {
+      var totalTasks = 0, completedTasks = 0, atRisk = 0, totalProgress = 0;
+      var sectionCount = SECTION_DEFS.length;
+      SECTION_DEFS.forEach(function(s) {
+        s.tasks.forEach(function(t) {
+          totalTasks++;
+          if (t.progress >= 100) completedTasks++;
+          if (t.progress < 50 && t.progress > 0) atRisk++;
+          totalProgress += t.progress;
+        });
+      });
+      var avgProgress = totalTasks ? Math.round(totalProgress / totalTasks) : 0;
+
+      var bar = document.getElementById('pbStatsBar');
+      bar.innerHTML = '' +
+        '<div class="pb-stat-card">' +
+          '<div class="pb-stat-icon purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>' +
+          '<div><div class="pb-stat-value">' + totalTasks + '</div><div class="pb-stat-label">Hạng mục công việc</div></div>' +
+        '</div>' +
+        '<div class="pb-stat-card">' +
+          '<div class="pb-stat-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>' +
+          '<div><div class="pb-stat-value">' + completedTasks + '</div><div class="pb-stat-label">Đã hoàn thành</div></div>' +
+        '</div>' +
+        '<div class="pb-stat-card">' +
+          '<div class="pb-stat-icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></div>' +
+          '<div><div class="pb-stat-value">' + avgProgress + '%</div><div class="pb-stat-label">Tiến độ trung bình</div></div>' +
+        '</div>' +
+        '<div class="pb-stat-card">' +
+          '<div class="pb-stat-icon amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>' +
+          '<div><div class="pb-stat-value">' + atRisk + '</div><div class="pb-stat-label">Cần chú ý</div></div>' +
+        '</div>';
+    }
+
+    function renderGantt(filter) {
+      var todayPos = getTodayPosition();
+      var tbody = document.getElementById('ganttBody');
+      var html = '';
+
+      SECTION_DEFS.forEach(function(section) {
+        var visibleTasks = section.tasks.filter(function(t) {
+          return filter === 'all' || t.project === filter;
+        });
+        if (!visibleTasks.length) return;
+
+        // Section header
+        html += '<tr class="gantt-section-row">' +
+          '<td colspan="12">' + section.label + '</td>' +
+          '<td></td>' +
+          '<td style="text-align:right;padding-right:24px;background:rgba(124,58,237,0.06);color:var(--gantt-muted);font-size:0.75rem;font-weight:500;border-bottom:none;">' +
+            visibleTasks.length + ' hạng mục' +
+          '</td>' +
+          '<td></td>' +
+        '</tr>';
+
+        // Tasks
+        visibleTasks.forEach(function(task) {
+          var member = members.find(function(m) { return m.id === task.assignee; });
+          var projInfo = PROJECT_COLORS[task.project] || { bar: 'blue' };
+          var barStyle = getBarStyle(task.start, task.end);
+          var color = MEMBER_COLORS[task.assignee] || projInfo.bar === 'purple' ? '#7C3AED' : projInfo.bar === 'green' ? '#059669' : '#2563EB';
+          var tagClass = { design: 'design', build: 'build', review: 'review' }[task.tag] || 'design';
+          var tagLabel = { design: 'Thiết kế', build: 'Thi công', review: 'Review' }[task.tag] || task.tag;
+
+          var deadline = task.end;
+          var isOverdue = task.progress < 100 && new Date(deadline) < new Date();
+          var statusClass = getStatusClass(task.progress >= 100 ? 'completed' : isOverdue ? 'delayed' : task.progress > 50 ? 'on-track' : 'at-risk');
+
+          // Progress ring
+          var circ = 2 * Math.PI * 17;
+          var dash = (task.progress / 100) * circ;
+          var progressColor = getProgressColor(task.progress);
+
+          html += '<tr class="gantt-task-row">' +
+            '<td>' +
+              '<div class="gantt-task-info">' +
+                '<div class="gantt-task-top">' +
+                  '<div class="gantt-task-avatar" style="background:' + color + '">' + (member ? member.avatar : task.assignee) + '</div>' +
+                  '<div class="gantt-task-title">' + task.title + '</div>' +
+                '</div>' +
+                '<div class="gantt-task-sub">' +
+                  '<span class="gantt-task-tag ' + tagClass + '">' + tagLabel + '</span>' +
+                  '<span class="gantt-task-deadline' + (isOverdue ? ' overdue' : '') + '">' +
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' +
+                    formatDate(task.start) + ' – ' + formatDate(task.end) +
+                  '</span>' +
+                '</div>' +
+              '</div>' +
+            '</td>';
+
+          // Bar column (12 months)
+          html += '<td colspan="12" style="position:relative;">' +
+            '<div class="gantt-bar-cell">' +
+              '<div class="gantt-bar-track">';
+
+          // Month lines
+          for (var i = 1; i < 12; i++) {
+            html += '<div class="gantt-month-line" style="left:' + (i / 12 * 100) + '%"></div>';
+          }
+
+          // Today line
+          if (todayPos) {
+            html += '<div class="gantt-today-line" style="left:' + todayPos + '"></div>';
+          }
+
+          // Bar
+          if (barStyle.visible) {
+            html += '<div class="gantt-bar-item ' + projInfo.bar + '" ' +
+              'style="left:' + barStyle.left + ';width:' + barStyle.width + '%;background:linear-gradient(135deg,' + (projInfo.bar === 'purple' ? '#7C3AED,#6D28D9' : projInfo.bar === 'green' ? '#059669,#047857' : '#2563EB,#1D4ED8') + ')" ' +
+              'data-task-id="' + task.id + '" ' +
+              'data-title="' + task.title + '" ' +
+              'data-assignee="' + (member ? member.name : task.assignee) + '" ' +
+              'data-progress="' + task.progress + '" ' +
+              'data-start="' + formatDate(task.start) + '" ' +
+              'data-end="' + formatDate(task.end) + '" ' +
+              'data-project="' + (PROJECT_COLORS[task.project] ? PROJECT_COLORS[task.project].name : task.project) + '">' +
+              (barStyle.width > 8 ? task.progress + '%' : '') +
+            '</div>';
+          }
+
+          // Milestone (100%)
+          if (task.progress >= 100) {
+            var milestoneLeft = barStyle.left + '%';
+            html += '<div class="gantt-milestone" style="left:calc(' + milestoneLeft + ' + ' + barStyle.width + '% - 7px)"></div>';
+          }
+
+          html += '</div></div></div></td>';
+
+          // Progress
+          html += '<td class="gantt-progress-cell">' +
+            '<div class="gantt-progress-ring">' +
+              '<svg width="44" height="44" viewBox="0 0 44 44" style="transform:rotate(-90deg)">' +
+                '<circle class="gantt-progress-bg" cx="22" cy="22" r="17"/>' +
+                '<circle class="gantt-progress-fill" cx="22" cy="22" r="17"' +
+                  ' stroke="' + progressColor + '"' +
+                  ' stroke-dasharray="' + circ + '"' +
+                  ' stroke-dashoffset="' + (circ - dash) + '"/>' +
+              '</svg>' +
+              '<div style="position:absolute;inset:0;display:grid;place-items:center;font-size:0.6875rem;font-weight:700;color:var(--gantt-text);line-height:1;">' + task.progress + '%</div>' +
+            '</div>' +
+          '</td>';
+
+          // Status
+          html += '<td style="text-align:right;padding-right:24px;">' +
+            '<span class="gantt-status-badge ' + statusClass + '">' +
+              (task.progress >= 100 ? '✓ ' : '') + getStatusLabel(statusClass) +
+            '</span>' +
+          '</td></tr>';
+        });
+      });
+
+      if (!html) {
+        html = '<tr><td colspan="14">' +
+          '<div class="gantt-empty">' +
+            '<div class="gantt-empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>' +
+            '<h3>Không có hạng mục nào</h3>' +
+            '<p>Dự án này chưa có công việc nào được lên kế hoạch.</p>' +
+          '</div></td></tr>';
+      }
+
+      tbody.innerHTML = html;
+
+      // Update meta
+      var filteredSections = SECTION_DEFS.filter(function(s) {
+        return filter === 'all' || s.projects.indexOf(filter) !== -1;
+      });
+      var taskCount = filteredSections.reduce(function(sum, s) {
+        return sum + s.tasks.filter(function(t) { return filter === 'all' || t.project === filter; }).length;
+      }, 0);
+      document.getElementById('pbCardMeta').innerHTML = '<strong>' + taskCount + '</strong> hạng mục · Cập nhật ' + new Date().toLocaleDateString('vi-VN');
+
+      // Tooltip
+      document.querySelectorAll('.gantt-bar-item').forEach(function(bar) {
+        bar.addEventListener('mouseenter', function(e) {
+          var tooltip = document.getElementById('ganttTooltip');
+          var title = bar.dataset.title;
+          var assignee = bar.dataset.assignee;
+          var progress = bar.dataset.progress;
+          var start = bar.dataset.start;
+          var end = bar.dataset.end;
+          var project = bar.dataset.project;
+          tooltip.querySelector('.gantt-tooltip-title').textContent = title;
+          tooltip.querySelector('.gantt-tooltip-meta').innerHTML =
+            '<span>👤 ' + assignee + '</span>' +
+            '<span>📅 ' + start + ' – ' + end + '</span>' +
+            '<span>📊 ' + progress + '% hoàn thành</span>' +
+            '<span>🏗 ' + project + '</span>';
+          tooltip.classList.add('visible');
+        });
+        bar.addEventListener('mousemove', function(e) {
+          var tooltip = document.getElementById('ganttTooltip');
+          tooltip.style.left = (e.clientX + 12) + 'px';
+          tooltip.style.top = (e.clientY - 10) + 'px';
+        });
+        bar.addEventListener('mouseleave', function() {
+          document.getElementById('ganttTooltip').classList.remove('visible');
+        });
+      });
+    }
+
+    // ─── Init ───
+    renderStats();
+    renderGantt('all');
+
+    // Filter tabs
+    document.getElementById('pbFilterTabs').addEventListener('click', function(e) {
+      var tab = e.target.closest('.pb-filter-tab');
+      if (!tab) return;
+      document.querySelectorAll('.pb-filter-tab').forEach(function(t) { t.classList.remove('active'); });
+      tab.classList.add('active');
+      currentFilter = tab.dataset.filter;
+      renderGantt(currentFilter);
+    });
+
+    // View toggle
+    document.querySelector('.pb-view-toggle').addEventListener('click', function(e) {
+      var btn = e.target.closest('.pb-view-btn');
+      if (!btn) return;
+      document.querySelectorAll('.pb-view-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      // Future: switch between Gantt and List view
+    });
+
+    // Export (placeholder)
+    document.getElementById('pbExportBtn').addEventListener('click', function() {
+      alert('Tính năng xuất file đang được phát triển.\n\nBạn có thể chụp ảnh màn hình (Print Screen) hoặc dùng Ctrl+P để in.');
+    });
+
+    // Add task (placeholder)
+    document.getElementById('pbAddTaskBtn').addEventListener('click', function() {
+      alert('Tính năng thêm task đang được phát triển.\n\nVui lòng thêm task mới từ trang Tasks Manager.');
+    });
+
+    document.getElementById('ganttAddBtn').addEventListener('click', function() {
+      document.getElementById('pbAddTaskBtn').click();
+    });
+
+    // Sync theme slider
+    function syncPbSlider() {
+      var theme = document.documentElement.getAttribute('data-theme');
+      var slider = document.getElementById('pbThemeSlider');
+      if (slider) slider.style.transform = theme === 'light' ? 'translateX(34px)' : 'translateX(0)';
+    }
+    syncPbSlider();
+    var pbToggle = document.querySelector('[data-theme-toggle]');
+    if (pbToggle) pbToggle.addEventListener('click', function() { setTimeout(syncPbSlider, 10); });
+
+  })();
+  </script>
+</body>
+</html>

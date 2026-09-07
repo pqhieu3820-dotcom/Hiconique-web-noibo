@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chấm công · HICONIQUE</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/reset.css">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/portal.css">
+  <link rel="stylesheet" href="/css/task-manager.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <script src="/js/gsheets-config.js"></script>
+  <script src="/js/task-data.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/portal.js"></script>
+  <style>
+    :root {
+      --ts-bg: var(--color-bg);
+      --ts-surface: var(--color-surface);
+      --ts-border: var(--color-border);
+      --ts-text: var(--color-text);
+      --ts-muted: var(--color-text-muted);
+      --ts-bronze: var(--color-bronze);
+      --ts-success: #4F6F52;
+      --ts-success-light: rgba(79, 111, 82, 0.12);
+      --ts-danger: #A04848;
+    }
+
+    body {
+      background: var(--ts-bg);
+      color: var(--ts-text);
+      font-family: 'Inter', -apple-system, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .ts-header {
+      background: var(--ts-surface);
+      border-bottom: 1px solid var(--ts-border);
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(8px);
+    }
+
+    .ts-header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .ts-logo {
+      width: 40px;
+      height: 40px;
+      background: var(--ts-bronze);
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #0B0D10;
+      flex-shrink: 0;
+      text-decoration: none;
+    }
+
+    .ts-title-group h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--ts-text);
+      margin: 0;
+    }
+
+    .ts-title-group p {
+      font-size: 0.75rem;
+      color: var(--ts-muted);
+      margin: 2px 0 0;
+    }
+
+    .ts-back {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      color: var(--ts-muted);
+      text-decoration: none;
+      border: 1px solid var(--ts-border);
+      background: var(--ts-surface);
+      transition: all 0.15s;
+    }
+
+    .ts-back:hover { color: var(--ts-text); border-color: var(--ts-bronze); }
+
+    /* Main */
+    .ts-container { max-width: 1100px; margin: 0 auto; padding: 32px 32px 60px; }
+
+    /* Page title */
+    .ts-page-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2rem;
+      font-weight: 600;
+      color: var(--ts-text);
+      margin-bottom: 8px;
+    }
+
+    .ts-page-sub {
+      color: var(--ts-muted);
+      font-size: 0.875rem;
+      margin-bottom: 32px;
+    }
+
+    /* Top Stats */
+    .ts-top-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .ts-stat-card {
+      background: var(--ts-surface);
+      border: 1px solid var(--ts-border);
+      border-radius: 14px;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .ts-stat-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+
+    .ts-stat-icon svg { width: 22px; height: 22px; }
+
+    .ts-stat-icon.green { background: rgba(79, 111, 82, 0.12); color: #4F6F52; }
+    .ts-stat-icon.bronze { background: rgba(176, 141, 87, 0.12); color: var(--ts-bronze); }
+    .ts-stat-icon.blue { background: rgba(59, 107, 140, 0.12); color: #3B6B8C; }
+    .ts-stat-icon.amber { background: rgba(184, 114, 90, 0.12); color: #B8725A; }
+
+    .ts-stat-value { font-size: 1.5rem; font-weight: 700; color: var(--ts-text); line-height: 1; }
+    .ts-stat-label { font-size: 0.8125rem; color: var(--ts-muted); margin-top: 4px; }
+
+    /* Grid: checkin + calendar */
+    .ts-grid { display: grid; grid-template-columns: 360px 1fr; gap: 24px; align-items: start; }
+
+    /* Checkin Panel */
+    .ts-checkin-card {
+      background: var(--ts-surface);
+      border: 1px solid var(--ts-border);
+      border-radius: 18px;
+      padding: 32px;
+      text-align: center;
+      position: sticky;
+      top: 90px;
+    }
+
+    .ts-checkin-eyebrow {
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ts-muted);
+      margin-bottom: 12px;
+    }
+
+    .ts-clock {
+      font-size: 3.5rem;
+      font-weight: 300;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--ts-text);
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .ts-date {
+      font-size: 0.875rem;
+      color: var(--ts-muted);
+      margin-bottom: 32px;
+    }
+
+    .ts-checkin-btn {
+      width: 100%;
+      padding: 16px;
+      font-size: 1.0625rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+      margin-bottom: 16px;
+    }
+
+    .ts-checkin-btn.in { background: var(--ts-bronze); color: #0B0D10; }
+    .ts-checkin-btn.in:hover { background: #C7A464; transform: translateY(-1px); }
+    .ts-checkin-btn.out { background: #A04848; color: white; }
+    .ts-checkin-btn.out:hover { background: #B05555; transform: translateY(-1px); }
+    .ts-checkin-btn.done { background: var(--ts-success-light); color: var(--ts-success); cursor: default; }
+    .ts-checkin-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .ts-checkin-status {
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 0.8125rem;
+      line-height: 1.5;
+    }
+
+    .ts-checkin-status.working { background: var(--ts-success-light); color: var(--ts-success); }
+    .ts-checkin-status.idle { background: var(--color-bg); color: var(--ts-muted); }
+
+    /* Calendar Card */
+    .ts-calendar-card {
+      background: var(--ts-surface);
+      border: 1px solid var(--ts-border);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .ts-cal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--ts-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--color-bg);
+    }
+
+    .ts-cal-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--ts-text);
+    }
+
+    .ts-cal-nav {
+      display: flex;
+      gap: 8px;
+    }
+
+    .ts-cal-nav button {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: 1px solid var(--ts-border);
+      background: var(--ts-surface);
+      color: var(--ts-muted);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+
+    .ts-cal-nav button:hover { border-color: var(--ts-bronze); color: var(--ts-text); }
+    .ts-cal-nav button svg { width: 16px; height: 16px; }
+
+    .ts-cal-legend {
+      padding: 12px 24px;
+      border-bottom: 1px solid var(--ts-border);
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .ts-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      color: var(--ts-muted);
+    }
+
+    .ts-legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+    }
+
+    .ts-cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      padding: 16px;
+      gap: 6px;
+    }
+
+    .ts-cal-day-header {
+      text-align: center;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      color: var(--ts-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 4px;
+    }
+
+    .ts-cal-day {
+      aspect-ratio: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      border: 1px solid transparent;
+      gap: 2px;
+      position: relative;
+    }
+
+    .ts-cal-day:hover:not(.empty):not(.other-month) {
+      background: var(--color-bg);
+      border-color: var(--ts-border);
+    }
+
+    .ts-cal-day.other-month { opacity: 0.25; cursor: default; }
+    .ts-cal-day.empty { cursor: default; }
+    .ts-cal-day.today { border-color: var(--ts-bronze); }
+    .ts-cal-day.today .ts-day-num { background: var(--ts-bronze); color: #0B0D10; border-radius: 50%; width: 28px; height: 28px; display: grid; place-items: center; }
+
+    .ts-cal-day.checked {
+      background: var(--ts-success-light);
+      border-color: rgba(79, 111, 82, 0.3);
+    }
+
+    .ts-cal-day.partial-check {
+      background: rgba(176, 141, 87, 0.08);
+      border-color: rgba(176, 141, 87, 0.25);
+    }
+
+    .ts-day-num { font-weight: 500; color: var(--ts-text); }
+    .ts-day-dot { font-size: 0.625rem; }
+
+    /* Day Detail Modal */
+    .ts-day-detail {
+      padding: 16px 24px 24px;
+      border-top: 1px solid var(--ts-border);
+    }
+
+    .ts-detail-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .ts-detail-date {
+      font-weight: 600;
+      color: var(--ts-text);
+    }
+
+    .ts-detail-badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+
+    .ts-detail-badge.full { background: var(--ts-success-light); color: var(--ts-success); }
+    .ts-detail-badge.partial { background: rgba(176, 141, 87, 0.12); color: var(--ts-bronze); }
+    .ts-detail-badge.none { background: var(--color-bg); color: var(--ts-muted); }
+
+    .ts-detail-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .ts-detail-field {
+      background: var(--color-bg);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+
+    .ts-detail-field-label {
+      font-size: 0.6875rem;
+      color: var(--ts-muted);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .ts-detail-field-value {
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: var(--ts-text);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .ts-detail-note {
+      background: var(--color-bg);
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+    }
+
+    .ts-detail-note-label {
+      font-size: 0.6875rem;
+      color: var(--ts-muted);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .ts-detail-note-value {
+      font-size: 0.8125rem;
+      color: var(--ts-text);
+      line-height: 1.5;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .ts-top-stats { grid-template-columns: repeat(2, 1fr); }
+      .ts-grid { grid-template-columns: 1fr; }
+      .ts-checkin-card { position: static; }
+      .ts-container { padding: 24px 16px 60px; }
+      .ts-header { padding: 12px 16px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="ts-header">
+    <div class="ts-header-left">
+      <a href="/" class="ts-logo">H</a>
+      <div class="ts-title-group">
+        <h1>Chấm công</h1>
+        <p>Check-in / Check-out hàng ngày</p>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <a href="/" class="ts-back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        Về trang chủ
+      </a>
+      <button class="theme-toggle-pill" aria-label="Chuyển đổi sáng/tối" data-theme-toggle style="position:relative;width:64px;height:30px;display:flex;align-items:center;justify-content:space-between;padding:2px;border-radius:18px;border:1px solid var(--ts-border);background:var(--ts-surface);cursor:pointer;gap:0;">
+        <span style="width:26px;height:26px;border-radius:50%;display:grid;place-items:center;z-index:2;color:var(--ts-bronze);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        </span>
+        <span style="position:absolute;width:26px;height:26px;background:var(--ts-bronze);border-radius:50%;top:2px;left:2px;transition:transform 0.2s;z-index:1;" id="tsThemeSlider"></span>
+        <span style="width:26px;height:26px;border-radius:50%;display:grid;place-items:center;z-index:2;color:#3B6B8C;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </span>
+      </button>
+    </div>
+  </header>
+
+  <div class="ts-container">
+    <h2 class="ts-page-title">Bảng chấm công</h2>
+    <p class="ts-page-sub" id="tsPageSub">Theo dõi giờ làm việc và tăng ca hàng ngày</p>
+
+    <!-- Stats -->
+    <div class="ts-top-stats">
+      <div class="ts-stat-card">
+        <div class="ts-stat-icon green">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+        <div><div class="ts-stat-value" id="tsTotalDays">0</div><div class="ts-stat-label">Ngày làm việc</div></div>
+      </div>
+      <div class="ts-stat-card">
+        <div class="ts-stat-icon bronze">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div><div class="ts-stat-value" id="tsTotalHours">0h</div><div class="ts-stat-label">Tổng giờ làm</div></div>
+      </div>
+      <div class="ts-stat-card">
+        <div class="ts-stat-icon amber">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div><div class="ts-stat-value" id="tsOvertime">0h</div><div class="ts-stat-label">Giờ tăng ca</div></div>
+      </div>
+      <div class="ts-stat-card">
+        <div class="ts-stat-icon blue">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <div><div class="ts-stat-value" id="tsAvgHours">0h</div><div class="ts-stat-label">TB / ngày</div></div>
+      </div>
+    </div>
+
+    <!-- Checkin + Calendar -->
+    <div class="ts-grid">
+      <!-- Checkin -->
+      <div class="ts-checkin-card">
+        <div class="ts-checkin-eyebrow">Hôm nay</div>
+        <div class="ts-clock" id="tsClock">--:--</div>
+        <div class="ts-date" id="tsDate">--</div>
+
+        <button class="ts-checkin-btn in" id="tsCheckinBtn">Check In</button>
+
+        <div class="ts-checkin-status idle" id="tsCheckinStatus">Chưa check-in hôm nay</div>
+      </div>
+
+      <!-- Calendar -->
+      <div class="ts-calendar-card">
+        <div class="ts-cal-header">
+          <div class="ts-cal-title" id="tsCalTitle">Tháng 9/2026</div>
+          <div class="ts-cal-nav">
+            <button id="tsPrevMonth" title="Tháng trước">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <button id="tsNextMonth" title="Tháng sau">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="ts-cal-legend">
+          <div class="ts-legend-item">
+            <div class="ts-legend-dot" style="background:#4F6F52; border-radius:50%"></div>
+            Đã chấm đủ
+          </div>
+          <div class="ts-legend-item">
+            <div class="ts-legend-dot" style="background:var(--ts-bronze); border-radius:50%"></div>
+            Check-in rồi
+          </div>
+          <div class="ts-legend-item">
+            <div class="ts-legend-dot" style="background:var(--ts-border); border-radius:50%"></div>
+            Chưa chấm
+          </div>
+        </div>
+
+        <div class="ts-cal-grid" id="tsCalGrid"></div>
+
+        <!-- Day detail (click to view) -->
+        <div class="ts-day-detail" id="tsDayDetail" style="display:none;">
+          <div class="ts-detail-header">
+            <span class="ts-detail-date" id="tsDetailDate">--</span>
+            <span class="ts-detail-badge none" id="tsDetailBadge">Chưa chấm</span>
+          </div>
+          <div class="ts-detail-row">
+            <div class="ts-detail-field">
+              <div class="ts-detail-field-label">Check-in</div>
+              <div class="ts-detail-field-value" id="tsDetailIn">--:--</div>
+            </div>
+            <div class="ts-detail-field">
+              <div class="ts-detail-field-label">Check-out</div>
+              <div class="ts-detail-field-value" id="tsDetailOut">--:--</div>
+            </div>
+          </div>
+          <div class="ts-detail-row">
+            <div class="ts-detail-field">
+              <div class="ts-detail-field-label">Tổng giờ</div>
+              <div class="ts-detail-field-value" id="tsDetailTotal">--</div>
+            </div>
+            <div class="ts-detail-field">
+              <div class="ts-detail-field-label">Tăng ca</div>
+              <div class="ts-detail-field-value" id="tsDetailOT">--</div>
+            </div>
+          </div>
+          <div class="ts-detail-note" id="tsDetailNoteBox">
+            <div class="ts-detail-note-label">Ghi chú</div>
+            <div class="ts-detail-note-value" id="tsDetailNote">--</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    'use strict';
+
+    var calMonth = new Date().getMonth() + 1;
+    var calYear = new Date().getFullYear();
+    var selectedDayDate = null;
+
+    // Sync theme slider
+    function syncThemeSlider() {
+      var theme = document.documentElement.getAttribute('data-theme');
+      var slider = document.getElementById('tsThemeSlider');
+      if (slider) slider.style.transform = theme === 'light' ? 'translateX(34px)' : 'translateX(0)';
+    }
+
+    var savedTheme = localStorage.getItem('hiconique-theme');
+    if (savedTheme) syncThemeSlider();
+
+    var themeToggle = document.querySelector('[data-theme-toggle]');
+    if (themeToggle) {
+      themeToggle.addEventListener('click', function() {
+        setTimeout(syncThemeSlider, 10);
+      });
+    }
+
+    // helpers
+    function getToday() {
+      var now = new Date();
+      return now.getFullYear() + '-' +
+        String(now.getMonth() + 1).padStart(2, '0') + '-' +
+        String(now.getDate()).padStart(2, '0');
+    }
+
+    function getUserId() {
+      if (typeof Auth !== 'undefined' && Auth.getCurrentUser) {
+        var u = Auth.getCurrentUser();
+        return u ? u.id : 'guest';
+      }
+      return 'guest';
+    }
+
+    function getEntries() {
+      if (typeof TaskManager !== 'undefined' && TaskManager.getTimesheetEntries) {
+        return TaskManager.getTimesheetEntries({ memberId: getUserId() });
+      }
+      return [];
+    }
+
+    function getEntryByDate(dateStr) {
+      var entries = getEntries();
+      for (var i = 0; i < entries.length; i++) {
+        if (entries[i].date === dateStr) return entries[i];
+      }
+      return null;
+    }
+
+    // Clock
+    function updateClock() {
+      var now = new Date();
+      var hh = String(now.getHours()).padStart(2, '0');
+      var mm = String(now.getMinutes()).padStart(2, '0');
+      var ss = String(now.getSeconds()).padStart(2, '0');
+      document.getElementById('tsClock').textContent = hh + ':' + mm + ':' + ss;
+      var dow = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'][now.getDay()];
+      document.getElementById('tsDate').textContent = dow + ', ' +
+        now.toLocaleDateString('vi-VN', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    // Update checkin button
+    function updateCheckinUI() {
+      var record = getEntryByDate(getToday());
+      var btn = document.getElementById('tsCheckinBtn');
+      var status = document.getElementById('tsCheckinStatus');
+
+      if (record && record.checkoutTime) {
+        btn.textContent = 'Đã hoàn thành';
+        btn.disabled = true;
+        btn.className = 'ts-checkin-btn done';
+        status.className = 'ts-checkin-status working';
+        status.innerHTML = '✓ Check-in: ' + record.checkinTime + ' &nbsp;|&nbsp; Check-out: ' + record.checkoutTime + '<br>Tổng: ' + record.totalHours + 'h';
+      } else if (record) {
+        btn.textContent = 'Check Out';
+        btn.className = 'ts-checkin-btn out';
+        btn.disabled = false;
+        status.className = 'ts-checkin-status working';
+        status.textContent = 'Đang làm việc từ ' + record.checkinTime;
+      } else {
+        btn.textContent = 'Check In';
+        btn.className = 'ts-checkin-btn in';
+        btn.disabled = false;
+        status.className = 'ts-checkin-status idle';
+        status.textContent = 'Chưa check-in hôm nay';
+      }
+      updateStats();
+    }
+
+    function updateStats() {
+      var entries = getEntries();
+      var totalDays = 0, totalHours = 0, overtimeHours = 0;
+      for (var i = 0; i < entries.length; i++) {
+        var r = entries[i];
+        if (r.checkoutTime) {
+          totalDays++;
+          totalHours += parseFloat(r.totalHours) || 0;
+          overtimeHours += parseFloat(r.overtimeHours) || 0;
+        }
+      }
+      document.getElementById('tsTotalDays').textContent = totalDays;
+      document.getElementById('tsTotalHours').textContent = totalHours.toFixed(1) + 'h';
+      document.getElementById('tsOvertime').textContent = overtimeHours.toFixed(1) + 'h';
+      document.getElementById('tsAvgHours').textContent = totalDays > 0 ? (totalHours / totalDays).toFixed(1) + 'h' : '0h';
+    }
+
+    function checkIn() {
+      var now = new Date();
+      var time = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+      var entry = {
+        id: 'TS_' + Date.now(),
+        memberId: getUserId(),
+        date: getToday(),
+        checkinTime: time,
+        checkoutTime: '',
+        totalHours: 0,
+        overtimeHours: 0,
+        status: 'working',
+        note: ''
+      };
+      if (typeof TaskManager !== 'undefined' && TaskManager.addTimesheetEntry) {
+        TaskManager.addTimesheetEntry(entry);
+      }
+      updateCheckinUI();
+      renderCalendar();
+    }
+
+    function checkOut() {
+      var record = getEntryByDate(getToday());
+      if (!record) return;
+      var now = new Date();
+      var checkoutTime = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+      var checkinMs = new Date(record.date + 'T' + record.checkinTime.replace(/\./g, ':')).getTime();
+      var checkoutMs = now.getTime();
+      var hours = (checkoutMs - checkinMs) / (1000 * 60 * 60);
+      var overtime = Math.max(0, hours - 8);
+      var updates = {
+        checkoutTime: checkoutTime,
+        totalHours: parseFloat(hours.toFixed(1)),
+        overtimeHours: parseFloat(overtime.toFixed(1)),
+        status: 'completed'
+      };
+      if (typeof TaskManager !== 'undefined' && TaskManager.updateTimesheetEntry) {
+        TaskManager.updateTimesheetEntry(record.id, updates);
+      }
+      updateCheckinUI();
+      renderCalendar();
+    }
+
+    // Calendar — weeks start on Monday (ISO)
+    function renderCalendar() {
+      var grid = document.getElementById('tsCalGrid');
+      var title = document.getElementById('tsCalTitle');
+      title.textContent = 'Tháng ' + calMonth + '/' + calYear;
+
+      // Day headers — T2 first (ISO week)
+      var dayNames = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+      var html = '';
+      for (var d = 0; d < 7; d++) {
+        html += '<div class="ts-cal-day-header">' + dayNames[d] + '</div>';
+      }
+
+      var firstDay = new Date(calYear, calMonth - 1, 1);
+      // getDay(): 0=Sun,1=Mon,... → ISO: Mon=0
+      var startDay = (firstDay.getDay() + 6) % 7; // Mon=0
+
+      var lastDay = new Date(calYear, calMonth, 0).getDate();
+      var today = getToday();
+      var entries = getEntries();
+
+      // Prev month padding
+      var prevMonth = new Date(calYear, calMonth - 1, 0).getDate();
+      for (var p = startDay - 1; p >= 0; p--) {
+        html += '<div class="ts-cal-day other-month"><span class="ts-day-num">' + (prevMonth - p) + '</span></div>';
+      }
+
+      // Current month
+      for (var day = 1; day <= lastDay; day++) {
+        var dateStr = calYear + '-' + String(calMonth).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+        var isToday = dateStr === today;
+        var record = null;
+        for (var k = 0; k < entries.length; k++) {
+          if (entries[k].date === dateStr && entries[k].checkinTime) {
+            record = entries[k];
+            break;
+          }
+        }
+        var dayOfWeek = new Date(dateStr).getDay();
+        var isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+        var cls = 'ts-cal-day';
+        if (isToday) cls += ' today';
+        if (record) cls += record.checkoutTime ? ' checked' : ' partial-check';
+        if (isWeekend) cls += ' other-month';
+
+        var dot = '';
+        if (record) {
+          dot = '<span class="ts-day-dot">' + (record.checkoutTime ? '●' : '○') + '</span>';
+        }
+
+        html += '<div class="' + cls + '" data-date="' + dateStr + '">' +
+          '<span class="ts-day-num">' + day + '</span>' + dot + '</div>';
+      }
+
+      // Next month padding to complete grid
+      var totalCells = startDay + lastDay;
+      var remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+      for (var n = 1; n <= remaining; n++) {
+        html += '<div class="ts-cal-day other-month"><span class="ts-day-num">' + n + '</span></div>';
+      }
+
+      grid.innerHTML = html;
+
+      // Click to view day detail
+      grid.querySelectorAll('.ts-cal-day:not(.other-month)').forEach(function(cell) {
+        cell.addEventListener('click', function() {
+          var dateStr = cell.dataset.date;
+          showDayDetail(dateStr);
+        });
+      });
+    }
+
+    function showDayDetail(dateStr) {
+      var detail = document.getElementById('tsDayDetail');
+      var d = new Date(dateStr + 'T00:00:00');
+      var dow = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][d.getDay()];
+      document.getElementById('tsDetailDate').textContent =
+        dow + ', ' + d.toLocaleDateString('vi-VN', { day: 'numeric', month: 'long', year: 'numeric' });
+
+      var record = getEntryByDate(dateStr);
+      var badge = document.getElementById('tsDetailBadge');
+      var detailIn = document.getElementById('tsDetailIn');
+      var detailOut = document.getElementById('tsDetailOut');
+      var detailTotal = document.getElementById('tsDetailTotal');
+      var detailOT = document.getElementById('tsDetailOT');
+      var detailNote = document.getElementById('tsDetailNote');
+
+      if (record && record.checkoutTime) {
+        badge.className = 'ts-detail-badge full';
+        badge.textContent = 'Đã chấm đủ';
+        detailIn.textContent = record.checkinTime;
+        detailOut.textContent = record.checkoutTime;
+        detailTotal.textContent = record.totalHours + 'h';
+        detailOT.textContent = record.overtimeHours > 0 ? record.overtimeHours + 'h' : '—';
+        detailNote.textContent = record.note || '—';
+      } else if (record) {
+        badge.className = 'ts-detail-badge partial';
+        badge.textContent = 'Chỉ check-in';
+        detailIn.textContent = record.checkinTime;
+        detailOut.textContent = '—';
+        detailTotal.textContent = 'Đang làm';
+        detailOT.textContent = '—';
+        detailNote.textContent = record.note || '—';
+      } else {
+        badge.className = 'ts-detail-badge none';
+        badge.textContent = 'Chưa chấm';
+        detailIn.textContent = '—';
+        detailOut.textContent = '—';
+        detailTotal.textContent = '—';
+        detailOT.textContent = '—';
+        detailNote.textContent = '—';
+      }
+
+      detail.style.display = 'block';
+      detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // Init
+    document.getElementById('tsCheckinBtn').addEventListener('click', function() {
+      var record = getEntryByDate(getToday());
+      if (record && !record.checkoutTime) checkOut();
+      else checkIn();
+    });
+
+    document.getElementById('tsPrevMonth').addEventListener('click', function() {
+      calMonth--;
+      if (calMonth < 1) { calMonth = 12; calYear--; }
+      document.getElementById('tsDayDetail').style.display = 'none';
+      renderCalendar();
+    });
+
+    document.getElementById('tsNextMonth').addEventListener('click', function() {
+      calMonth++;
+      if (calMonth > 12) { calMonth = 1; calYear++; }
+      document.getElementById('tsDayDetail').style.display = 'none';
+      renderCalendar();
+    });
+
+    renderCalendar();
+    updateCheckinUI();
+
+    if (typeof Auth !== 'undefined' && Auth.getCurrentUser && !Auth.getCurrentUser()) {
+      Auth.showLoginModal();
+    }
+  })();
+  </script>
+</body>
+</html>

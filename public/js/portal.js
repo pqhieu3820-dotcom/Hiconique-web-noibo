@@ -10,24 +10,28 @@
   // ----- Theme Toggle -----
   var themeToggle = document.querySelectorAll('[data-theme-toggle]');
   var html = document.documentElement;
+  var state = { miniTaskFilter: 'all' };
 
   function setTheme(theme) {
-    if (theme === 'light') {
-      html.setAttribute('data-theme', 'light');
-      localStorage.setItem('hiconique-theme', 'light');
-    } else {
-      html.removeAttribute('data-theme');
-      localStorage.setItem('hiconique-theme', 'dark');
-    }
+    html.setAttribute('data-theme', theme);
+    localStorage.setItem('hiconique-theme', theme);
+    // Sync all theme sliders on the page
+    document.querySelectorAll('[id$="ThemeSlider"]').forEach(function(slider) {
+      slider.style.transform = theme === 'light' ? 'translateX(34px)' : 'translateX(0)';
+    });
+    // Sync theme-toggle-pill slider (index page)
+    var pillSliders = document.querySelectorAll('.theme-toggle-slider');
+    pillSliders.forEach(function(s) {
+      s.style.transform = theme === 'light' ? 'translateX(40px)' : 'translateX(0)';
+    });
   }
 
   function initTheme() {
     var saved = localStorage.getItem('hiconique-theme');
-    if (saved === 'light') {
-      html.setAttribute('data-theme', 'light');
-    } else if (!saved && window.matchMedia('(prefers-color-scheme: light)').matches) {
-      html.setAttribute('data-theme', 'light');
+    if (saved === 'light' || saved === 'dark') {
+      html.setAttribute('data-theme', saved);
     }
+    // Default is dark (html has data-theme="dark" in markup)
   }
 
   initTheme();
@@ -36,7 +40,7 @@
   themeToggle.forEach(function(toggle) {
     toggle.addEventListener('click', function () {
       var current = html.getAttribute('data-theme');
-      setTheme(current === 'light' ? 'dark' : 'light');
+      setTheme(current === 'dark' ? 'light' : 'dark');
     });
   });
 
@@ -47,10 +51,63 @@
     var now = new Date();
     var hh = String(now.getHours()).padStart(2, '0');
     var mm = String(now.getMinutes()).padStart(2, '0');
+    var ss = String(now.getSeconds()).padStart(2, '0');
     el.textContent = hh + ':' + mm;
+    var timeEl = document.getElementById('heroStatTime');
+    if (timeEl) timeEl.textContent = hh + ':' + mm + ':' + ss;
   }
   updateClock();
-  setInterval(updateClock, 30 * 1000);
+  setInterval(updateClock, 1000);
+
+  // ----- Hero stat: real-time date + active members -----
+  var VI_DOW = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+
+  function updateHeroStat() {
+    var dateEl = document.getElementById('heroStatDate');
+    var totalEl = document.getElementById('heroStatTotal');
+    var onlineEl = document.getElementById('heroStatOnline');
+    var numberEl = document.getElementById('heroStatNumber');
+    var dotEl = document.getElementById('heroStatDot');
+    if (!dateEl) return;
+
+    var now = new Date();
+    var dow = VI_DOW[now.getDay()];
+    var dd = String(now.getDate()).padStart(2, '0');
+    var mm = String(now.getMonth() + 1).padStart(2, '0');
+    var yyyy = now.getFullYear();
+    dateEl.textContent = dow + ', ' + dd + '/' + mm + '/' + yyyy;
+
+    var members = (typeof TaskManager !== 'undefined' && TaskManager.getMembers) ? TaskManager.getMembers() : [];
+    var tasks = (typeof TaskManager !== 'undefined' && TaskManager.getTasks) ? TaskManager.getTasks() : [];
+    var hour = now.getHours();
+    var isWorkHour = hour >= 8 && hour < 18;
+    var isWeekday = now.getDay() >= 1 && now.getDay() <= 5;
+
+    // Active = có task đang in-progress HOẶC trong giờ làm việc ngày thường
+    var activeIds = {};
+    tasks.forEach(function (t) {
+      if (t.status === 'in-progress' && t.assigneeId) {
+        activeIds[t.assigneeId] = true;
+      }
+    });
+    if (isWorkHour && isWeekday) {
+      members.forEach(function (m) {
+        if (m.id) activeIds[m.id] = true;
+      });
+    }
+
+    var onlineCount = Object.keys(activeIds).length;
+    var totalCount = members.length;
+
+    if (totalEl) totalEl.textContent = totalCount;
+    if (onlineEl) onlineEl.textContent = onlineCount;
+    if (numberEl) numberEl.textContent = onlineCount;
+    if (dotEl) {
+      dotEl.style.background = (onlineCount > 0 && isWorkHour) ? '#4F6F52' : '#A04848';
+    }
+  }
+  updateHeroStat();
+  setInterval(updateHeroStat, 30000);
 
   // ----- Search overlay -----
   var overlay = document.querySelector('[data-search-overlay]');
@@ -72,46 +129,409 @@
     if (e.target === overlay) closeSearch();
   });
   document.addEventListener('keydown', function (e) {
-    if (e.key === '/' && !overlay.hidden === false) { e.preventDefault(); openSearch(); }
+    if (e.key === '/' && overlay && overlay.hidden) { e.preventDefault(); openSearch(); }
     if (e.key === 'Escape') closeSearch();
   });
 
-  // ----- Team directory (sample data — replace with Sheets/Notion for prod) -----
-  var team = [
-    { initials: 'HQ', name: 'Trần Minh Quân',     role: 'CEO',                  days: 309, status: 'Hoạt động', color: '#B08D57' },
-    { initials: 'HN', name: 'Nguyễn Hiếu',        role: 'Trưởng phòng Thiết kế', days: 343, status: 'Thiết kế nội thất', color: '#8E7CC3' },
-    { initials: 'PH', name: 'Phạm Hoàng',          role: 'Giám sát thi công',     days: 282, status: 'Giám sát thi công', color: '#C7A464' },
-    { initials: 'AL', name: 'Lê Anh',              role: 'Trưởng phòng KD',       days: 101, status: 'KD', color: '#9AA0A6' },
-    { initials: 'TM', name: 'Trần Mạnh',           role: 'Truyền thông',          days: 181, status: 'Truyền thông', color: '#4F6F52' },
-    { initials: 'TM', name: 'Tô Mai',              role: 'Thiết kế',              days: 101, status: 'Thiết kế nội thất', color: '#8C6F40' },
-    { initials: 'GP', name: 'Giản Phương',         role: 'Thiết kế',              days: 101, status: 'Thiết kế nội thất', color: '#A16207' },
-    { initials: 'LA', name: 'Lâm Anh',             role: 'Truyền thông',          days: 101, status: 'Truyền thông', color: '#2A3B55' },
-    { initials: 'TM', name: 'Thành viên 10',       role: 'Vai trò',               days: 101, status: 'Vai trò', color: '#6B7280' },
-    { initials: 'HQ', name: 'Hoàng Quân',          role: 'HR',                    days: 374, status: 'HR', color: '#475569' }
-  ];
+  // ----- Team directory (from Google Sheets via TaskManager) -----
+  function getInitials(name) {
+    if (!name) return '??';
+    var parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[parts.length - 2] || '').charAt(0) + (parts[parts.length - 1] || '').charAt(0);
+  }
 
-  var grid = document.getElementById('team-grid');
-  if (grid) {
-    grid.innerHTML = team.map(function (m) {
+  function daysAtCompany(createdAt) {
+    if (!createdAt) return null;
+    var start = new Date(createdAt);
+    if (isNaN(start.getTime())) return null;
+    var now = new Date();
+    var diffMs = now - start;
+    if (diffMs < 0) return 0;
+    return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  }
+
+  function renderTeamGrid(members) {
+    var grid = document.getElementById('team-grid');
+    var countEl = document.querySelector('.eyebrow-count');
+    if (!grid) return;
+
+    if (countEl) {
+      countEl.textContent = (members.length > 0 ? members.length : '…') + ' thành viên';
+    }
+
+    if (!members || members.length === 0) {
+      grid.innerHTML = '<p style="color:#9AA0A6;padding:2rem;text-align:center;">Đang tải dữ liệu team…</p>';
+      return;
+    }
+
+    grid.innerHTML = members.map(function (m) {
+      var initials = m.avatar || getInitials(m.name);
+      var color = m.color || '#6B7280';
+      var role = m.role || m.position || '';
+      var email = m.email || '';
+      var status = m.status || (m.roleLevel ? m.roleLevel.charAt(0).toUpperCase() + m.roleLevel.slice(1) : '—');
+      var days = daysAtCompany(m.createdAt);
+      var daysLabel = days !== null ? (days + ' ngày làm việc') : '—';
+      var joinDate = m.createdAt ? new Date(m.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+
       return ''
         + '<article class="team-card">'
-        +   '<div class="team-avatar" style="background:' + m.color + '">' + m.initials + '</div>'
-        +   '<h3 class="team-name">' + m.name + ' HICONIQUE</h3>'
-        +   '<p class="team-role">' + m.role + '</p>'
+        +   '<div class="team-avatar" style="background:' + color + '">' + initials + '</div>'
+        +   '<h3 class="team-name">' + (m.name || '—') + '</h3>'
+        +   '<p class="team-role">' + role + '</p>'
         +   '<div class="team-stat">'
-        +     '<span>' + m.days + ' ngày công</span>'
-        +     '<span>HICONIQUE</span>'
-        +     '<span>' + m.status + '</span>'
+        +     '<span>' + email + '</span>'
+        +     '<span>' + daysLabel + '</span>'
+        +     '<span>' + status + '</span>'
+        +   '</div>'
+        +   '<div class="team-meta-row">'
+        +     (joinDate ? '<span class="team-tenure" title="Gia nhập từ ' + joinDate + '">📅 ' + joinDate + '</span>' : '')
         +   '</div>'
         +   '<div class="team-actions">'
-        +     '<a href="#" class="team-action" aria-label="Nhắn tin">'
-        +       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>'
-        +     '</a>'
-        +     '<a href="#" class="team-action" aria-label="Gọi điện">'
-        +       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>'
+        +     '<a href="mailto:' + email + '" class="team-action" aria-label="Gửi email">'
+        +       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>'
         +     '</a>'
         +   '</div>'
         + '</article>';
     }).join('');
+  }
+
+  function loadTeam() {
+    // Try TaskManager first (populated from Sheets), then fall back to stored JSON
+    var members = [];
+    if (typeof TaskManager !== 'undefined' && TaskManager.getMembers) {
+      members = TaskManager.getMembers();
+    }
+    if (members.length > 0) {
+      renderTeamGrid(members);
+      return;
+    }
+    // Wait a bit for async Sheets fetch to populate localStorage
+    var attempts = 0;
+    var poll = setInterval(function () {
+      attempts++;
+      if (typeof TaskManager !== 'undefined' && TaskManager.getMembers) {
+        members = TaskManager.getMembers();
+      }
+      if (members.length > 0 || attempts > 20) {
+        clearInterval(poll);
+        renderTeamGrid(members);
+      }
+    }, 300);
+  }
+
+  // Load team on DOM ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadTeam);
+  } else {
+    loadTeam();
+  }
+
+  // ----- Expand panels (Tasks / Dự án) -----
+  function escapeHtml(str) {
+    if (str === undefined || str === null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function todayStr() {
+    var now = new Date();
+    return now.getFullYear() + '-' +
+      String(now.getMonth() + 1).padStart(2, '0') + '-' +
+      String(now.getDate()).padStart(2, '0');
+  }
+
+  function isOverdue(task) {
+    if (!task.deadline || task.status === 'completed') return false;
+    return new Date(task.deadline) < new Date(todayStr() + 'T00:00');
+  }
+
+  function fmtDate(deadline) {
+    if (!deadline) return '';
+    var d = new Date(deadline);
+    if (isNaN(d.getTime())) return '';
+    return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
+  }
+
+  function priorityLabel(p) {
+    if (p === 'high') return 'Cao';
+    if (p === 'medium') return 'Trung bình';
+    return 'Thấp';
+  }
+
+  function renderTasksPanel() {
+    var list = document.getElementById('panelTasksList');
+    if (!list) return;
+
+    var tasks = (typeof TaskManager !== 'undefined' && TaskManager.getTasks) ? TaskManager.getTasks() : [];
+    var user = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
+
+    // Show user's tasks, fall back to all tasks if none assigned
+    var mine = user ? tasks.filter(function (t) { return t.assigneeId === user.id; }) : tasks;
+    var displayTasks = mine.length > 0 ? mine : tasks;
+
+    var inProgress = displayTasks.filter(function (t) { return t.status === 'in-progress'; }).length;
+    var overdue = displayTasks.filter(isOverdue).length;
+
+    var elMyTasks = document.getElementById('panelMyTasks');
+    var elMyDoing = document.getElementById('panelMyDoing');
+    var elMyOverdue = document.getElementById('panelMyOverdue');
+    if (elMyTasks) elMyTasks.textContent = displayTasks.length;
+    if (elMyDoing) elMyDoing.textContent = inProgress;
+    if (elMyOverdue) elMyOverdue.textContent = overdue;
+
+    // Store globally for filter pills
+    window.__panelTasks = displayTasks;
+
+    renderTasksPanelFiltered(state.miniTaskFilter || 'all');
+
+    // Wire filter pills
+    document.querySelectorAll('.task-filter-pill').forEach(function (pill) {
+      pill.addEventListener('click', function () {
+        document.querySelectorAll('.task-filter-pill').forEach(function (p) { p.classList.remove('active'); });
+        pill.classList.add('active');
+        state.miniTaskFilter = pill.dataset.miniFilter;
+        renderTasksPanelFiltered(state.miniTaskFilter);
+      });
+    });
+
+    // Wire checkbox toggles
+    list.querySelectorAll('.tl-checkbox').forEach(function (cb) {
+      cb.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var taskId = cb.dataset.taskId;
+        if (taskId && typeof TaskManager !== 'undefined' && TaskManager.toggleTaskStatus) {
+          TaskManager.toggleTaskStatus(taskId);
+          renderTasksPanel();
+        }
+      });
+    });
+  }
+
+  function renderTasksPanelFiltered(filter) {
+    var list = document.getElementById('panelTasksList');
+    if (!list) return;
+    var displayTasks = window.__panelTasks || [];
+
+    var filtered;
+    if (filter === 'all') filtered = displayTasks;
+    else if (filter === 'in-progress') filtered = displayTasks.filter(function (t) { return t.status === 'in-progress'; });
+    else if (filter === 'pending') filtered = displayTasks.filter(function (t) { return t.status === 'pending'; });
+    else if (filter === 'overdue') filtered = displayTasks.filter(isOverdue);
+    else filtered = displayTasks;
+
+    if (filtered.length === 0) {
+      var msg = filter === 'all'
+        ? 'Chưa có công việc nào. Hãy tạo việc mới từ Dashboard Dự án.'
+        : 'Không có việc nào khớp với bộ lọc này.';
+      list.innerHTML = '<li class="empty-state-mini"><div class="empty-icon">📋</div><div class="empty-title">' + msg + '</div></li>';
+      return;
+    }
+
+    list.innerHTML = filtered.map(function (task) {
+      var isDone = task.status === 'completed';
+      var project = (typeof TaskManager !== 'undefined' && TaskManager.getProject) ? TaskManager.getProject(task.projectId) : null;
+      var assignee = (typeof TaskManager !== 'undefined' && TaskManager.getMember) ? TaskManager.getMember(task.assigneeId) : null;
+      var dueClass = '';
+      var dueIcon = '📅';
+      var dueText = '';
+      if (task.deadline) {
+        if (isOverdue(task)) { dueClass = 'overdue'; dueIcon = '⚠'; }
+        else if (isTodayOrTomorrow(task.deadline)) { dueClass = 'today'; dueIcon = '⏰'; }
+        dueText = fmtDate(task.deadline);
+      }
+      var assigneeInitials = assignee ? escapeHtml(assignee.avatar || (assignee.name || '?').substring(0, 2).toUpperCase()) : '';
+      var assigneeColor = assignee ? (assignee.color || '#6B7280') : '#6B7280';
+      var assigneeName = assignee ? escapeHtml(assignee.name || '') : '';
+
+      return ''
+        + '<li class="priority-' + (task.priority || 'medium') + ' ' + (isDone ? 'is-done' : '') + '">'
+        +   '<button class="tl-checkbox" data-task-id="' + escapeHtml(task.id) + '" aria-label="Đánh dấu hoàn thành">'
+        +     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>'
+        +   '</button>'
+        +   '<div class="tl-content">'
+        +     '<div class="tl-top">'
+        +       '<span class="tl-title ' + (isDone ? 'is-done' : '') + '">' + escapeHtml(task.title || '—') + '</span>'
+        +       (project ? '<span class="tl-project">📁 ' + escapeHtml(project.name) + '</span>' : '')
+        +     '</div>'
+        +     (assignee ? '<div class="tl-meta"><span>👤 ' + assigneeName + '</span></div>' : '')
+        +   '</div>'
+        +   '<div class="tl-right">'
+        +     '<span class="tl-priority priority-' + (task.priority || 'medium') + '">' + priorityLabel(task.priority) + '</span>'
+        +     (dueText ? '<span class="tl-due ' + dueClass + '">' + dueIcon + ' ' + dueText + '</span>' : '')
+        +     (assigneeInitials ? '<span class="tl-assignee" style="background:' + assigneeColor + '" title="' + assigneeName + '">' + assigneeInitials + '</span>' : '')
+        +   '</div>'
+        + '</li>';
+    }).join('');
+  }
+
+  function isTodayOrTomorrow(dateStr) {
+    if (!dateStr) return false;
+    var d = new Date(dateStr);
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    var tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return d >= today && d < tomorrow;
+  }
+
+  function renderProjectsPanel() {
+    var grid = document.getElementById('panelProjectsGrid');
+    if (!grid) return;
+
+    var projects = (typeof TaskManager !== 'undefined' && TaskManager.getProjects) ? TaskManager.getProjects() : [];
+    var tasks = (typeof TaskManager !== 'undefined' && TaskManager.getTasks) ? TaskManager.getTasks() : [];
+
+    var active = projects.filter(function (p) { return p.status !== 'completed'; }).length;
+    var openTasks = tasks.filter(function (t) { return t.status !== 'completed'; }).length;
+
+    var elTotal = document.getElementById('panelProjTotal');
+    var elActive = document.getElementById('panelProjActive');
+    var elOpen = document.getElementById('panelProjOpenTasks');
+    if (elTotal) elTotal.textContent = projects.length;
+    if (elActive) elActive.textContent = active;
+    if (elOpen) elOpen.textContent = openTasks;
+
+    if (projects.length === 0) {
+      grid.innerHTML = '<p style="color:#9AA0A6;padding:1.5rem;text-align:center;">Chưa có dự án nào.</p>';
+      return;
+    }
+
+    grid.innerHTML = projects.map(function (p) {
+      var projTasks = tasks.filter(function (t) { return t.projectId === p.id; });
+      var projOpen = projTasks.filter(function (t) { return t.status !== 'completed'; }).length;
+      var progress = p.progress || 0;
+      var status = p.status || 'on-track';
+      var statusLabel = status === 'completed' ? 'Hoàn thành' : (status === 'at-risk' ? 'Có rủi ro' : 'Đang chạy');
+      var projColor = p.color || '#B08D57';
+
+      // Member avatars
+      var memberIds = p.members || [];
+      var avatarsHtml = '';
+      var members = (typeof TaskManager !== 'undefined' && TaskManager.getMembers) ? TaskManager.getMembers() : [];
+      memberIds.slice(0, 4).forEach(function (mid) {
+        var m = members.filter(function (mm) { return mm.id === mid; })[0];
+        if (m) {
+          var init = escapeHtml(m.avatar || (m.name || '?').substring(0, 2).toUpperCase());
+          avatarsHtml += '<span class="pcm-avatar" style="background:' + (m.color || '#6B7280') + '" title="' + escapeHtml(m.name || '') + '">' + init + '</span>';
+        }
+      });
+      if (memberIds.length > 4) {
+        avatarsHtml += '<span class="pcm-avatar" style="background:var(--color-text-faint);color:#0B0D10">+' + (memberIds.length - 4) + '</span>';
+      }
+
+      return ''
+        + '<article class="project-card-mini" style="--proj-color:' + projColor + '">'
+        +   '<div class="project-card-mini-head">'
+        +     '<h4>' + escapeHtml(p.name || '—') + '</h4>'
+        +     '<span class="pcm-status ' + status + '">' + statusLabel + '</span>'
+        +   '</div>'
+        +   '<p class="pcm-type">' + escapeHtml(p.type || '') + '</p>'
+        +   '<div class="pcm-progress"><span style="width:' + progress + '%"></span></div>'
+        +   '<div class="pcm-meta">'
+        +     '<span class="pcm-tasks">📋 ' + projOpen + ' việc mở · ' + progress + '%</span>'
+        +     '<span class="pcm-avatars">' + avatarsHtml + '</span>'
+        +   '</div>'
+        + '</article>';
+    }).join('');
+  }
+
+  function bindExpandPanels() {
+    var navLinks = document.querySelectorAll('.nav-link[data-panel]');
+    var panels = document.querySelectorAll('.expand-panel');
+    var closeBtns = document.querySelectorAll('[data-close-panel]');
+
+    function closeAllPanels() {
+      panels.forEach(function (p) { p.hidden = true; });
+      navLinks.forEach(function (l) { l.classList.remove('active'); });
+    }
+
+    function openPanel(name) {
+      closeAllPanels();
+      var target = document.getElementById('panel-' + name);
+      if (!target) return;
+
+      if (name === 'tasks') renderTasksPanel();
+      if (name === 'projects') renderProjectsPanel();
+
+      target.hidden = false;
+      navLinks.forEach(function (l) {
+        if (l.dataset.panel === name) l.classList.add('active');
+      });
+
+      // Smooth scroll to top of panel
+      setTimeout(function () {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 50);
+    }
+
+    navLinks.forEach(function (link) {
+      link.addEventListener('click', function (e) {
+        e.preventDefault();
+        var name = link.dataset.panel;
+        var isActive = link.classList.contains('active');
+        if (isActive) {
+          closeAllPanels();
+        } else {
+          openPanel(name);
+        }
+      });
+    });
+
+    // Auto-open the panel from URL hash on load (e.g., #panel-tasks)
+    function openInitialPanel() {
+      var hash = (window.location.hash || '').toLowerCase();
+      var match = hash.match(/^#panel-(\w+)/);
+      if (match) {
+        openPanel(match[1]);
+        return true;
+      }
+      return false;
+    }
+
+    if (!openInitialPanel()) {
+      // Fallback: open tasks panel by default so it's visible immediately
+      openPanel('tasks');
+    }
+
+    closeBtns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        closeAllPanels();
+      });
+    });
+
+    // Esc closes any open panel
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        var open = document.querySelector('.expand-panel:not([hidden])');
+        if (open) closeAllPanels();
+      }
+    });
+  }
+
+  function loadPanels() {
+    if (typeof TaskManager === 'undefined' || !TaskManager.getTasks) {
+      var attempts = 0;
+      var poll = setInterval(function () {
+        attempts++;
+        if ((typeof TaskManager !== 'undefined' && TaskManager.getTasks && TaskManager.getTasks().length > 0) || attempts > 20) {
+          clearInterval(poll);
+          bindExpandPanels();
+        }
+      }, 300);
+    } else {
+      bindExpandPanels();
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadPanels);
+  } else {
+    loadPanels();
   }
 }());

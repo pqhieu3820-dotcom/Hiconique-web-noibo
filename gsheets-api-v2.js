@@ -1,17 +1,20 @@
 const SPREADSHEET_ID = '1usLh4pt5F7r1XY-SLbWPfajYuZ5mDNGaaa4neYG84nY';
+// API URL: https://script.google.com/macros/s/AKfycbwc-b9AMPpl34VNUGHhiUg9wf1Kt5xZ3-XbOHEq128f0yzqlucmbkhnmmrhLa9xUeCR/exec
 
 const SHEETS = {
   projects: 'Projects',
   tasks: 'Tasks',
   members: 'Members',
-  proposals: 'Proposals'
+  proposals: 'Proposals',
+  timesheet: 'Timesheet'
 };
 
 const HEADERS = {
   projects: ['id', 'name', 'type', 'color', 'progress', 'status', 'members', 'createdAt', 'updatedAt'],
-  tasks: ['id', 'title', 'description', 'projectId', 'assigneeId', 'priority', 'status', 'deadline', 'createdBy', 'createdAt', 'updatedAt'],
-  members: ['id', 'name', 'role', 'roleLevel', 'email', 'color', 'avatar'],
-  proposals: ['id', 'title', 'description', 'type', 'status', 'requesterId', 'reviewerId', 'amount', 'createdAt', 'reviewedAt']
+  tasks: ['id', 'title', 'description', 'projectId', 'assigneeId', 'priority', 'status', 'startDate', 'deadline', 'createdBy', 'createdAt', 'updatedAt'],
+  members: ['id', 'name', 'role', 'roleLevel', 'email', 'password', 'dob', 'cccd', 'hometown', 'bankAccount', 'color', 'avatar', 'createdAt'],
+  proposals: ['id', 'title', 'description', 'type', 'status', 'requesterId', 'reviewerId', 'amount', 'createdAt', 'reviewedAt'],
+  timesheet: ['id', 'memberId', 'date', 'checkinTime', 'checkoutTime', 'totalHours', 'overtimeHours', 'status']
 };
 
 function doGet(e) { return handleRequest(e); }
@@ -71,6 +74,12 @@ function handleRequest(e) {
       result = updateData(ss, SHEETS.proposals, params.id, { status: 'approved', reviewedAt: new Date().toISOString() });
     } else if (action === 'rejectProposal') {
       result = updateData(ss, SHEETS.proposals, params.id, { status: 'rejected', reviewedAt: new Date().toISOString() });
+    } else if (action === 'getTimesheet') {
+      result = getAllData(ss, SHEETS.timesheet);
+    } else if (action === 'addTimesheet') {
+      result = addData(ss, SHEETS.timesheet, JSON.parse(params.data));
+    } else if (action === 'updateTimesheet') {
+      result = updateData(ss, SHEETS.timesheet, params.id, JSON.parse(params.data));
     } else {
       result = { error: 'Unknown action: ' + action };
     }

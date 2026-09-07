@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thông tin cá nhân · HICONIQUE</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/reset.css">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/portal.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <script src="/js/gsheets-config.js"></script>
+  <script src="/js/task-data.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/portal.js"></script>
+  <style>
+    :root {
+      --pf-bg: var(--color-bg);
+      --pf-surface: var(--color-surface);
+      --pf-border: var(--color-border);
+      --pf-text: var(--color-text);
+      --pf-muted: var(--color-text-muted);
+      --pf-bronze: var(--color-bronze);
+    }
+
+    body { background: var(--pf-bg); color: var(--pf-text); font-family: 'Inter', -apple-system, sans-serif; min-height: 100vh; }
+
+    .pf-header {
+      background: var(--pf-surface);
+      border-bottom: 1px solid var(--pf-border);
+      padding: 14px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(8px);
+    }
+
+    .pf-header-left { display: flex; align-items: center; gap: 16px; }
+
+    .pf-logo {
+      width: 40px; height: 40px;
+      background: var(--pf-bronze);
+      border-radius: 10px;
+      display: grid; place-items: center;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.25rem; font-weight: 700;
+      color: #0B0D10;
+      text-decoration: none;
+    }
+
+    .pf-title-group h1 { font-family: 'Cormorant Garamond', serif; font-size: 1.125rem; font-weight: 600; color: var(--pf-text); margin: 0; }
+    .pf-title-group p { font-size: 0.75rem; color: var(--pf-muted); margin: 2px 0 0; }
+
+    .pf-back {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 14px; border-radius: 8px;
+      font-size: 0.875rem; color: var(--pf-muted);
+      text-decoration: none;
+      border: 1px solid var(--pf-border);
+      background: var(--pf-surface);
+      transition: all 0.15s;
+    }
+
+    .pf-back:hover { color: var(--pf-text); border-color: var(--pf-bronze); }
+
+    .pf-container { max-width: 700px; margin: 0 auto; padding: 40px 32px 60px; }
+
+    .pf-page-title { font-family: 'Cormorant Garamond', serif; font-size: 2rem; font-weight: 600; color: var(--pf-text); margin-bottom: 8px; }
+    .pf-page-sub { color: var(--pf-muted); font-size: 0.875rem; margin-bottom: 32px; }
+
+    .pf-card { background: var(--pf-surface); border: 1px solid var(--pf-border); border-radius: 18px; overflow: hidden; }
+
+    .pf-card-header {
+      padding: 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border-bottom: 1px solid var(--pf-border);
+      background: var(--color-bg);
+    }
+
+    .pf-avatar {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      background: var(--pf-bronze);
+      color: #0B0D10;
+      display: grid; place-items: center;
+      font-size: 1.5rem; font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .pf-name { font-size: 1.25rem; font-weight: 600; color: var(--pf-text); }
+    .pf-role { font-size: 0.875rem; color: var(--pf-muted); margin-top: 4px; }
+    .pf-id-badge {
+      display: inline-block; margin-top: 6px;
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 0.75rem; font-weight: 600;
+      background: rgba(176, 141, 87, 0.12);
+      color: var(--pf-bronze);
+    }
+
+    .pf-card-body { padding: 24px; }
+
+    .pf-section-title {
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--pf-muted);
+      margin-bottom: 12px;
+    }
+
+    .pf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+
+    .pf-field {
+      background: var(--color-bg);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+
+    .pf-field-label { font-size: 0.6875rem; color: var(--pf-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .pf-field-value { font-size: 0.9375rem; font-weight: 500; color: var(--pf-text); }
+
+    .pf-field.full { grid-column: span 2; }
+
+    @media (max-width: 600px) {
+      .pf-container { padding: 24px 16px 60px; }
+      .pf-header { padding: 12px 16px; }
+      .pf-grid { grid-template-columns: 1fr; }
+      .pf-field.full { grid-column: span 1; }
+    }
+  </style>
+</head>
+<body>
+  <header class="pf-header">
+    <div class="pf-header-left">
+      <a href="/" class="pf-logo">H</a>
+      <div class="pf-title-group">
+        <h1>Thông tin cá nhân</h1>
+        <p>Hồ sơ nhân viên</p>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <a href="/" class="pf-back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        Về trang chủ
+      </a>
+      <button class="theme-toggle-pill" aria-label="Chuyển đổi sáng/tối" data-theme-toggle style="position:relative;width:64px;height:30px;display:flex;align-items:center;justify-content:space-between;padding:2px;border-radius:18px;border:1px solid var(--pf-border);background:var(--pf-surface);cursor:pointer;gap:0;flex-shrink:0;">
+        <span style="width:26px;height:26px;border-radius:50%;display:grid;place-items:center;z-index:2;color:var(--pf-bronze);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        </span>
+        <span style="position:absolute;width:26px;height:26px;background:var(--pf-bronze);border-radius:50%;top:2px;left:2px;transition:transform 0.2s;z-index:1;" id="pfThemeSlider"></span>
+        <span style="width:26px;height:26px;border-radius:50%;display:grid;place-items:center;z-index:2;color:#3B6B8C;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </span>
+      </button>
+    </div>
+  </header>
+
+  <div class="pf-container">
+    <h2 class="pf-page-title">Thông tin cá nhân</h2>
+    <p class="pf-page-sub">Hồ sơ nhân viên tại HICONIQUE</p>
+
+    <div class="pf-card">
+      <div class="pf-card-header">
+        <div class="pf-avatar" id="profileAvatar">--</div>
+        <div>
+          <div class="pf-name" id="profileName">--</div>
+          <div class="pf-role" id="profileRole">--</div>
+          <span class="pf-id-badge" id="profileRoleLevel">--</span>
+        </div>
+      </div>
+
+      <div class="pf-card-body">
+        <div class="pf-section-title">Thông tin cơ bản</div>
+        <div class="pf-grid">
+          <div class="pf-field">
+            <div class="pf-field-label">Email</div>
+            <div class="pf-field-value" id="profileEmail">--</div>
+          </div>
+          <div class="pf-field">
+            <div class="pf-field-label">Ngày sinh</div>
+            <div class="pf-field-value" id="profileDob">--</div>
+          </div>
+          <div class="pf-field">
+            <div class="pf-field-label">CCCD/CMND</div>
+            <div class="pf-field-value" id="profileCccd">--</div>
+          </div>
+          <div class="pf-field">
+            <div class="pf-field-label">Quê quán</div>
+            <div class="pf-field-value" id="profileHometown">--</div>
+          </div>
+        </div>
+
+        <div class="pf-section-title">Thông tin tài khoản</div>
+        <div class="pf-grid">
+          <div class="pf-field full">
+            <div class="pf-field-label">Số tài khoản ngân hàng</div>
+            <div class="pf-field-value" id="profileBank">--</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    function syncPfSlider() {
+      var theme = document.documentElement.getAttribute('data-theme');
+      var slider = document.getElementById('pfThemeSlider');
+      if (slider) slider.style.transform = theme === 'light' ? 'translateX(34px)' : 'translateX(0)';
+    }
+    syncPfSlider();
+    document.querySelector('[data-theme-toggle]').addEventListener('click', function() {
+      setTimeout(syncPfSlider, 10);
+    });
+
+    var user = Auth.getCurrentUser();
+    if (!user) { Auth.showLoginModal(); return; }
+
+    document.getElementById('profileAvatar').textContent = user.avatar || '--';
+    document.getElementById('profileName').textContent = user.name || '--';
+    document.getElementById('profileRole').textContent = user.role || '--';
+    document.getElementById('profileEmail').textContent = user.email || '--';
+    document.getElementById('profileDob').textContent = user.dob ? new Date(user.dob).toLocaleDateString('vi-VN') : '--';
+    document.getElementById('profileCccd').textContent = user.cccd || '--';
+    document.getElementById('profileHometown').textContent = user.hometown || '--';
+    document.getElementById('profileBank').textContent = user.bankAccount || '--';
+    var roleLevelBadge = document.getElementById('profileRoleLevel');
+    if (user.roleLevel === 'admin') roleLevelBadge.textContent = 'Quản trị viên';
+    else if (user.roleLevel === 'manager') roleLevelBadge.textContent = 'Quản lý';
+    else roleLevelBadge.textContent = 'Nhân viên';
+  })();
+  </script>
+</body>
+</html>

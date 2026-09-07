@@ -9,6 +9,17 @@
   let modalOverlay = null;
   let currentModal = null;
 
+  // Normalize project.members from Google Sheets string to array
+  function getProjectMembers(project) {
+    if (!project || !project.members) return [];
+    if (Array.isArray(project.members)) return project.members;
+    if (typeof project.members === 'string') {
+      try { return JSON.parse(project.members); } catch(e) {}
+      if (project.members.trim()) return project.members.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    return [];
+  }
+
   // Initialize app
   function init() {
     // Check auth first
@@ -76,26 +87,23 @@
     }
   }
 
-  // Auto-poll from Google Sheets every 15s
+  // Auto-poll from Google Sheets every 60s — gentle update to avoid UI flicker
   function startAutoPolling() {
     if (typeof GSHEETS_CONFIG === 'undefined' || !GSHEETS_CONFIG.USE_GSHEETS) return;
     setInterval(function() {
       if (!TaskManager.refreshFromGSheets) return;
+      // Skip polling if modal is open or user is interacting
+      var modalOpen = document.getElementById('modalOverlay') &&
+                      document.getElementById('modalOverlay').classList.contains('active');
+      if (modalOpen) return;
+
       TaskManager.refreshFromGSheets(function() {
+        // Only update badges and stats numbers — don't rebuild the whole DOM
         updateNavBadges();
-        // Re-render if on dashboard or related view
-        var active = document.querySelector('.tm-nav-item.active');
-        if (active) {
-          var view = active.dataset.view;
-          if (view === 'dashboard') renderDashboard();
-          else if (view === 'projects') renderProjectsView();
-          else if (view === 'my-tasks') renderMyTasks();
-          else if (view === 'team') renderTeam();
-          else if (view === 'calendar') renderCalendar();
-          else if (view === 'proposals') renderProposals();
-        }
+        var stats = TaskManager.getStats();
+        if (stats) updateStats(stats);
       });
-    }, 15000);
+    }, 60000);
   }
 
   // Update nav badge counts with real data
@@ -143,18 +151,23 @@
         btn.disabled = false;
         btn.classList.remove('spinning');
       }
-      // Re-render current view
+      // Re-render current view based on data-view attribute (not text match)
       var activeNav = document.querySelector('.tm-nav-item.active');
-      if (activeNav) {
-        var text = activeNav.textContent.trim();
-        if (text.includes('Dashboard')) renderDashboard();
-        else if (text.includes('Dự án')) renderProjectsView();
-        else if (text.includes('Tasks của tôi')) renderMyTasks();
-        else if (text.includes('Team')) renderTeam();
-        else if (text.includes('Đề xuất')) renderProposals();
-      } else {
-        renderDashboard();
-      }
+      var view = activeNav ? activeNav.dataset.view : 'dashboard';
+      // Skip re-render if modal is open to avoid losing modal state
+      var modalOpen = document.getElementById('modalOverlay') &&
+                      document.getElementById('modalOverlay').classList.contains('active');
+      if (modalOpen) {
+        // Only update badges, not full DOM
+        updateNavBadges();
+      } else if (view === 'dashboard') renderDashboard();
+      else if (view === 'projects') renderProjectsView();
+      else if (view === 'my-tasks') renderMyTasks();
+      else if (view === 'team') renderTeam();
+      else if (view === 'calendar') renderCalendar();
+      else if (view === 'proposals') renderProposals();
+      else if (view === 'settings') renderSettings();
+      else renderDashboard();
 
       if (!silent) {
         var msg = document.createElement('div');
@@ -250,12 +263,26 @@
       }
     });
 
-    // Quick add task button
+    // Create proposal button - FIX: was creating tasks instead
+    document.addEventListener('click', function(e) {
+      const proposalBtn = e.target.closest('[data-action="create-proposal"], .create-proposal-btn');
+      if (proposalBtn) {
+        e.preventDefault();
+        openProposalModal();
+      }
+    });
+
+    // Quick add task button - exclude proposal view
     document.addEventListener('click', function(e) {
       const addBtn = e.target.closest('.quick-add-btn, .add-task-btn, [data-action="add-task"]');
       if (addBtn) {
-        e.preventDefault();
-        openTaskModal();
+        // Only open task modal if NOT on proposals view
+        const activeNav = document.querySelector('.tm-nav-item.active');
+        const isProposalView = activeNav && activeNav.dataset.view === 'proposals';
+        if (!isProposalView) {
+          e.preventDefault();
+          openTaskModal();
+        }
       }
     });
 
@@ -386,10 +413,18 @@
 
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Deadline</label>
+            <label class="form-label">Ngày bắt đầu</label>
+            <input type="datetime-local" class="form-input" name="startDate"
+              value="${task && task.startDate ? task.startDate.slice(0, 16) : (task && task.createdAt ? task.createdAt.slice(0, 16) : '')}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ngày kết thúc (Deadline)</label>
             <input type="datetime-local" class="form-input" name="deadline"
               value="${task && task.deadline ? task.deadline.slice(0, 16) : ''}">
           </div>
+        </div>
+
+        <div class="form-row">
           <div class="form-group">
             <label class="form-label">Trạng thái</label>
             <select class="form-select" name="status">
@@ -398,16 +433,14 @@
               <option value="completed" ${task && task.status === 'completed' ? 'selected' : ''}>Hoàn thành</option>
             </select>
           </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Độ ưu tiên</label>
-          <div class="priority-options">
-            <div class="priority-option high ${task && task.priority === 'high' ? 'active' : ''}" data-value="high">Cao</div>
-            <div class="priority-option medium ${task && task.priority === 'medium' ? 'active' : ''}" data-value="medium">Trung bình</div>
-            <div class="priority-option low ${task && task.priority === 'low' ? 'active' : ''}" data-value="low">Thấp</div>
+          <div class="form-group">
+            <label class="form-label">Độ ưu tiên</label>
+            <select class="form-select" name="prioritySelect">
+              <option value="high" ${task && task.priority === 'high' ? 'selected' : ''}>Cao</option>
+              <option value="medium" ${(!task || task.priority === 'medium') ? 'selected' : ''}>Trung bình</option>
+              <option value="low" ${task && task.priority === 'low' ? 'selected' : ''}>Thấp</option>
+            </select>
           </div>
-          <input type="hidden" name="priority" id="priorityInput" value="${task ? task.priority : 'medium'}">
         </div>
       </form>
     `;
@@ -420,15 +453,6 @@
     `;
 
     openModal(isEdit ? 'Chỉnh sửa Task' : 'Tạo Task Mới', body, footer);
-
-    // Priority option click handlers
-    document.querySelectorAll('.priority-option').forEach(opt => {
-      opt.addEventListener('click', function() {
-        document.querySelectorAll('.priority-option').forEach(o => o.classList.remove('active'));
-        this.classList.add('active');
-        document.getElementById('priorityInput').value = this.dataset.value;
-      });
-    });
   }
 
   // Save task from modal
@@ -444,9 +468,10 @@
       description: form.description.value.trim(),
       projectId: form.projectId.value,
       assigneeId: form.assigneeId.value,
+      startDate: form.startDate.value,
       deadline: form.deadline.value,
       status: form.status.value,
-      priority: document.getElementById('priorityInput').value
+      priority: form.prioritySelect.value
     };
 
     if (taskId) {
@@ -501,6 +526,10 @@
         <div>
           <label style="font-size: 0.75rem; color: var(--color-text-muted);">Người được giao</label>
           <p style="font-size: 0.875rem; color: var(--color-text);">${assignee ? assignee.name : 'Chưa giao'}</p>
+        </div>
+        <div>
+          <label style="font-size: 0.75rem; color: var(--color-text-muted);">Ngày bắt đầu</label>
+          <p style="font-size: 0.875rem; color: var(--color-text);">${task.startDate ? new Date(task.startDate).toLocaleString('vi-VN') : 'Chưa có'}</p>
         </div>
         <div>
           <label style="font-size: 0.75rem; color: var(--color-text-muted);">Deadline</label>
@@ -639,7 +668,7 @@
           <label class="form-label">Thành viên tham gia</label>
           <div class="member-select">
             ${members.map(m => `
-              <div class="member-chip ${project && project.members && project.members.includes(m.id) ? 'selected' : ''}"
+              <div class="member-chip ${project && getProjectMembers(project).includes(m.id) ? 'selected' : ''}"
                    data-member-id="${m.id}" onclick="toggleMemberChip(this)">
                 <span class="avatar-chip" style="background: ${m.color}">${m.avatar}</span>
                 ${m.name}
@@ -647,7 +676,7 @@
             `).join('')}
           </div>
           <input type="hidden" name="members" id="membersInput"
-            value="${project && project.members ? project.members.join(',') : ''}">
+            value="${project ? getProjectMembers(project).join(',') : ''}">
         </div>
 
         <div class="form-group">
@@ -731,7 +760,7 @@
     const completedTasks = tasks.filter(t => t.status === 'completed').length;
     const progress = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : project.progress;
 
-    const memberAvatars = project.members ? project.members.map(mid => {
+    const memberAvatars = project.members ? getProjectMembers(project).map(mid => {
       const m = TaskManager.getMember(mid);
       return m ? `<span class="avatar-xxs" style="background:${m.color}">${m.avatar}</span>` : '';
     }).join('') : '';
@@ -864,30 +893,286 @@
 
   // Render functions
   function renderDashboard() {
-    // Stats are rendered statically in HTML, but we can update them dynamically
-    const stats = TaskManager.getStats();
-    updateStats(stats);
-
-    // Insert sync button into top bar
-    var topbar = document.querySelector('.tm-topbar');
-    if (topbar && !document.getElementById('syncFromSheetsBtn')) {
-      topbar.insertAdjacentHTML('beforeend', `
-        <button id="syncFromSheetsBtn" class="sync-btn" title="Đồng bộ dữ liệu mới nhất từ Google Sheets" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; background: transparent; color: var(--color-text); border: 1px solid var(--color-border); border-radius: 6px; cursor: pointer; font-size: 0.8125rem; white-space: nowrap; margin-right: 8px;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;flex-shrink:0;"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-          Đồng bộ Sheet
-        </button>
-      `);
-      document.getElementById('syncFromSheetsBtn').addEventListener('click', syncFromSheets);
-    }
-
-    // Render task list
-    renderTaskList();
+    // Render Kanban board with stats and objectives
+    renderKanbanBoard();
 
     // Render projects
     renderProjectList();
 
     // Animate progress bars
     setTimeout(animateProgressBars, 100);
+  }
+
+  // Render main objective section
+  function renderMainObjective() {
+    let objectives = JSON.parse(localStorage.getItem('hiconique_objectives') || '[]');
+    const currentUser = TaskManager.getCurrentUser();
+
+    // Ensure there's always at least one objective slot
+    if (objectives.length === 0) {
+      objectives = [{ id: 'obj-1', text: '', completed: false }];
+    }
+
+    const today = new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' });
+
+    // Build objectives HTML
+    const objectivesHTML = objectives.map((obj, idx) => `
+      <div class="objective-item ${obj.completed ? 'completed' : ''}" data-obj-id="${obj.id}">
+        <button class="obj-check" onclick="toggleObjective('${obj.id}')">
+          ${obj.completed ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+        </button>
+        <input type="text" class="obj-input" placeholder="Mục tiêu hôm nay..."
+          value="${obj.text}" onblur="saveObjectiveText('${obj.id}', this.value)"
+          onkeydown="if(event.key==='Enter'){this.blur()}">
+        ${objectives.length > 1 ? `<button class="obj-remove" onclick="removeObjective('${obj.id}')">×</button>` : ''}
+      </div>
+    `).join('');
+
+    const container = document.getElementById('mainObjectiveContainer');
+    if (!container) return;
+
+    container.innerHTML = `
+      <div class="objective-section">
+        <div class="objective-header">
+          <div>
+            <div class="objective-eyebrow">MỤC TIÊU HÔM NAY</div>
+            <div class="objective-date">${today}</div>
+          </div>
+          <button class="objective-add-btn" onclick="addObjective()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            Thêm mục tiêu
+          </button>
+        </div>
+        <div class="objective-list">
+          ${objectivesHTML}
+        </div>
+        <div class="objective-progress">
+          <span>${objectives.filter(o => o.completed).length}/${objectives.length} hoàn thành</span>
+          <div class="objective-progress-bar">
+            <div class="objective-progress-fill" style="width:${objectives.length > 0 ? Math.round((objectives.filter(o => o.completed).length / objectives.length) * 100) : 0}%"></div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // Toggle objective completion
+  window.toggleObjective = function(id) {
+    let objectives = JSON.parse(localStorage.getItem('hiconique_objectives') || '[]');
+    const obj = objectives.find(o => o.id === id);
+    if (obj) {
+      obj.completed = !obj.completed;
+      localStorage.setItem('hiconique_objectives', JSON.stringify(objectives));
+      renderMainObjective();
+    }
+  };
+
+  // Save objective text
+  window.saveObjectiveText = function(id, text) {
+    let objectives = JSON.parse(localStorage.getItem('hiconique_objectives') || '[]');
+    const obj = objectives.find(o => o.id === id);
+    if (obj) {
+      obj.text = text;
+      localStorage.setItem('hiconique_objectives', JSON.stringify(objectives));
+      renderMainObjective();
+    }
+  };
+
+  // Add new objective
+  window.addObjective = function() {
+    let objectives = JSON.parse(localStorage.getItem('hiconique_objectives') || '[]');
+    const newId = 'obj-' + Date.now();
+    objectives.push({ id: newId, text: '', completed: false });
+    localStorage.setItem('hiconique_objectives', JSON.stringify(objectives));
+    renderMainObjective();
+    // Focus the new input
+    setTimeout(() => {
+      const newInput = document.querySelector(`[data-obj-id="${newId}"] .obj-input`);
+      if (newInput) newInput.focus();
+    }, 50);
+  };
+
+  // Remove objective
+  window.removeObjective = function(id) {
+    let objectives = JSON.parse(localStorage.getItem('hiconique_objectives') || '[]');
+    objectives = objectives.filter(o => o.id !== id);
+    localStorage.setItem('hiconique_objectives', JSON.stringify(objectives));
+    renderMainObjective();
+  };
+
+  // Render Kanban board
+  function renderKanbanBoard() {
+    const tmContent = document.querySelector('.tm-content');
+    if (!tmContent) return;
+
+    const tasks = TaskManager.getTasks();
+    const currentUser = TaskManager.getCurrentUser();
+
+    // Group tasks by status
+    const todo = tasks.filter(t => t.status === 'pending');
+    const inProgress = tasks.filter(t => t.status === 'in-progress');
+    const done = tasks.filter(t => t.status === 'completed');
+
+    const columnHTML = (title, dotColor, dotBg, tasks, colId) => `
+      <div class="kanban-col" id="${colId}">
+        <div class="kanban-col-header">
+          <span class="kanban-dot" style="background:${dotColor}"></span>
+          <span class="kanban-col-title">${title}</span>
+          <span class="kanban-count">${tasks.length}</span>
+        </div>
+        <div class="kanban-cards" data-status="${colId.replace('col-', '')}">
+          ${tasks.length > 0 ? tasks.map(task => buildKanbanCard(task)).join('') : '<div class="kanban-empty">Chưa có task</div>'}
+        </div>
+        ${colId === 'col-pending' ? `<button class="kanban-add-btn" onclick="openTaskModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          Thêm task
+        </button>` : ''}
+      </div>
+    `;
+
+    tmContent.innerHTML = `
+      <div class="tm-topbar">
+        <h2 style="font-size: 1.5rem; font-weight: 600; color: var(--color-text);">Dashboard</h2>
+        <button class="quick-add-btn" onclick="openTaskModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          Thêm task
+        </button>
+      </div>
+
+      <div class="stats-grid" id="statsGrid"></div>
+      <div id="mainObjectiveContainer"></div>
+      <div class="kanban-board">
+        ${columnHTML('To Do', 'var(--color-text-faint)', 'rgba(154,160,166,0.15)', todo, 'col-pending')}
+        ${columnHTML('In Progress', '#C7A464', 'rgba(199,164,100,0.15)', inProgress, 'col-in-progress')}
+        ${columnHTML('Done', '#4F6F52', 'rgba(79,111,82,0.15)', done, 'col-completed')}
+      </div>
+    `;
+
+    // Render stats and objectives after DOM is ready
+    setTimeout(function() {
+      renderMainObjective();
+      renderStatsGrid();
+      setupKanbanDragDrop();
+    }, 50);
+  }
+
+  // Render stats grid
+  function renderStatsGrid() {
+    const statsGrid = document.getElementById('statsGrid');
+    if (!statsGrid) return;
+
+    const stats = TaskManager.getStats();
+    const members = TaskManager.getMembers();
+    const currentUser = TaskManager.getCurrentUser();
+
+    statsGrid.innerHTML = `
+      <div class="stat-card stat-bronze">
+        <div class="stat-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg>
+        </div>
+        <div class="stat-body">
+          <span class="stat-value">${stats.activeProjects}</span>
+          <span class="stat-label">Dự án đang chạy</span>
+        </div>
+      </div>
+      <div class="stat-card stat-blue">
+        <div class="stat-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+        <div class="stat-body">
+          <span class="stat-value">${stats.completedTasks}</span>
+          <span class="stat-label">Tasks hoàn thành</span>
+        </div>
+      </div>
+      <div class="stat-card stat-terracotta">
+        <div class="stat-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="stat-body">
+          <span class="stat-value">${stats.pendingTasks}</span>
+          <span class="stat-label">Tasks đang chờ</span>
+        </div>
+      </div>
+      <div class="stat-card stat-success">
+        <div class="stat-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div class="stat-body">
+          <span class="stat-value">${members.length}</span>
+          <span class="stat-label">Thành viên</span>
+        </div>
+      </div>
+    `;
+  }
+
+  function buildKanbanCard(task) {
+    const assignee = TaskManager.getMember(task.assigneeId);
+    const project = task.projectId ? TaskManager.getProject(task.projectId) : null;
+    const priorityClass = task.priority === 'high' ? 'priority-high' :
+                         task.priority === 'medium' ? 'priority-medium' : 'priority-low';
+    const priorityLabel = task.priority === 'high' ? 'Cao' :
+                         task.priority === 'medium' ? 'TB' : 'Thấp';
+    const deadline = task.deadline ? new Date(task.deadline).toLocaleString('vi-VN', {
+      weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+    }) : '';
+    const isOverdue = task.status !== 'completed' && task.deadline && new Date(task.deadline) < new Date();
+
+    return `
+      <div class="kanban-card" data-task-id="${task.id}" draggable="true">
+        <div class="kanban-card-header">
+          <span class="task-priority-badge ${priorityClass}">${priorityLabel}</span>
+          ${assignee ? `<span class="avatar-xs-tm" style="background:${assignee.color}" title="${assignee.name}">${assignee.avatar}</span>` : ''}
+        </div>
+        <div class="kanban-card-title">${task.title}</div>
+        ${project ? `<div class="kanban-card-project">📁 ${project.name}</div>` : ''}
+        ${deadline ? `<div class="kanban-card-deadline ${isOverdue ? 'overdue' : ''}">📅 ${deadline}</div>` : ''}
+      </div>
+    `;
+  }
+
+  function setupKanbanDragDrop() {
+    const cards = document.querySelectorAll('.kanban-card');
+    const columns = document.querySelectorAll('.kanban-cards');
+
+    cards.forEach(card => {
+      card.addEventListener('dragstart', function(e) {
+        e.dataTransfer.setData('text/plain', card.dataset.taskId);
+        card.classList.add('dragging');
+      });
+      card.addEventListener('dragend', function() {
+        card.classList.remove('dragging');
+      });
+      // Click to open detail
+      card.addEventListener('click', function(e) {
+        if (!card.classList.contains('dragging')) {
+          openTaskDetailModal(card.dataset.taskId);
+        }
+      });
+    });
+
+    columns.forEach(col => {
+      col.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        col.classList.add('drag-over');
+      });
+      col.addEventListener('dragleave', function() {
+        col.classList.remove('drag-over');
+      });
+      col.addEventListener('drop', function(e) {
+        e.preventDefault();
+        col.classList.remove('drag-over');
+        const taskId = e.dataTransfer.getData('text/plain');
+        const newStatus = col.dataset.status;
+        if (taskId && newStatus) {
+          TaskManager.updateTask(taskId, { status: newStatus });
+          renderDashboard();
+        }
+      });
+    });
   }
 
   function updateStats(stats) {
@@ -965,7 +1250,7 @@
     }
 
     projectsGrid.innerHTML = projects.slice(0, 6).map(project => {
-      const memberAvatars = project.members ? project.members.slice(0, 3).map(mid => {
+      const memberAvatars = project.members ? getProjectMembers(project).slice(0, 3).map(mid => {
         const m = TaskManager.getMember(mid);
         return m ? `<span class="avatar-xxs" style="background:${m.color}">${m.avatar}</span>` : '';
       }).join('') : '';
@@ -1014,7 +1299,7 @@
 
       <div class="projects-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
         ${projects.map(project => {
-          const memberAvatars = project.members ? project.members.slice(0, 4).map(mid => {
+          const memberAvatars = project.members ? getProjectMembers(project).slice(0, 4).map(mid => {
             const m = TaskManager.getMember(mid);
             return m ? `<span class="avatar-xxs" style="background:${m.color}">${m.avatar}</span>` : '';
           }).join('') : '';
@@ -1295,7 +1580,7 @@
     tmContent.innerHTML = `
       <div class="tm-topbar">
         <h2 style="font-size: 1.5rem; font-weight: 600; color: var(--color-text);">Đề xuất</h2>
-        <button class="quick-add-btn" onclick="openProposalModal()">
+        <button class="quick-add-btn create-proposal-btn" data-action="create-proposal" onclick="openProposalModal()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
             <path d="M12 5v14M5 12h14"/>
           </svg>
@@ -1532,7 +1817,8 @@
     });
   }
 
-  // Close modal globally
+  // Export task modal functions globally
+  window.openTaskModal = openTaskModal;
   window.closeModal = closeModal;
 
   // Initialize when DOM is ready

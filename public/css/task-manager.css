@@ -1390,6 +1390,155 @@
   margin-bottom: var(--space-lg);
 }
 
+/* ========== Kanban Board ========== */
+.kanban-board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-lg);
+  min-height: 500px;
+}
+
+.kanban-col {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.kanban-col-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: var(--space-sm);
+}
+
+.kanban-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.kanban-col-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.kanban-count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.kanban-cards {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-height: 200px;
+}
+
+.kanban-empty {
+  padding: var(--space-xl);
+  text-align: center;
+  color: var(--color-text-faint);
+  font-size: 0.875rem;
+}
+
+.kanban-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  cursor: grab;
+  transition: all var(--dur-base) var(--ease);
+}
+
+.kanban-card:hover {
+  border-color: var(--color-bronze);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.kanban-card.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.kanban-cards.drag-over {
+  background: rgba(176, 141, 87, 0.05);
+  border: 2px dashed var(--color-bronze);
+  border-radius: var(--radius-md);
+}
+
+.kanban-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-sm);
+}
+
+.kanban-card-title {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--color-text);
+  line-height: 1.4;
+  margin-bottom: var(--space-xs);
+}
+
+.kanban-card-project {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-xs);
+}
+
+.kanban-card-deadline {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--color-text-faint);
+}
+
+.kanban-card-deadline.overdue {
+  color: var(--color-destructive);
+  font-weight: 500;
+}
+
+.kanban-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: transparent;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all var(--dur-base) var(--ease);
+  margin-top: var(--space-sm);
+}
+
+.kanban-add-btn:hover {
+  border-color: var(--color-bronze);
+  color: var(--color-bronze);
+}
+
+.kanban-add-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
 /* Responsive */
 @media (max-width: 1280px) {
   .tm-main {
@@ -1423,4 +1572,171 @@
   .bottom-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* ========== Main Objective Section ========== */
+.objective-section {
+  background: linear-gradient(135deg, rgba(176, 141, 87, 0.08), rgba(199, 164, 100, 0.04));
+  border: 1px solid rgba(176, 141, 87, 0.2);
+  border-radius: 16px;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+}
+
+.objective-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.objective-eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--color-bronze);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.objective-date {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.objective-add-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(176, 141, 87, 0.1);
+  border: 1px solid rgba(176, 141, 87, 0.25);
+  border-radius: 8px;
+  color: var(--color-bronze);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.objective-add-btn:hover {
+  background: rgba(176, 141, 87, 0.18);
+  border-color: rgba(176, 141, 87, 0.4);
+}
+
+.objective-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.objective-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  transition: all 0.2s;
+}
+
+.objective-item:hover {
+  border-color: rgba(176, 141, 87, 0.3);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.objective-item.completed .obj-input {
+  text-decoration: line-through;
+  color: var(--color-text-faint);
+  opacity: 0.7;
+}
+
+.obj-check {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border-strong);
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.obj-check:hover {
+  border-color: var(--color-bronze);
+  background: rgba(176, 141, 87, 0.1);
+}
+
+.objective-item.completed .obj-check {
+  background: var(--color-bronze);
+  border-color: var(--color-bronze);
+  color: #0B0D10;
+}
+
+.obj-check svg {
+  width: 12px;
+  height: 12px;
+}
+
+.obj-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 0.9375rem;
+  color: var(--color-text);
+  font-family: 'Inter', sans-serif;
+}
+
+.obj-input::placeholder {
+  color: var(--color-text-faint);
+}
+
+.obj-remove {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(160, 72, 72, 0.1);
+  color: #A04848;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.obj-remove:hover {
+  background: rgba(160, 72, 72, 0.2);
+}
+
+.objective-progress {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.objective-progress-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--color-border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.objective-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-bronze), #C7A464);
+  border-radius: 3px;
+  transition: width 0.4s ease;
 }

@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard của tôi · HICONIQUE</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/reset.css">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/portal.css">
+  <link rel="stylesheet" href="/css/task-manager.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <script src="/js/gsheets-config.js"></script>
+  <script src="/js/task-data.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/portal.js"></script>
+  <style>
+    :root {
+      --md-bg: var(--color-bg);
+      --md-surface: var(--color-surface);
+      --md-border: var(--color-border);
+      --md-text: var(--color-text);
+      --md-muted: var(--color-text-muted);
+      --md-bronze: var(--color-bronze);
+    }
+
+    body {
+      background: var(--md-bg);
+      color: var(--md-text);
+      font-family: 'Inter', -apple-system, sans-serif;
+      min-height: 100vh;
+    }
+
+    .md-header {
+      background: var(--md-surface);
+      border-bottom: 1px solid var(--md-border);
+      padding: 14px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(8px);
+    }
+
+    .md-header-left { display: flex; align-items: center; gap: 16px; }
+
+    .md-logo {
+      width: 40px;
+      height: 40px;
+      background: var(--md-bronze);
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #0B0D10;
+      flex-shrink: 0;
+      text-decoration: none;
+    }
+
+    .md-title-group h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: var(--md-text);
+      margin: 0;
+    }
+
+    .md-title-group p {
+      font-size: 0.75rem;
+      color: var(--md-muted);
+      margin: 2px 0 0;
+    }
+
+    .md-back {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      color: var(--md-muted);
+      text-decoration: none;
+      border: 1px solid var(--md-border);
+      background: var(--md-surface);
+      transition: all 0.15s;
+    }
+
+    .md-back:hover { color: var(--md-text); border-color: var(--md-bronze); }
+
+    .md-container { max-width: 1100px; margin: 0 auto; padding: 32px 32px 60px; }
+
+    .md-page-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2rem;
+      font-weight: 600;
+      color: var(--md-text);
+      margin-bottom: 8px;
+    }
+
+    .md-page-sub { color: var(--md-muted); font-size: 0.875rem; margin-bottom: 32px; }
+
+    .md-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+
+    .md-stat {
+      background: var(--md-surface);
+      border: 1px solid var(--md-border);
+      border-radius: 14px;
+      padding: 20px 24px;
+    }
+
+    .md-stat-value { font-size: 2rem; font-weight: 700; color: var(--md-text); line-height: 1; }
+    .md-stat-label { font-size: 0.8125rem; color: var(--md-muted); margin-top: 6px; }
+    .md-stat.accent .md-stat-value { color: var(--md-bronze); }
+
+    .md-section {
+      background: var(--md-surface);
+      border: 1px solid var(--md-border);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .md-section-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--md-text);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .md-progress-row {
+      margin-bottom: 16px;
+    }
+
+    .md-progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.875rem;
+      color: var(--md-text);
+      margin-bottom: 6px;
+    }
+
+    .md-progress-bar {
+      height: 6px;
+      background: var(--md-border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .md-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--md-bronze), #D4A574);
+      border-radius: 3px;
+      transition: width 0.3s;
+    }
+
+    .md-project-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px;
+      border: 1px solid var(--md-border);
+      border-radius: 10px;
+      margin-bottom: 8px;
+      transition: border-color 0.15s;
+    }
+
+    .md-project-item:hover { border-color: var(--md-bronze); }
+    .md-project-name { font-weight: 500; color: var(--md-text); font-size: 0.9375rem; }
+    .md-project-meta { font-size: 0.8125rem; color: var(--md-muted); margin-top: 4px; }
+    .md-project-badge {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: rgba(176, 141, 87, 0.12);
+      color: var(--md-bronze);
+    }
+
+    .md-empty { color: var(--md-muted); font-size: 0.875rem; padding: 8px 0; }
+
+    @media (max-width: 768px) {
+      .md-stats { grid-template-columns: repeat(2, 1fr); }
+      .md-container { padding: 24px 16px 60px; }
+      .md-header { padding: 12px 16px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="md-header">
+    <div class="md-header-left">
+      <a href="/" class="md-logo">H</a>
+      <div class="md-title-group">
+        <h1>Dashboard của tôi</h1>
+        <p>Công việc cá nhân và tiến độ</p>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <a href="/" class="md-back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        Về trang chủ
+      </a>
+      <button class="theme-toggle-pill" aria-label="Chuyển đổi sáng/tối" data-theme-toggle style="position:relative;width:64px;height:30px;display:flex;align-items:center;justify-content:space-between;padding:2px;border-radius:18px;border:1px solid var(--md-border);background:var(--md-surface);cursor:pointer;gap:0;flex-shrink:0;">
+        <span style="width:26px;height:26px;border-radius:50%;display:grid;place-items:center;z-index:2;color:var(--md-bronze);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        </span>
+        <span style="position:absolute;width:26px;height:26px;background:var(--md-bronze);border-radius:50%;top:2px;left:2px;transition:transform 0.2s;z-index:1;" id="mdThemeSlider"></span>
+        <span style="width:26px;height:26px;border-radius:50%;display:grid;place-items:center;z-index:2;color:#3B6B8C;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </span>
+      </button>
+    </div>
+  </header>
+
+  <div class="md-container">
+    <h2 class="md-page-title" id="dashTitle">Dashboard của tôi</h2>
+    <p class="md-page-sub">Cập nhật công việc hàng ngày để team nắm được tiến độ.</p>
+
+    <div class="md-stats">
+      <div class="md-stat">
+        <div class="md-stat-value" id="statTasks">0</div>
+        <div class="md-stat-label">Task đang làm</div>
+      </div>
+      <div class="md-stat">
+        <div class="md-stat-value" id="statDone">0</div>
+        <div class="md-stat-label">Task hoàn thành</div>
+      </div>
+      <div class="md-stat accent">
+        <div class="md-stat-value" id="statProgress">0%</div>
+        <div class="md-stat-label">Tiến độ tổng</div>
+      </div>
+      <div class="md-stat">
+        <div class="md-stat-value" id="statProjects">0</div>
+        <div class="md-stat-label">Dự án tham gia</div>
+      </div>
+    </div>
+
+    <div class="md-section">
+      <div class="md-section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" style="color:var(--md-bronze)"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Tiến độ công việc
+      </div>
+      <div id="progressList"></div>
+    </div>
+
+    <div class="md-section">
+      <div class="md-section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" style="color:var(--md-bronze)"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg>
+        Dự án đang tham gia
+      </div>
+      <div id="projectList"></div>
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    // Sync theme slider
+    function syncMdSlider() {
+      var theme = document.documentElement.getAttribute('data-theme');
+      var slider = document.getElementById('mdThemeSlider');
+      if (slider) slider.style.transform = theme === 'light' ? 'translateX(34px)' : 'translateX(0)';
+    }
+    syncMdSlider();
+    var mdToggle = document.querySelector('[data-theme-toggle]');
+    if (mdToggle) mdToggle.addEventListener('click', function() {
+      setTimeout(syncMdSlider, 10);
+    });
+
+    function initMyDash() {
+      if (typeof Auth === 'undefined' || typeof Auth.getCurrentUser === 'undefined') {
+        setTimeout(initMyDash, 200);
+        return;
+      }
+      var user = Auth.getCurrentUser();
+      if (!user) { Auth.showLoginModal(); return; }
+
+      document.getElementById('dashTitle').textContent = 'Dashboard · ' + user.name;
+
+      var allTasks = TaskManager.getTasks();
+      var myTasks = allTasks.filter(function(t) { return t.assigneeId === user.id; });
+      var myProjects = TaskManager.getProjects().filter(function(p) {
+        return p.members && p.members.indexOf(user.id) !== -1;
+      });
+
+      var inProgress = myTasks.filter(function(t) { return t.status === 'in-progress' || t.status === 'pending'; });
+      var done = myTasks.filter(function(t) { return t.status === 'completed'; });
+      var avgProgress = myTasks.length ? Math.round(myTasks.reduce(function(s, t) { return s + (t.progress || 0); }, 0) / myTasks.length) : 0;
+
+      document.getElementById('statTasks').textContent = inProgress.length;
+      document.getElementById('statDone').textContent = done.length;
+      document.getElementById('statProgress').textContent = avgProgress + '%';
+      document.getElementById('statProjects').textContent = myProjects.length;
+
+      // Progress list
+      var progressHtml = '';
+      myTasks.slice(0, 8).forEach(function(t) {
+        progressHtml += '<div class="md-progress-row">' +
+          '<div class="md-progress-label"><span>' + (t.title || 'Task') + '</span><span>' + (t.progress || 0) + '%</span></div>' +
+          '<div class="md-progress-bar"><div class="md-progress-fill" style="width:' + (t.progress || 0) + '%"></div></div>' +
+        '</div>';
+      });
+      if (!myTasks.length) progressHtml = '<div class="md-empty">Chưa có task nào</div>';
+      document.getElementById('progressList').innerHTML = progressHtml;
+
+      // Projects list
+      var projectsHtml = '';
+      myProjects.forEach(function(p) {
+        var statusLabel = p.status === 'completed' ? 'Hoàn thành' : p.status === 'at-risk' ? 'Có rủi ro' : 'Đang chạy';
+        projectsHtml += '<div class="md-project-item">' +
+          '<div><div class="md-project-name">' + (p.name || '--') + '</div>' +
+          '<div class="md-project-meta">' + (p.type || '--') + ' · ' + (p.progress || 0) + '%</div></div>' +
+          '<span class="md-project-badge">' + statusLabel + '</span>' +
+        '</div>';
+      });
+      if (!myProjects.length) projectsHtml = '<div class="md-empty">Chưa tham gia dự án nào</div>';
+      document.getElementById('projectList').innerHTML = projectsHtml;
+    }
+
+    initMyDash();
+  })();
+  </script>
+</body>
+</html>

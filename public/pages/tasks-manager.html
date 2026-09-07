@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -14,6 +14,23 @@
   <link rel="stylesheet" href="/css/task-manager.css" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <script src="/js/auth.js"></script>
+  <script>
+    // Update sidebar welcome với tên user đang đăng nhập
+    (function() {
+      var user = window.Auth && window.Auth.getCurrentUser ? window.Auth.getCurrentUser() : null;
+      if (user) {
+        var nameEl = document.getElementById('welcomeName');
+        if (nameEl) nameEl.textContent = user.name || 'Bạn';
+
+        // Đếm task của user đang đăng nhập
+        var allTasks = (window.TaskManager && window.TaskManager.getTasks) ? window.TaskManager.getTasks() : [];
+        var myTasks = allTasks.filter(function(t) { return t.assigneeId === user.id; });
+        var activeTasks = myTasks.filter(function(t) { return t.status !== 'completed'; });
+        var countEl = document.getElementById('welcomeTaskCount');
+        if (countEl) countEl.textContent = activeTasks.length;
+      }
+    })();
+  </script>
 </head>
 <body>
   <header class="site-header">
@@ -22,7 +39,6 @@
         <span class="brand-mark">H</span>
         <span class="brand-name">
           <span class="brand-name-1">HICONIQUE</span>
-          <span class="brand-name-2">Design</span>
         </span>
       </a>
       <nav class="primary-nav">
@@ -47,7 +63,7 @@
             </svg>
           </span>
         </button>
-        <span class="clock"><span class="clock-time" data-clock>15:01</span><span class="clock-meta">GMT+7</span></span>
+        <span class="clock"><span class="clock-time" data-clock>15:01</span></span>
         <button class="avatar"><span>HQ</span></button>
       </div>
     </div>
@@ -57,8 +73,8 @@
     <!-- Sidebar -->
     <aside class="tm-sidebar">
       <div class="sidebar-welcome">
-        <h2 class="welcome-title">Hello, <span class="welcome-name">Trần Minh Quân</span>!</h2>
-        <p class="welcome-sub">Hôm nay có 5 công việc cần hoàn thành</p>
+        <h2 class="welcome-title">Hello, <span class="welcome-name" id="welcomeName">Phạm Quang Hiếu</span>!</h2>
+        <p class="welcome-sub">Hôm nay có <span id="welcomeTaskCount">5</span> công việc cần hoàn thành</p>
       </div>
 
       <nav class="tm-nav">
@@ -96,7 +112,7 @@
       </nav>
 
       <div class="sidebar-footer">
-        <a href="/" class="logout-btn">
+        <a href="/" class="logout-btn" onclick="Auth.logout(); window.location.href='/'; return false;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
           Đăng xuất
         </a>
@@ -446,10 +462,10 @@
             </li>
 
             <li class="member-row">
-              <span class="avatar-tm" style="background:#C7A464">PH</span>
+              <span class="avatar-tm" style="background:#C7A464">TM</span>
               <div class="member-info">
-                <h4>Phạm Hoàng</h4>
-                <p>Giám sát thi công</p>
+                <h4>Trần Mạnh</h4>
+                <p>Quản lý thi công</p>
               </div>
               <div class="member-progress">
                 <span>Đang làm <b>4 task</b></span>
@@ -484,7 +500,7 @@
             <li class="member-row">
               <span class="avatar-tm" style="background:#B08D57">HQ</span>
               <div class="member-info">
-                <h4>Trần Minh Quân</h4>
+                <h4>Phạm Quang Hiếu</h4>
                 <p>CEO</p>
               </div>
               <div class="member-progress">

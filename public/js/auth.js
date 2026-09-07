@@ -14,7 +14,11 @@ const Auth = (function() {
   'use strict';
 
   const SESSION_KEY = 'hiconique_auth_session';
-  const SESSION_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
+  const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+
+  function sessionStorageSkip() {
+    try { return localStorage.getItem('skip_auto_login') === '1'; } catch(e) { return false; }
+  }
 
   // Domain whitelist - chấp nhận mọi email hợp lệ
   const ALLOWED_DOMAINS = []; // rỗng = chấp nhận mọi email hợp lệ
@@ -118,7 +122,7 @@ const Auth = (function() {
     if (!isAllowedEmail(email)) {
       if (callback) callback({
         success: false,
-        error: 'Chỉ chấp nhận email công ty (@hiconique.vn hoặc @hiconique.com.vn)'
+        error: 'Vui lòng nhập email hợp lệ'
       });
       return;
     }
@@ -145,6 +149,8 @@ const Auth = (function() {
   function logout() {
     localStorage.removeItem(SESSION_KEY);
     currentUser = null;
+    // Flag to prevent auto-login after explicit logout, survives reload/navigation
+    try { localStorage.setItem('skip_auto_login', '1'); } catch(e) {}
     return true;
   }
 
@@ -200,7 +206,7 @@ const Auth = (function() {
           <form id="authLoginForm" style="display: flex; flex-direction: column; gap: 16px;">
             <div>
               <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Email công ty</label>
-              <input type="email" id="authEmailInput" required placeholder="ten@hiconique.vn"
+              <input type="email" id="authEmailInput" required placeholder="ten@gmail.com" value="pqhieu3820@gmail.com"
                 style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none; transition: border 0.2s;"
                 onfocus="this.style.borderColor='var(--color-bronze)'"
                 onblur="this.style.borderColor='var(--color-border)'"
@@ -209,7 +215,7 @@ const Auth = (function() {
 
             <div>
               <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Mật khẩu</label>
-              <input type="password" id="authPasswordInput" required placeholder="Nhập mật khẩu"
+              <input type="password" id="authPasswordInput" required placeholder="Nhập mật khẩu" value="123456"
                 style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none; transition: border 0.2s;"
                 onfocus="this.style.borderColor='var(--color-bronze)'"
                 onblur="this.style.borderColor='var(--color-border)'"
@@ -246,6 +252,25 @@ const Auth = (function() {
 
     emailInput.focus();
 
+    // Auto-login với tài khoản CEO mặc định
+    setTimeout(function() {
+      var savedSession = localStorage.getItem(SESSION_KEY);
+      if (!savedSession && !sessionStorageSkip() && typeof window.Auth !== 'undefined') {
+        // Chưa có session, auto-login với tài khoản CEO
+        emailInput.value = 'pqhieu3820@gmail.com';
+        passwordInput.value = '123456';
+        // Tự động đăng nhập
+        window.Auth.loginWithPassword('pqhieu3820@gmail.com', '123456', function(result) {
+          if (result.success) {
+            try { localStorage.removeItem('skip_auto_login'); } catch(e) {}
+            document.getElementById('authLoginModal').remove();
+            if (window.onAuthSuccess) window.onAuthSuccess(result.user);
+            else window.location.reload();
+          }
+        });
+      }
+    }, 500);
+
     // Login handler
     form.addEventListener('submit', function(e) {
       e.preventDefault();
@@ -255,6 +280,7 @@ const Auth = (function() {
 
       loginWithPassword(email, password, function(result) {
         if (result.success) {
+          try { localStorage.removeItem('skip_auto_login'); } catch(e) {}
           document.getElementById('authLoginModal').remove();
           if (window.onAuthSuccess) window.onAuthSuccess(result.user);
           else window.location.reload();
@@ -296,7 +322,7 @@ const Auth = (function() {
 
             <div>
               <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Email công ty *</label>
-              <input type="email" id="regEmailInput" required placeholder="a@hiconique.vn"
+              <input type="email" id="regEmailInput" required placeholder="a@gmail.com"
                 style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none; transition: border 0.2s;">
             </div>
 
@@ -310,6 +336,31 @@ const Auth = (function() {
               <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Mật khẩu *</label>
               <input type="password" id="regPasswordInput" required placeholder="Nhập mật khẩu bất kỳ"
                 style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none; transition: border 0.2s;">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div>
+                <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Ngày sinh</label>
+                <input type="date" id="regDobInput"
+                  style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none;">
+              </div>
+              <div>
+                <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">CCCD/CMND</label>
+                <input type="text" id="regCccdInput" placeholder="Số CCCD"
+                  style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none;">
+              </div>
+            </div>
+
+            <div>
+              <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Quê quán</label>
+              <input type="text" id="regHometownInput" placeholder="Địa chỉ quê quán"
+                style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none;">
+            </div>
+
+            <div>
+              <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Số tài khoản ngân hàng</label>
+              <input type="text" id="regBankAccountInput" placeholder="Số TK ngân hàng (nhận lương)"
+                style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none;">
             </div>
 
             <div id="authError" style="display: none; padding: 10px 12px; background: rgba(160,72,72,0.1); border: 1px solid rgba(160,72,72,0.3); border-radius: 6px; color: #A04848; font-size: 0.8125rem;"></div>
@@ -336,6 +387,10 @@ const Auth = (function() {
     var emailInput = document.getElementById('regEmailInput');
     var roleInput = document.getElementById('regRoleInput');
     var passwordInput = document.getElementById('regPasswordInput');
+    var dobInput = document.getElementById('regDobInput');
+    var cccdInput = document.getElementById('regCccdInput');
+    var hometownInput = document.getElementById('regHometownInput');
+    var bankAccountInput = document.getElementById('regBankAccountInput');
     var errorEl = document.getElementById('authError');
     var successEl = document.getElementById('authSuccess');
     var loginBtn = document.getElementById('showLoginBtn');
@@ -349,16 +404,20 @@ const Auth = (function() {
       var email = emailInput.value.trim();
       var role = roleInput.value.trim() || 'Nhân viên';
       var password = passwordInput.value;
+      var dob = dobInput.value;
+      var cccd = cccdInput.value.trim();
+      var hometown = hometownInput.value.trim();
+      var bankAccount = bankAccountInput.value.trim();
       errorEl.style.display = 'none';
       successEl.style.display = 'none';
 
       if (!isAllowedEmail(email)) {
-        errorEl.textContent = 'Chỉ chấp nhận email công ty (@hiconique.vn hoặc @hiconique.com.vn)';
+        errorEl.textContent = 'Vui lòng nhập email hợp lệ';
         errorEl.style.display = 'block';
         return;
       }
 
-      register(name, email, role, password, function(result) {
+      register(name, email, role, password, dob, cccd, hometown, bankAccount, function(result) {
         if (result.success) {
           successEl.textContent = '✓ Đăng ký thành công! Đang chuyển sang đăng nhập...';
           successEl.style.display = 'block';
@@ -381,7 +440,7 @@ const Auth = (function() {
   }
 
   // Register new member
-  function register(name, email, role, password, callback) {
+  function register(name, email, role, password, dob, cccd, hometown, bankAccount, callback) {
     if (!isAllowedEmail(email)) {
       if (callback) callback({ success: false, error: 'Email không hợp lệ' });
       return;
@@ -408,7 +467,7 @@ const Auth = (function() {
     var colors = ['#B08D57', '#8E7CC3', '#C7A464', '#4F6F52', '#3B6B8C', '#B8725A', '#6B5B95', '#88B04B', '#F7CAC9', '#92A8D1'];
     var color = colors[Math.floor(Math.random() * colors.length)];
 
-    // Create new member object
+    // Create new member object with all fields
     var newMember = {
       id: id,
       name: name,
@@ -416,6 +475,10 @@ const Auth = (function() {
       roleLevel: 'member',
       email: email,
       password: password,
+      dob: dob || '',
+      cccd: cccd || '',
+      hometown: hometown || '',
+      bankAccount: bankAccount || '',
       color: color,
       avatar: avatar,
       createdAt: new Date().toISOString().split('T')[0]
@@ -442,7 +505,7 @@ const Auth = (function() {
     }
 
     if (!isAllowedEmail(email)) {
-      if (callback) callback({ success: false, error: 'Chỉ chấp nhận email công ty' });
+      if (callback) callback({ success: false, error: 'Vui lòng nhập email hợp lệ' });
       return;
     }
 
@@ -462,8 +525,8 @@ const Auth = (function() {
       return;
     }
 
-    // Check password
-    if (member.password && member.password !== password) {
+    // Check password - convert both to string for comparison
+    if (member.password && String(member.password) !== String(password)) {
       if (callback) callback({ success: false, error: 'Mật khẩu không đúng' });
       return;
     }
@@ -500,7 +563,10 @@ const Auth = (function() {
     showLogout: showLogout,
     init: init,
     PERMISSIONS: PERMISSIONS,
-    ALLOWED_DOMAINS: ALLOWED_DOMAINS
+    ALLOWED_DOMAINS: ALLOWED_DOMAINS,
+    loginWithPassword: loginWithPassword,
+    register: register,
+    isAllowedEmail: isAllowedEmail
   };
 })();
 
