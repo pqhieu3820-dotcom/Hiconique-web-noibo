@@ -675,9 +675,86 @@
     }
   }
 
+  // ----- Avatar dropdown (account menu) -----
+  // Reusable version for every page's `.avatar` button. Pages that ship their
+  // own bespoke dropdown (currently only index.html, with #userDropdown) are
+  // skipped here to avoid a duplicate/conflicting menu.
+  function initUserMenu() {
+    if (typeof Auth === 'undefined') return;
+    if (document.getElementById('userDropdown')) return;
+    var session = Auth.getCurrentUser();
+    if (!session) return;
+
+    var avatarBtn = document.querySelector('.header-actions .avatar');
+    if (!avatarBtn) return;
+
+    var textEl = avatarBtn.querySelector('span');
+    if (textEl) textEl.textContent = session.avatar || '--';
+
+    var menu = document.createElement('div');
+    menu.className = 'user-menu-panel';
+    menu.hidden = true;
+    document.body.appendChild(menu);
+
+    function fmtJoined(v) {
+      if (!v) return '';
+      var d = new Date(v);
+      if (isNaN(d.getTime())) return '';
+      return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear();
+    }
+
+    function render() {
+      var full = (typeof TaskManager !== 'undefined' ? TaskManager.getMembers() : [])
+        .find(function (m) { return m.id === session.id; }) || session;
+      var joined = fmtJoined(full.createdAt);
+
+      menu.innerHTML =
+        '<div class="user-menu-header">' +
+          '<div class="user-menu-avatar">' + escapeHtml(full.avatar || '--') + '</div>' +
+          '<div class="user-menu-id">' +
+            '<div class="user-menu-name">' + escapeHtml(full.name || '--') + '</div>' +
+            '<div class="user-menu-role">' + escapeHtml(full.role || '--') + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="user-menu-meta">' +
+          '<div>✉️ ' + escapeHtml(full.email || '--') + '</div>' +
+          (full.hometown ? '<div>📍 ' + escapeHtml(full.hometown) + '</div>' : '') +
+          (joined ? '<div>📅 Vào làm từ ' + joined + '</div>' : '') +
+        '</div>' +
+        '<a href="/pages/profile.html" class="user-menu-link">👤 Thông tin cá nhân</a>' +
+        '<a href="/pages/my-dashboard.html" class="user-menu-link">📊 Dashboard của tôi</a>' +
+        '<button type="button" class="user-menu-link user-menu-logout" id="userMenuLogout">🚪 Đăng xuất</button>';
+
+      var logoutBtn = menu.querySelector('#userMenuLogout');
+      if (logoutBtn) logoutBtn.addEventListener('click', function () {
+        Auth.logout();
+        window.location.href = '/';
+      });
+    }
+
+    function position() {
+      var r = avatarBtn.getBoundingClientRect();
+      menu.style.top = (r.bottom + 8) + 'px';
+      menu.style.right = Math.max(12, window.innerWidth - r.right) + 'px';
+    }
+
+    avatarBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (menu.hidden) { render(); position(); menu.hidden = false; }
+      else { menu.hidden = true; }
+    });
+    menu.addEventListener('click', function (e) { e.stopPropagation(); });
+    document.addEventListener('click', function () { menu.hidden = true; });
+  }
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initNotifications);
+    document.addEventListener('DOMContentLoaded', function () {
+      initNotifications();
+      initUserMenu();
+    });
   } else {
     initNotifications();
+    initUserMenu();
   }
 }());
