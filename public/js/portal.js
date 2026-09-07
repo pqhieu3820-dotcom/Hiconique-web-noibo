@@ -633,24 +633,29 @@
       html += '<div class="notif-list">' + (items.length ? items.map(itemRow).join('') : '<div class="notif-empty">Không có thông báo nào.</div>') + '</div>';
 
       if (canManage) {
-        html += '<div class="notif-panel-footer">' +
-          '<button type="button" class="notif-add-btn" id="notifAddBtn">+ Thông báo mới</button>' +
-          (canRules ? '<button type="button" class="notif-link" id="notifRulesBtn">Quản lý nhắc định kỳ</button>' : '') +
-          '</div>' +
+        html += '<div class="notif-manage">' +
+          '<button type="button" class="notif-add-btn" id="notifAddBtn">+ Tạo thông báo</button>' +
           '<form class="notif-form" id="notifForm" hidden>' +
+            (canRules ? '<div class="notif-kind-toggle">' +
+              '<button type="button" class="notif-kind-btn active" data-kind="normal">Thông báo thường</button>' +
+              '<button type="button" class="notif-kind-btn" data-kind="recurring">Định kỳ</button>' +
+            '</div>' : '') +
+            '<input type="hidden" id="notifKind" value="normal">' +
             '<input type="text" id="notifTitle" placeholder="Tiêu đề" required>' +
             '<textarea id="notifMessage" placeholder="Nội dung" rows="2"></textarea>' +
             '<div class="notif-form-row">' +
               '<select id="notifType"><option value="system">Hệ thống</option><option value="task">Công việc</option><option value="project">Dự án</option><option value="violation">Vi phạm</option><option value="checkin">Chấm công</option><option value="payroll">Lương</option></select>' +
               '<select id="notifScope"><option value="all">Toàn công ty</option>' + memberOptions() + '</select>' +
             '</div>' +
+            '<input type="text" id="notifRecurWindow" placeholder="Lặp vào ngày nào trong tháng, vd 1-5" hidden>' +
             '<button type="submit" class="notif-submit">Đăng thông báo</button>' +
-          '</form>';
+          '</form>' +
+        '</div>';
 
         if (canRules) {
           var rules = TaskManager.getNotificationRules().filter(function (n) { return n.recurring; });
-          html += '<div class="notif-rules" id="notifRules" hidden>' +
-            '<div class="notif-panel-header"><span>Nhắc định kỳ</span></div>' +
+          html += '<div class="notif-rules">' +
+            '<div class="notif-panel-header"><span>Nhắc định kỳ hiện có</span></div>' +
             (rules.length ? rules.map(function (r) {
               return '<div class="notif-rule-row" data-id="' + escapeHtml(r.id) + '">' +
                 '<div><strong>' + escapeHtml(r.title) + '</strong><div class="notif-meta">' + escapeHtml(r.recurRule || '') + '</div></div>' +
@@ -658,13 +663,6 @@
                 '<button type="button" class="notif-link notif-rule-del">Xoá</button>' +
               '</div>';
             }).join('') : '<div class="notif-empty">Chưa có nhắc định kỳ nào.</div>') +
-            '<form class="notif-form" id="notifRuleForm">' +
-              '<input type="text" id="ruleTitle" placeholder="Tiêu đề nhắc" required>' +
-              '<textarea id="ruleMessage" placeholder="Nội dung" rows="2"></textarea>' +
-              '<input type="text" id="ruleWindow" placeholder="Ngày trong tháng, vd 1-5" value="1-5">' +
-              '<select id="ruleScope"><option value="all">Toàn công ty</option>' + memberOptions() + '</select>' +
-              '<button type="submit" class="notif-submit">Thêm nhắc định kỳ</button>' +
-            '</form>' +
           '</div>';
         }
       }
@@ -688,23 +686,37 @@
       var addBtn = panel.querySelector('#notifAddBtn');
       var form = panel.querySelector('#notifForm');
       if (addBtn && form) addBtn.addEventListener('click', function () { form.hidden = !form.hidden; });
+
+      var kindInput = panel.querySelector('#notifKind');
+      var recurWindowInput = panel.querySelector('#notifRecurWindow');
+      panel.querySelectorAll('.notif-kind-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          panel.querySelectorAll('.notif-kind-btn').forEach(function (b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+          kindInput.value = btn.dataset.kind;
+          recurWindowInput.hidden = btn.dataset.kind !== 'recurring';
+        });
+      });
+
       if (form) form.addEventListener('submit', function (e) {
         e.preventDefault();
         var title = panel.querySelector('#notifTitle').value.trim();
         if (!title) return;
-        TaskManager.createNotification({
+        var isRecurring = kindInput && kindInput.value === 'recurring';
+        var data = {
           title: title,
           message: panel.querySelector('#notifMessage').value.trim(),
           type: panel.querySelector('#notifType').value,
           scope: panel.querySelector('#notifScope').value,
-          recurring: false
-        }, user);
+          recurring: isRecurring
+        };
+        if (isRecurring) {
+          data.recurRule = 'monthly:' + (recurWindowInput.value.trim() || '1-5');
+          data.active = true;
+        }
+        TaskManager.createNotification(data, user);
         render();
       });
-
-      var rulesBtn = panel.querySelector('#notifRulesBtn');
-      var rulesPanel = panel.querySelector('#notifRules');
-      if (rulesBtn && rulesPanel) rulesBtn.addEventListener('click', function () { rulesPanel.hidden = !rulesPanel.hidden; });
 
       panel.querySelectorAll('.notif-rule-active').forEach(function (cb) {
         cb.addEventListener('change', function () {
@@ -718,23 +730,6 @@
           TaskManager.deleteNotification(id, user);
           render();
         });
-      });
-
-      var ruleForm = panel.querySelector('#notifRuleForm');
-      if (ruleForm) ruleForm.addEventListener('submit', function (e) {
-        e.preventDefault();
-        var title = panel.querySelector('#ruleTitle').value.trim();
-        if (!title) return;
-        TaskManager.createNotification({
-          title: title,
-          message: panel.querySelector('#ruleMessage').value.trim(),
-          type: 'payroll',
-          scope: panel.querySelector('#ruleScope').value,
-          recurring: true,
-          recurRule: 'monthly:' + panel.querySelector('#ruleWindow').value.trim(),
-          active: true
-        }, user);
-        render();
       });
     }
   }

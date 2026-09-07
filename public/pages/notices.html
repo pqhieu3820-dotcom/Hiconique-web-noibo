@@ -60,10 +60,10 @@
           <input type="text" id="noticeTitleInput" placeholder="Tiêu đề" required>
           <textarea id="noticeMessageInput" placeholder="Nội dung" rows="3"></textarea>
           <select id="noticeColorInput">
-            <option value="bronze">Bronze</option>
-            <option value="purple">Purple</option>
-            <option value="red">Đỏ (khẩn)</option>
-            <option value="info">Trung tính</option>
+            <option value="green">Xanh — nhẹ</option>
+            <option value="yellow">Vàng — trung bình</option>
+            <option value="red">Đỏ — ưu tiên</option>
+            <option value="purple">Tím — khẩn cấp</option>
           </select>
           <button type="submit" class="btn-primary">Đăng</button>
         </form>
@@ -112,8 +112,8 @@
       }
 
       grid.innerHTML = notices.map(function (n) {
-        var dotClass = n.color === 'bronze' ? 'notice-dot-bronze' : n.color === 'purple' ? 'notice-dot-purple' : n.color === 'red' ? 'notice-dot-red' : '';
-        return '<article class="notice notice-' + escapeHtml(n.color || 'info') + '" data-id="' + escapeHtml(n.id) + '">' +
+        var dotClass = 'notice-dot-' + (n.color || 'green');
+        return '<article class="notice notice-' + escapeHtml(n.color || 'green') + '" data-id="' + escapeHtml(n.id) + '">' +
           '<header><span class="notice-dot ' + dotClass + '"></span><h3>' + escapeHtml(n.title) + '</h3></header>' +
           '<p>' + escapeHtml(n.message) + '</p>' +
           '<p class="notice-date">' + fmtDate(n.createdAt) + '</p>' +
@@ -156,6 +156,8 @@
       if (typeof TaskManager === 'undefined') { setTimeout(boot, 150); return; }
       render();
       initAdmin();
+      // Google Sheets fetch resolves async after initData() — re-render once it lands
+      setTimeout(render, 1200);
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
     else boot();

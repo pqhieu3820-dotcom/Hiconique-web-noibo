@@ -110,12 +110,13 @@ var TaskManager = (function() {
   ];
 
   // Notice board (public/pages/notices.html) — seeded from the page's original static content.
+  // color: xanh (green, nhẹ) < vàng (yellow, trung bình) < đỏ (red, ưu tiên) < tím (purple, khẩn cấp)
   var DEFAULT_NOTICES = [
-    { id: 'notice_260101_1', title: 'Nhắc nhở cuối tuần', message: 'Mọi người cập nhật bảng Google Sheets và sao lưu dữ liệu quan trọng trước khi kết thúc ngày làm việc nhé!', color: 'bronze', createdBy: 'CEO', createdAt: '2026-08-22' },
-    { id: 'notice_260101_2', title: 'Họp team tháng 9', message: 'Bàn giao & cải tiến, review dự án đang chạy, kế hoạch tháng mới. Thứ Năm 07/09/2026 · 9:00–10:00.', color: 'purple', createdBy: 'CEO', createdAt: '2026-08-25' },
+    { id: 'notice_260101_1', title: 'Nhắc nhở cuối tuần', message: 'Mọi người cập nhật bảng Google Sheets và sao lưu dữ liệu quan trọng trước khi kết thúc ngày làm việc nhé!', color: 'green', createdBy: 'CEO', createdAt: '2026-08-22' },
+    { id: 'notice_260101_2', title: 'Họp team tháng 9', message: 'Bàn giao & cải tiến, review dự án đang chạy, kế hoạch tháng mới. Thứ Năm 07/09/2026 · 9:00–10:00.', color: 'yellow', createdBy: 'CEO', createdAt: '2026-08-25' },
     { id: 'notice_260101_3', title: 'Nhắc nhở: cập nhật phiếu lương tháng 9/2026', message: 'Mọi người vào cập nhật phiếu lương từ ngày 01–05 hàng tháng.', color: 'red', createdBy: 'CEO', createdAt: '2026-08-28' },
-    { id: 'notice_260101_4', title: 'Bàn giao công trình Vinhouse', message: 'Buổi nghiệm thu cuối cùng dự kiến 30/08/2026. Mời các bộ phận liên quan đến công trường để hoàn tất checklist bàn giao.', color: 'bronze', createdBy: 'MGR2', createdAt: '2026-08-20' },
-    { id: 'notice_260101_5', title: 'Lịch training nội bộ', message: 'HICONIQUE mở lớp training về quy trình SPC vào 20/08/2026. Đăng ký trước ngày 18/08.', color: 'info', createdBy: 'MGR1', createdAt: '2026-08-10' }
+    { id: 'notice_260101_4', title: 'Bàn giao công trình Vinhouse', message: 'Buổi nghiệm thu cuối cùng dự kiến 30/08/2026. Mời các bộ phận liên quan đến công trường để hoàn tất checklist bàn giao.', color: 'yellow', createdBy: 'MGR2', createdAt: '2026-08-20' },
+    { id: 'notice_260101_5', title: 'Lịch training nội bộ', message: 'HICONIQUE mở lớp training về quy trình SPC vào 20/08/2026. Đăng ký trước ngày 18/08.', color: 'green', createdBy: 'MGR1', createdAt: '2026-08-10' }
   ];
 
   // Wiki / document links (public/pages/wiki.html) — seeded from the page's original static links.
@@ -123,11 +124,20 @@ var TaskManager = (function() {
     { id: 'document_260101_1', category: 'Template chung', name: 'Hướng dẫn dàn trang bản vẽ', url: '#', createdBy: 'CEO', createdAt: '2026-01-01' },
     { id: 'document_260101_2', category: 'Template chung', name: 'Layout trình bày báo giá', url: '#', createdBy: 'CEO', createdAt: '2026-01-01' },
     { id: 'document_260101_3', category: 'Template chung', name: 'Template trình bày concept', url: '#', createdBy: 'CEO', createdAt: '2026-01-01' },
+    { id: 'document_260101_9', category: 'Template chung', name: 'Bảng giá dịch vụ 2026', url: '#', createdBy: 'CEO', createdAt: '2026-01-01' },
+    { id: 'document_260101_10', category: 'Template chung', name: 'Hợp đồng mẫu · TK · TC', url: '#', createdBy: 'CEO', createdAt: '2026-01-01' },
     { id: 'document_260101_4', category: 'SPC · Quy chuẩn kỹ thuật', name: 'Bục ngồi gỗ · chiều cao 600–700 mm', url: '#', createdBy: 'CEO', createdAt: '2026-01-01' },
     { id: 'document_260101_5', category: 'SPC · Quy chuẩn kỹ thuật', name: 'Tay vịn · chiều cao 850–950 mm', url: '#', createdBy: 'CEO', createdAt: '2026-01-01' },
+    { id: 'document_260101_11', category: 'SPC · Quy chuẩn kỹ thuật', name: 'Độ dày kính cường lực · an toàn', url: '#', createdBy: 'CEO', createdAt: '2026-01-01' },
+    { id: 'document_260101_12', category: 'SPC · Quy chuẩn kỹ thuật', name: 'Vật liệu bề mặt gỗ tự nhiên', url: '#', createdBy: 'CEO', createdAt: '2026-01-01' },
+    { id: 'document_260101_13', category: 'SPC · Quy chuẩn kỹ thuật', name: 'Đặc tính đá tự nhiên · marble', url: '#', createdBy: 'CEO', createdAt: '2026-01-01' },
     { id: 'document_260101_6', category: 'Sổ tay nhân sự', name: 'Quy trình onboarding · nhân viên mới', url: '#', createdBy: 'CEO', createdAt: '2026-01-01' },
     { id: 'document_260101_7', category: 'Sổ tay nhân sự', name: 'Chính sách làm việc & OT', url: '#', createdBy: 'CEO', createdAt: '2026-01-01' },
-    { id: 'document_260101_8', category: 'Brand & Marketing', name: 'Logo, màu, font HICONIQUE', url: '#', createdBy: 'CEO', createdAt: '2026-01-01' }
+    { id: 'document_260101_14', category: 'Sổ tay nhân sự', name: 'Quy chế KPI & lương tháng', url: '#', createdBy: 'CEO', createdAt: '2026-01-01' },
+    { id: 'document_260101_15', category: 'Sổ tay nhân sự', name: 'Đào tạo nội bộ · lịch học', url: '#', createdBy: 'CEO', createdAt: '2026-01-01' },
+    { id: 'document_260101_8', category: 'Brand & Marketing', name: 'Logo, màu, font HICONIQUE', url: '#', createdBy: 'CEO', createdAt: '2026-01-01' },
+    { id: 'document_260101_16', category: 'Brand & Marketing', name: 'Tone & voice thương hiệu', url: '#', createdBy: 'CEO', createdAt: '2026-01-01' },
+    { id: 'document_260101_17', category: 'Brand & Marketing', name: 'Template bài viết mạng xã hội', url: '#', createdBy: 'CEO', createdAt: '2026-01-01' }
   ];
 
   // Cache for Google Sheets data

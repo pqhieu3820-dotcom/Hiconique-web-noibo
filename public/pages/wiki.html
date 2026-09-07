@@ -56,7 +56,12 @@
         Trung tâm tri thức HICONIQUE — quy trình thiết kế, thi công, mạng vật liệu và cẩm nang nghiệp vụ.
       </p>
 
-      <div id="docAdminBar" style="margin-top:var(--space-lg);display:none;">
+      <div class="wiki-search-bar" style="margin-top:var(--space-lg);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3" stroke-linecap="round"/></svg>
+        <input type="text" id="docSearchInput" placeholder="Tìm tài liệu theo tên hoặc danh mục…" autocomplete="off">
+      </div>
+
+      <div id="docAdminBar" style="margin-top:var(--space-md);display:none;">
         <button class="btn-secondary" id="docAddBtn" type="button">+ Thêm tài liệu</button>
         <form id="docForm" class="notice-form" hidden>
           <input type="text" id="docCategoryInput" placeholder="Danh mục (vd: Template chung)" required>
@@ -69,6 +74,7 @@
       <div class="wiki-cols" id="wikiCols" style="margin-top:var(--space-lg);">
         <p style="color:var(--color-text-faint);">Đang tải tài liệu…</p>
       </div>
+      <p id="wikiSearchEmpty" style="display:none;color:var(--color-text-faint);margin-top:var(--space-lg);">Không tìm thấy tài liệu nào khớp.</p>
 
       <p class="subpage-note" style="margin-top:var(--space-2xl)">
         File nặng (bản vẽ kỹ thuật, 3D, video thô) được lưu trên <b>Google Drive</b>. Link trong tài liệu dẫn
@@ -83,6 +89,19 @@
     .wiki-col-del { background: none; border: none; color: var(--color-text-faint); font-size: 0.6875rem; cursor: pointer; padding: 0; margin-left: 8px; }
     .wiki-col-del:hover { color: var(--color-destructive); }
     .wiki-col li a { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .wiki-search-bar {
+      display: flex; align-items: center; gap: 10px;
+      max-width: 420px; padding: 10px 14px;
+      background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 8px;
+    }
+    .wiki-search-bar svg { width: 18px; height: 18px; color: var(--color-text-faint); flex-shrink: 0; }
+    .wiki-search-bar input {
+      border: none; background: none; outline: none; width: 100%;
+      color: var(--color-text); font-family: 'Inter', sans-serif; font-size: 0.875rem;
+    }
+    .wiki-search-bar input::placeholder { color: var(--color-text-faint); }
+    .wiki-col[hidden] { display: none; }
+    .wiki-col li[hidden] { display: none; }
   </style>
 
   <script>
@@ -125,6 +144,30 @@
           render();
         });
       });
+
+      applySearch();
+    }
+
+    function applySearch() {
+      var q = (document.getElementById('docSearchInput').value || '').trim().toLowerCase();
+      var cols = document.querySelectorAll('#wikiCols .wiki-col');
+      var anyVisible = false;
+
+      cols.forEach(function (col) {
+        var catMatches = !q || col.querySelector('h3').textContent.toLowerCase().indexOf(q) !== -1;
+        var itemsVisible = 0;
+        col.querySelectorAll('li').forEach(function (li) {
+          var name = li.querySelector('span').textContent.toLowerCase();
+          var visible = !q || catMatches || name.indexOf(q) !== -1;
+          li.hidden = !visible;
+          if (visible) itemsVisible++;
+        });
+        var colVisible = itemsVisible > 0;
+        col.hidden = !colVisible;
+        if (colVisible) anyVisible = true;
+      });
+
+      document.getElementById('wikiSearchEmpty').style.display = (cols.length && !anyVisible) ? 'block' : 'none';
     }
 
     function initAdmin() {
@@ -154,6 +197,9 @@
       if (typeof TaskManager === 'undefined') { setTimeout(boot, 150); return; }
       render();
       initAdmin();
+      document.getElementById('docSearchInput').addEventListener('input', applySearch);
+      // Google Sheets fetch resolves async after initData() — re-render once it lands
+      setTimeout(function () { render(); applySearch(); }, 1200);
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
     else boot();
