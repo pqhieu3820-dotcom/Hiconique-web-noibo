@@ -15,14 +15,14 @@
   function setTheme(theme) {
     html.setAttribute('data-theme', theme);
     localStorage.setItem('hiconique-theme', theme);
-    // Sync all theme sliders on the page
+    // Sync all theme sliders on the page (slider sits under the icon for the ACTIVE theme)
     document.querySelectorAll('[id$="ThemeSlider"]').forEach(function(slider) {
-      slider.style.transform = theme === 'light' ? 'translateX(34px)' : 'translateX(0)';
+      slider.style.transform = theme === 'dark' ? 'translateX(34px)' : 'translateX(0)';
     });
     // Sync theme-toggle-pill slider (index page)
     var pillSliders = document.querySelectorAll('.theme-toggle-slider');
     pillSliders.forEach(function(s) {
-      s.style.transform = theme === 'light' ? 'translateX(40px)' : 'translateX(0)';
+      s.style.transform = theme === 'dark' ? 'translateX(40px)' : 'translateX(0)';
     });
   }
 
@@ -451,7 +451,7 @@
       navLinks.forEach(function (l) { l.classList.remove('active'); });
     }
 
-    function openPanel(name) {
+    function openPanel(name, scrollToPanel) {
       closeAllPanels();
       var target = document.getElementById('panel-' + name);
       if (!target) return;
@@ -464,10 +464,12 @@
         if (l.dataset.panel === name) l.classList.add('active');
       });
 
-      // Smooth scroll to top of panel
-      setTimeout(function () {
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 50);
+      // Smooth scroll to top of panel (skip on initial page load default)
+      if (scrollToPanel !== false) {
+        setTimeout(function () {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 50);
+      }
     }
 
     navLinks.forEach(function (link) {
@@ -495,8 +497,8 @@
     }
 
     if (!openInitialPanel()) {
-      // Fallback: open tasks panel by default so it's visible immediately
-      openPanel('tasks');
+      // Fallback: open tasks panel by default so it's visible, but stay at top of page
+      openPanel('tasks', false);
     }
 
     closeBtns.forEach(function (btn) {

@@ -1,7 +1,15 @@
 export default async (request, context) => {
-  // Lấy User và Pass từ biến môi trường (sẽ cài đặt trên Netlify sau)
-  const expectedUser = Netlify.env.get('AUTH_USER') || 'noiboadmin';
-  const expectedPass = Netlify.env.get('AUTH_PASS') || 'matkhau123!';
+  // Đọc danh sách "user:pass,user:pass,..." từ biến môi trường AUTH_USERS trên Netlify
+  const rawUsers = Netlify.env.get('AUTH_USERS') || 'noiboadmin:matkhau123!';
+
+  const users = {};
+  rawUsers.split(',').forEach((pair) => {
+    const idx = pair.indexOf(':');
+    if (idx === -1) return;
+    const user = pair.slice(0, idx).trim();
+    const pass = pair.slice(idx + 1).trim();
+    if (user) users[user] = pass;
+  });
 
   const authHeader = request.headers.get('authorization');
 
@@ -9,10 +17,12 @@ export default async (request, context) => {
     const [scheme, encoded] = authHeader.split(' ');
     if (scheme.toLowerCase() === 'basic') {
       const decoded = atob(encoded); // Giải mã chuỗi
-      const [user, pass] = decoded.split(':');
+      const sepIdx = decoded.indexOf(':');
+      const user = decoded.slice(0, sepIdx);
+      const pass = decoded.slice(sepIdx + 1);
 
-      // Nếu đúng tài khoản và mật khẩu -> cho phép truy cập web
-      if (user === expectedUser && pass === expectedPass) {
+      // Nếu user tồn tại và đúng mật khẩu -> cho phép truy cập web
+      if (Object.prototype.hasOwnProperty.call(users, user) && users[user] === pass) {
         return context.next();
       }
     }

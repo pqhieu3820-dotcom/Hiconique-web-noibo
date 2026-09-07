@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="/css/portal.css" />
   <link rel="stylesheet" href="/css/subpage.css" />
   <link rel="stylesheet" href="/css/projects.css" />
+  <link rel="stylesheet" href="/css/gantt.css" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </head>
 <body>
@@ -26,8 +27,10 @@
       </a>
       <nav class="primary-nav">
         <a href="/#tools" class="nav-link">Công cụ</a>
-        <a href="/pages/wiki.html" class="nav-link">Tài liệu</a>
+        <a href="/pages/tasks-manager.html" class="nav-link">Tasks</a>
         <a href="/pages/projects.html" class="nav-link" style="color:var(--color-text)">Dự án</a>
+        <a href="/pages/wiki.html" class="nav-link">Tài liệu</a>
+        <a href="/#ai" class="nav-link">AI</a>
         <a href="/pages/notices.html" class="nav-link">Thông báo</a>
         <a href="/pages/team.html" class="nav-link">Team</a>
       </nav>
@@ -184,6 +187,10 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             Timeline
           </button>
+          <button class="view-tab" data-view="gantt">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Gantt
+          </button>
         </div>
         <div class="content-actions">
           <button class="btn-filter" id="btnSort">
@@ -267,8 +274,48 @@
         </div>
         <div class="timeline-body" id="timelineBody"></div>
       </div>
+
+      <!-- Gantt View (hidden by default) -->
+      <div class="gantt-view" id="gantt-view" style="display:none">
+        <div class="gantt-toolbar">
+          <div class="gantt-filter-tabs" id="ganttFilterTabs"></div>
+          <button class="gantt-export-btn" id="ganttExportBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Xuất Excel
+          </button>
+        </div>
+        <div class="gantt-card">
+          <div class="gantt-card-header">
+            <div class="gantt-card-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              Biểu đồ Gantt — Tiến độ dự án
+            </div>
+            <div class="gantt-card-meta" id="ganttCardMeta"></div>
+          </div>
+          <div class="gantt-legend" id="ganttLegend"></div>
+          <div class="gantt-table-wrap">
+            <table class="gantt-table" id="ganttTable">
+              <thead>
+                <tr>
+                  <th>Công việc</th>
+                  <th colspan="12" style="text-align:center">Khoảng thời gian</th>
+                  <th class="gantt-col-progress">Tiến độ</th>
+                  <th style="text-align:right">Trạng thái</th>
+                </tr>
+              </thead>
+              <tbody id="ganttBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   </main>
+
+  <!-- Gantt tooltip -->
+  <div class="gantt-tooltip" id="ganttTooltip">
+    <div class="gantt-tooltip-title"></div>
+    <div class="gantt-tooltip-meta"></div>
+  </div>
 
   <!-- New Task Modal -->
   <div class="modal-overlay" id="task-modal" hidden>
@@ -510,6 +557,8 @@
   <script src="/js/gsheets-config.js"></script>
   <script src="/js/task-data.js"></script>
   <script src="/js/auth.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js" defer></script>
+  <script src="/js/gantt.js" defer></script>
   <script src="/js/projects.js" defer></script>
 </body>
 </html>

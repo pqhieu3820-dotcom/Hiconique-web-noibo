@@ -374,23 +374,29 @@
     if (state.viewType === 'board') renderBoard();
     else if (state.viewType === 'list') renderList();
     else if (state.viewType === 'timeline') renderTimeline();
+    else if (state.viewType === 'gantt' && typeof HiconiqueGantt !== 'undefined') {
+      HiconiqueGantt.render(document.getElementById('gantt-view'));
+    }
   }
 
   // ----- View toggle -----
+  function setView(viewType) {
+    document.querySelectorAll('.view-tab').forEach(function (t) {
+      t.classList.toggle('active', t.dataset.view === viewType);
+    });
+    state.viewType = viewType;
+
+    document.getElementById('kanban-board').style.display = viewType === 'board' ? 'flex' : 'none';
+    document.getElementById('list-view').style.display = viewType === 'list' ? 'block' : 'none';
+    document.getElementById('timeline-view').style.display = viewType === 'timeline' ? 'block' : 'none';
+    document.getElementById('gantt-view').style.display = viewType === 'gantt' ? 'block' : 'none';
+
+    renderAll();
+  }
+
   function bindViewTabs() {
-    var tabs = document.querySelectorAll('.view-tab');
-    tabs.forEach(function (tab) {
-      tab.addEventListener('click', function () {
-        tabs.forEach(function (t) { t.classList.remove('active'); });
-        tab.classList.add('active');
-        state.viewType = tab.dataset.view;
-
-        document.getElementById('kanban-board').style.display = state.viewType === 'board' ? 'flex' : 'none';
-        document.getElementById('list-view').style.display = state.viewType === 'list' ? 'block' : 'none';
-        document.getElementById('timeline-view').style.display = state.viewType === 'timeline' ? 'block' : 'none';
-
-        renderAll();
-      });
+    document.querySelectorAll('.view-tab').forEach(function (tab) {
+      tab.addEventListener('click', function () { setView(tab.dataset.view); });
     });
   }
 
@@ -911,7 +917,13 @@
     bindProjectModal();
     bindDetailModal();
     bindSyncButton();
-    renderAll();
+    if (typeof HiconiqueGantt !== 'undefined') HiconiqueGantt.bind(document.getElementById('gantt-view'));
+
+    if (window.location.hash === '#gantt') {
+      setView('gantt');
+    } else {
+      renderAll();
+    }
 
     // Listen for data refresh
     if (typeof TaskManager !== 'undefined') {

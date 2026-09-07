@@ -203,16 +203,17 @@ main { flex: 1; }
   left: 2px;
   width: 28px;
   height: 28px;
-  background: var(--color-bronze);
+  background: var(--color-blue);
   border-radius: 50%;
   transition: transform var(--dur-base) var(--ease), background var(--dur-base) var(--ease);
   z-index: 1;
   box-sizing: border-box;
-}
-/* Light mode - slider moves to right */
-[data-theme="light"] .theme-toggle-slider {
   transform: translateX(40px);
-  background: var(--color-blue);
+}
+/* Light mode - slider moves under the sun icon */
+[data-theme="light"] .theme-toggle-slider {
+  transform: translateX(0);
+  background: var(--color-bronze);
 }
 
 /* Header - uses transparency with backdrop for both themes */

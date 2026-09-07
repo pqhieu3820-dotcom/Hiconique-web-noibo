@@ -202,6 +202,15 @@
         <p>Công việc cá nhân và tiến độ</p>
       </div>
     </div>
+    <nav class="primary-nav">
+      <a href="/#tools" class="nav-link">Công cụ</a>
+      <a href="/pages/tasks-manager.html" class="nav-link">Tasks</a>
+      <a href="/pages/projects.html" class="nav-link">Dự án</a>
+      <a href="/pages/wiki.html" class="nav-link">Tài liệu</a>
+      <a href="/#ai" class="nav-link">AI</a>
+      <a href="/pages/notices.html" class="nav-link">Thông báo</a>
+      <a href="/pages/team.html" class="nav-link">Team</a>
+    </nav>
     <div style="display:flex;align-items:center;gap:10px;">
       <a href="/" class="md-back">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
@@ -265,7 +274,7 @@
     function syncMdSlider() {
       var theme = document.documentElement.getAttribute('data-theme');
       var slider = document.getElementById('mdThemeSlider');
-      if (slider) slider.style.transform = theme === 'light' ? 'translateX(34px)' : 'translateX(0)';
+      if (slider) slider.style.transform = theme === 'dark' ? 'translateX(34px)' : 'translateX(0)';
     }
     syncMdSlider();
     var mdToggle = document.querySelector('[data-theme-toggle]');
