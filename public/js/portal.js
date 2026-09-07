@@ -676,12 +676,9 @@
   }
 
   // ----- Avatar dropdown (account menu) -----
-  // Reusable version for every page's `.avatar` button. Pages that ship their
-  // own bespoke dropdown (currently only index.html, with #userDropdown) are
-  // skipped here to avoid a duplicate/conflicting menu.
+  // Shared across every page that has a plain `.avatar` button in `.header-actions`.
   function initUserMenu() {
     if (typeof Auth === 'undefined') return;
-    if (document.getElementById('userDropdown')) return;
     var session = Auth.getCurrentUser();
     if (!session) return;
 
@@ -695,6 +692,15 @@
     menu.className = 'user-menu-panel';
     menu.hidden = true;
     document.body.appendChild(menu);
+
+    var ICON = {
+      mail: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>',
+      pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 6.5-9 12-9 12s-9-5.5-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+      calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+      user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+      chart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>',
+      logout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>'
+    };
 
     function fmtJoined(v) {
       if (!v) return '';
@@ -717,13 +723,13 @@
           '</div>' +
         '</div>' +
         '<div class="user-menu-meta">' +
-          '<div>✉️ ' + escapeHtml(full.email || '--') + '</div>' +
-          (full.hometown ? '<div>📍 ' + escapeHtml(full.hometown) + '</div>' : '') +
-          (joined ? '<div>📅 Vào làm từ ' + joined + '</div>' : '') +
+          '<div>' + ICON.mail + '<span>' + escapeHtml(full.email || '--') + '</span></div>' +
+          (full.hometown ? '<div>' + ICON.pin + '<span>' + escapeHtml(full.hometown) + '</span></div>' : '') +
+          (joined ? '<div>' + ICON.calendar + '<span>Vào làm từ ' + joined + '</span></div>' : '') +
         '</div>' +
-        '<a href="/pages/profile.html" class="user-menu-link">👤 Thông tin cá nhân</a>' +
-        '<a href="/pages/my-dashboard.html" class="user-menu-link">📊 Dashboard của tôi</a>' +
-        '<button type="button" class="user-menu-link user-menu-logout" id="userMenuLogout">🚪 Đăng xuất</button>';
+        '<a href="/pages/profile.html" class="user-menu-link">' + ICON.user + '<span>Thông tin cá nhân</span></a>' +
+        '<a href="/pages/my-dashboard.html" class="user-menu-link">' + ICON.chart + '<span>Dashboard của tôi</span></a>' +
+        '<button type="button" class="user-menu-link user-menu-logout" id="userMenuLogout">' + ICON.logout + '<span>Đăng xuất</span></button>';
 
       var logoutBtn = menu.querySelector('#userMenuLogout');
       if (logoutBtn) logoutBtn.addEventListener('click', function () {

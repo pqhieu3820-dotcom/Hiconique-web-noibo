@@ -74,45 +74,9 @@
         <div class="clock" aria-live="polite">
           <span class="clock-time" data-clock>15:01</span>
         </div>
-        <button class="avatar" aria-label="Tài khoản của bạn" data-user-toggle id="userAvatarBtn">
-          <span id="userAvatarText">TM</span>
+        <button class="avatar" aria-label="Tài khoản của bạn">
+          <span>--</span>
         </button>
-
-        <!-- User Dropdown -->
-        <div id="userDropdown" hidden style="position: fixed; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; min-width: 280px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 1000; overflow: hidden;">
-          <div style="padding: 16px; border-bottom: 1px solid var(--color-border);">
-            <div style="display: flex; align-items: center; gap: 12px;">
-              <div id="userDropdownAvatar" style="width: 44px; height: 44px; border-radius: 50%; background: var(--color-bronze); color: #0B0D10; display: grid; place-items: center; font-weight: 600; flex-shrink: 0;">--</div>
-              <div style="min-width: 0;">
-                <div id="userDropdownName" style="font-weight: 600; color: var(--color-text);">--</div>
-                <div id="userDropdownRole" style="font-size: 0.8125rem; color: var(--color-text-muted);">--</div>
-              </div>
-            </div>
-            <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 6px; font-size: 0.8125rem; color: var(--color-text-muted);">
-              <div style="display: flex; align-items: center; gap: 8px; overflow: hidden;">
-                <span aria-hidden="true">✉️</span>
-                <span id="userDropdownEmail" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">--</span>
-              </div>
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <span aria-hidden="true">📍</span>
-                <span id="userDropdownHometown">--</span>
-              </div>
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <span aria-hidden="true">📅</span>
-                <span>Vào làm từ <span id="userDropdownJoined">--</span></span>
-              </div>
-            </div>
-          </div>
-          <a href="/pages/profile.html" style="display: block; padding: 12px 16px; color: var(--color-text); text-decoration: none; font-size: 0.875rem; border-bottom: 1px solid var(--color-border);" onmouseover="this.style.background='var(--color-bg)'" onmouseout="this.style.background='transparent'">
-            👤 Thông tin cá nhân
-          </a>
-          <a href="/pages/my-dashboard.html" style="display: block; padding: 12px 16px; color: var(--color-text); text-decoration: none; font-size: 0.875rem; border-bottom: 1px solid var(--color-border);" onmouseover="this.style.background='var(--color-bg)'" onmouseout="this.style.background='transparent'">
-            📊 Dashboard của tôi
-          </a>
-          <button id="logoutBtn" style="display: block; width: 100%; padding: 12px 16px; background: none; border: none; color: #A04848; text-align: left; font-size: 0.875rem; cursor: pointer; font-family: inherit;" onmouseover="this.style.background='rgba(160,72,72,0.08)'" onmouseout="this.style.background='transparent'">
-            🚪 Đăng xuất
-          </button>
-        </div>
       </div>
     </div>
 
@@ -535,61 +499,13 @@
   <script src="/js/task-data.js"></script>
   <script src="/js/auth.js"></script>
   <script>
-    // User dropdown logic
+    // Prompt login if there's no session yet. The account menu itself (avatar
+    // dropdown with profile/dashboard/logout) is built by portal.js's
+    // initUserMenu(), shared with every other page.
     (function() {
-      var avatarBtn = document.getElementById('userAvatarBtn');
-      var dropdown = document.getElementById('userDropdown');
-      var user = Auth.getCurrentUser();
-
-      // Check auth
-      if (!user) {
-        // Show login modal if not logged in
-        setTimeout(function() {
-          Auth.showLoginModal();
-        }, 500);
-        return;
+      if (!Auth.getCurrentUser()) {
+        setTimeout(function() { Auth.showLoginModal(); }, 500);
       }
-
-      // Update UI with user info
-      document.getElementById('userAvatarText').textContent = user.avatar || 'TM';
-      document.getElementById('userDropdownAvatar').textContent = user.avatar || '--';
-      document.getElementById('userDropdownName').textContent = user.name || '--';
-      document.getElementById('userDropdownRole').textContent = user.role || '--';
-      document.getElementById('userDropdownEmail').textContent = user.email || '--';
-      document.getElementById('userDropdownHometown').textContent = user.hometown || '--';
-      document.getElementById('userDropdownJoined').textContent = (function () {
-        if (!user.createdAt) return '--';
-        var d = new Date(user.createdAt);
-        if (isNaN(d.getTime())) return user.createdAt;
-        return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear();
-      })();
-
-      // Toggle dropdown — position from the avatar's actual on-screen rect (fixed,
-      // so it stays anchored under the avatar even if the page is scrolled).
-      function positionDropdown() {
-        var r = avatarBtn.getBoundingClientRect();
-        dropdown.style.top = (r.bottom + 8) + 'px';
-        dropdown.style.right = Math.max(12, window.innerWidth - r.right) + 'px';
-      }
-      avatarBtn.addEventListener('click', function(e) {
-        e.stopPropagation();
-        if (dropdown.hidden) positionDropdown();
-        dropdown.hidden = !dropdown.hidden;
-      });
-
-      // Close dropdown when click outside
-      document.addEventListener('click', function() {
-        dropdown.hidden = true;
-      });
-
-      // Logout
-      document.getElementById('logoutBtn').addEventListener('click', function() {
-        Auth.logout();
-        window.location.href = window.location.pathname;
-      });
-
-      // Check session expiry
-      Auth.getCurrentUser();
     })();
   </script>
 </body>
