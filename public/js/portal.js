@@ -133,6 +133,17 @@
     if (e.key === 'Escape') closeSearch();
   });
 
+  // Small line-icon set reused by the team directory modal and the account menu.
+  var ICON = {
+    mail: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>',
+    pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 6.5-9 12-9 12s-9-5.5-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+    calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+    user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+    chart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>',
+    logout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>',
+    phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>'
+  };
+
   // ----- Team directory (from Google Sheets via TaskManager) -----
   function getInitials(name) {
     if (!name) return '??';
@@ -165,7 +176,7 @@
       return;
     }
 
-    grid.innerHTML = members.map(function (m) {
+    grid.innerHTML = members.map(function (m, i) {
       var initials = m.avatar || getInitials(m.name);
       var color = m.color || '#6B7280';
       var role = m.role || m.position || '';
@@ -176,7 +187,7 @@
       var joinDate = m.createdAt ? new Date(m.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
 
       return ''
-        + '<article class="team-card">'
+        + '<article class="team-card" data-idx="' + i + '" tabindex="0" role="button" aria-haspopup="dialog">'
         +   '<div class="team-avatar" style="background:' + color + '">' + initials + '</div>'
         +   '<h3 class="team-name">' + (m.name || '—') + '</h3>'
         +   '<p class="team-role">' + role + '</p>'
@@ -195,6 +206,63 @@
         +   '</div>'
         + '</article>';
     }).join('');
+
+    grid.querySelectorAll('.team-card').forEach(function (card) {
+      function open(e) {
+        if (e.target.closest('.team-action')) return;
+        openTeamMemberModal(members[parseInt(card.dataset.idx, 10)]);
+      }
+      card.addEventListener('click', open);
+      card.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(e); }
+      });
+    });
+  }
+
+  // Full-detail modal for a team card — deliberately leaves out CCCD/bank
+  // info even though it's on the member record, since this view is visible
+  // to every logged-in teammate, not just the person themselves or admins.
+  function openTeamMemberModal(m) {
+    if (!m) return;
+    var overlay = document.getElementById('teamModalOverlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.className = 'team-modal-overlay';
+      overlay.id = 'teamModalOverlay';
+      overlay.hidden = true;
+      overlay.innerHTML = '<div class="team-modal" role="dialog" aria-modal="true">' +
+        '<button type="button" class="team-modal-close" aria-label="Đóng">&times;</button>' +
+        '<div id="teamModalContent"></div>' +
+      '</div>';
+      document.body.appendChild(overlay);
+      overlay.addEventListener('click', function (e) { if (e.target === overlay) overlay.hidden = true; });
+      overlay.querySelector('.team-modal-close').addEventListener('click', function () { overlay.hidden = true; });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') overlay.hidden = true; });
+    }
+
+    var initials = m.avatar || getInitials(m.name);
+    var color = m.color || '#6B7280';
+    var roleLevelLabel = m.roleLevel === 'admin' ? 'Quản trị viên' : m.roleLevel === 'manager' ? 'Quản lý' : 'Nhân viên';
+    var days = daysAtCompany(m.createdAt);
+    var joinDate = m.createdAt ? new Date(m.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+
+    document.getElementById('teamModalContent').innerHTML =
+      '<div class="team-modal-header">' +
+        '<div class="team-modal-avatar" style="background:' + color + '">' + escapeHtml(initials) + '</div>' +
+        '<div class="team-modal-id">' +
+          '<h3 class="team-modal-name">' + escapeHtml(m.name || '—') + '</h3>' +
+          '<p class="team-modal-role">' + escapeHtml(m.role || '') + '</p>' +
+          '<span class="pf-id-badge">' + roleLevelLabel + '</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="team-modal-body">' +
+        '<div class="team-modal-row">' + ICON.mail + '<span>' + escapeHtml(m.email || '—') + '</span></div>' +
+        (m.phone ? '<div class="team-modal-row">' + ICON.phone + '<span>' + escapeHtml(m.phone) + '</span></div>' : '') +
+        (m.hometown ? '<div class="team-modal-row">' + ICON.pin + '<span>' + escapeHtml(m.hometown) + '</span></div>' : '') +
+        (joinDate ? '<div class="team-modal-row">' + ICON.calendar + '<span>Vào làm từ ' + joinDate + (days !== null ? ' · ' + days + ' ngày' : '') + '</span></div>' : '') +
+      '</div>';
+
+    overlay.hidden = false;
   }
 
   function loadTeam() {
@@ -692,15 +760,6 @@
     menu.className = 'user-menu-panel';
     menu.hidden = true;
     document.body.appendChild(menu);
-
-    var ICON = {
-      mail: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>',
-      pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 6.5-9 12-9 12s-9-5.5-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
-      calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
-      user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
-      chart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>',
-      logout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>'
-    };
 
     function fmtJoined(v) {
       if (!v) return '';

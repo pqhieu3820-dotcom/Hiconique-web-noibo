@@ -353,10 +353,17 @@ const Auth = (function() {
               </div>
             </div>
 
-            <div>
-              <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Quê quán</label>
-              <input type="text" id="regHometownInput" placeholder="Địa chỉ quê quán"
-                style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div>
+                <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Số điện thoại</label>
+                <input type="tel" id="regPhoneInput" placeholder="09xxxxxxxx"
+                  style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none;">
+              </div>
+              <div>
+                <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Quê quán</label>
+                <input type="text" id="regHometownInput" placeholder="Địa chỉ quê quán"
+                  style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none;">
+              </div>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
@@ -398,6 +405,7 @@ const Auth = (function() {
     var passwordInput = document.getElementById('regPasswordInput');
     var dobInput = document.getElementById('regDobInput');
     var cccdInput = document.getElementById('regCccdInput');
+    var phoneInput = document.getElementById('regPhoneInput');
     var hometownInput = document.getElementById('regHometownInput');
     var bankNameInput = document.getElementById('regBankNameInput');
     var bankAccountInput = document.getElementById('regBankAccountInput');
@@ -416,6 +424,7 @@ const Auth = (function() {
       var password = passwordInput.value;
       var dob = dobInput.value;
       var cccd = cccdInput.value.trim();
+      var phone = phoneInput.value.trim();
       var hometown = hometownInput.value.trim();
       var bankName = bankNameInput.value.trim();
       var bankAccount = bankAccountInput.value.trim();
@@ -428,7 +437,7 @@ const Auth = (function() {
         return;
       }
 
-      register(name, email, role, password, dob, cccd, hometown, bankName, bankAccount, function(result) {
+      register(name, email, role, password, dob, cccd, phone, hometown, bankName, bankAccount, function(result) {
         if (result.success) {
           successEl.textContent = '✓ Đăng ký thành công! Đang chuyển sang đăng nhập...';
           successEl.style.display = 'block';
@@ -451,7 +460,7 @@ const Auth = (function() {
   }
 
   // Register new member
-  function register(name, email, role, password, dob, cccd, hometown, bankName, bankAccount, callback) {
+  function register(name, email, role, password, dob, cccd, phone, hometown, bankName, bankAccount, callback) {
     if (!isAllowedEmail(email)) {
       if (callback) callback({ success: false, error: 'Email không hợp lệ' });
       return;
@@ -488,6 +497,7 @@ const Auth = (function() {
       password: password,
       dob: dob || '',
       cccd: cccd || '',
+      phone: phone || '',
       hometown: hometown || '',
       bank: bankName || '',
       bankAccount: bankAccount || '',

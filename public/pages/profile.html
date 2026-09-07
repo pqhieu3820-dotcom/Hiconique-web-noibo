@@ -16,7 +16,8 @@
   <script src="/js/task-data.js"></script>
   <script src="/js/auth.js"></script>
   <style>
-    .pf-card { max-width: 700px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; }
+    .pf-card { max-width: 700px; margin: 0 auto; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; }
+    .pf-card + .pf-card { margin-top: 20px; }
 
     .pf-card-header {
       padding: 24px;
@@ -176,6 +177,11 @@
               <div class="pf-field-value" id="profileCccd">--</div>
               <input class="pf-field-input" id="profileCccdInput" type="text" hidden>
             </div>
+            <div class="pf-field" data-field="phone">
+              <div class="pf-field-label">Số điện thoại</div>
+              <div class="pf-field-value" id="profilePhone">--</div>
+              <input class="pf-field-input" id="profilePhoneInput" type="tel" hidden>
+            </div>
             <div class="pf-field" data-field="hometown">
               <div class="pf-field-label">Quê quán</div>
               <div class="pf-field-value" id="profileHometown">--</div>
@@ -200,6 +206,36 @@
           <p class="pf-save-msg" id="pfSaveMsg">✓ Đã lưu thay đổi.</p>
         </form>
       </div>
+
+      <div class="pf-card">
+        <div class="pf-card-header">
+          <div class="pf-card-header-id">
+            <div>
+              <div class="pf-name">Đổi mật khẩu</div>
+              <div class="pf-role">Dùng mật khẩu mới cho lần đăng nhập tiếp theo</div>
+            </div>
+          </div>
+        </div>
+        <form class="pf-card-body" id="pfPasswordForm">
+          <div class="pf-grid">
+            <div class="pf-field full">
+              <div class="pf-field-label">Mật khẩu hiện tại</div>
+              <input class="pf-field-input" id="pfCurrentPassword" type="password" required autocomplete="current-password" style="border-bottom: 1px solid var(--color-border);">
+            </div>
+            <div class="pf-field">
+              <div class="pf-field-label">Mật khẩu mới</div>
+              <input class="pf-field-input" id="pfNewPassword" type="password" required autocomplete="new-password" style="border-bottom: 1px solid var(--color-border);">
+            </div>
+            <div class="pf-field">
+              <div class="pf-field-label">Xác nhận mật khẩu mới</div>
+              <input class="pf-field-input" id="pfConfirmPassword" type="password" required autocomplete="new-password" style="border-bottom: 1px solid var(--color-border);">
+            </div>
+          </div>
+          <p class="pf-save-msg" id="pfPasswordError" style="color: var(--color-destructive);"></p>
+          <p class="pf-save-msg" id="pfPasswordMsg">✓ Đã đổi mật khẩu.</p>
+          <button type="submit" class="pf-edit-btn primary">Cập nhật mật khẩu</button>
+        </form>
+      </div>
     </div>
   </main>
 
@@ -208,7 +244,7 @@
     var session = Auth.getCurrentUser();
     if (!session) { Auth.showLoginModal(); return; }
 
-    var EDITABLE = ['dob', 'cccd', 'hometown', 'bank', 'bankAccount'];
+    var EDITABLE = ['dob', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount'];
     var user;
 
     function fmtDob(v) { return v ? new Date(v).toLocaleDateString('vi-VN') : '--'; }
@@ -226,12 +262,14 @@
       document.getElementById('profileEmail').textContent = user.email || '--';
       document.getElementById('profileDob').textContent = fmtDob(user.dob);
       document.getElementById('profileCccd').textContent = user.cccd || '--';
+      document.getElementById('profilePhone').textContent = user.phone || '--';
       document.getElementById('profileHometown').textContent = user.hometown || '--';
       document.getElementById('profileBankName').textContent = user.bank || '--';
       document.getElementById('profileBank').textContent = user.bankAccount || '--';
 
       document.getElementById('profileDobInput').value = isoDob(user.dob);
       document.getElementById('profileCccdInput').value = user.cccd || '';
+      document.getElementById('profilePhoneInput').value = user.phone || '';
       document.getElementById('profileHometownInput').value = user.hometown || '';
       document.getElementById('profileBankNameInput').value = user.bank || '';
       document.getElementById('profileBankInput').value = user.bankAccount || '';
@@ -261,6 +299,7 @@
       var updates = {
         dob: document.getElementById('profileDobInput').value,
         cccd: document.getElementById('profileCccdInput').value.trim(),
+        phone: document.getElementById('profilePhoneInput').value.trim(),
         hometown: document.getElementById('profileHometownInput').value.trim(),
         bank: document.getElementById('profileBankNameInput').value.trim(),
         bankAccount: document.getElementById('profileBankInput').value.trim()
@@ -271,6 +310,40 @@
       var msg = document.getElementById('pfSaveMsg');
       msg.classList.add('show');
       setTimeout(function () { msg.classList.remove('show'); }, 3000);
+    });
+
+    document.getElementById('pfPasswordForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var errorEl = document.getElementById('pfPasswordError');
+      var msgEl = document.getElementById('pfPasswordMsg');
+      errorEl.classList.remove('show');
+      msgEl.classList.remove('show');
+
+      var current = document.getElementById('pfCurrentPassword').value;
+      var next = document.getElementById('pfNewPassword').value;
+      var confirm = document.getElementById('pfConfirmPassword').value;
+
+      if (String(user.password) !== current) {
+        errorEl.textContent = 'Mật khẩu hiện tại không đúng.';
+        errorEl.classList.add('show');
+        return;
+      }
+      if (next.length < 4) {
+        errorEl.textContent = 'Mật khẩu mới phải có ít nhất 4 ký tự.';
+        errorEl.classList.add('show');
+        return;
+      }
+      if (next !== confirm) {
+        errorEl.textContent = 'Xác nhận mật khẩu mới không khớp.';
+        errorEl.classList.add('show');
+        return;
+      }
+
+      TaskManager.updateMember(session.id, { password: next }, session);
+      render();
+      document.getElementById('pfPasswordForm').reset();
+      msgEl.classList.add('show');
+      setTimeout(function () { msgEl.classList.remove('show'); }, 3000);
     });
 
     function boot() {
