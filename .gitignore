@@ -31,9 +31,6 @@ dist/
 build/
 .cache/
 
-# Vercel
-.vercel/
-
 # Local secrets
 *.pem
 *.key
