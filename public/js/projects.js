@@ -6,7 +6,7 @@
   var state = {
     viewType: 'board',
     projectFilter: 'all',
-    quickFilters: { mine: true, dueToday: false, overdue: false, done: false },
+    quickFilters: { mine: false, dueToday: false, overdue: false, done: false },
     memberFilter: null, // member id filter
     sortBy: 'deadline',
     timelineMonth: new Date().getMonth(),

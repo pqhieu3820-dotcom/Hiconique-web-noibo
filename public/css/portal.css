@@ -590,24 +590,28 @@ main { flex: 1; }
 .hero-title {
   font-family: var(--font-sans);
   font-weight: 700;
-  font-size: var(--text-display-xl);
-  line-height: 0.95;
+  font-size: clamp(2.25rem, 5.5vw, 5rem);
+  line-height: 1.05;
   letter-spacing: -0.025em;
   color: var(--color-text);
   margin: var(--space-md) 0 var(--space-lg);
+}
+.hero-title-sub {
+  display: block;
+  font-size: 0.6em;
+  margin-top: 0.15em;
+  white-space: nowrap;
 }
 .hero-title-serif {
   font-family: var(--font-serif);
   font-weight: 500;
   letter-spacing: -0.02em;
-  font-size: 0.95em;
 }
 .hero-title-italic {
   font-family: var(--font-serif);
   font-style: italic;
   font-weight: 400;
   color: var(--color-bronze);
-  font-size: 0.95em;
   letter-spacing: -0.02em;
 }
 .hero-lede {

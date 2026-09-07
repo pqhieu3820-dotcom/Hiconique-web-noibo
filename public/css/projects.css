@@ -1493,10 +1493,17 @@
   box-shadow: 0 0 0 1px var(--color-bronze);
 }
 .type-card .type-icon {
-  font-size: 1.5rem;
-  line-height: 1;
-  margin-bottom: 2px;
+  width: 32px; height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  margin-bottom: 4px;
+  transition: all var(--dur-base) var(--ease);
 }
+.type-card .type-icon svg { width: 16px; height: 16px; }
 .type-card .type-label {
   font-size: 0.875rem;
   font-weight: 600;
@@ -1508,6 +1515,7 @@
   line-height: 1.4;
 }
 .type-card.active .type-label { color: var(--color-bronze); }
+.type-card.active .type-icon { border-color: var(--color-bronze); color: var(--color-bronze); background: rgba(176, 141, 87, 0.1); }
 
 /* ─── Color picker with presets ─── */
 .color-picker {
@@ -1517,14 +1525,16 @@
   flex-wrap: wrap;
 }
 .color-picker input[type="color"] {
-  width: 48px;
-  height: 38px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
+  width: 26px;
+  height: 26px;
+  border: 1.5px dashed var(--color-border-strong);
+  border-radius: 50%;
   background: transparent;
   cursor: pointer;
-  padding: 2px;
+  padding: 0;
+  order: 1;
 }
+.color-picker input[type="color"]:hover { border-color: var(--color-bronze); }
 .color-presets {
   display: flex;
   gap: 6px;
