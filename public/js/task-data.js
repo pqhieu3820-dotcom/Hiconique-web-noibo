@@ -116,7 +116,7 @@ var TaskManager = (function() {
     }
 
     var done = 0;
-    var total = 4;
+    var total = 5;
     var success = false;
 
     function checkDone() {
@@ -146,6 +146,12 @@ var TaskManager = (function() {
     getFromGSheets('proposals', function(proposals) {
       if (proposals.length > 0) {
         localStorage.setItem(STORAGE_KEYS.proposals, JSON.stringify(proposals));
+      }
+      checkDone();
+    });
+    getFromGSheets('timesheet', function(timesheet) {
+      if (timesheet.length > 0) {
+        localStorage.setItem(STORAGE_KEYS.timesheet, JSON.stringify(timesheet));
       }
       checkDone();
     });
@@ -234,6 +240,7 @@ var TaskManager = (function() {
       case 'tasks': url = urls.TASKS; break;
       case 'members': url = urls.MEMBERS; break;
       case 'proposals': url = urls.PROPOSALS; break;
+      case 'timesheet': url = urls.TIMESHEET; break;
     }
 
     fetchFromSheet(url, function(data) {
@@ -284,6 +291,11 @@ var TaskManager = (function() {
           localStorage.setItem(STORAGE_KEYS.proposals, JSON.stringify(proposals));
         } else {
           localStorage.setItem(STORAGE_KEYS.proposals, JSON.stringify(DEFAULT_PROPOSALS));
+        }
+      });
+      getFromGSheets('timesheet', function(timesheet) {
+        if (timesheet.length > 0) {
+          localStorage.setItem(STORAGE_KEYS.timesheet, JSON.stringify(timesheet));
         }
       });
     } else {

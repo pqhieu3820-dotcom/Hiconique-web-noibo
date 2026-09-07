@@ -1,5 +1,4 @@
 const SPREADSHEET_ID = '1usLh4pt5F7r1XY-SLbWPfajYuZ5mDNGaaa4neYG84nY';
-// API URL: https://script.google.com/macros/s/AKfycbwc-b9AMPpl34VNUGHhiUg9wf1Kt5xZ3-XbOHEq128f0yzqlucmbkhnmmrhLa9xUeCR/exec
 
 const SHEETS = {
   projects: 'Projects',
@@ -9,9 +8,12 @@ const SHEETS = {
   timesheet: 'Timesheet'
 };
 
+// Reference schema only — used to seed headers on a brand-new empty sheet.
+// Reads/writes always follow the sheet's ACTUAL header row (see getHeaders),
+// so adding/reordering columns directly in Sheets never breaks sync.
 const HEADERS = {
   projects: ['id', 'name', 'type', 'color', 'progress', 'status', 'members', 'createdAt', 'updatedAt'],
-  tasks: ['id', 'title', 'description', 'projectId', 'assigneeId', 'priority', 'status', 'startDate', 'deadline', 'createdBy', 'createdAt', 'updatedAt'],
+  tasks: ['id', 'title', 'description', 'projectId', 'assigneeId', 'priority', 'status', 'startDate', 'deadline', 'createdBy', 'createdAt', 'updatedAt', 'progress', 'dailyTasks'],
   members: ['id', 'name', 'role', 'roleLevel', 'email', 'password', 'dob', 'cccd', 'hometown', 'bankAccount', 'color', 'avatar', 'createdAt'],
   proposals: ['id', 'title', 'description', 'type', 'status', 'requesterId', 'reviewerId', 'amount', 'createdAt', 'reviewedAt'],
   timesheet: ['id', 'memberId', 'date', 'checkinTime', 'checkoutTime', 'totalHours', 'overtimeHours', 'status']
@@ -26,9 +28,6 @@ function handleRequest(e) {
     const action = params.action;
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     let result;
-
-    // Auth check - chỉ cần khi write (có thể mở rộng sau)
-    // const userEmail = Session.getActiveUser().getEmail();
 
     if (action === 'getProjects') {
       result = getAllData(ss, SHEETS.projects);
@@ -85,9 +84,15 @@ function handleRequest(e) {
     }
 
     return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
-  } catch(err) {
+  } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ error: err.message })).setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+// Real header row of the sheet — the single source of truth for column order/name.
+function getHeaders(sheet) {
+  if (sheet.getLastColumn() === 0) return [];
+  return sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
 }
 
 function getAllData(ss, sheetName) {
@@ -96,13 +101,13 @@ function getAllData(ss, sheetName) {
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return [];
   const data = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  return data.map(function(row) {
+  const headers = getHeaders(sheet);
+  return data.map(function (row) {
     const obj = {};
-    headers.forEach(function(h, i) {
+    headers.forEach(function (h, i) {
       let val = row[i];
       if (typeof val === 'string' && val.startsWith('[')) {
-        try { obj[h] = JSON.parse(val); } catch(e) { obj[h] = val; }
+        try { obj[h] = JSON.parse(val); } catch (e) { obj[h] = val; }
       } else {
         obj[h] = val;
       }
@@ -112,19 +117,24 @@ function getAllData(ss, sheetName) {
 }
 
 function getDataById(ss, sheetName, id) {
-  return getAllData(ss, sheetName).find(function(row) { return row.id === id; });
+  return getAllData(ss, sheetName).find(function (row) { return row.id === id; });
 }
 
 function addData(ss, sheetName, data) {
   const sheet = ss.getSheetByName(sheetName);
-  const headers = HEADERS[sheetName.toLowerCase()];
+  let headers = getHeaders(sheet);
+  // Brand-new empty sheet with no header row yet: seed it from the reference schema.
+  if (headers.length === 0) {
+    headers = HEADERS[sheetName.toLowerCase()] || Object.keys(data);
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  }
   if (!data.id) {
-    data.id = sheetName.toLowerCase().replace('s', '') + '_' + Date.now();
+    data.id = sheetName.toLowerCase().replace(/s$/, '') + '_' + Date.now();
   }
   data.createdAt = data.createdAt || new Date().toISOString().split('T')[0];
-  const row = headers.map(function(h) {
+  const row = headers.map(function (h) {
     const val = data[h];
-    return Array.isArray(val) ? JSON.stringify(val) : (val || '');
+    return Array.isArray(val) ? JSON.stringify(val) : (val !== undefined && val !== null ? val : '');
   });
   sheet.appendRow(row);
   return data;
@@ -132,13 +142,15 @@ function addData(ss, sheetName, data) {
 
 function updateData(ss, sheetName, id, updates) {
   const sheet = ss.getSheetByName(sheetName);
-  const headers = HEADERS[sheetName.toLowerCase()];
+  const headers = getHeaders(sheet);
   const data = getAllData(ss, sheetName);
-  const index = data.findIndex(function(row) { return row.id === id; });
+  const index = data.findIndex(function (row) { return row.id === id; });
   if (index === -1) return { error: 'Not found: ' + id };
   const rowNum = index + 2;
-  updates.updatedAt = new Date().toISOString();
-  headers.forEach(function(h, i) {
+  if (headers.indexOf('updatedAt') !== -1) {
+    updates.updatedAt = new Date().toISOString();
+  }
+  headers.forEach(function (h, i) {
     if (updates[h] !== undefined) {
       let val = updates[h];
       if (Array.isArray(val)) val = JSON.stringify(val);
@@ -151,7 +163,7 @@ function updateData(ss, sheetName, id, updates) {
 function deleteData(ss, sheetName, id) {
   const sheet = ss.getSheetByName(sheetName);
   const data = getAllData(ss, sheetName);
-  const index = data.findIndex(function(row) { return row.id === id; });
+  const index = data.findIndex(function (row) { return row.id === id; });
   if (index === -1) return { error: 'Not found' };
   sheet.deleteRow(index + 2);
   return { success: true, deleted: id };
