@@ -93,6 +93,8 @@ const Auth = (function() {
       roleLevel: user.roleLevel,
       color: user.color,
       avatar: user.avatar,
+      hometown: user.hometown,
+      createdAt: user.createdAt,
       loggedInAt: Date.now(),
       expiresAt: Date.now() + SESSION_DURATION
     };

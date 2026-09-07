@@ -79,13 +79,27 @@
         </button>
 
         <!-- User Dropdown -->
-        <div id="userDropdown" hidden style="position: absolute; top: 64px; right: 20px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; min-width: 280px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 1000; overflow: hidden;">
+        <div id="userDropdown" hidden style="position: fixed; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; min-width: 280px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 1000; overflow: hidden;">
           <div style="padding: 16px; border-bottom: 1px solid var(--color-border);">
             <div style="display: flex; align-items: center; gap: 12px;">
-              <div id="userDropdownAvatar" style="width: 44px; height: 44px; border-radius: 50%; background: var(--color-bronze); color: #0B0D10; display: grid; place-items: center; font-weight: 600;">--</div>
-              <div>
+              <div id="userDropdownAvatar" style="width: 44px; height: 44px; border-radius: 50%; background: var(--color-bronze); color: #0B0D10; display: grid; place-items: center; font-weight: 600; flex-shrink: 0;">--</div>
+              <div style="min-width: 0;">
                 <div id="userDropdownName" style="font-weight: 600; color: var(--color-text);">--</div>
                 <div id="userDropdownRole" style="font-size: 0.8125rem; color: var(--color-text-muted);">--</div>
+              </div>
+            </div>
+            <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 6px; font-size: 0.8125rem; color: var(--color-text-muted);">
+              <div style="display: flex; align-items: center; gap: 8px; overflow: hidden;">
+                <span aria-hidden="true">✉️</span>
+                <span id="userDropdownEmail" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">--</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span aria-hidden="true">📍</span>
+                <span id="userDropdownHometown">--</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span aria-hidden="true">📅</span>
+                <span>Vào làm từ <span id="userDropdownJoined">--</span></span>
               </div>
             </div>
           </div>
@@ -541,10 +555,25 @@
       document.getElementById('userDropdownAvatar').textContent = user.avatar || '--';
       document.getElementById('userDropdownName').textContent = user.name || '--';
       document.getElementById('userDropdownRole').textContent = user.role || '--';
+      document.getElementById('userDropdownEmail').textContent = user.email || '--';
+      document.getElementById('userDropdownHometown').textContent = user.hometown || '--';
+      document.getElementById('userDropdownJoined').textContent = (function () {
+        if (!user.createdAt) return '--';
+        var d = new Date(user.createdAt);
+        if (isNaN(d.getTime())) return user.createdAt;
+        return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear();
+      })();
 
-      // Toggle dropdown
+      // Toggle dropdown — position from the avatar's actual on-screen rect (fixed,
+      // so it stays anchored under the avatar even if the page is scrolled).
+      function positionDropdown() {
+        var r = avatarBtn.getBoundingClientRect();
+        dropdown.style.top = (r.bottom + 8) + 'px';
+        dropdown.style.right = Math.max(12, window.innerWidth - r.right) + 'px';
+      }
       avatarBtn.addEventListener('click', function(e) {
         e.stopPropagation();
+        if (dropdown.hidden) positionDropdown();
         dropdown.hidden = !dropdown.hidden;
       });
 
