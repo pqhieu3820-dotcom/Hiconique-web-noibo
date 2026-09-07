@@ -18,7 +18,7 @@ Spreadsheet: `HICONIQUE Task Manager` — 8 tab, mỗi tab một loại dữ li�
 | `Timesheet` | Chấm công | id, memberId, date, checkinTime, checkoutTime, totalHours, overtimeHours, status |
 | `Notifications` | Nhắc định kỳ (chuông thông báo) | id, title, message, type, scope, recurring, recurRule, active, createdBy, createdAt, updatedAt |
 | `Notices` | Bảng tin (trang Thông báo) | id, title, message, color, createdBy, createdAt, updatedAt |
-| `Documents` | Link tài liệu (trang Tài liệu) | id, category, name, url, createdBy, createdAt, updatedAt |
+| `Documents` | Link tài liệu (trang Tài liệu) | id, category, name, url, code, createdBy, createdAt, updatedAt |
 
 **Quan trọng:** `gsheets-api-v2.js` đọc/ghi theo **tên cột thật trên Sheet** (không theo vị trí
 cứng trong code) — nên bạn có thể thêm cột mới trực tiếp trên Sheet mà không lo vỡ dữ liệu.
@@ -50,6 +50,19 @@ Nếu thêm hẳn 1 sheet mới, xem mục "Thêm sheet mới" bên dưới.
 4. Trong `public/js/task-data.js`: thêm `STORAGE_KEYS`, case trong `getFromGSheets()`, fetch
    trong `initData()`/`refreshFromGSheets()`, và các hàm CRUD tương ứng (theo mẫu Notices/
    Documents đã có sẵn trong file).
+
+## Cột `code` (mã tài liệu) trên tab Documents
+
+Trang Tài liệu có trường "Mã tài liệu" tự sinh dạng `DES-SOP-005` (Phòng ban-Loại-STT). Giá trị
+này được gửi lên qua Apps Script như mọi cột khác, nhưng vì `addData`/`updateData` chỉ ghi theo
+**đúng các cột đã có sẵn trên hàng header của Sheet**, nếu tab `Documents` **chưa có cột `code`**
+thì giá trị này sẽ bị bỏ qua khi ghi (không lỗi, chỉ không lưu lại được qua Sheets). Để mã tài
+liệu được đồng bộ và giữ lại sau khi tải lại trang: mở tab `Documents`, tự thêm cột `code` vào
+hàng header (không cần sửa/redeploy `gsheets-api-v2.js`, code đã đọc/ghi theo tên cột động).
+
+Danh mục chung (dropdown "Danh mục" khi thêm tài liệu, và phần "Quản lý danh mục") **chỉ lưu
+trong localStorage của từng máy/trình duyệt** — chưa đồng bộ qua Google Sheets. Nếu cần dùng
+chung nhiều máy, cho tôi biết để bổ sung 1 sheet/tab riêng cho danh mục.
 
 ## Publish to web (bắt buộc để CSV đọc được)
 

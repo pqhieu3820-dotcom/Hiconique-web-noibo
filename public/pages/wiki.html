@@ -64,9 +64,34 @@
       <div id="docAdminBar" style="margin-top:var(--space-md);display:none;">
         <button class="btn-secondary" id="docAddBtn" type="button">+ Thêm tài liệu</button>
         <form id="docForm" class="notice-form" hidden>
-          <input type="text" id="docCategoryInput" placeholder="Danh mục (vd: Template chung)" required>
+          <div class="doc-cat-row">
+            <select id="docCategoryInput" required></select>
+            <button type="button" class="doc-cat-manage-btn" id="docCatManageBtn">Quản lý danh mục</button>
+          </div>
+          <div class="doc-cat-manage" id="docCatManage" hidden>
+            <div class="doc-cat-manage-add">
+              <input type="text" id="docCatNewInput" placeholder="Tên danh mục mới">
+              <button type="button" class="btn-secondary" id="docCatAddBtn">Thêm danh mục</button>
+            </div>
+            <ul class="doc-cat-list" id="docCatList"></ul>
+          </div>
+
           <input type="text" id="docNameInput" placeholder="Tên tài liệu" required>
           <input type="text" id="docUrlInput" placeholder="Link (Notion / Google Drive...)" required>
+
+          <div class="doc-code-block">
+            <div class="doc-code-label-row">
+              <span class="doc-code-label">Mã tài liệu (tuỳ chọn)</span>
+              <button type="button" class="doc-code-info-btn" id="docCodeInfoBtn" aria-label="Xem quy ước đặt mã tài liệu">i</button>
+            </div>
+            <div class="doc-code-selects">
+              <select id="docCodeDept"></select>
+              <select id="docCodeType"></select>
+              <span class="doc-code-preview" id="docCodePreview">—</span>
+            </div>
+            <div class="doc-code-info-panel" id="docCodeInfoPanel" hidden></div>
+          </div>
+
           <button type="submit" class="btn-primary">Thêm</button>
         </form>
       </div>
@@ -85,6 +110,8 @@
 
   <style>
     .notice-form { display: flex; flex-direction: column; gap: 10px; max-width: 480px; margin-top: 14px; padding: 16px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 8px; }
+    .notice-form[hidden] { display: none; }
+    .doc-cat-manage[hidden] { display: none; }
     .notice-form input, .notice-form select { padding: 8px 10px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 4px; color: var(--color-text); font-family: 'Inter', sans-serif; font-size: 0.875rem; }
     .wiki-col-del { background: none; border: none; color: var(--color-text-faint); font-size: 0.6875rem; cursor: pointer; padding: 0; margin-left: 8px; }
     .wiki-col-del:hover { color: var(--color-destructive); }
@@ -102,6 +129,43 @@
     .wiki-search-bar input::placeholder { color: var(--color-text-faint); }
     .wiki-col[hidden] { display: none; }
     .wiki-col li[hidden] { display: none; }
+    .wiki-doc-code { font-family: 'JetBrains Mono', monospace; font-size: 0.6875rem; color: var(--color-bronze); margin-right: 4px; }
+
+    .doc-cat-row { display: flex; align-items: center; gap: 8px; }
+    .doc-cat-row select { flex: 1; }
+    .doc-cat-manage-btn { background: none; border: none; color: var(--color-text-faint); font-size: 0.75rem; text-decoration: underline; cursor: pointer; padding: 0; white-space: nowrap; }
+    .doc-cat-manage-btn:hover { color: var(--color-bronze); }
+    .doc-cat-manage { border: 1px dashed var(--color-border); border-radius: 6px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+    .doc-cat-manage-add { display: flex; gap: 8px; }
+    .doc-cat-manage-add input { flex: 1; }
+    .doc-cat-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+    .doc-cat-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.8125rem; color: var(--color-text); padding: 4px 8px; background: var(--color-bg); border-radius: 4px; }
+    .doc-cat-list button { background: none; border: none; color: var(--color-text-faint); font-size: 0.6875rem; cursor: pointer; padding: 0; }
+    .doc-cat-list button:hover { color: var(--color-destructive); }
+
+    .doc-code-block { position: relative; border: 1px solid var(--color-border); border-radius: 6px; padding: 10px; }
+    .doc-code-label-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+    .doc-code-label { font-size: 0.8125rem; color: var(--color-text-muted); }
+    .doc-code-info-btn {
+      width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--color-text-faint);
+      background: none; color: var(--color-text-faint); font-size: 0.6875rem; font-style: italic; font-family: Georgia, serif;
+      display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; line-height: 1;
+    }
+    .doc-code-info-btn:hover { color: var(--color-bronze); border-color: var(--color-bronze); }
+    .doc-code-selects { display: flex; gap: 8px; align-items: center; }
+    .doc-code-selects select { flex: 1; }
+    .doc-code-preview { font-family: 'JetBrains Mono', monospace; font-size: 0.8125rem; color: var(--color-bronze); white-space: nowrap; min-width: 90px; }
+    .doc-code-info-panel {
+      position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; right: 0;
+      max-height: 320px; overflow-y: auto;
+      background: var(--color-surface); border: 1px solid var(--color-border-strong); border-radius: 8px;
+      box-shadow: var(--shadow-lg); padding: 14px; font-size: 0.75rem; color: var(--color-text-muted); line-height: 1.5;
+    }
+    .doc-code-info-panel h4 { font-size: 0.8125rem; color: var(--color-text); margin: 0 0 6px; }
+    .doc-code-info-panel h4:not(:first-child) { margin-top: 14px; }
+    .doc-code-info-panel code { font-family: 'JetBrains Mono', monospace; color: var(--color-bronze); }
+    .doc-code-info-panel ul { margin: 0; padding-left: 16px; }
+    .doc-code-info-panel li { margin-bottom: 4px; }
   </style>
 
   <script>
@@ -111,6 +175,49 @@
         return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
       });
     }
+
+    // Hệ thống Mã tài liệu — [Phòng ban]-[Loại tài liệu]-[STT 3 số]
+    var DOC_TYPES = [
+      ['SOP', 'SOP — Quy trình thao tác chuẩn'],
+      ['WIN', 'WIN — Hướng dẫn công việc'],
+      ['POL', 'POL — Chính sách/Quy định'],
+      ['FRM', 'FRM — Biểu mẫu'],
+      ['CHK', 'CHK — Danh mục kiểm tra'],
+      ['SPC', 'SPC — Tiêu chuẩn kỹ thuật'],
+      ['TPL', 'TPL — Tệp mẫu']
+    ];
+    var DOC_DEPARTMENTS = [
+      ['BOD', 'BOD — Ban Giám đốc'],
+      ['HRM', 'HRM — Nhân sự'],
+      ['ACC', 'ACC — Kế toán & Tài chính'],
+      ['ADM', 'ADM — Hành chính & Công nghệ'],
+      ['LEG', 'LEG — Pháp chế & Hợp đồng'],
+      ['BIZ', 'BIZ — Kinh doanh'],
+      ['MKT', 'MKT — Truyền thông'],
+      ['CUS', 'CUS — Chăm sóc Khách hàng'],
+      ['DES', 'DES — Thiết kế Kiến trúc & Nội thất'],
+      ['BIM', 'BIM — Quản lý Dữ liệu số'],
+      ['RND', 'RND — Nghiên cứu Kỹ thuật'],
+      ['EST', 'EST — Dự toán & Bóc tách'],
+      ['PUR', 'PUR — Cung ứng & Mua hàng'],
+      ['WHS', 'WHS — Kho bãi & Vận tải'],
+      ['MFG', 'MFG — Xưởng sản xuất'],
+      ['CON', 'CON — Quản lý Thi công'],
+      ['HSE', 'HSE — An toàn & Môi trường'],
+      ['QAC', 'QAC — Quản lý Chất lượng']
+    ];
+
+    var DOC_CODE_INFO_HTML =
+      '<h4>Công thức định danh</h4>' +
+      '<p><code>[Mã Phòng ban]-[Mã Loại tài liệu]-[STT 3 số]</code><br>' +
+      'Ví dụ: <code>DES-SOP-005</code> — Quy trình triển khai bản vẽ kỹ thuật đồ mộc.</p>' +
+      '<h4>Loại tài liệu</h4><ul>' +
+      DOC_TYPES.map(function (t) { return '<li><code>' + t[0] + '</code> — ' + escapeHtml(t[1].split('— ')[1]) + '</li>'; }).join('') +
+      '</ul>' +
+      '<h4>Phòng ban / chức năng</h4><ul>' +
+      DOC_DEPARTMENTS.map(function (d) { return '<li><code>' + d[0] + '</code> — ' + escapeHtml(d[1].split('— ')[1]) + '</li>'; }).join('') +
+      '</ul>' +
+      '<p>STT (3 số) tự động tăng dần theo từng cặp Phòng ban + Loại tài liệu đã dùng, không cần nhập tay.</p>';
 
     function render() {
       var wrap = document.getElementById('wikiCols');
@@ -129,7 +236,7 @@
         return '<div class="wiki-col"><h3>' + escapeHtml(g.category) + '</h3><ul>' +
           g.items.map(function (d) {
             return '<li><a href="' + escapeHtml(d.url || '#') + '" target="_blank" rel="noopener">' +
-              '<span>' + escapeHtml(d.name) + '</span>' +
+              '<span>' + (d.code ? '<span class="wiki-doc-code">' + escapeHtml(d.code) + '</span>' : '') + escapeHtml(d.name) + '</span>' +
               (canManage ? '<button type="button" class="wiki-col-del" data-id="' + escapeHtml(d.id) + '">Xoá</button>' : '<span>&rarr;</span>') +
             '</a></li>';
           }).join('') +
@@ -170,24 +277,100 @@
       document.getElementById('wikiSearchEmpty').style.display = (cols.length && !anyVisible) ? 'block' : 'none';
     }
 
+    function renderCategorySelect() {
+      var select = document.getElementById('docCategoryInput');
+      var prev = select.value;
+      var cats = TaskManager.getDocCategories();
+      select.innerHTML = cats.map(function (c) { return '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + '</option>'; }).join('');
+      if (cats.indexOf(prev) !== -1) select.value = prev;
+    }
+
+    function renderCategoryManageList() {
+      var list = document.getElementById('docCatList');
+      var cats = TaskManager.getDocCategories();
+      list.innerHTML = cats.map(function (c) {
+        return '<li><span>' + escapeHtml(c) + '</span><button type="button" class="doc-cat-del" data-name="' + escapeHtml(c) + '">Xoá</button></li>';
+      }).join('') || '<li><span style="color:var(--color-text-faint);">Chưa có danh mục nào.</span></li>';
+
+      list.querySelectorAll('.doc-cat-del').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          if (!confirm('Xoá danh mục "' + btn.dataset.name + '"? (Tài liệu đã gán danh mục này sẽ không bị xoá.)')) return;
+          TaskManager.deleteDocCategory(btn.dataset.name, Auth.getCurrentUser());
+          renderCategoryManageList();
+          renderCategorySelect();
+        });
+      });
+    }
+
+    function updateDocCodePreview() {
+      var dept = document.getElementById('docCodeDept').value;
+      var type = document.getElementById('docCodeType').value;
+      var preview = document.getElementById('docCodePreview');
+      preview.textContent = (dept && type) ? TaskManager.getNextDocCode(dept, type) : '—';
+    }
+
     function initAdmin() {
       var addBtn = document.getElementById('docAddBtn');
       var form = document.getElementById('docForm');
       addBtn.addEventListener('click', function () { form.hidden = !form.hidden; });
+
+      renderCategorySelect();
+      renderCategoryManageList();
+
+      var deptSelect = document.getElementById('docCodeDept');
+      var typeSelect = document.getElementById('docCodeType');
+      deptSelect.innerHTML = '<option value="">— Phòng ban —</option>' +
+        DOC_DEPARTMENTS.map(function (d) { return '<option value="' + d[0] + '">' + escapeHtml(d[1]) + '</option>'; }).join('');
+      typeSelect.innerHTML = '<option value="">— Loại tài liệu —</option>' +
+        DOC_TYPES.map(function (t) { return '<option value="' + t[0] + '">' + escapeHtml(t[1]) + '</option>'; }).join('');
+      deptSelect.addEventListener('change', updateDocCodePreview);
+      typeSelect.addEventListener('change', updateDocCodePreview);
+
+      var infoBtn = document.getElementById('docCodeInfoBtn');
+      var infoPanel = document.getElementById('docCodeInfoPanel');
+      infoPanel.innerHTML = DOC_CODE_INFO_HTML;
+      infoBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        infoPanel.hidden = !infoPanel.hidden;
+      });
+      document.addEventListener('click', function (e) {
+        if (!infoPanel.hidden && !infoPanel.contains(e.target) && e.target !== infoBtn) infoPanel.hidden = true;
+      });
+
+      var catManageBtn = document.getElementById('docCatManageBtn');
+      var catManage = document.getElementById('docCatManage');
+      catManageBtn.addEventListener('click', function () { catManage.hidden = !catManage.hidden; });
+
+      document.getElementById('docCatAddBtn').addEventListener('click', function () {
+        var input = document.getElementById('docCatNewInput');
+        var name = input.value.trim();
+        if (!name) return;
+        TaskManager.addDocCategory(name, Auth.getCurrentUser());
+        input.value = '';
+        renderCategoryManageList();
+        renderCategorySelect();
+      });
+
       form.addEventListener('submit', function (e) {
         e.preventDefault();
         var name = document.getElementById('docNameInput').value.trim();
-        var category = document.getElementById('docCategoryInput').value.trim();
+        var category = document.getElementById('docCategoryInput').value;
         if (!name || !category) return;
         var user = Auth.getCurrentUser();
+        var dept = deptSelect.value;
+        var type = typeSelect.value;
+        var code = (dept && type) ? TaskManager.getNextDocCode(dept, type) : '';
         TaskManager.createDocument({
           category: category,
           name: name,
-          url: document.getElementById('docUrlInput').value.trim() || '#'
+          url: document.getElementById('docUrlInput').value.trim() || '#',
+          code: code
         }, user);
         document.getElementById('docNameInput').value = '';
-        document.getElementById('docCategoryInput').value = '';
         document.getElementById('docUrlInput').value = '';
+        deptSelect.value = '';
+        typeSelect.value = '';
+        updateDocCodePreview();
         form.hidden = true;
         render();
       });

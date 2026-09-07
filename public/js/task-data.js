@@ -101,7 +101,8 @@ var TaskManager = (function() {
     notifications: 'hiconique_notifications',
     readNotifications: 'hiconique_read_notifications',
     notices: 'hiconique_notices',
-    documents: 'hiconique_documents'
+    documents: 'hiconique_documents',
+    docCategories: 'hiconique_doc_categories'
   };
 
   // Recurring notification rules — seeded once, editable by CEO from the bell panel.
@@ -139,6 +140,9 @@ var TaskManager = (function() {
     { id: 'document_260101_16', category: 'Brand & Marketing', name: 'Tone & voice thương hiệu', url: '#', createdBy: 'CEO', createdAt: '2026-01-01' },
     { id: 'document_260101_17', category: 'Brand & Marketing', name: 'Template bài viết mạng xã hội', url: '#', createdBy: 'CEO', createdAt: '2026-01-01' }
   ];
+
+  // Danh mục chung cho trang Tài liệu — quản lý riêng (thêm/xoá), không đi qua Google Sheets.
+  var DEFAULT_DOC_CATEGORIES = ['Template chung', 'SPC · Quy chuẩn kỹ thuật', 'Sổ tay nhân sự', 'Brand & Marketing'];
 
   // Cache for Google Sheets data
   var gsCache = {
@@ -331,6 +335,10 @@ var TaskManager = (function() {
 
   // Initialize data from localStorage or Google Sheets
   function initData() {
+    // Danh mục tài liệu chỉ sống trong localStorage của từng máy (không qua Sheets).
+    if (!localStorage.getItem(STORAGE_KEYS.docCategories)) {
+      localStorage.setItem(STORAGE_KEYS.docCategories, JSON.stringify(DEFAULT_DOC_CATEGORIES));
+    }
     if (isUsingGSheets()) {
       // Try to fetch from Google Sheets
       getFromGSheets('projects', function(projects) {
@@ -890,6 +898,49 @@ var TaskManager = (function() {
     return result;
   }
 
+  // Danh mục chung (dropdown "Danh mục" khi thêm tài liệu) — CEO/Manager thêm/xoá được,
+  // lưu riêng trong localStorage của máy (không đồng bộ qua Google Sheets).
+  function getDocCategories() {
+    var list = getAll(STORAGE_KEYS.docCategories);
+    return list.slice().sort(function (a, b) { return a.localeCompare(b, 'vi'); });
+  }
+
+  function addDocCategory(name, user) {
+    if (!canManageNotifications(user)) return null;
+    name = String(name || '').trim();
+    if (!name) return null;
+    var list = getAll(STORAGE_KEYS.docCategories);
+    var exists = list.some(function (c) { return c.toLowerCase() === name.toLowerCase(); });
+    if (exists) return list;
+    list.push(name);
+    save(STORAGE_KEYS.docCategories, list);
+    return list;
+  }
+
+  function deleteDocCategory(name, user) {
+    if (!canManageNotifications(user)) return null;
+    var list = getAll(STORAGE_KEYS.docCategories);
+    var filtered = list.filter(function (c) { return c.toLowerCase() !== String(name || '').toLowerCase(); });
+    save(STORAGE_KEYS.docCategories, filtered);
+    return filtered;
+  }
+
+  // Mã tài liệu — [Phòng ban]-[Loại tài liệu]-[STT 3 số], STT tự tăng theo cặp
+  // phòng ban+loại đã có, không phụ thuộc tài liệu bị xoá hay chưa (luôn tăng dần).
+  function getNextDocCode(dept, type) {
+    if (!dept || !type) return '';
+    var prefix = dept + '-' + type + '-';
+    var maxSeq = 0;
+    getAll(STORAGE_KEYS.documents).forEach(function (d) {
+      if (d.code && d.code.indexOf(prefix) === 0) {
+        var seq = parseInt(d.code.slice(prefix.length), 10);
+        if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
+      }
+    });
+    var next = maxSeq + 1;
+    return prefix + ('00' + next).slice(-3);
+  }
+
   // Timesheet
   function getTimesheetEntries(filters) {
     filters = filters || {};
@@ -1018,6 +1069,10 @@ var TaskManager = (function() {
     createDocument: createDocument,
     updateDocument: updateDocument,
     deleteDocument: deleteDocument,
+    getDocCategories: getDocCategories,
+    addDocCategory: addDocCategory,
+    deleteDocCategory: deleteDocCategory,
+    getNextDocCode: getNextDocCode,
 
     // Storage
     STORAGE_KEYS: STORAGE_KEYS,
