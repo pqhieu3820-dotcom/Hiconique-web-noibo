@@ -12,7 +12,10 @@ const GSHEETS_CONFIG = {
     TASKS: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQZdO-5j-EN4Yk7SMR_pSU8vmwentJ8n2jkKoHKz66o2sRNU9kgQK3dmt-Ac-0aBe0Doqd1Q9B_jWP5/pub?output=csv&gid=2088597336',
     MEMBERS: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQZdO-5j-EN4Yk7SMR_pSU8vmwentJ8n2jkKoHKz66o2sRNU9kgQK3dmt-Ac-0aBe0Doqd1Q9B_jWP5/pub?output=csv&gid=1872059656',
     PROPOSALS: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQZdO-5j-EN4Yk7SMR_pSU8vmwentJ8n2jkKoHKz66o2sRNU9kgQK3dmt-Ac-0aBe0Doqd1Q9B_jWP5/pub?output=csv&gid=141206186',
-    TIMESHEET: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQZdO-5j-EN4Yk7SMR_pSU8vmwentJ8n2jkKoHKz66o2sRNU9kgQK3dmt-Ac-0aBe0Doqd1Q9B_jWP5/pub?output=csv&gid=430888240'
+    TIMESHEET: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQZdO-5j-EN4Yk7SMR_pSU8vmwentJ8n2jkKoHKz66o2sRNU9kgQK3dmt-Ac-0aBe0Doqd1Q9B_jWP5/pub?output=csv&gid=430888240',
+    NOTIFICATIONS: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQZdO-5j-EN4Yk7SMR_pSU8vmwentJ8n2jkKoHKz66o2sRNU9kgQK3dmt-Ac-0aBe0Doqd1Q9B_jWP5/pub?output=csv&gid=266318234',
+    NOTICES: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQZdO-5j-EN4Yk7SMR_pSU8vmwentJ8n2jkKoHKz66o2sRNU9kgQK3dmt-Ac-0aBe0Doqd1Q9B_jWP5/pub?output=csv&gid=289133991',
+    DOCUMENTS: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQZdO-5j-EN4Yk7SMR_pSU8vmwentJ8n2jkKoHKz66o2sRNU9kgQK3dmt-Ac-0aBe0Doqd1Q9B_jWP5/pub?output=csv&gid=498493206'
   },
 
   // Bật chế độ Google Sheets

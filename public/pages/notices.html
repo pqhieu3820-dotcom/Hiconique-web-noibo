@@ -54,43 +54,113 @@
       <h1 class="subpage-title">Tin tức <span class="subpage-title-italic">mới nhất</span></h1>
       <p class="subpage-lede">Cập nhật nhanh về cuộc họp, deadline, KPI &amp; nhắc nhở công ty.</p>
 
-      <section class="notice-grid" style="margin-top:var(--space-2xl);">
-        <article class="notice notice-bronze">
-          <header><span class="notice-dot notice-dot-bronze"></span><h3>Nhắc nhở cuối tuần</h3></header>
-          <p>Mọi người cập nhật bảng Lark và sao lưu dữ liệu quan trọng trước khi kết thúc ngày làm việc nhé! Đừng quên check lại cái <b>Thứ Bảu · 16:00</b>.</p>
-        </article>
+      <div id="noticeAdminBar" style="margin-top:var(--space-xl);display:none;">
+        <button class="btn-secondary" id="noticeAddBtn" type="button">+ Đăng thông báo mới</button>
+        <form id="noticeForm" class="notice-form" hidden>
+          <input type="text" id="noticeTitleInput" placeholder="Tiêu đề" required>
+          <textarea id="noticeMessageInput" placeholder="Nội dung" rows="3"></textarea>
+          <select id="noticeColorInput">
+            <option value="bronze">Bronze</option>
+            <option value="purple">Purple</option>
+            <option value="red">Đỏ (khẩn)</option>
+            <option value="info">Trung tính</option>
+          </select>
+          <button type="submit" class="btn-primary">Đăng</button>
+        </form>
+      </div>
 
-        <article class="notice notice-info">
-          <header><span class="notice-dot"></span><h3>Cập nhật gần đây</h3></header>
-          <ul class="notice-list">
-            <li><span class="notice-date">21/07/2026</span> Thêm Mạng vật liệu vào Tài liệu &amp; Quy trình</li>
-            <li><span class="notice-date">19/04/2026</span> Dashboard hoạt động, tự động refresh 90 giây</li>
-            <li><span class="notice-date">15/04/2026</span> Quy trình nghiệm thu — bổ sung bước kiểm tra sau bàn giao</li>
-          </ul>
-        </article>
-
-        <article class="notice notice-purple">
-          <header><span class="notice-dot notice-dot-purple"></span><h3>Họp team tháng 9</h3></header>
-          <p>Tổ sẽ tiến hành bàn giao &amp; cải tiến. Thảo gũ khó khăn. Review dự án đang chạy. Kế hoạch tháng mới. Dự kiến tạp nhất trên <b>Lark</b>.<br />Thứ năm, <b>07/09/2026</b> · 9:00 — 10:00 · Tiếp nhận nhật trên Lark.</p>
-        </article>
-
-        <article class="notice notice-red">
-          <header><span class="notice-dot notice-dot-red"></span><h3>Nhắc nhở: cập nhật phiếu lương tháng 9/2026</h3></header>
-          <p>Mọi người vào cập nhật phiếu lương từ ngày <b>01–05 hàng tháng</b>.<br /><b>01/09/2026</b> — <b>05/09/2026</b>.</p>
-        </article>
-
-        <article class="notice notice-bronze">
-          <header><span class="notice-dot notice-dot-bronze"></span><h3>Bàn giao công trình Vinhouse</h3></header>
-          <p>Buổi nghiệm thu cuối cùng dự kiến <b>30/08/2026</b>. Mời các bộ phận liên quan đến công trường để hoàn tất checklist bàn giao.</p>
-        </article>
-
-        <article class="notice notice-info">
-          <header><span class="notice-dot"></span><h3>Lịch training nội bộ</h3></header>
-          <p>HICONIQUE mở lớp training về quy trình SPC vào <b>20/08/2026</b>. Đăng ký qua Lark trước ngày 18/08.</p>
-        </article>
+      <section class="notice-grid" id="noticeGrid" style="margin-top:var(--space-xl);">
+        <p style="color:var(--color-text-faint);">Đang tải thông báo…</p>
       </section>
     </div>
   </main>
+
+  <style>
+    .notice-form { display: flex; flex-direction: column; gap: 10px; max-width: 480px; margin-top: 14px; padding: 16px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 8px; }
+    .notice-form input, .notice-form textarea, .notice-form select { padding: 8px 10px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 4px; color: var(--color-text); font-family: 'Inter', sans-serif; font-size: 0.875rem; }
+    .notice-card-actions { margin-top: 8px; }
+    .notice-card-actions button { background: none; border: none; color: var(--color-text-faint); font-size: 0.75rem; cursor: pointer; padding: 0; }
+    .notice-card-actions button:hover { color: var(--color-destructive); }
+  </style>
+
+  <script>
+  (function () {
+    function escapeHtml(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+
+    function fmtDate(dateStr) {
+      var d = new Date(dateStr);
+      if (isNaN(d.getTime())) return '';
+      return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear();
+    }
+
+    function render() {
+      var grid = document.getElementById('noticeGrid');
+      if (typeof TaskManager === 'undefined') { grid.innerHTML = '<p style="color:var(--color-text-faint);">Không tải được thông báo.</p>'; return; }
+      var notices = TaskManager.getNotices();
+      var user = (typeof Auth !== 'undefined') ? Auth.getCurrentUser() : null;
+      var canManage = user && TaskManager.canManageNotifications(user);
+
+      document.getElementById('noticeAdminBar').style.display = canManage ? 'block' : 'none';
+
+      if (!notices.length) {
+        grid.innerHTML = '<p style="color:var(--color-text-faint);">Chưa có thông báo nào.</p>';
+        return;
+      }
+
+      grid.innerHTML = notices.map(function (n) {
+        var dotClass = n.color === 'bronze' ? 'notice-dot-bronze' : n.color === 'purple' ? 'notice-dot-purple' : n.color === 'red' ? 'notice-dot-red' : '';
+        return '<article class="notice notice-' + escapeHtml(n.color || 'info') + '" data-id="' + escapeHtml(n.id) + '">' +
+          '<header><span class="notice-dot ' + dotClass + '"></span><h3>' + escapeHtml(n.title) + '</h3></header>' +
+          '<p>' + escapeHtml(n.message) + '</p>' +
+          '<p class="notice-date">' + fmtDate(n.createdAt) + '</p>' +
+          (canManage ? '<div class="notice-card-actions"><button type="button" class="notice-del-btn">Xoá</button></div>' : '') +
+        '</article>';
+      }).join('');
+
+      grid.querySelectorAll('.notice-del-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var id = btn.closest('.notice').dataset.id;
+          if (!confirm('Xoá thông báo này?')) return;
+          TaskManager.deleteNotice(id, user);
+          render();
+        });
+      });
+    }
+
+    function initAdmin() {
+      var addBtn = document.getElementById('noticeAddBtn');
+      var form = document.getElementById('noticeForm');
+      addBtn.addEventListener('click', function () { form.hidden = !form.hidden; });
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var title = document.getElementById('noticeTitleInput').value.trim();
+        if (!title) return;
+        var user = Auth.getCurrentUser();
+        TaskManager.createNotice({
+          title: title,
+          message: document.getElementById('noticeMessageInput').value.trim(),
+          color: document.getElementById('noticeColorInput').value
+        }, user);
+        document.getElementById('noticeTitleInput').value = '';
+        document.getElementById('noticeMessageInput').value = '';
+        form.hidden = true;
+        render();
+      });
+    }
+
+    function boot() {
+      if (typeof TaskManager === 'undefined') { setTimeout(boot, 150); return; }
+      render();
+      initAdmin();
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+    else boot();
+  })();
+  </script>
 
   <footer class="site-footer">
     <div class="footer-inner">
@@ -99,6 +169,9 @@
     </div>
   </footer>
 
+  <script src="/js/gsheets-config.js"></script>
+  <script src="/js/task-data.js"></script>
+  <script src="/js/auth.js"></script>
   <script src="/js/portal.js" defer></script>
 </body>
 </html>

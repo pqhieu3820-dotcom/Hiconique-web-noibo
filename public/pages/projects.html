@@ -279,6 +279,12 @@
       <div class="gantt-view" id="gantt-view" style="display:none">
         <div class="gantt-toolbar">
           <div class="gantt-filter-tabs" id="ganttFilterTabs"></div>
+          <div class="gantt-month-nav">
+            <button type="button" class="gantt-nav-btn" id="ganttPrevMonth" aria-label="Tháng trước">&larr;</button>
+            <span class="gantt-month-label" id="ganttMonthLabel"></span>
+            <button type="button" class="gantt-nav-btn" id="ganttNextMonth" aria-label="Tháng sau">&rarr;</button>
+            <button type="button" class="gantt-today-btn" id="ganttTodayMonth">Hôm nay</button>
+          </div>
           <button class="gantt-export-btn" id="ganttExportBtn">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Xuất Excel

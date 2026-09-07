@@ -536,4 +536,212 @@
   } else {
     loadPanels();
   }
+
+  // ----- Notifications bell (site-wide: reuses the bell on index.html, injects one elsewhere) -----
+  var NOTIF_TYPE_LABELS = { task: 'Việc', project: 'Dự án', violation: 'Vi phạm', checkin: 'Chấm công', payroll: 'Lương', system: 'Hệ thống', custom: 'Thông báo' };
+
+  function relTime(dateStr) {
+    if (!dateStr) return '';
+    var d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    var diffMs = Date.now() - d.getTime();
+    var diffDay = Math.floor(diffMs / 86400000);
+    if (diffDay <= 0) return 'Hôm nay';
+    if (diffDay === 1) return 'Hôm qua';
+    if (diffDay < 7) return diffDay + ' ngày trước';
+    return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2);
+  }
+
+  function initNotifications() {
+    if (typeof TaskManager === 'undefined' || typeof Auth === 'undefined') return;
+    var user = Auth.getCurrentUser();
+    if (!user) return;
+
+    var bell = document.querySelector('.icon-btn-bell');
+    var actions = document.querySelector('.header-actions');
+    if (!bell && actions) {
+      bell = document.createElement('button');
+      bell.type = 'button';
+      bell.className = 'icon-btn icon-btn-bell';
+      bell.setAttribute('aria-label', 'Thông báo');
+      bell.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 21a2 2 0 0 0 4 0" stroke-linecap="round"/></svg><span class="badge-dot" hidden></span>';
+      var avatarEl = actions.querySelector('.avatar');
+      if (avatarEl) actions.insertBefore(bell, avatarEl); else actions.appendChild(bell);
+    }
+    if (!bell) return;
+
+    var panel = document.createElement('div');
+    panel.className = 'notif-panel';
+    panel.hidden = true;
+    document.body.appendChild(panel);
+
+    bell.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (panel.hidden) { position(); render(); panel.hidden = false; }
+      else { panel.hidden = true; }
+    });
+    panel.addEventListener('click', function (e) { e.stopPropagation(); });
+    document.addEventListener('click', function () { panel.hidden = true; });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') panel.hidden = true; });
+
+    function position() {
+      var r = bell.getBoundingClientRect();
+      panel.style.top = (r.bottom + 8) + 'px';
+      panel.style.right = Math.max(12, window.innerWidth - r.right - 8) + 'px';
+    }
+
+    function collect() {
+      var items = TaskManager.getNotifications(user).concat(TaskManager.getComputedAlerts(user));
+      items.sort(function (a, b) { return new Date(b.createdAt || 0) - new Date(a.createdAt || 0); });
+      return items;
+    }
+
+    function updateBadge() {
+      var unread = collect().filter(function (n) { return !TaskManager.isNotificationRead(n.id); }).length;
+      var dot = bell.querySelector('.badge-dot');
+      if (dot) dot.hidden = unread === 0;
+    }
+    updateBadge();
+
+    function itemRow(n) {
+      var unread = !TaskManager.isNotificationRead(n.id);
+      return '<div class="notif-item' + (unread ? ' unread' : '') + '" data-id="' + escapeHtml(n.id) + '">' +
+        '<span class="notif-dot level-' + (n.level || 'info') + '"></span>' +
+        '<div class="notif-body">' +
+          '<div class="notif-title">' + escapeHtml(n.title || '') + '</div>' +
+          (n.message ? '<div class="notif-message">' + escapeHtml(n.message) + '</div>' : '') +
+          '<div class="notif-meta">' + (NOTIF_TYPE_LABELS[n.type] || 'Thông báo') + ' · ' + relTime(n.createdAt) + (n.recurring ? ' · định kỳ' : '') + '</div>' +
+        '</div></div>';
+    }
+
+    function memberOptions() {
+      var members = (TaskManager.getMembers ? TaskManager.getMembers() : []) || [];
+      return members.map(function (m) { return '<option value="' + escapeHtml(m.id) + '">' + escapeHtml(m.name) + '</option>'; }).join('');
+    }
+
+    function render() {
+      var items = collect();
+      var canManage = TaskManager.canManageNotifications(user);
+      var canRules = TaskManager.canManageRecurringRules(user);
+
+      var html = '<div class="notif-panel-header">' +
+        '<span>Thông báo</span>' +
+        '<button type="button" class="notif-link" id="notifMarkAll">Đánh dấu đã đọc tất cả</button>' +
+        '</div>';
+
+      html += '<div class="notif-list">' + (items.length ? items.map(itemRow).join('') : '<div class="notif-empty">Không có thông báo nào.</div>') + '</div>';
+
+      if (canManage) {
+        html += '<div class="notif-panel-footer">' +
+          '<button type="button" class="notif-add-btn" id="notifAddBtn">+ Thông báo mới</button>' +
+          (canRules ? '<button type="button" class="notif-link" id="notifRulesBtn">Quản lý nhắc định kỳ</button>' : '') +
+          '</div>' +
+          '<form class="notif-form" id="notifForm" hidden>' +
+            '<input type="text" id="notifTitle" placeholder="Tiêu đề" required>' +
+            '<textarea id="notifMessage" placeholder="Nội dung" rows="2"></textarea>' +
+            '<div class="notif-form-row">' +
+              '<select id="notifType"><option value="system">Hệ thống</option><option value="task">Công việc</option><option value="project">Dự án</option><option value="violation">Vi phạm</option><option value="checkin">Chấm công</option><option value="payroll">Lương</option></select>' +
+              '<select id="notifScope"><option value="all">Toàn công ty</option>' + memberOptions() + '</select>' +
+            '</div>' +
+            '<button type="submit" class="notif-submit">Đăng thông báo</button>' +
+          '</form>';
+
+        if (canRules) {
+          var rules = TaskManager.getNotificationRules().filter(function (n) { return n.recurring; });
+          html += '<div class="notif-rules" id="notifRules" hidden>' +
+            '<div class="notif-panel-header"><span>Nhắc định kỳ</span></div>' +
+            (rules.length ? rules.map(function (r) {
+              return '<div class="notif-rule-row" data-id="' + escapeHtml(r.id) + '">' +
+                '<div><strong>' + escapeHtml(r.title) + '</strong><div class="notif-meta">' + escapeHtml(r.recurRule || '') + '</div></div>' +
+                '<label class="notif-rule-toggle"><input type="checkbox" class="notif-rule-active" ' + (r.active !== false ? 'checked' : '') + '> Bật</label>' +
+                '<button type="button" class="notif-link notif-rule-del">Xoá</button>' +
+              '</div>';
+            }).join('') : '<div class="notif-empty">Chưa có nhắc định kỳ nào.</div>') +
+            '<form class="notif-form" id="notifRuleForm">' +
+              '<input type="text" id="ruleTitle" placeholder="Tiêu đề nhắc" required>' +
+              '<textarea id="ruleMessage" placeholder="Nội dung" rows="2"></textarea>' +
+              '<input type="text" id="ruleWindow" placeholder="Ngày trong tháng, vd 1-5" value="1-5">' +
+              '<select id="ruleScope"><option value="all">Toàn công ty</option>' + memberOptions() + '</select>' +
+              '<button type="submit" class="notif-submit">Thêm nhắc định kỳ</button>' +
+            '</form>' +
+          '</div>';
+        }
+      }
+
+      panel.innerHTML = html;
+
+      panel.querySelectorAll('.notif-item').forEach(function (row) {
+        row.addEventListener('click', function () {
+          TaskManager.markNotificationRead(row.dataset.id);
+          row.classList.remove('unread');
+          updateBadge();
+        });
+      });
+
+      var markAllBtn = panel.querySelector('#notifMarkAll');
+      if (markAllBtn) markAllBtn.addEventListener('click', function () {
+        TaskManager.markAllNotificationsRead(items.map(function (n) { return n.id; }));
+        render();
+      });
+
+      var addBtn = panel.querySelector('#notifAddBtn');
+      var form = panel.querySelector('#notifForm');
+      if (addBtn && form) addBtn.addEventListener('click', function () { form.hidden = !form.hidden; });
+      if (form) form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var title = panel.querySelector('#notifTitle').value.trim();
+        if (!title) return;
+        TaskManager.createNotification({
+          title: title,
+          message: panel.querySelector('#notifMessage').value.trim(),
+          type: panel.querySelector('#notifType').value,
+          scope: panel.querySelector('#notifScope').value,
+          recurring: false
+        }, user);
+        render();
+      });
+
+      var rulesBtn = panel.querySelector('#notifRulesBtn');
+      var rulesPanel = panel.querySelector('#notifRules');
+      if (rulesBtn && rulesPanel) rulesBtn.addEventListener('click', function () { rulesPanel.hidden = !rulesPanel.hidden; });
+
+      panel.querySelectorAll('.notif-rule-active').forEach(function (cb) {
+        cb.addEventListener('change', function () {
+          var id = cb.closest('.notif-rule-row').dataset.id;
+          TaskManager.updateNotification(id, { active: cb.checked }, user);
+        });
+      });
+      panel.querySelectorAll('.notif-rule-del').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var id = btn.closest('.notif-rule-row').dataset.id;
+          TaskManager.deleteNotification(id, user);
+          render();
+        });
+      });
+
+      var ruleForm = panel.querySelector('#notifRuleForm');
+      if (ruleForm) ruleForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var title = panel.querySelector('#ruleTitle').value.trim();
+        if (!title) return;
+        TaskManager.createNotification({
+          title: title,
+          message: panel.querySelector('#ruleMessage').value.trim(),
+          type: 'payroll',
+          scope: panel.querySelector('#ruleScope').value,
+          recurring: true,
+          recurRule: 'monthly:' + panel.querySelector('#ruleWindow').value.trim(),
+          active: true
+        }, user);
+        render();
+      });
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initNotifications);
+  } else {
+    initNotifications();
+  }
 }());

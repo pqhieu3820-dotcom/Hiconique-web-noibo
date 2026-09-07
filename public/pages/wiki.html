@@ -56,55 +56,109 @@
         Trung tâm tri thức HICONIQUE — quy trình thiết kế, thi công, mạng vật liệu và cẩm nang nghiệp vụ.
       </p>
 
-      <div class="wiki-cols">
-        <div class="wiki-col">
-          <h3>Template chung</h3>
-          <ul>
-            <li><a href="#"><span>Hướng dẫn dàn trang bản vẽ</span><span>Notion</span></a></li>
-            <li><a href="#"><span>Layout trình bày báo giá</span><span>Notion</span></a></li>
-            <li><a href="#"><span>Template trình bày concept</span><span>Notion</span></a></li>
-            <li><a href="#"><span>Bảng giá dịch vụ 2026</span><span>Notion</span></a></li>
-            <li><a href="#"><span>Hợp đồng mẫu · TK · TC</span><span>Notion</span></a></li>
-          </ul>
-        </div>
+      <div id="docAdminBar" style="margin-top:var(--space-lg);display:none;">
+        <button class="btn-secondary" id="docAddBtn" type="button">+ Thêm tài liệu</button>
+        <form id="docForm" class="notice-form" hidden>
+          <input type="text" id="docCategoryInput" placeholder="Danh mục (vd: Template chung)" required>
+          <input type="text" id="docNameInput" placeholder="Tên tài liệu" required>
+          <input type="text" id="docUrlInput" placeholder="Link (Notion / Google Drive...)" required>
+          <button type="submit" class="btn-primary">Thêm</button>
+        </form>
+      </div>
 
-        <div class="wiki-col">
-          <h3>SPC · Quy chuẩn kỹ thuật</h3>
-          <ul>
-            <li><a href="#"><span>Bục ngồi gỗ · chiều cao 600–700 mm</span><span>SPC-001</span></a></li>
-            <li><a href="#"><span>Tay vịn · chiều cao 850–950 mm</span><span>SPC-002</span></a></li>
-            <li><a href="#"><span>Độ dày kính cường lực · an toàn</span><span>SPC-003</span></a></li>
-            <li><a href="#"><span>Vật liệu bề mặt gỗ tự nhiên</span><span>SPC-004</span></a></li>
-            <li><a href="#"><span>Đặc tính đá tự nhiên · marble</span><span>SPC-005</span></a></li>
-          </ul>
-        </div>
-
-        <div class="wiki-col">
-          <h3>Sổ tay nhân sự</h3>
-          <ul>
-            <li><a href="#"><span>Quy trình onboarding · nhân viên mới</span><span>HR-001</span></a></li>
-            <li><a href="#"><span>Chính sách làm việc &amp; OT</span><span>HR-002</span></a></li>
-            <li><a href="#"><span>Quy chế KPI &amp; lương tháng</span><span>HR-003</span></a></li>
-            <li><a href="#"><span>Đào tạo nội bộ · lịch học</span><span>HR-004</span></a></li>
-          </ul>
-        </div>
-
-        <div class="wiki-col">
-          <h3>Brand &amp; Marketing</h3>
-          <ul>
-            <li><a href="#"><span>Logo, màu, font HICONIQUE</span><span>BG-001</span></a></li>
-            <li><a href="#"><span>Tone &amp; voice thương hiệu</span><span>BG-002</span></a></li>
-            <li><a href="#"><span>Template bài viết mạng xã hội</span><span>BG-003</span></a></li>
-          </ul>
-        </div>
+      <div class="wiki-cols" id="wikiCols" style="margin-top:var(--space-lg);">
+        <p style="color:var(--color-text-faint);">Đang tải tài liệu…</p>
       </div>
 
       <p class="subpage-note" style="margin-top:var(--space-2xl)">
-        💾 File nặng (bản vẽ kỹ thuật, 3D, video thô) được lưu trên <b>Google Drive</b>. Link trong Notion dẫn
-        đến Drive để hiển thị nhẹ — tránh giới hạn 5MB của Notion miễn phí.
+        File nặng (bản vẽ kỹ thuật, 3D, video thô) được lưu trên <b>Google Drive</b>. Link trong tài liệu dẫn
+        đến Drive để hiển thị nhẹ.
       </p>
     </div>
   </main>
+
+  <style>
+    .notice-form { display: flex; flex-direction: column; gap: 10px; max-width: 480px; margin-top: 14px; padding: 16px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 8px; }
+    .notice-form input, .notice-form select { padding: 8px 10px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 4px; color: var(--color-text); font-family: 'Inter', sans-serif; font-size: 0.875rem; }
+    .wiki-col-del { background: none; border: none; color: var(--color-text-faint); font-size: 0.6875rem; cursor: pointer; padding: 0; margin-left: 8px; }
+    .wiki-col-del:hover { color: var(--color-destructive); }
+    .wiki-col li a { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  </style>
+
+  <script>
+  (function () {
+    function escapeHtml(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+
+    function render() {
+      var wrap = document.getElementById('wikiCols');
+      if (typeof TaskManager === 'undefined') { wrap.innerHTML = '<p style="color:var(--color-text-faint);">Không tải được tài liệu.</p>'; return; }
+      var groups = TaskManager.getDocuments();
+      var user = (typeof Auth !== 'undefined') ? Auth.getCurrentUser() : null;
+      var canManage = user && TaskManager.canManageNotifications(user);
+      document.getElementById('docAdminBar').style.display = canManage ? 'block' : 'none';
+
+      if (!groups.length) {
+        wrap.innerHTML = '<p style="color:var(--color-text-faint);">Chưa có tài liệu nào.</p>';
+        return;
+      }
+
+      wrap.innerHTML = groups.map(function (g) {
+        return '<div class="wiki-col"><h3>' + escapeHtml(g.category) + '</h3><ul>' +
+          g.items.map(function (d) {
+            return '<li><a href="' + escapeHtml(d.url || '#') + '" target="_blank" rel="noopener">' +
+              '<span>' + escapeHtml(d.name) + '</span>' +
+              (canManage ? '<button type="button" class="wiki-col-del" data-id="' + escapeHtml(d.id) + '">Xoá</button>' : '<span>&rarr;</span>') +
+            '</a></li>';
+          }).join('') +
+        '</ul></div>';
+      }).join('');
+
+      wrap.querySelectorAll('.wiki-col-del').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.preventDefault();
+          if (!confirm('Xoá tài liệu này?')) return;
+          TaskManager.deleteDocument(btn.dataset.id, user);
+          render();
+        });
+      });
+    }
+
+    function initAdmin() {
+      var addBtn = document.getElementById('docAddBtn');
+      var form = document.getElementById('docForm');
+      addBtn.addEventListener('click', function () { form.hidden = !form.hidden; });
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var name = document.getElementById('docNameInput').value.trim();
+        var category = document.getElementById('docCategoryInput').value.trim();
+        if (!name || !category) return;
+        var user = Auth.getCurrentUser();
+        TaskManager.createDocument({
+          category: category,
+          name: name,
+          url: document.getElementById('docUrlInput').value.trim() || '#'
+        }, user);
+        document.getElementById('docNameInput').value = '';
+        document.getElementById('docCategoryInput').value = '';
+        document.getElementById('docUrlInput').value = '';
+        form.hidden = true;
+        render();
+      });
+    }
+
+    function boot() {
+      if (typeof TaskManager === 'undefined') { setTimeout(boot, 150); return; }
+      render();
+      initAdmin();
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+    else boot();
+  })();
+  </script>
 
   <footer class="site-footer">
     <div class="footer-inner">
@@ -113,6 +167,9 @@
     </div>
   </footer>
 
+  <script src="/js/gsheets-config.js"></script>
+  <script src="/js/task-data.js"></script>
+  <script src="/js/auth.js"></script>
   <script src="/js/portal.js" defer></script>
 </body>
 </html>

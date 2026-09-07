@@ -41,7 +41,10 @@ function syncToGSheets(type, action, data, id) {
     projects: { add: 'addProject', update: 'updateProject', delete: 'deleteProject' },
     tasks: { add: 'addTask', update: 'updateTask', delete: 'deleteTask', toggle: 'toggleTask' },
     proposals: { add: 'addProposal', update: 'updateProposal', delete: 'deleteProposal', approve: 'approveProposal', reject: 'rejectProposal' },
-    timesheet: { add: 'addTimesheet', update: 'updateTimesheet' }
+    timesheet: { add: 'addTimesheet', update: 'updateTimesheet' },
+    notifications: { add: 'addNotification', update: 'updateNotification', delete: 'deleteNotification' },
+    notices: { add: 'addNotice', update: 'updateNotice', delete: 'deleteNotice' },
+    documents: { add: 'addDocument', update: 'updateDocument', delete: 'deleteDocument' }
   };
 
   var apiAction = actionMap[type] ? actionMap[type][action] : null;
@@ -94,8 +97,38 @@ var TaskManager = (function() {
     members: 'hiconique_members',
     proposals: 'hiconique_proposals',
     settings: 'hiconique_settings',
-    timesheet: 'hiconique_timesheet'
+    timesheet: 'hiconique_timesheet',
+    notifications: 'hiconique_notifications',
+    readNotifications: 'hiconique_read_notifications',
+    notices: 'hiconique_notices',
+    documents: 'hiconique_documents'
   };
+
+  // Recurring notification rules — seeded once, editable by CEO from the bell panel.
+  var DEFAULT_NOTIFICATIONS = [
+    { id: 'notification_260101_1', title: 'Nhắc làm đề xuất thanh toán lương', message: 'Đầu tháng — vui lòng hoàn tất đề xuất thanh toán lương cho kỳ trước.', type: 'payroll', scope: 'all', recurring: true, recurRule: 'monthly:1-5', active: true, createdBy: 'CEO', createdAt: '2026-01-01' }
+  ];
+
+  // Notice board (public/pages/notices.html) — seeded from the page's original static content.
+  var DEFAULT_NOTICES = [
+    { id: 'notice_260101_1', title: 'Nhắc nhở cuối tuần', message: 'Mọi người cập nhật bảng Google Sheets và sao lưu dữ liệu quan trọng trước khi kết thúc ngày làm việc nhé!', color: 'bronze', createdBy: 'CEO', createdAt: '2026-08-22' },
+    { id: 'notice_260101_2', title: 'Họp team tháng 9', message: 'Bàn giao & cải tiến, review dự án đang chạy, kế hoạch tháng mới. Thứ Năm 07/09/2026 · 9:00–10:00.', color: 'purple', createdBy: 'CEO', createdAt: '2026-08-25' },
+    { id: 'notice_260101_3', title: 'Nhắc nhở: cập nhật phiếu lương tháng 9/2026', message: 'Mọi người vào cập nhật phiếu lương từ ngày 01–05 hàng tháng.', color: 'red', createdBy: 'CEO', createdAt: '2026-08-28' },
+    { id: 'notice_260101_4', title: 'Bàn giao công trình Vinhouse', message: 'Buổi nghiệm thu cuối cùng dự kiến 30/08/2026. Mời các bộ phận liên quan đến công trường để hoàn tất checklist bàn giao.', color: 'bronze', createdBy: 'MGR2', createdAt: '2026-08-20' },
+    { id: 'notice_260101_5', title: 'Lịch training nội bộ', message: 'HICONIQUE mở lớp training về quy trình SPC vào 20/08/2026. Đăng ký trước ngày 18/08.', color: 'info', createdBy: 'MGR1', createdAt: '2026-08-10' }
+  ];
+
+  // Wiki / document links (public/pages/wiki.html) — seeded from the page's original static links.
+  var DEFAULT_DOCUMENTS = [
+    { id: 'document_260101_1', category: 'Template chung', name: 'Hướng dẫn dàn trang bản vẽ', url: '#', createdBy: 'CEO', createdAt: '2026-01-01' },
+    { id: 'document_260101_2', category: 'Template chung', name: 'Layout trình bày báo giá', url: '#', createdBy: 'CEO', createdAt: '2026-01-01' },
+    { id: 'document_260101_3', category: 'Template chung', name: 'Template trình bày concept', url: '#', createdBy: 'CEO', createdAt: '2026-01-01' },
+    { id: 'document_260101_4', category: 'SPC · Quy chuẩn kỹ thuật', name: 'Bục ngồi gỗ · chiều cao 600–700 mm', url: '#', createdBy: 'CEO', createdAt: '2026-01-01' },
+    { id: 'document_260101_5', category: 'SPC · Quy chuẩn kỹ thuật', name: 'Tay vịn · chiều cao 850–950 mm', url: '#', createdBy: 'CEO', createdAt: '2026-01-01' },
+    { id: 'document_260101_6', category: 'Sổ tay nhân sự', name: 'Quy trình onboarding · nhân viên mới', url: '#', createdBy: 'CEO', createdAt: '2026-01-01' },
+    { id: 'document_260101_7', category: 'Sổ tay nhân sự', name: 'Chính sách làm việc & OT', url: '#', createdBy: 'CEO', createdAt: '2026-01-01' },
+    { id: 'document_260101_8', category: 'Brand & Marketing', name: 'Logo, màu, font HICONIQUE', url: '#', createdBy: 'CEO', createdAt: '2026-01-01' }
+  ];
 
   // Cache for Google Sheets data
   var gsCache = {
@@ -116,7 +149,7 @@ var TaskManager = (function() {
     }
 
     var done = 0;
-    var total = 5;
+    var total = 8;
     var success = false;
 
     function checkDone() {
@@ -152,6 +185,24 @@ var TaskManager = (function() {
     getFromGSheets('timesheet', function(timesheet) {
       if (timesheet.length > 0) {
         localStorage.setItem(STORAGE_KEYS.timesheet, JSON.stringify(timesheet));
+      }
+      checkDone();
+    });
+    getFromGSheets('notifications', function(notifications) {
+      if (notifications.length > 0) {
+        localStorage.setItem(STORAGE_KEYS.notifications, JSON.stringify(notifications));
+      }
+      checkDone();
+    });
+    getFromGSheets('notices', function(notices) {
+      if (notices.length > 0) {
+        localStorage.setItem(STORAGE_KEYS.notices, JSON.stringify(notices));
+      }
+      checkDone();
+    });
+    getFromGSheets('documents', function(documents) {
+      if (documents.length > 0) {
+        localStorage.setItem(STORAGE_KEYS.documents, JSON.stringify(documents));
       }
       checkDone();
     });
@@ -213,8 +264,12 @@ var TaskManager = (function() {
         if (val.startsWith('[') && val.endsWith(']')) {
           try { val = JSON.parse(val); } catch(e) {}
         }
+        // Parse booleans (Sheets exports checkbox/boolean cells as "TRUE"/"FALSE")
+        if (val === 'TRUE' || val === 'FALSE') {
+          val = (val === 'TRUE');
+        }
         // Parse numbers
-        if (!isNaN(val) && val !== '' && h !== 'name' && h !== 'title' && h !== 'description' && h !== 'type' && h !== 'status') {
+        else if (!isNaN(val) && val !== '' && h !== 'name' && h !== 'title' && h !== 'description' && h !== 'type' && h !== 'status') {
           val = Number(val);
         }
         obj[h] = val;
@@ -241,6 +296,9 @@ var TaskManager = (function() {
       case 'members': url = urls.MEMBERS; break;
       case 'proposals': url = urls.PROPOSALS; break;
       case 'timesheet': url = urls.TIMESHEET; break;
+      case 'notifications': url = urls.NOTIFICATIONS; break;
+      case 'notices': url = urls.NOTICES; break;
+      case 'documents': url = urls.DOCUMENTS; break;
     }
 
     fetchFromSheet(url, function(data) {
@@ -298,6 +356,27 @@ var TaskManager = (function() {
           localStorage.setItem(STORAGE_KEYS.timesheet, JSON.stringify(timesheet));
         }
       });
+      getFromGSheets('notifications', function(notifications) {
+        if (notifications.length > 0) {
+          localStorage.setItem(STORAGE_KEYS.notifications, JSON.stringify(notifications));
+        } else if (!localStorage.getItem(STORAGE_KEYS.notifications)) {
+          localStorage.setItem(STORAGE_KEYS.notifications, JSON.stringify(DEFAULT_NOTIFICATIONS));
+        }
+      });
+      getFromGSheets('notices', function(notices) {
+        if (notices.length > 0) {
+          localStorage.setItem(STORAGE_KEYS.notices, JSON.stringify(notices));
+        } else if (!localStorage.getItem(STORAGE_KEYS.notices)) {
+          localStorage.setItem(STORAGE_KEYS.notices, JSON.stringify(DEFAULT_NOTICES));
+        }
+      });
+      getFromGSheets('documents', function(documents) {
+        if (documents.length > 0) {
+          localStorage.setItem(STORAGE_KEYS.documents, JSON.stringify(documents));
+        } else if (!localStorage.getItem(STORAGE_KEYS.documents)) {
+          localStorage.setItem(STORAGE_KEYS.documents, JSON.stringify(DEFAULT_DOCUMENTS));
+        }
+      });
     } else {
       // Use localStorage
       if (!localStorage.getItem(STORAGE_KEYS.projects)) {
@@ -311,6 +390,15 @@ var TaskManager = (function() {
       }
       if (!localStorage.getItem(STORAGE_KEYS.proposals)) {
         localStorage.setItem(STORAGE_KEYS.proposals, JSON.stringify(DEFAULT_PROPOSALS));
+      }
+      if (!localStorage.getItem(STORAGE_KEYS.notifications)) {
+        localStorage.setItem(STORAGE_KEYS.notifications, JSON.stringify(DEFAULT_NOTIFICATIONS));
+      }
+      if (!localStorage.getItem(STORAGE_KEYS.notices)) {
+        localStorage.setItem(STORAGE_KEYS.notices, JSON.stringify(DEFAULT_NOTICES));
+      }
+      if (!localStorage.getItem(STORAGE_KEYS.documents)) {
+        localStorage.setItem(STORAGE_KEYS.documents, JSON.stringify(DEFAULT_DOCUMENTS));
       }
     }
   }
@@ -330,9 +418,20 @@ var TaskManager = (function() {
     localStorage.setItem(key, JSON.stringify(items));
   }
 
+  // <prefix>_<yyMMdd>_<timestamp> — date prefix keeps ids sortable/scannable
+  // over years of growth without needing to reset the sheet.
+  function makeId(prefix) {
+    var d = new Date();
+    var yy = String(d.getFullYear()).slice(-2);
+    var mm = ('0' + (d.getMonth() + 1)).slice(-2);
+    var dd = ('0' + d.getDate()).slice(-2);
+    return prefix + '_' + yy + mm + dd + '_' + Date.now();
+  }
+
   function add(key, item) {
     var items = getAll(key);
-    item.id = key.replace('hiconique_', '') + '_' + Date.now();
+    var prefix = key.replace('hiconique_', '').replace(/s$/, '');
+    item.id = makeId(prefix);
     item.createdAt = new Date().toISOString().split('T')[0];
     items.push(item);
     save(key, items);
@@ -584,6 +683,203 @@ var TaskManager = (function() {
     return result;
   }
 
+  // Notifications
+  // Persisted items (announcements + recurring rule definitions) live in the
+  // Notifications sheet. "Alerts" (overdue tasks, late check-in, an active
+  // recurring rule for today) are computed on the fly and never written —
+  // keeps the sheet small no matter how long the company runs on it.
+
+  function todayStr() {
+    return new Date().toISOString().split('T')[0];
+  }
+
+  function canManageNotifications(user) {
+    return !!user && (user.roleLevel === 'admin' || user.roleLevel === 'manager');
+  }
+
+  function canManageRecurringRules(user) {
+    return !!user && user.roleLevel === 'admin';
+  }
+
+  // All persisted rows — used by the CEO/manager management panel.
+  function getNotificationRules() {
+    return getAll(STORAGE_KEYS.notifications);
+  }
+
+  // One-off announcements visible to a given user (scope 'all' or their own id).
+  function getNotifications(user) {
+    if (!user) return [];
+    return getAll(STORAGE_KEYS.notifications).filter(function(n) {
+      if (n.recurring) return false;
+      if (n.active === false) return false;
+      return n.scope === 'all' || n.scope === user.id;
+    });
+  }
+
+  function createNotification(data, user) {
+    if (!canManageNotifications(user)) return null;
+    data.active = data.active !== false;
+    data.createdBy = user.id;
+    var newItem = add(STORAGE_KEYS.notifications, data);
+    syncToGSheets('notifications', 'add', newItem);
+    return newItem;
+  }
+
+  function updateNotification(id, updates, user) {
+    if (!canManageNotifications(user)) return null;
+    var updated = update(STORAGE_KEYS.notifications, id, updates);
+    if (updated) syncToGSheets('notifications', 'update', updates, id);
+    return updated;
+  }
+
+  function deleteNotification(id, user) {
+    if (!canManageNotifications(user)) return false;
+    var result = remove(STORAGE_KEYS.notifications, id);
+    syncToGSheets('notifications', 'delete', {}, id);
+    return result;
+  }
+
+  function parseRecurWindow(rule) {
+    var m = /^monthly:(\d+)-(\d+)$/.exec(rule || '');
+    if (!m) return null;
+    return { from: parseInt(m[1], 10), to: parseInt(m[2], 10) };
+  }
+
+  function isRecurringActiveToday(rule) {
+    if (!rule.recurring || rule.active === false) return false;
+    var win = parseRecurWindow(rule.recurRule);
+    if (!win) return false;
+    var day = new Date().getDate();
+    return day >= win.from && day <= win.to;
+  }
+
+  // Read/unread — per-device only, not synced (mark-as-read isn't shared data).
+  function getReadIds() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.readNotifications) || '[]'); }
+    catch (e) { return []; }
+  }
+
+  function markNotificationRead(id) {
+    var ids = getReadIds();
+    if (ids.indexOf(id) === -1) {
+      ids.push(id);
+      localStorage.setItem(STORAGE_KEYS.readNotifications, JSON.stringify(ids));
+    }
+  }
+
+  function markAllNotificationsRead(ids) {
+    var read = getReadIds();
+    ids.forEach(function(id) { if (read.indexOf(id) === -1) read.push(id); });
+    localStorage.setItem(STORAGE_KEYS.readNotifications, JSON.stringify(read));
+  }
+
+  function isNotificationRead(id) {
+    return getReadIds().indexOf(id) !== -1;
+  }
+
+  // Live alerts derived from current data — never persisted.
+  function getComputedAlerts(user) {
+    if (!user) return [];
+    var alerts = [];
+    var today = todayStr();
+    var members = getAll(STORAGE_KEYS.members);
+
+    // Task deadlines assigned to this user
+    getAll(STORAGE_KEYS.tasks).filter(function(t) {
+      return t.assigneeId === user.id && t.status !== 'completed' && t.deadline;
+    }).forEach(function(t) {
+      var overdue = new Date(t.deadline) < new Date();
+      var dueToday = (t.deadline.split('T')[0] === today);
+      if (overdue) {
+        alerts.push({ id: 'alert_overdue_' + t.id, title: 'Việc quá hạn', message: t.title, type: 'task', level: 'danger', createdAt: t.deadline });
+      } else if (dueToday) {
+        alerts.push({ id: 'alert_duetoday_' + t.id, title: 'Việc đến hạn hôm nay', message: t.title, type: 'task', level: 'warning', createdAt: t.deadline });
+      }
+    });
+
+    // Late check-in — self always, team view for CEO/manager
+    var LATE_THRESHOLD = '08:30';
+    var canSeeTeam = canManageNotifications(user);
+    getAll(STORAGE_KEYS.timesheet).filter(function(e) {
+      return e.date === today && e.checkinTime && e.checkinTime > LATE_THRESHOLD;
+    }).forEach(function(e) {
+      if (e.memberId !== user.id && !canSeeTeam) return;
+      var m = members.filter(function(mm) { return mm.id === e.memberId; })[0];
+      alerts.push({ id: 'alert_late_' + e.id, title: 'Chấm công trễ', message: (m ? m.name : e.memberId) + ' check-in lúc ' + e.checkinTime, type: 'checkin', level: 'warning', createdAt: today });
+    });
+
+    // Active recurring rules (e.g. payroll reminder days 1-5)
+    getAll(STORAGE_KEYS.notifications).filter(function(n) {
+      return isRecurringActiveToday(n) && (n.scope === 'all' || n.scope === user.id);
+    }).forEach(function(n) {
+      alerts.push({ id: 'alert_recur_' + n.id + '_' + today, title: n.title, message: n.message, type: n.type || 'system', level: 'info', createdAt: today, recurring: true });
+    });
+
+    return alerts;
+  }
+
+  // Notice board (public/pages/notices.html)
+  function getNotices() {
+    return getAll(STORAGE_KEYS.notices).sort(function(a, b) { return new Date(b.createdAt || 0) - new Date(a.createdAt || 0); });
+  }
+
+  function createNotice(data, user) {
+    if (!canManageNotifications(user)) return null;
+    data.color = data.color || 'bronze';
+    data.createdBy = user.id;
+    var newItem = add(STORAGE_KEYS.notices, data);
+    syncToGSheets('notices', 'add', newItem);
+    return newItem;
+  }
+
+  function updateNotice(id, updates, user) {
+    if (!canManageNotifications(user)) return null;
+    var updated = update(STORAGE_KEYS.notices, id, updates);
+    if (updated) syncToGSheets('notices', 'update', updates, id);
+    return updated;
+  }
+
+  function deleteNotice(id, user) {
+    if (!canManageNotifications(user)) return false;
+    var result = remove(STORAGE_KEYS.notices, id);
+    syncToGSheets('notices', 'delete', {}, id);
+    return result;
+  }
+
+  // Wiki document links (public/pages/wiki.html)
+  function getDocuments() {
+    var docs = getAll(STORAGE_KEYS.documents);
+    var byCategory = {};
+    var order = [];
+    docs.forEach(function(d) {
+      if (!byCategory[d.category]) { byCategory[d.category] = []; order.push(d.category); }
+      byCategory[d.category].push(d);
+    });
+    return order.map(function(cat) { return { category: cat, items: byCategory[cat] }; });
+  }
+
+  function createDocument(data, user) {
+    if (!canManageNotifications(user)) return null;
+    data.createdBy = user.id;
+    var newItem = add(STORAGE_KEYS.documents, data);
+    syncToGSheets('documents', 'add', newItem);
+    return newItem;
+  }
+
+  function updateDocument(id, updates, user) {
+    if (!canManageNotifications(user)) return null;
+    var updated = update(STORAGE_KEYS.documents, id, updates);
+    if (updated) syncToGSheets('documents', 'update', updates, id);
+    return updated;
+  }
+
+  function deleteDocument(id, user) {
+    if (!canManageNotifications(user)) return false;
+    var result = remove(STORAGE_KEYS.documents, id);
+    syncToGSheets('documents', 'delete', {}, id);
+    return result;
+  }
+
   // Timesheet
   function getTimesheetEntries(filters) {
     filters = filters || {};
@@ -687,6 +983,31 @@ var TaskManager = (function() {
     getTimesheetEntries: getTimesheetEntries,
     addTimesheetEntry: addTimesheetEntry,
     updateTimesheetEntry: updateTimesheetEntry,
+
+    // Notifications
+    getNotifications: getNotifications,
+    getNotificationRules: getNotificationRules,
+    createNotification: createNotification,
+    updateNotification: updateNotification,
+    deleteNotification: deleteNotification,
+    getComputedAlerts: getComputedAlerts,
+    canManageNotifications: canManageNotifications,
+    canManageRecurringRules: canManageRecurringRules,
+    markNotificationRead: markNotificationRead,
+    markAllNotificationsRead: markAllNotificationsRead,
+    isNotificationRead: isNotificationRead,
+
+    // Notice board
+    getNotices: getNotices,
+    createNotice: createNotice,
+    updateNotice: updateNotice,
+    deleteNotice: deleteNotice,
+
+    // Wiki documents
+    getDocuments: getDocuments,
+    createDocument: createDocument,
+    updateDocument: updateDocument,
+    deleteDocument: deleteDocument,
 
     // Storage
     STORAGE_KEYS: STORAGE_KEYS,

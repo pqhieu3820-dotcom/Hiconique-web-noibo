@@ -5,7 +5,10 @@ const SHEETS = {
   tasks: 'Tasks',
   members: 'Members',
   proposals: 'Proposals',
-  timesheet: 'Timesheet'
+  timesheet: 'Timesheet',
+  notifications: 'Notifications',
+  notices: 'Notices',
+  documents: 'Documents'
 };
 
 // Reference schema only — used to seed headers on a brand-new empty sheet.
@@ -16,7 +19,10 @@ const HEADERS = {
   tasks: ['id', 'title', 'description', 'projectId', 'assigneeId', 'priority', 'status', 'startDate', 'deadline', 'createdBy', 'createdAt', 'updatedAt', 'progress', 'dailyTasks'],
   members: ['id', 'name', 'role', 'roleLevel', 'email', 'password', 'dob', 'cccd', 'hometown', 'bankAccount', 'color', 'avatar', 'createdAt'],
   proposals: ['id', 'title', 'description', 'type', 'status', 'requesterId', 'reviewerId', 'amount', 'createdAt', 'reviewedAt'],
-  timesheet: ['id', 'memberId', 'date', 'checkinTime', 'checkoutTime', 'totalHours', 'overtimeHours', 'status']
+  timesheet: ['id', 'memberId', 'date', 'checkinTime', 'checkoutTime', 'totalHours', 'overtimeHours', 'status'],
+  notifications: ['id', 'title', 'message', 'type', 'scope', 'recurring', 'recurRule', 'active', 'createdBy', 'createdAt', 'updatedAt'],
+  notices: ['id', 'title', 'message', 'color', 'createdBy', 'createdAt', 'updatedAt'],
+  documents: ['id', 'category', 'name', 'url', 'createdBy', 'createdAt', 'updatedAt']
 };
 
 function doGet(e) { return handleRequest(e); }
@@ -79,6 +85,30 @@ function handleRequest(e) {
       result = addData(ss, SHEETS.timesheet, JSON.parse(params.data));
     } else if (action === 'updateTimesheet') {
       result = updateData(ss, SHEETS.timesheet, params.id, JSON.parse(params.data));
+    } else if (action === 'getNotifications') {
+      result = getAllData(ss, SHEETS.notifications);
+    } else if (action === 'addNotification') {
+      result = addData(ss, SHEETS.notifications, JSON.parse(params.data));
+    } else if (action === 'updateNotification') {
+      result = updateData(ss, SHEETS.notifications, params.id, JSON.parse(params.data));
+    } else if (action === 'deleteNotification') {
+      result = deleteData(ss, SHEETS.notifications, params.id);
+    } else if (action === 'getNotices') {
+      result = getAllData(ss, SHEETS.notices);
+    } else if (action === 'addNotice') {
+      result = addData(ss, SHEETS.notices, JSON.parse(params.data));
+    } else if (action === 'updateNotice') {
+      result = updateData(ss, SHEETS.notices, params.id, JSON.parse(params.data));
+    } else if (action === 'deleteNotice') {
+      result = deleteData(ss, SHEETS.notices, params.id);
+    } else if (action === 'getDocuments') {
+      result = getAllData(ss, SHEETS.documents);
+    } else if (action === 'addDocument') {
+      result = addData(ss, SHEETS.documents, JSON.parse(params.data));
+    } else if (action === 'updateDocument') {
+      result = updateData(ss, SHEETS.documents, params.id, JSON.parse(params.data));
+    } else if (action === 'deleteDocument') {
+      result = deleteData(ss, SHEETS.documents, params.id);
     } else {
       result = { error: 'Unknown action: ' + action };
     }
@@ -120,6 +150,13 @@ function getDataById(ss, sheetName, id) {
   return getAllData(ss, sheetName).find(function (row) { return row.id === id; });
 }
 
+// <prefix>_<yyMMdd>_<timestamp> — date prefix keeps ids sortable/scannable
+// over years of growth without ever needing to reset the sheet.
+function makeId(prefix) {
+  const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Asia/Ho_Chi_Minh', 'yyMMdd');
+  return prefix + '_' + stamp + '_' + Date.now();
+}
+
 function addData(ss, sheetName, data) {
   const sheet = ss.getSheetByName(sheetName);
   let headers = getHeaders(sheet);
@@ -129,7 +166,7 @@ function addData(ss, sheetName, data) {
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   }
   if (!data.id) {
-    data.id = sheetName.toLowerCase().replace(/s$/, '') + '_' + Date.now();
+    data.id = makeId(sheetName.toLowerCase().replace(/s$/, ''));
   }
   data.createdAt = data.createdAt || new Date().toISOString().split('T')[0];
   const row = headers.map(function (h) {

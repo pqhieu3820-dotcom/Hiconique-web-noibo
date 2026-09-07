@@ -7,6 +7,9 @@ var HiconiqueGantt = (function () {
 
   var MS_PER_DAY = 86400000;
   var currentFilter = 'all';
+  var today0 = new Date();
+  var currentMonth = new Date(today0.getFullYear(), today0.getMonth(), 1);
+  var VI_DOW_SHORT = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
   function toDate(d) {
     if (!d) return null;
@@ -67,39 +70,28 @@ var HiconiqueGantt = (function () {
     }).filter(function (s) { return s.tasks.length > 0; });
   }
 
-  // ----- Build a month axis spanning every task in view -----
-  function buildAxis(sections) {
-    var minD = null, maxD = null;
-    sections.forEach(function (s) {
-      s.tasks.forEach(function (t) {
-        var r = getTaskRange(t);
-        if (!minD || r.start < minD) minD = r.start;
-        if (!maxD || r.end > maxD) maxD = r.end;
-      });
-    });
-    var today = new Date();
-    if (!minD) minD = new Date(today.getFullYear(), today.getMonth(), 1);
-    if (!maxD) maxD = new Date(today.getFullYear(), today.getMonth() + 2, 0);
-
-    var start = new Date(minD.getFullYear(), minD.getMonth(), 1);
-    var end = new Date(maxD.getFullYear(), maxD.getMonth() + 1, 1); // exclusive
-    // Ensure a minimum 3-month span so the chart isn't cramped
-    while ((end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) < 3) {
-      end = new Date(end.getFullYear(), end.getMonth() + 1, 1);
-    }
-
-    var months = [];
+  // ----- Build a single calendar-month axis: day 1 to the last day of the month -----
+  function buildAxis(monthDate) {
+    var start = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+    var end = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 1); // exclusive
+    var days = [];
     var cur = new Date(start);
     while (cur < end) {
-      months.push(new Date(cur));
-      cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+      days.push(new Date(cur));
+      cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + 1);
     }
-    var totalDays = (end - start) / MS_PER_DAY;
-    return { start: start, end: end, months: months, totalDays: totalDays };
+    var totalDays = days.length;
+    return { start: start, end: end, days: days, totalDays: totalDays };
+  }
+
+  // Does a task's range overlap the given axis (calendar month) at all?
+  function overlapsAxis(range, axis) {
+    return range.start < axis.end && range.end >= axis.start;
   }
 
   function pct(axis, date) {
-    return Math.max(0, Math.min(100, ((date - axis.start) / MS_PER_DAY / axis.totalDays) * 100));
+    var clamped = date < axis.start ? axis.start : (date > axis.end ? axis.end : date);
+    return Math.max(0, Math.min(100, ((clamped - axis.start) / MS_PER_DAY / axis.totalDays) * 100));
   }
 
   // ----- Render -----
@@ -128,10 +120,17 @@ var HiconiqueGantt = (function () {
 
     renderFilterTabs(filterTabsEl);
 
-    var sections = buildSections(currentFilter);
-    var axis = buildAxis(sections);
+    var axis = buildAxis(currentMonth);
+    var allSections = buildSections(currentFilter);
+    // Only show tasks whose range overlaps the month currently in view
+    var sections = allSections.map(function (s) {
+      return { project: s.project, tasks: s.tasks.filter(function (t) { return overlapsAxis(getTaskRange(t), axis); }) };
+    }).filter(function (s) { return s.tasks.length > 0; });
     var members = (typeof TaskManager !== 'undefined' ? TaskManager.getMembers() : []) || [];
     var todayPct = (new Date() >= axis.start && new Date() < axis.end) ? pct(axis, new Date()) : null;
+
+    var monthLabelEl = root.querySelector('#ganttMonthLabel');
+    if (monthLabelEl) monthLabelEl.textContent = currentMonth.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' });
 
     // Legend: one dot per visible project
     legendEl.innerHTML = sections.map(function (s) {
@@ -177,9 +176,10 @@ var HiconiqueGantt = (function () {
           '</div></td>' +
           '<td colspan="12" style="position:relative;">' +
             '<div class="gantt-bar-cell"><div class="gantt-bar-track">' +
-              axis.months.map(function (m, i) {
+              axis.days.map(function (d, i) {
                 if (i === 0) return '';
-                return '<div class="gantt-month-line" style="left:' + pct(axis, m) + '%"></div>';
+                var weekend = d.getDay() === 0 || d.getDay() === 6;
+                return '<div class="gantt-month-line' + (weekend ? ' gantt-weekend-line' : '') + '" style="left:' + pct(axis, d) + '%"></div>';
               }).join('') +
               (todayPct !== null ? '<div class="gantt-today-line" style="left:' + todayPct + '%"></div>' : '') +
               '<div class="gantt-bar-item" style="left:' + left + '%;width:' + width + '%;background:linear-gradient(135deg,' + color + ',' + darken(color, 40) + ')" ' +
@@ -210,8 +210,15 @@ var HiconiqueGantt = (function () {
     }
 
     bodyEl.innerHTML = html;
-    var monthLabel = axis.months.length ? (axis.months[0].toLocaleDateString('vi-VN', { month: '2-digit', year: 'numeric' }) + ' – ' + axis.months[axis.months.length - 1].toLocaleDateString('vi-VN', { month: '2-digit', year: 'numeric' })) : '';
-    tableEl.querySelector('thead th:nth-child(2)').textContent = monthLabel;
+    var headCell = tableEl.querySelector('thead th:nth-child(2)');
+    headCell.innerHTML = '<div class="gantt-day-header">' + axis.days.map(function (d) {
+      var weekend = d.getDay() === 0 || d.getDay() === 6;
+      var isToday = d.toDateString() === new Date().toDateString();
+      return '<div class="gantt-day-cell' + (weekend ? ' weekend' : '') + (isToday ? ' today' : '') + '" style="left:' + pct(axis, d) + '%">' +
+        '<span class="gantt-day-dow">' + VI_DOW_SHORT[d.getDay()] + '</span>' +
+        '<span class="gantt-day-num">' + d.getDate() + '</span>' +
+      '</div>';
+    }).join('') + '</div>';
     metaEl.innerHTML = '<strong>' + totalTaskCount + '</strong> hạng mục · Cập nhật ' + new Date().toLocaleDateString('vi-VN');
 
     // Tooltip
@@ -244,6 +251,23 @@ var HiconiqueGantt = (function () {
     });
     var exportBtn = root.querySelector('#ganttExportBtn');
     if (exportBtn) exportBtn.addEventListener('click', function () { exportExcel(currentFilter); });
+
+    var prevBtn = root.querySelector('#ganttPrevMonth');
+    var nextBtn = root.querySelector('#ganttNextMonth');
+    var todayBtn = root.querySelector('#ganttTodayMonth');
+    if (prevBtn) prevBtn.addEventListener('click', function () {
+      currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
+      render(root);
+    });
+    if (nextBtn) nextBtn.addEventListener('click', function () {
+      currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
+      render(root);
+    });
+    if (todayBtn) todayBtn.addEventListener('click', function () {
+      var t = new Date();
+      currentMonth = new Date(t.getFullYear(), t.getMonth(), 1);
+      render(root);
+    });
   }
 
   // ----- Excel export: classic construction "Bảng tiến độ thi công" weekly Gantt -----
