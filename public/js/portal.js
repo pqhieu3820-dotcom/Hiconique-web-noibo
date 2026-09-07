@@ -813,13 +813,61 @@
     document.addEventListener('click', function () { menu.hidden = true; });
   }
 
+  // ----- Mobile nav (hamburger) -----
+  // Injected into every page's .header-inner — the nav links themselves
+  // (.primary-nav) already exist in each page's markup; this just adds the
+  // toggle button and the open/close behavior for narrow viewports, once,
+  // shared across the whole site instead of per-page.
+  function initMobileNav() {
+    var headerInner = document.querySelector('.site-header .header-inner');
+    var nav = document.querySelector('.site-header .primary-nav');
+    if (!headerInner || !nav) return;
+    if (headerInner.querySelector('.menu-toggle')) return;
+
+    var toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'menu-toggle';
+    toggle.setAttribute('aria-label', 'Mở menu');
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.innerHTML =
+      '<svg class="icon-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>' +
+      '<svg class="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+    headerInner.insertBefore(toggle, headerInner.firstChild);
+
+    function closeNav() {
+      nav.classList.remove('nav-open');
+      toggle.classList.remove('is-open');
+      toggle.setAttribute('aria-expanded', 'false');
+    }
+    function toggleNav(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var opening = !nav.classList.contains('nav-open');
+      nav.classList.toggle('nav-open', opening);
+      toggle.classList.toggle('is-open', opening);
+      toggle.setAttribute('aria-expanded', opening ? 'true' : 'false');
+    }
+
+    toggle.addEventListener('click', toggleNav);
+    nav.addEventListener('click', function (e) {
+      if (e.target.closest('.nav-link')) closeNav();
+    });
+    document.addEventListener('click', function (e) {
+      if (!nav.contains(e.target) && e.target !== toggle) closeNav();
+    });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeNav(); });
+    window.addEventListener('resize', function () { if (window.innerWidth > 1024) closeNav(); });
+  }
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
       initNotifications();
       initUserMenu();
+      initMobileNav();
     });
   } else {
     initNotifications();
     initUserMenu();
+    initMobileNav();
   }
 }());
