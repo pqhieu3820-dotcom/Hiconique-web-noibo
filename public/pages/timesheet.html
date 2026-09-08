@@ -8,12 +8,12 @@
   <link rel="stylesheet" href="/css/reset.css">
   <link rel="stylesheet" href="/css/tokens.css">
   <link rel="stylesheet" href="/css/portal.css">
+  <link rel="stylesheet" href="/css/subpage.css">
   <link rel="stylesheet" href="/css/task-manager.css">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <script src="/js/gsheets-config.js"></script>
   <script src="/js/task-data.js"></script>
   <script src="/js/auth.js"></script>
-  <script src="/js/portal.js"></script>
   <style>
     :root {
       --ts-bg: var(--color-bg);
@@ -34,89 +34,8 @@
       min-height: 100vh;
     }
 
-    /* Header */
-    .ts-header {
-      background: var(--ts-surface);
-      border-bottom: 1px solid var(--ts-border);
-      padding: 16px 32px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      backdrop-filter: blur(8px);
-    }
-
-    .ts-header-left {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .ts-logo {
-      width: 40px;
-      height: 40px;
-      background: var(--ts-bronze);
-      border-radius: 10px;
-      display: grid;
-      place-items: center;
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: #0B0D10;
-      flex-shrink: 0;
-      text-decoration: none;
-    }
-
-    .ts-title-group h1 {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: var(--ts-text);
-      margin: 0;
-    }
-
-    .ts-title-group p {
-      font-size: 0.75rem;
-      color: var(--ts-muted);
-      margin: 2px 0 0;
-    }
-
-    .ts-back {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 14px;
-      border-radius: 8px;
-      font-size: 0.875rem;
-      color: var(--ts-muted);
-      text-decoration: none;
-      border: 1px solid var(--ts-border);
-      background: var(--ts-surface);
-      transition: all 0.15s;
-    }
-
-    .ts-back:hover { color: var(--ts-text); border-color: var(--ts-bronze); }
-
     /* Main */
-    .ts-container { max-width: 1100px; margin: 0 auto; padding: 32px 32px 60px; }
-
-    /* Page title */
-    .ts-page-title {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 2rem;
-      font-weight: 600;
-      color: var(--ts-text);
-      margin-bottom: 8px;
-    }
-
-    .ts-page-sub {
-      color: var(--ts-muted);
-      font-size: 0.875rem;
-      margin-bottom: 32px;
-    }
+    .ts-container { max-width: 1100px; }
 
     /* Top Stats */
     .ts-top-stats {
@@ -190,8 +109,52 @@
     .ts-date {
       font-size: 0.875rem;
       color: var(--ts-muted);
-      margin-bottom: 32px;
+      margin-bottom: 24px;
     }
+
+    .ts-note-label {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--ts-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+    .ts-note-label[hidden] { display: none; }
+
+    .ts-note-input {
+      width: 100%;
+      resize: vertical;
+      min-height: 44px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--ts-border);
+      background: var(--color-bg);
+      color: var(--ts-text);
+      font-family: inherit;
+      font-size: 0.875rem;
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+
+    .ts-note-input:focus { outline: none; border-color: var(--ts-bronze); }
+    .ts-note-input::placeholder { color: var(--color-text-faint); }
+
+    .ts-geo-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      line-height: 1.4;
+      margin-bottom: 16px;
+      background: rgba(160, 72, 72, 0.12);
+      color: var(--ts-danger);
+    }
+    .ts-geo-status[hidden] { display: none; }
+    .ts-geo-status.ok { background: var(--ts-success-light); color: var(--ts-success); }
+    .ts-geo-status svg { width: 14px; height: 14px; flex-shrink: 0; }
 
     .ts-checkin-btn {
       width: 100%;
@@ -428,49 +391,46 @@
       .ts-top-stats { grid-template-columns: repeat(2, 1fr); }
       .ts-grid { grid-template-columns: 1fr; }
       .ts-checkin-card { position: static; }
-      .ts-container { padding: 24px 16px 60px; }
-      .ts-header { padding: 12px 16px; }
     }
   </style>
 </head>
 <body>
-  <header class="ts-header">
-    <div class="ts-header-left">
-      <a href="/" class="ts-logo">H</a>
-      <div class="ts-title-group">
-        <h1>Chấm công</h1>
-        <p>Check-in / Check-out hàng ngày</p>
-      </div>
-    </div>
-    <nav class="primary-nav">
-      <a href="/#tools" class="nav-link">Công cụ</a>
-      <a href="/pages/tasks-manager.html" class="nav-link">Tasks</a>
-      <a href="/pages/projects.html" class="nav-link">Dự án</a>
-      <a href="/pages/wiki.html" class="nav-link">Tài liệu</a>
-      <a href="/#ai" class="nav-link">AI</a>
-      <a href="/pages/notices.html" class="nav-link">Thông báo</a>
-      <a href="/pages/team.html" class="nav-link">Team</a>
-    </nav>
-    <div style="display:flex;align-items:center;gap:10px;">
-      <a href="/" class="ts-back">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-        Về trang chủ
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/" class="brand">
+        <span class="brand-mark">H</span>
+        <span class="brand-name"><span class="brand-name-1">HICONIQUE</span></span>
       </a>
-      <button class="theme-toggle-pill" aria-label="Chuyển đổi sáng/tối" data-theme-toggle style="position:relative;width:64px;height:30px;display:flex;align-items:center;justify-content:space-between;padding:2px;border-radius:18px;border:1px solid var(--ts-border);background:var(--ts-surface);cursor:pointer;gap:0;">
-        <span style="width:26px;height:26px;border-radius:50%;display:grid;place-items:center;z-index:2;color:var(--ts-bronze);">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-        </span>
-        <span style="position:absolute;width:26px;height:26px;background:var(--ts-bronze);border-radius:50%;top:2px;left:2px;transition:transform 0.2s;z-index:1;" id="tsThemeSlider"></span>
-        <span style="width:26px;height:26px;border-radius:50%;display:grid;place-items:center;z-index:2;color:#3B6B8C;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-        </span>
-      </button>
+      <nav class="primary-nav">
+        <a href="/#tools" class="nav-link">Công cụ</a>
+        <a href="/pages/tasks-manager.html" class="nav-link">Tasks</a>
+        <a href="/pages/projects.html" class="nav-link">Dự án</a>
+        <a href="/pages/wiki.html" class="nav-link">Tài liệu</a>
+        <a href="/#ai" class="nav-link">AI</a>
+        <a href="/pages/notices.html" class="nav-link">Thông báo</a>
+        <a href="/pages/team.html" class="nav-link">Team</a>
+      </nav>
+      <div class="header-actions">
+        <button class="theme-toggle" aria-label="Chuyển đổi sáng/tối" data-theme-toggle>
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" stroke-linecap="round" />
+          </svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+        <span class="clock"><span class="clock-time" data-clock>15:01</span><span class="clock-meta">GMT+7</span></span>
+        <button class="avatar"><span>--</span></button>
+      </div>
     </div>
   </header>
 
-  <div class="ts-container">
-    <h2 class="ts-page-title">Bảng chấm công</h2>
-    <p class="ts-page-sub" id="tsPageSub">Theo dõi giờ làm việc và tăng ca hàng ngày</p>
+  <main class="subpage">
+  <div class="subpage-inner ts-container">
+    <p class="eyebrow">— Chấm công</p>
+    <h1 class="subpage-title">Bảng <span class="subpage-title-italic">chấm công</span></h1>
+    <p class="subpage-lede" id="tsPageSub">Theo dõi giờ làm việc và tăng ca hàng ngày</p>
 
     <!-- Stats -->
     <div class="ts-top-stats">
@@ -507,6 +467,11 @@
         <div class="ts-checkin-eyebrow">Hôm nay</div>
         <div class="ts-clock" id="tsClock">--:--</div>
         <div class="ts-date" id="tsDate">--</div>
+
+        <label class="ts-note-label" for="tsCheckinNote">Ghi chú (tuỳ chọn)</label>
+        <textarea class="ts-note-input" id="tsCheckinNote" rows="2" placeholder="Ví dụ: đi công trình, xin về sớm…"></textarea>
+
+        <div class="ts-geo-status" id="tsGeoStatus" hidden></div>
 
         <button class="ts-checkin-btn in" id="tsCheckinBtn">Check In</button>
 
@@ -578,7 +543,9 @@
       </div>
     </div>
   </div>
+  </main>
 
+  <script src="/js/portal.js" defer></script>
   <script>
   (function() {
     'use strict';
@@ -587,20 +554,77 @@
     var calYear = new Date().getFullYear();
     var selectedDayDate = null;
 
-    // Sync theme slider
-    function syncThemeSlider() {
-      var theme = document.documentElement.getAttribute('data-theme');
-      var slider = document.getElementById('tsThemeSlider');
-      if (slider) slider.style.transform = theme === 'dark' ? 'translateX(34px)' : 'translateX(0)';
+    // ====== CẤU HÌNH GIỚI HẠN CHECK-IN (IP văn phòng + vị trí GPS) ======
+    // Mặc định TẮT (enabled: false) vì chưa có toạ độ/IP thực tế của văn phòng.
+    // Để bật: đổi enabled thành true và điền giá trị thật bên dưới.
+    var GEO_RESTRICTION = {
+      enabled: false,
+      lat: 21.028511,     // TODO: vĩ độ văn phòng
+      lng: 105.804817,    // TODO: kinh độ văn phòng
+      radiusMeters: 50    // bán kính cho phép chấm công (mét)
+    };
+    var IP_RESTRICTION = {
+      enabled: false,
+      allowedIPs: []      // TODO: điền IP công khai (public IP) của mạng Wifi văn phòng, vd: ['118.70.12.34']
+    };
+
+    function haversineMeters(lat1, lng1, lat2, lng2) {
+      var R = 6371000;
+      function toRad(d) { return d * Math.PI / 180; }
+      var dLat = toRad(lat2 - lat1);
+      var dLng = toRad(lng2 - lng1);
+      var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+        Math.sin(dLng / 2) * Math.sin(dLng / 2);
+      var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
     }
 
-    var savedTheme = localStorage.getItem('hiconique-theme');
-    if (savedTheme) syncThemeSlider();
+    function setGeoStatus(msg, ok) {
+      var el = document.getElementById('tsGeoStatus');
+      if (!el) return;
+      if (!msg) { el.hidden = true; el.textContent = ''; return; }
+      el.hidden = false;
+      el.className = 'ts-geo-status' + (ok ? ' ok' : '');
+      el.textContent = msg;
+    }
 
-    var themeToggle = document.querySelector('[data-theme-toggle]');
-    if (themeToggle) {
-      themeToggle.addEventListener('click', function() {
-        setTimeout(syncThemeSlider, 10);
+    // Cảnh báo: kiểm tra IP/GPS phía frontend chỉ mang tính chất hạn chế cơ bản,
+    // người dùng rành công nghệ vẫn có thể qua mặt bằng VPN hoặc app giả lập GPS.
+    function verifyIPRestriction() {
+      if (!IP_RESTRICTION.enabled) return Promise.resolve(true);
+      return fetch('https://api.ipify.org?format=json')
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (IP_RESTRICTION.allowedIPs.indexOf(data.ip) !== -1) return true;
+          setGeoStatus('Vui lòng kết nối Wifi công ty để chấm công.', false);
+          return false;
+        })
+        .catch(function () {
+          setGeoStatus('Không kiểm tra được kết nối mạng. Vui lòng thử lại.', false);
+          return false;
+        });
+    }
+
+    function verifyGeoRestriction() {
+      if (!GEO_RESTRICTION.enabled) return Promise.resolve(true);
+      if (!navigator.geolocation) {
+        setGeoStatus('Thiết bị không hỗ trợ định vị GPS. Vui lòng dùng thiết bị khác để chấm công.', false);
+        return Promise.resolve(false);
+      }
+      return new Promise(function (resolve) {
+        navigator.geolocation.getCurrentPosition(function (pos) {
+          var dist = haversineMeters(pos.coords.latitude, pos.coords.longitude, GEO_RESTRICTION.lat, GEO_RESTRICTION.lng);
+          if (dist <= GEO_RESTRICTION.radiusMeters) {
+            resolve(true);
+          } else {
+            setGeoStatus('Bạn đang cách văn phòng ' + Math.round(dist) + 'm. Vui lòng đến trong bán kính ' + GEO_RESTRICTION.radiusMeters + 'm để chấm công.', false);
+            resolve(false);
+          }
+        }, function () {
+          setGeoStatus('Không lấy được vị trí của bạn. Vui lòng bật định vị (GPS) và cấp quyền vị trí cho trình duyệt.', false);
+          resolve(false);
+        }, { enableHighAccuracy: true, timeout: 8000 });
       });
     }
 
@@ -654,6 +678,11 @@
       var record = getEntryByDate(getToday());
       var btn = document.getElementById('tsCheckinBtn');
       var status = document.getElementById('tsCheckinStatus');
+      var noteLabel = document.querySelector('.ts-note-label');
+      var noteInput = document.getElementById('tsCheckinNote');
+      var showNote = !record;
+      if (noteLabel) noteLabel.hidden = !showNote;
+      if (noteInput) noteInput.hidden = !showNote;
 
       if (record && record.checkoutTime) {
         btn.textContent = 'Đã hoàn thành';
@@ -697,6 +726,7 @@
     function checkIn() {
       var now = new Date();
       var time = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+      var noteInput = document.getElementById('tsCheckinNote');
       var entry = {
         id: 'TS_' + Date.now(),
         memberId: getUserId(),
@@ -706,11 +736,13 @@
         totalHours: 0,
         overtimeHours: 0,
         status: 'working',
-        note: ''
+        note: noteInput ? noteInput.value.trim() : ''
       };
       if (typeof TaskManager !== 'undefined' && TaskManager.addTimesheetEntry) {
         TaskManager.addTimesheetEntry(entry);
       }
+      if (noteInput) noteInput.value = '';
+      setGeoStatus(null);
       updateCheckinUI();
       renderCalendar();
     }
@@ -858,8 +890,22 @@
     // Init
     document.getElementById('tsCheckinBtn').addEventListener('click', function() {
       var record = getEntryByDate(getToday());
-      if (record && !record.checkoutTime) checkOut();
-      else checkIn();
+      if (record && !record.checkoutTime) { checkOut(); return; }
+
+      var btn = this;
+      var originalText = btn.textContent;
+      setGeoStatus(null);
+      btn.disabled = true;
+      btn.textContent = 'Đang kiểm tra...';
+
+      verifyIPRestriction().then(function (ipOk) {
+        if (!ipOk) return false;
+        return verifyGeoRestriction();
+      }).then(function (ok) {
+        btn.disabled = false;
+        btn.textContent = originalText;
+        if (ok) checkIn();
+      });
     });
 
     document.getElementById('tsPrevMonth').addEventListener('click', function() {

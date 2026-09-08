@@ -172,6 +172,16 @@
               <div class="pf-field-value" id="profileDob">--</div>
               <input class="pf-field-input" id="profileDobInput" type="date" hidden>
             </div>
+            <div class="pf-field" data-field="gender">
+              <div class="pf-field-label">Giới tính</div>
+              <div class="pf-field-value" id="profileGender">--</div>
+              <select class="pf-field-input" id="profileGenderInput" hidden>
+                <option value="">-- Chọn --</option>
+                <option value="male">Nam</option>
+                <option value="female">Nữ</option>
+                <option value="other">Khác</option>
+              </select>
+            </div>
             <div class="pf-field" data-field="cccd">
               <div class="pf-field-label">CCCD/CMND</div>
               <div class="pf-field-value" id="profileCccd">--</div>
@@ -244,11 +254,12 @@
     var session = Auth.getCurrentUser();
     if (!session) { Auth.showLoginModal(); return; }
 
-    var EDITABLE = ['dob', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount'];
+    var EDITABLE = ['dob', 'gender', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount'];
     var user;
 
     function fmtDob(v) { return v ? new Date(v).toLocaleDateString('vi-VN') : '--'; }
     function isoDob(v) { return v ? new Date(v).toISOString().split('T')[0] : ''; }
+    function fmtGender(v) { return v === 'male' ? 'Nam' : v === 'female' ? 'Nữ' : v === 'other' ? 'Khác' : '--'; }
 
     function render() {
       var fullMember = (typeof TaskManager !== 'undefined' ? TaskManager.getMembers() : [])
@@ -261,6 +272,7 @@
       document.getElementById('profileRole').textContent = user.role || '--';
       document.getElementById('profileEmail').textContent = user.email || '--';
       document.getElementById('profileDob').textContent = fmtDob(user.dob);
+      document.getElementById('profileGender').textContent = fmtGender(user.gender);
       document.getElementById('profileCccd').textContent = user.cccd || '--';
       document.getElementById('profilePhone').textContent = user.phone || '--';
       document.getElementById('profileHometown').textContent = user.hometown || '--';
@@ -268,6 +280,7 @@
       document.getElementById('profileBank').textContent = user.bankAccount || '--';
 
       document.getElementById('profileDobInput').value = isoDob(user.dob);
+      document.getElementById('profileGenderInput').value = user.gender || '';
       document.getElementById('profileCccdInput').value = user.cccd || '';
       document.getElementById('profilePhoneInput').value = user.phone || '';
       document.getElementById('profileHometownInput').value = user.hometown || '';
@@ -298,6 +311,7 @@
     document.getElementById('pfSaveBtn').addEventListener('click', function () {
       var updates = {
         dob: document.getElementById('profileDobInput').value,
+        gender: document.getElementById('profileGenderInput').value,
         cccd: document.getElementById('profileCccdInput').value.trim(),
         phone: document.getElementById('profilePhoneInput').value.trim(),
         hometown: document.getElementById('profileHometownInput').value.trim(),

@@ -17,9 +17,9 @@ const SHEETS = {
 const HEADERS = {
   projects: ['id', 'name', 'type', 'color', 'progress', 'status', 'members', 'createdAt', 'updatedAt'],
   tasks: ['id', 'title', 'description', 'projectId', 'assigneeId', 'priority', 'status', 'startDate', 'deadline', 'createdBy', 'createdAt', 'updatedAt', 'progress', 'dailyTasks'],
-  members: ['id', 'name', 'role', 'roleLevel', 'email', 'password', 'dob', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount', 'color', 'avatar', 'createdAt'],
+  members: ['id', 'name', 'role', 'roleLevel', 'email', 'password', 'dob', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount', 'color', 'avatar', 'createdAt', 'gender'],
   proposals: ['id', 'title', 'description', 'type', 'status', 'requesterId', 'reviewerId', 'amount', 'createdAt', 'reviewedAt'],
-  timesheet: ['id', 'memberId', 'date', 'checkinTime', 'checkoutTime', 'totalHours', 'overtimeHours', 'status'],
+  timesheet: ['id', 'memberId', 'date', 'checkinTime', 'checkoutTime', 'totalHours', 'overtimeHours', 'status', 'note'],
   notifications: ['id', 'title', 'message', 'type', 'scope', 'recurring', 'recurRule', 'active', 'createdBy', 'createdAt', 'updatedAt'],
   notices: ['id', 'title', 'message', 'color', 'createdBy', 'createdAt', 'updatedAt'],
   documents: ['id', 'category', 'name', 'url', 'createdBy', 'createdAt', 'updatedAt']
@@ -204,4 +204,85 @@ function deleteData(ss, sheetName, id) {
   if (index === -1) return { error: 'Not found' };
   sheet.deleteRow(index + 2);
   return { success: true, deleted: id };
+}
+
+// Installable trigger (Triggers > Add Trigger > onEdit > From spreadsheet > On edit).
+// When a Member's id cell is edited by hand in the Sheet, cascades the change to every
+// other sheet that references that member id, so tasks/projects/timesheet/proposals
+// stay linked instead of silently pointing at a now-nonexistent id.
+function onEdit(e) {
+  try {
+    if (!e || !e.range) return;
+    const sheet = e.range.getSheet();
+    if (sheet.getName() !== SHEETS.members) return;
+    const headers = getHeaders(sheet);
+    const col = e.range.getColumn();
+    if (headers[col - 1] !== 'id') return;
+    if (e.range.getRow() === 1) return; // header row itself
+
+    const oldId = e.oldValue;
+    const newId = e.value;
+    if (!oldId || !newId || oldId === newId) return;
+
+    cascadeMemberIdChange(oldId, newId);
+  } catch (err) {
+    // Never let a cascade failure block the user's manual edit.
+  }
+}
+
+function cascadeMemberIdChange(oldId, newId) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  replaceIdInColumn(ss, SHEETS.tasks, 'assigneeId', oldId, newId);
+  replaceIdInColumn(ss, SHEETS.tasks, 'createdBy', oldId, newId);
+  replaceIdInColumn(ss, SHEETS.proposals, 'requesterId', oldId, newId);
+  replaceIdInColumn(ss, SHEETS.proposals, 'reviewerId', oldId, newId);
+  replaceIdInColumn(ss, SHEETS.timesheet, 'memberId', oldId, newId);
+  replaceIdInListColumn(ss, SHEETS.projects, 'members', oldId, newId);
+}
+
+function replaceIdInColumn(ss, sheetName, headerName, oldId, newId) {
+  const sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return;
+  const headers = getHeaders(sheet);
+  const colIdx = headers.indexOf(headerName);
+  if (colIdx === -1) return;
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return;
+  const range = sheet.getRange(2, colIdx + 1, lastRow - 1, 1);
+  const values = range.getValues();
+  let changed = false;
+  for (let i = 0; i < values.length; i++) {
+    if (String(values[i][0]) === oldId) {
+      values[i][0] = newId;
+      changed = true;
+    }
+  }
+  if (changed) range.setValues(values);
+}
+
+function replaceIdInListColumn(ss, sheetName, headerName, oldId, newId) {
+  const sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return;
+  const headers = getHeaders(sheet);
+  const colIdx = headers.indexOf(headerName);
+  if (colIdx === -1) return;
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return;
+  const range = sheet.getRange(2, colIdx + 1, lastRow - 1, 1);
+  const values = range.getValues();
+  let changed = false;
+  for (let i = 0; i < values.length; i++) {
+    const raw = values[i][0];
+    if (!raw) continue;
+    let arr;
+    try { arr = JSON.parse(raw); } catch (e2) { arr = null; }
+    if (!Array.isArray(arr)) continue;
+    const idx = arr.indexOf(oldId);
+    if (idx !== -1) {
+      arr[idx] = newId;
+      values[i][0] = JSON.stringify(arr);
+      changed = true;
+    }
+  }
+  if (changed) range.setValues(values);
 }

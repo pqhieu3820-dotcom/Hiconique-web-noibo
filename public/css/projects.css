@@ -749,8 +749,15 @@
     width: 100%;
     height: auto;
     position: relative;
+    top: 0;
     border-right: none;
     border-bottom: 1px solid var(--color-border);
+  }
+
+  .projects-content {
+    flex: none;
+    overflow-x: visible;
+    width: 100%;
   }
 
   .kanban-board {

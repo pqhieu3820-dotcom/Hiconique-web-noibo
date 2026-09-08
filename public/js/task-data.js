@@ -656,7 +656,7 @@ var TaskManager = (function() {
   // các trường không nhạy cảm về quyền hạn (không cho đổi role/roleLevel/email
   // qua đường này). Chủ tài khoản luôn sửa được hồ sơ của chính mình; CEO/Manager
   // sửa được hồ sơ người khác.
-  var MEMBER_SELF_EDIT_FIELDS = ['dob', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount', 'password'];
+  var MEMBER_SELF_EDIT_FIELDS = ['dob', 'gender', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount', 'password'];
   function updateMember(id, updates, user) {
     if (!user) return null;
     var isSelf = user.id === id;

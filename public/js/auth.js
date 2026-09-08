@@ -347,23 +347,34 @@ const Auth = (function() {
                   style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none;">
               </div>
               <div>
-                <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">CCCD/CMND</label>
-                <input type="text" id="regCccdInput" placeholder="Số CCCD"
+                <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Giới tính</label>
+                <select id="regGenderInput"
                   style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none;">
+                  <option value="">-- Chọn --</option>
+                  <option value="male">Nam</option>
+                  <option value="female">Nữ</option>
+                  <option value="other">Khác</option>
+                </select>
               </div>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
               <div>
+                <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">CCCD/CMND</label>
+                <input type="text" id="regCccdInput" placeholder="Số CCCD"
+                  style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none;">
+              </div>
+              <div>
                 <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Số điện thoại</label>
                 <input type="tel" id="regPhoneInput" placeholder="09xxxxxxxx"
                   style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none;">
               </div>
-              <div>
-                <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Quê quán</label>
-                <input type="text" id="regHometownInput" placeholder="Địa chỉ quê quán"
-                  style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none;">
-              </div>
+            </div>
+
+            <div>
+              <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Quê quán</label>
+              <input type="text" id="regHometownInput" placeholder="Địa chỉ quê quán"
+                style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none;">
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
@@ -404,6 +415,7 @@ const Auth = (function() {
     var roleInput = document.getElementById('regRoleInput');
     var passwordInput = document.getElementById('regPasswordInput');
     var dobInput = document.getElementById('regDobInput');
+    var genderInput = document.getElementById('regGenderInput');
     var cccdInput = document.getElementById('regCccdInput');
     var phoneInput = document.getElementById('regPhoneInput');
     var hometownInput = document.getElementById('regHometownInput');
@@ -423,6 +435,7 @@ const Auth = (function() {
       var role = roleInput.value.trim() || 'Nhân viên';
       var password = passwordInput.value;
       var dob = dobInput.value;
+      var gender = genderInput.value;
       var cccd = cccdInput.value.trim();
       var phone = phoneInput.value.trim();
       var hometown = hometownInput.value.trim();
@@ -437,7 +450,7 @@ const Auth = (function() {
         return;
       }
 
-      register(name, email, role, password, dob, cccd, phone, hometown, bankName, bankAccount, function(result) {
+      register(name, email, role, password, dob, cccd, phone, hometown, bankName, bankAccount, gender, function(result) {
         if (result.success) {
           successEl.textContent = '✓ Đăng ký thành công! Đang chuyển sang đăng nhập...';
           successEl.style.display = 'block';
@@ -460,7 +473,7 @@ const Auth = (function() {
   }
 
   // Register new member
-  function register(name, email, role, password, dob, cccd, phone, hometown, bankName, bankAccount, callback) {
+  function register(name, email, role, password, dob, cccd, phone, hometown, bankName, bankAccount, gender, callback) {
     if (!isAllowedEmail(email)) {
       if (callback) callback({ success: false, error: 'Email không hợp lệ' });
       return;
@@ -477,11 +490,33 @@ const Auth = (function() {
       return;
     }
 
-    // Generate member ID
-    var id = 'MEM_' + Date.now().toString(36).toUpperCase();
+    // Generate avatar/initials from name: last two words' first letters
+    // (e.g. "Lê Thành" -> "LT", "Giản Phương" -> "GP") — Vietnamese family-name-first order.
+    function getInitials(n) {
+      var parts = (n || '').trim().split(/\s+/);
+      if (parts.length === 1) return (parts[0] || '').substring(0, 2).toUpperCase();
+      return (parts[parts.length - 2].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+    }
+    var avatar = getInitials(name);
 
-    // Generate avatar from name
-    var avatar = name.split(' ').map(function(w) { return w.charAt(0); }).join('').slice(0, 2).toUpperCase();
+    // Generate member ID: MEM.<Initials>.<DDMMYY ngày sinh> — stable and readable
+    // regardless of how many members join later, unlike a sequential counter.
+    // Falls back to today's date if DOB wasn't provided, and appends -2/-3/... on collision.
+    function formatDDMMYY(dateStr) {
+      var d = dateStr ? new Date(dateStr) : new Date();
+      if (isNaN(d.getTime())) d = new Date();
+      var dd = String(d.getDate()).padStart(2, '0');
+      var mm = String(d.getMonth() + 1).padStart(2, '0');
+      var yy = String(d.getFullYear()).slice(-2);
+      return dd + mm + yy;
+    }
+    var baseId = 'MEM.' + avatar + '.' + formatDDMMYY(dob);
+    var id = baseId;
+    var idSuffix = 2;
+    while (members.some(function(m) { return m.id === id; })) {
+      id = baseId + '-' + idSuffix;
+      idSuffix++;
+    }
 
     // Generate random color
     var colors = ['#B08D57', '#8E7CC3', '#C7A464', '#4F6F52', '#3B6B8C', '#B8725A', '#6B5B95', '#88B04B', '#F7CAC9', '#92A8D1'];
@@ -501,6 +536,7 @@ const Auth = (function() {
       hometown: hometown || '',
       bank: bankName || '',
       bankAccount: bankAccount || '',
+      gender: gender || '',
       color: color,
       avatar: avatar,
       createdAt: new Date().toISOString().split('T')[0]

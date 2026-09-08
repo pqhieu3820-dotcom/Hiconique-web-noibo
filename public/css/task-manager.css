@@ -1572,6 +1572,37 @@
   .bottom-grid {
     grid-template-columns: 1fr;
   }
+
+  /* Collapse the tall vertical sidebar into a slim horizontal scroll bar —
+     name/logout are already reachable via the header avatar menu on mobile. */
+  .tm-sidebar {
+    padding: var(--space-sm) var(--space-md);
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .sidebar-welcome,
+  .sidebar-footer {
+    display: none;
+  }
+  .tm-nav {
+    flex-direction: row;
+    gap: var(--space-xs);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tm-nav-item {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .tm-topbar {
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+  }
+  .search-box-tm {
+    order: 1;
+    width: 100%;
+  }
 }
 
 /* ========== Main Objective Section ========== */

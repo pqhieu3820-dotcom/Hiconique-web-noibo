@@ -15,15 +15,6 @@
   function setTheme(theme) {
     html.setAttribute('data-theme', theme);
     localStorage.setItem('hiconique-theme', theme);
-    // Sync all theme sliders on the page (slider sits under the icon for the ACTIVE theme)
-    document.querySelectorAll('[id$="ThemeSlider"]').forEach(function(slider) {
-      slider.style.transform = theme === 'dark' ? 'translateX(34px)' : 'translateX(0)';
-    });
-    // Sync theme-toggle-pill slider (index page)
-    var pillSliders = document.querySelectorAll('.theme-toggle-slider');
-    pillSliders.forEach(function(s) {
-      s.style.transform = theme === 'dark' ? 'translateX(40px)' : 'translateX(0)';
-    });
   }
 
   function initTheme() {
@@ -109,14 +100,125 @@
   updateHeroStat();
   setInterval(updateHeroStat, 30000);
 
-  // ----- Search overlay -----
+  // ----- Search overlay (self-installing so every page gets a working search, not just index.html) -----
+  (function ensureSearchToggleButton() {
+    var actions = document.querySelector('.header-actions');
+    if (!actions || actions.querySelector('[data-search-toggle]')) return;
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'icon-btn';
+    btn.setAttribute('aria-label', 'Tìm kiếm');
+    btn.setAttribute('data-search-toggle', '');
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5" stroke-linecap="round"/></svg>';
+    actions.insertBefore(btn, actions.firstChild);
+  })();
+
   var overlay = document.querySelector('[data-search-overlay]');
-  var toggle  = document.querySelector('[data-search-toggle]');
-  var input   = document.querySelector('[data-search-input]');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.className = 'search-overlay';
+    overlay.setAttribute('data-search-overlay', '');
+    overlay.hidden = true;
+    document.body.appendChild(overlay);
+  }
+  if (!overlay.querySelector('[data-search-results]')) {
+    var existingBox = overlay.querySelector('.search-box');
+    var panel = document.createElement('div');
+    panel.className = 'search-panel';
+    if (existingBox) {
+      existingBox.parentNode.insertBefore(panel, existingBox);
+      panel.appendChild(existingBox);
+    } else {
+      panel.innerHTML =
+        '<div class="search-box" role="search">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5" stroke-linecap="round"/></svg>' +
+          '<input type="search" placeholder="Tìm công cụ, tài liệu, đồng nghiệp…" aria-label="Tìm kiếm" data-search-input />' +
+          '<kbd>ESC</kbd>' +
+        '</div>';
+      overlay.appendChild(panel);
+    }
+    var resultsPanel = document.createElement('div');
+    resultsPanel.className = 'search-results';
+    resultsPanel.setAttribute('data-search-results', '');
+    resultsPanel.hidden = true;
+    panel.appendChild(resultsPanel);
+  }
+
+  var toggle = document.querySelectorAll('[data-search-toggle]');
+  var input = overlay.querySelector('[data-search-input]');
+  var resultsBox = overlay.querySelector('[data-search-results]');
+
+  var SEARCH_PAGES = [
+    { title: 'Trang chủ', sub: 'Không gian làm việc', url: '/', group: 'Trang' },
+    { title: 'Task Manager', sub: 'Quản lý công việc, Kanban', url: '/pages/tasks-manager.html', group: 'Công cụ' },
+    { title: 'Dự án', sub: 'Board / List / Timeline / Gantt', url: '/pages/projects.html', group: 'Công cụ' },
+    { title: 'Bảng tiến độ', sub: 'Theo dõi tiến độ công việc', url: '/pages/progress-board.html', group: 'Công cụ' },
+    { title: 'Chấm công', sub: 'Check-in / Check-out hàng ngày', url: '/pages/timesheet.html', group: 'Công cụ' },
+    { title: 'Tài liệu / Wiki', sub: 'Quy trình, biểu mẫu, hướng dẫn', url: '/pages/wiki.html', group: 'Tài liệu' },
+    { title: 'SPC', sub: 'Kiểm soát chất lượng', url: '/pages/spc.html', group: 'Tài liệu' },
+    { title: 'Thông báo', sub: 'Tin tức và thông báo nội bộ', url: '/pages/notices.html', group: 'Trang' },
+    { title: 'Team', sub: 'Danh bạ nhân sự', url: '/pages/team.html', group: 'Trang' },
+    { title: 'Thông tin cá nhân', sub: 'Hồ sơ, đổi mật khẩu', url: '/pages/profile.html', group: 'Trang' },
+    { title: 'Dashboard của tôi', sub: 'Tổng quan công việc cá nhân', url: '/pages/my-dashboard.html', group: 'Trang' }
+  ];
+
+  function searchMembers() {
+    if (typeof TaskManager === 'undefined' || !TaskManager.getMembers) return [];
+    return TaskManager.getMembers().map(function (m) {
+      return {
+        title: m.name || '—',
+        sub: (m.role || m.position || 'Nhân sự') + (m.email ? ' · ' + m.email : ''),
+        url: '/pages/team.html',
+        group: 'Đồng nghiệp'
+      };
+    });
+  }
+
+  var SEARCH_ICON_ARROW = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>';
+
+  function renderSearchResults(query) {
+    if (!resultsBox) return;
+    var q = query.trim().toLowerCase();
+    if (!q) {
+      resultsBox.hidden = true;
+      resultsBox.innerHTML = '';
+      return;
+    }
+
+    var pool = SEARCH_PAGES.concat(searchMembers());
+    var matches = pool.filter(function (item) {
+      return (item.title + ' ' + item.sub).toLowerCase().indexOf(q) !== -1;
+    }).slice(0, 8);
+
+    resultsBox.hidden = false;
+
+    if (matches.length === 0) {
+      resultsBox.innerHTML = '<p class="search-empty">Không tìm thấy kết quả cho "' + escapeHtml(query) + '"</p>';
+      return;
+    }
+
+    var groups = [];
+    var byGroup = {};
+    matches.forEach(function (m) {
+      if (!byGroup[m.group]) { byGroup[m.group] = []; groups.push(m.group); }
+      byGroup[m.group].push(m);
+    });
+
+    resultsBox.innerHTML = groups.map(function (g) {
+      return '<p class="search-result-group">' + escapeHtml(g) + '</p>' + byGroup[g].map(function (item) {
+        return '<a class="search-result-item" href="' + item.url + '">' +
+          SEARCH_ICON_ARROW +
+          '<span><strong>' + escapeHtml(item.title) + '</strong><br><small>' + escapeHtml(item.sub) + '</small></span>' +
+        '</a>';
+      }).join('');
+    }).join('');
+  }
 
   function openSearch() {
     if (!overlay) return;
     overlay.hidden = false;
+    if (input) { input.value = ''; }
+    if (resultsBox) { resultsBox.hidden = true; resultsBox.innerHTML = ''; }
     setTimeout(function () { input && input.focus(); }, 30);
   }
   function closeSearch() {
@@ -124,12 +226,20 @@
     overlay.hidden = true;
   }
 
-  toggle && toggle.addEventListener('click', openSearch);
-  overlay && overlay.addEventListener('click', function (e) {
+  toggle.forEach(function (btn) { btn.addEventListener('click', openSearch); });
+  overlay.addEventListener('click', function (e) {
     if (e.target === overlay) closeSearch();
   });
+  input && input.addEventListener('input', function () { renderSearchResults(input.value); });
+  input && input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      var first = resultsBox && resultsBox.querySelector('.search-result-item');
+      if (first) window.location.href = first.getAttribute('href');
+    }
+  });
   document.addEventListener('keydown', function (e) {
-    if (e.key === '/' && overlay && overlay.hidden) { e.preventDefault(); openSearch(); }
+    var tag = document.activeElement && document.activeElement.tagName;
+    if (e.key === '/' && overlay.hidden && tag !== 'INPUT' && tag !== 'TEXTAREA') { e.preventDefault(); openSearch(); }
     if (e.key === 'Escape') closeSearch();
   });
 
