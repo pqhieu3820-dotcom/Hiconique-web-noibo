@@ -48,7 +48,9 @@ function syncToGSheets(type, action, data, id) {
     documents: { add: 'addDocument', update: 'updateDocument', delete: 'deleteDocument' },
     payslips: { add: 'addPayslip', update: 'updatePayslip', delete: 'deletePayslip' },
     commissions: { add: 'addCommission', update: 'updateCommission', delete: 'deleteCommission' },
-    commissionRates: { add: 'addCommissionRate', update: 'updateCommissionRate', delete: 'deleteCommissionRate' }
+    commissionRates: { add: 'addCommissionRate', update: 'updateCommissionRate', delete: 'deleteCommissionRate' },
+    priceCatalog: { add: 'addPriceCatalog', update: 'updatePriceCatalog', delete: 'deletePriceCatalog' },
+    financeEntries: { add: 'addFinanceEntry', update: 'updateFinanceEntry', delete: 'deleteFinanceEntry' }
   };
 
   var apiAction = actionMap[type] ? actionMap[type][action] : null;
@@ -120,7 +122,9 @@ var TaskManager = (function() {
     docCategories: 'hiconique_doc_categories',
     payslips: 'hiconique_payslips',
     commissions: 'hiconique_commissions',
-    commissionRates: 'hiconique_commission_rates'
+    commissionRates: 'hiconique_commission_rates',
+    priceCatalog: 'hiconique_price_catalog',
+    financeEntries: 'hiconique_finance_entries'
   };
 
   // % hoa hồng mặc định theo vai trò — gợi ý khi tạo hoa hồng dự án, admin/
@@ -285,7 +289,8 @@ var TaskManager = (function() {
       proposals: 'getProposals', timesheet: 'getTimesheet',
       notifications: 'getNotifications', notices: 'getNotices',
       documents: 'getDocuments', payslips: 'getPayslips',
-      commissions: 'getCommissions', commissionRates: 'getCommissionRates'
+      commissions: 'getCommissions', commissionRates: 'getCommissionRates',
+      priceCatalog: 'getPriceCatalog', financeEntries: 'getFinanceEntries'
     };
     var action = apiReadActions[type];
     if (!action) { callback([]); return; }
@@ -378,6 +383,12 @@ var TaskManager = (function() {
       getFromGSheets('commissionRates', function(rates) {
         localStorage.setItem(STORAGE_KEYS.commissionRates, JSON.stringify(rates.length > 0 ? rates : DEFAULT_COMMISSION_RATES));
       });
+      getFromGSheets('priceCatalog', function(items) {
+        localStorage.setItem(STORAGE_KEYS.priceCatalog, JSON.stringify(items));
+      });
+      getFromGSheets('financeEntries', function(entries) {
+        localStorage.setItem(STORAGE_KEYS.financeEntries, JSON.stringify(entries));
+      });
     } else {
       // Use localStorage
       if (!localStorage.getItem(STORAGE_KEYS.projects)) {
@@ -409,6 +420,12 @@ var TaskManager = (function() {
       }
       if (!localStorage.getItem(STORAGE_KEYS.commissionRates)) {
         localStorage.setItem(STORAGE_KEYS.commissionRates, JSON.stringify(DEFAULT_COMMISSION_RATES));
+      }
+      if (!localStorage.getItem(STORAGE_KEYS.priceCatalog)) {
+        localStorage.setItem(STORAGE_KEYS.priceCatalog, JSON.stringify([]));
+      }
+      if (!localStorage.getItem(STORAGE_KEYS.financeEntries)) {
+        localStorage.setItem(STORAGE_KEYS.financeEntries, JSON.stringify([]));
       }
     }
   }
@@ -792,6 +809,14 @@ var TaskManager = (function() {
     return !!user && (user.roleLevel === 'admin' || user.roleLevel === 'manager');
   }
 
+  // Sổ tài chính công ty (finance.html) — CEO-only, không phải admin/manager
+  // thường như hầu hết các quyền khác trong file này. Đây vẫn chỉ là kiểm
+  // tra phía client (giống mọi "phân quyền" khác trong app) — không phải
+  // bảo mật server-side thật, xem GHI_CHU_DU_AN.md.
+  function canManageFinance(user) {
+    return !!user && user.roleLevel === 'admin';
+  }
+
   function canManageRecurringRules(user) {
     return !!user && user.roleLevel === 'admin';
   }
@@ -1147,6 +1172,69 @@ var TaskManager = (function() {
     }, 0);
   }
 
+  // Bảng giá dịch vụ — danh mục đơn giá dùng chung để soạn báo giá cho
+  // khách (pricing.html). Admin/quản lý quản lý danh mục, ai cũng xem được.
+  function getPriceCatalog() {
+    return getAll(STORAGE_KEYS.priceCatalog).sort(function (a, b) {
+      return (a.category || '').localeCompare(b.category || '') || (a.name || '').localeCompare(b.name || '');
+    });
+  }
+
+  function createPriceCatalogItem(data, user) {
+    if (!canManageNotifications(user)) return null;
+    var created = add(STORAGE_KEYS.priceCatalog, data);
+    syncToGSheets('priceCatalog', 'add', created);
+    return created;
+  }
+
+  function updatePriceCatalogItem(id, updates, user) {
+    if (!canManageNotifications(user)) return null;
+    var updated = update(STORAGE_KEYS.priceCatalog, id, updates);
+    if (updated) syncToGSheets('priceCatalog', 'update', updates, id);
+    return updated;
+  }
+
+  function deletePriceCatalogItem(id, user) {
+    if (!canManageNotifications(user)) return null;
+    var result = remove(STORAGE_KEYS.priceCatalog, id);
+    syncToGSheets('priceCatalog', 'delete', {}, id);
+    return result;
+  }
+
+  // Sổ tài chính công ty — 1 sổ giao dịch chung cho mọi khoản tiền của công
+  // ty (doanh thu/chi phí/vay nợ/trả nợ/thưởng/phạt/tiền ứ đọng/chưa giải
+  // ngân...), CEO-only cả đọc và ghi (finance.html tự chặn trước khi gọi
+  // các hàm này, nhưng vẫn kiểm tra lại ở đây cho chắc).
+  function getFinanceEntries(filters) {
+    filters = filters || {};
+    var list = getAll(STORAGE_KEYS.financeEntries);
+    if (filters.type) list = list.filter(function (e) { return e.type === filters.type; });
+    if (filters.month) list = list.filter(function (e) { return e.month === filters.month; });
+    return list.sort(function (a, b) { return new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0); });
+  }
+
+  function createFinanceEntry(data, user) {
+    if (!canManageFinance(user)) return null;
+    data.createdBy = user.id;
+    var created = add(STORAGE_KEYS.financeEntries, data);
+    syncToGSheets('financeEntries', 'add', created);
+    return created;
+  }
+
+  function updateFinanceEntry(id, updates, user) {
+    if (!canManageFinance(user)) return null;
+    var updated = update(STORAGE_KEYS.financeEntries, id, updates);
+    if (updated) syncToGSheets('financeEntries', 'update', updates, id);
+    return updated;
+  }
+
+  function deleteFinanceEntry(id, user) {
+    if (!canManageFinance(user)) return null;
+    var result = remove(STORAGE_KEYS.financeEntries, id);
+    syncToGSheets('financeEntries', 'delete', {}, id);
+    return result;
+  }
+
   // Phiếu lương — nhân viên tự tạo cho chính mình mỗi tháng, CEO/quản lý duyệt.
   var OT_MULTIPLIER = 1.5;
   var STANDARD_MONTHLY_HOURS = 208; // 26 công x 8 giờ/ngày — quy ước tính đơn giá giờ OT
@@ -1322,6 +1410,19 @@ var TaskManager = (function() {
     updateCommission: updateCommission,
     deleteCommission: deleteCommission,
     getMemberCommissionTotal: getMemberCommissionTotal,
+
+    // Bảng giá dịch vụ
+    getPriceCatalog: getPriceCatalog,
+    createPriceCatalogItem: createPriceCatalogItem,
+    updatePriceCatalogItem: updatePriceCatalogItem,
+    deletePriceCatalogItem: deletePriceCatalogItem,
+
+    // Tài chính công ty (CEO-only)
+    canManageFinance: canManageFinance,
+    getFinanceEntries: getFinanceEntries,
+    createFinanceEntry: createFinanceEntry,
+    updateFinanceEntry: updateFinanceEntry,
+    deleteFinanceEntry: deleteFinanceEntry,
 
     // Phiếu lương
     getMonthlyTimesheetStats: getMonthlyTimesheetStats,

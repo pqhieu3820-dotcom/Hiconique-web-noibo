@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bảng giá dịch vụ · HICONIQUE</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/reset.css">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/portal.css">
+  <link rel="stylesheet" href="/css/subpage.css">
+  <link rel="stylesheet" href="/css/task-manager.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <script src="/js/gsheets-config.js"></script>
+  <script src="/js/task-data.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js" defer></script>
+  <style>
+    :root {
+      --pr-bg: var(--color-bg); --pr-surface: var(--color-surface); --pr-border: var(--color-border);
+      --pr-text: var(--color-text); --pr-muted: var(--color-text-muted); --pr-bronze: var(--color-bronze);
+    }
+    body { background: var(--pr-bg); color: var(--pr-text); font-family: 'Inter', -apple-system, sans-serif; min-height: 100vh; }
+    .pr-container { max-width: 1100px; }
+
+    .pr-card { background: var(--pr-surface); border: 1px solid var(--pr-border); border-radius: 18px; overflow: hidden; margin-bottom: 28px; }
+    .pr-card-head { padding: 18px 24px; border-bottom: 1px solid var(--pr-border); background: var(--pr-bg); display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .pr-card-title { font-size: 1rem; font-weight: 600; color: var(--pr-text); }
+    .pr-card-desc { font-size: 0.8125rem; color: var(--pr-muted); margin-top: 4px; }
+
+    .pr-btn { padding: 9px 16px; border-radius: 9px; border: none; font-family: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+    .pr-btn-primary { background: var(--pr-bronze); color: #0B0D10; }
+    .pr-btn-primary:hover { background: #C7A464; }
+    .pr-btn-ghost { background: transparent; border: 1px solid var(--pr-border); color: var(--pr-text); }
+    .pr-btn-ghost:hover { border-color: var(--pr-bronze); color: var(--pr-bronze); }
+    .pr-btn-danger { background: transparent; border: 1px solid var(--pr-border); color: var(--color-destructive); }
+    .pr-btn-danger:hover { border-color: var(--color-destructive); }
+    .pr-btn-sm { padding: 6px 12px; font-size: 0.75rem; border-radius: 7px; }
+
+    .pr-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+    .pr-table th { text-align: left; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--pr-muted); font-weight: 600; padding: 10px 24px; background: var(--pr-bg); border-bottom: 1px solid var(--pr-border); }
+    .pr-table th.num, .pr-table td.num { text-align: right; }
+    .pr-table td { padding: 10px 24px; border-bottom: 1px solid var(--pr-border); vertical-align: middle; }
+    .pr-table tr:last-child td { border-bottom: none; }
+    .pr-input { width: 100%; padding: 7px 9px; border-radius: 7px; border: 1px solid var(--pr-border); background: var(--pr-bg); color: var(--pr-text); font-family: inherit; font-size: 0.8125rem; }
+    .pr-input.mono { font-family: 'JetBrains Mono', monospace; }
+    .pr-amount { font-family: 'JetBrains Mono', monospace; color: var(--pr-bronze); font-weight: 600; white-space: nowrap; }
+    .pr-empty { padding: 32px 24px; text-align: center; color: var(--pr-muted); font-size: 0.875rem; }
+    .pr-cat-tag { font-size: 0.6875rem; color: var(--pr-muted); background: var(--pr-bg); border: 1px solid var(--pr-border); border-radius: 20px; padding: 2px 10px; }
+
+    .pr-client-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding: 20px 24px; border-bottom: 1px solid var(--pr-border); }
+    .pr-field-label { display: block; font-size: 0.6875rem; color: var(--pr-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+
+    .pr-quote-select { width: 100%; padding: 7px 9px; border-radius: 7px; border: 1px solid var(--pr-border); background: var(--pr-bg); color: var(--pr-text); font-family: inherit; font-size: 0.8125rem; }
+
+    .pr-totals { padding: 18px 24px; }
+    .pr-totals-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 0.8125rem; color: var(--pr-muted); }
+    .pr-totals-row.grand { font-size: 1.0625rem; font-weight: 700; color: var(--pr-bronze); border-top: 1px solid var(--pr-border); margin-top: 8px; padding-top: 14px; }
+    .pr-totals-row input { width: 80px; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--pr-border); background: var(--pr-bg); color: var(--pr-text); font-family: 'JetBrains Mono', monospace; font-size: 0.8125rem; text-align: right; }
+
+    .pr-toolbar { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    @media (max-width: 900px) {
+      .pr-client-grid { grid-template-columns: 1fr; }
+      .pr-table thead { display: none; }
+      .pr-table tr { display: grid; grid-template-columns: 1fr; row-gap: 4px; padding: 10px 0; }
+      .pr-table td { border-bottom: none; padding: 2px 24px; }
+      .pr-table tr:not(:last-child) { border-bottom: 1px solid var(--pr-border); }
+    }
+
+    /* In PDF/print: clean quote sheet only, no nav/buttons/editable chrome. */
+    @media print {
+      .site-header, .pr-toolbar, .pr-btn, #prCatalogCard, .eyebrow, .subpage-lede { display: none !important; }
+      body { background: #fff; color: #111; }
+      .pr-card { border: 1px solid #ccc; box-shadow: none; }
+      .pr-input, .pr-quote-select { border: none; background: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/" class="brand">
+        <span class="brand-mark">H</span>
+        <span class="brand-name"><span class="brand-name-1">HICONIQUE</span></span>
+      </a>
+      <nav class="primary-nav">
+        <a href="/#tools" class="nav-link">Công cụ</a>
+        <a href="/pages/tasks-manager.html" class="nav-link">Tasks</a>
+        <a href="/pages/projects.html" class="nav-link">Dự án</a>
+        <a href="/pages/wiki.html" class="nav-link">Tài liệu</a>
+        <a href="/#ai" class="nav-link">AI</a>
+        <a href="/pages/notices.html" class="nav-link">Thông báo</a>
+        <a href="/pages/team.html" class="nav-link">Team</a>
+      </nav>
+      <div class="header-actions">
+        <button class="theme-toggle" aria-label="Chuyển đổi sáng/tối" data-theme-toggle>
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" stroke-linecap="round" /></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        </button>
+        <span class="clock"><span class="clock-time" data-clock>--:--</span><span class="clock-meta">GMT+7</span></span>
+        <button class="avatar"><span>--</span></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="subpage">
+  <div class="subpage-inner pr-container">
+    <p class="eyebrow">— Bảng giá dịch vụ</p>
+    <h1 class="subpage-title">Báo giá <span class="subpage-title-italic">dịch vụ</span></h1>
+    <p class="subpage-lede">Danh mục đơn giá dùng chung + soạn báo giá cho khách — nhập số lượng, đơn giá tự nhảy tổng tiền, xuất Excel hoặc PDF để gửi khách.</p>
+
+    <div class="pr-card" id="prCatalogCard">
+      <div class="pr-card-head">
+        <div>
+          <div class="pr-card-title">Danh mục đơn giá</div>
+          <div class="pr-card-desc">Đơn giá mặc định dùng khi soạn báo giá bên dưới — admin/quản lý chỉnh được.</div>
+        </div>
+        <button class="pr-btn pr-btn-primary pr-btn-sm" id="prAddCatalogBtn">+ Thêm dịch vụ</button>
+      </div>
+      <table class="pr-table">
+        <thead><tr><th>Danh mục</th><th>Tên dịch vụ</th><th>Đơn vị</th><th class="num">Đơn giá</th><th>Ghi chú</th><th></th></tr></thead>
+        <tbody id="prCatalogRows"></tbody>
+      </table>
+    </div>
+
+    <div class="pr-card">
+      <div class="pr-card-head">
+        <div>
+          <div class="pr-card-title">Soạn báo giá</div>
+          <div class="pr-card-desc">Chọn dịch vụ từ danh mục hoặc nhập tay — tự tính tổng, xuất file gửi khách.</div>
+        </div>
+        <div class="pr-toolbar">
+          <button class="pr-btn pr-btn-ghost pr-btn-sm" id="prAddRowBtn">+ Thêm dòng</button>
+          <button class="pr-btn pr-btn-ghost pr-btn-sm" id="prExportExcelBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;vertical-align:-1px;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Xuất Excel
+          </button>
+          <button class="pr-btn pr-btn-primary pr-btn-sm" id="prExportPdfBtn">Xuất PDF</button>
+        </div>
+      </div>
+
+      <div class="pr-client-grid">
+        <div><span class="pr-field-label">Tên khách hàng</span><input type="text" class="pr-input" id="prClientName" placeholder="Anh/Chị..."></div>
+        <div><span class="pr-field-label">Công trình / Dự án</span><input type="text" class="pr-input" id="prProjectName" placeholder="VD: Biệt thự Bình Dương"></div>
+        <div><span class="pr-field-label">Ngày báo giá</span><input type="date" class="pr-input" id="prQuoteDate"></div>
+      </div>
+
+      <table class="pr-table">
+        <thead><tr><th style="width:22%;">Danh mục có sẵn</th><th>Tên dịch vụ</th><th style="width:10%;">Đơn vị</th><th class="num" style="width:10%;">SL</th><th class="num" style="width:15%;">Đơn giá</th><th class="num" style="width:15%;">Thành tiền</th><th></th></tr></thead>
+        <tbody id="prQuoteRows"></tbody>
+      </table>
+
+      <div style="padding:14px 24px;"><button class="pr-btn pr-btn-ghost pr-btn-sm" id="prAddRowBtn2">+ Thêm dòng</button></div>
+
+      <div class="pr-totals">
+        <div class="pr-totals-row"><span>Tạm tính</span><span class="pr-amount" id="prSubtotal">0</span></div>
+        <div class="pr-totals-row"><span>Giảm giá (%)</span><span><input type="number" min="0" max="100" step="1" id="prDiscountPercent" value="0"> %</span></div>
+        <div class="pr-totals-row"><span>VAT (%)</span><span><input type="number" min="0" max="100" step="1" id="prVatPercent" value="0"> %</span></div>
+        <div class="pr-totals-row grand"><span>Tổng cộng</span><span class="pr-amount" id="prGrandTotal">0</span></div>
+      </div>
+    </div>
+  </div>
+  </main>
+
+  <script src="/js/portal.js" defer></script>
+  <script>
+  (function () {
+    'use strict';
+
+    function fmt(n) { return Math.round(Number(n) || 0).toLocaleString('vi-VN'); }
+    function getUser() {
+      var session = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
+      if (!session) return null;
+      var fresh = TaskManager.getMember(session.id);
+      return fresh ? Object.assign({}, session, fresh) : session;
+    }
+    function isManager(user) { return typeof TaskManager !== 'undefined' && TaskManager.canManageNotifications(user); }
+    function escapeHtml(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+
+    document.getElementById('prQuoteDate').value = new Date().toISOString().split('T')[0];
+
+    // ---------- Danh mục đơn giá ----------
+    function renderCatalog() {
+      var user = getUser();
+      var manager = isManager(user);
+      var items = TaskManager.getPriceCatalog();
+      var rows = document.getElementById('prCatalogRows');
+
+      if (items.length === 0) {
+        rows.innerHTML = '<tr><td colspan="6" class="pr-empty">Chưa có dịch vụ nào trong danh mục.</td></tr>';
+      } else {
+        rows.innerHTML = items.map(function (it) {
+          return '<tr data-catalog-row="' + it.id + '">' +
+            '<td>' + (manager ? '<input class="pr-input" data-cat-field="category" value="' + escapeHtml(it.category || '') + '">' : '<span class="pr-cat-tag">' + escapeHtml(it.category || '') + '</span>') + '</td>' +
+            '<td>' + (manager ? '<input class="pr-input" data-cat-field="name" value="' + escapeHtml(it.name || '') + '">' : escapeHtml(it.name || '')) + '</td>' +
+            '<td>' + (manager ? '<input class="pr-input" data-cat-field="unit" value="' + escapeHtml(it.unit || '') + '">' : escapeHtml(it.unit || '')) + '</td>' +
+            '<td class="num">' + (manager ? '<input class="pr-input mono" data-cat-field="unitPrice" type="number" min="0" value="' + (Number(it.unitPrice) || 0) + '">' : '<span class="pr-amount">' + fmt(it.unitPrice) + '</span>') + '</td>' +
+            '<td>' + (manager ? '<input class="pr-input" data-cat-field="note" value="' + escapeHtml(it.note || '') + '">' : escapeHtml(it.note || '')) + '</td>' +
+            '<td>' + (manager ? '<button class="pr-btn pr-btn-ghost pr-btn-sm" data-save-catalog="' + it.id + '">Lưu</button> <button class="pr-btn pr-btn-danger pr-btn-sm" data-delete-catalog="' + it.id + '">Xoá</button>' : '') + '</td>' +
+          '</tr>';
+        }).join('');
+      }
+
+      if (!manager) return;
+
+      rows.querySelectorAll('[data-save-catalog]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var tr = btn.closest('tr');
+          var updates = {};
+          tr.querySelectorAll('[data-cat-field]').forEach(function (input) {
+            updates[input.getAttribute('data-cat-field')] = input.type === 'number' ? (parseFloat(input.value) || 0) : input.value.trim();
+          });
+          TaskManager.updatePriceCatalogItem(btn.getAttribute('data-save-catalog'), updates, user);
+          renderCatalog();
+          renderQuoteRowOptions();
+        });
+      });
+      rows.querySelectorAll('[data-delete-catalog]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          if (!confirm('Xoá dịch vụ này khỏi danh mục?')) return;
+          TaskManager.deletePriceCatalogItem(btn.getAttribute('data-delete-catalog'), user);
+          renderCatalog();
+          renderQuoteRowOptions();
+        });
+      });
+    }
+
+    document.getElementById('prAddCatalogBtn').addEventListener('click', function () {
+      var user = getUser();
+      if (!isManager(user)) return;
+      TaskManager.createPriceCatalogItem({ category: 'Thiết kế', name: 'Dịch vụ mới', unit: 'm2', unitPrice: 0, note: '' }, user);
+      renderCatalog();
+      renderQuoteRowOptions();
+    });
+
+    // ---------- Soạn báo giá (client-side only, không lưu Sheet) ----------
+    var quoteRowsEl = document.getElementById('prQuoteRows');
+    var rowSeq = 0;
+
+    function catalogOptionsHtml(selectedId) {
+      var items = TaskManager.getPriceCatalog();
+      var html = '<option value="">— Nhập tay —</option>';
+      items.forEach(function (it) {
+        html += '<option value="' + it.id + '"' + (it.id === selectedId ? ' selected' : '') + '>' + escapeHtml(it.category ? it.category + ' · ' + it.name : it.name) + '</option>';
+      });
+      return html;
+    }
+
+    function renderQuoteRowOptions() {
+      quoteRowsEl.querySelectorAll('.pr-quote-select').forEach(function (sel) {
+        var current = sel.value;
+        sel.innerHTML = catalogOptionsHtml(current);
+      });
+    }
+
+    function addQuoteRow(prefill) {
+      prefill = prefill || {};
+      var id = 'qr' + (++rowSeq);
+      var tr = document.createElement('tr');
+      tr.setAttribute('data-quote-row', id);
+      tr.innerHTML =
+        '<td><select class="pr-quote-select" data-q="catalog">' + catalogOptionsHtml('') + '</select></td>' +
+        '<td><input class="pr-input" data-q="name" value="' + escapeHtml(prefill.name || '') + '" placeholder="Tên dịch vụ"></td>' +
+        '<td><input class="pr-input" data-q="unit" value="' + escapeHtml(prefill.unit || '') + '" placeholder="m2/bộ..."></td>' +
+        '<td class="num"><input class="pr-input mono" data-q="qty" type="number" min="0" step="1" value="1"></td>' +
+        '<td class="num"><input class="pr-input mono" data-q="price" type="number" min="0" value="' + (Number(prefill.price) || 0) + '"></td>' +
+        '<td class="num pr-amount" data-q="lineTotal">0</td>' +
+        '<td><button class="pr-btn pr-btn-danger pr-btn-sm" data-remove-quote-row>Xoá</button></td>';
+      quoteRowsEl.appendChild(tr);
+      recalcQuote();
+    }
+
+    function recalcQuote() {
+      var subtotal = 0;
+      quoteRowsEl.querySelectorAll('tr[data-quote-row]').forEach(function (tr) {
+        var qty = parseFloat(tr.querySelector('[data-q="qty"]').value) || 0;
+        var price = parseFloat(tr.querySelector('[data-q="price"]').value) || 0;
+        var lineTotal = qty * price;
+        tr.querySelector('[data-q="lineTotal"]').textContent = fmt(lineTotal);
+        subtotal += lineTotal;
+      });
+      var discountPct = parseFloat(document.getElementById('prDiscountPercent').value) || 0;
+      var vatPct = parseFloat(document.getElementById('prVatPercent').value) || 0;
+      var afterDiscount = subtotal * (1 - discountPct / 100);
+      var grandTotal = afterDiscount * (1 + vatPct / 100);
+      document.getElementById('prSubtotal').textContent = fmt(subtotal);
+      document.getElementById('prGrandTotal').textContent = fmt(grandTotal);
+      return { subtotal: subtotal, discountPct: discountPct, vatPct: vatPct, grandTotal: grandTotal };
+    }
+
+    quoteRowsEl.addEventListener('input', function (e) {
+      if (e.target.matches('[data-q="qty"], [data-q="price"]')) recalcQuote();
+    });
+    quoteRowsEl.addEventListener('change', function (e) {
+      if (e.target.matches('[data-q="catalog"]')) {
+        var tr = e.target.closest('tr');
+        var item = TaskManager.getPriceCatalog().find(function (it) { return it.id === e.target.value; });
+        if (item) {
+          tr.querySelector('[data-q="name"]').value = item.name || '';
+          tr.querySelector('[data-q="unit"]').value = item.unit || '';
+          tr.querySelector('[data-q="price"]').value = Number(item.unitPrice) || 0;
+        }
+        recalcQuote();
+      }
+    });
+    quoteRowsEl.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-remove-quote-row]');
+      if (!btn) return;
+      btn.closest('tr').remove();
+      recalcQuote();
+    });
+    ['prDiscountPercent', 'prVatPercent'].forEach(function (id) {
+      document.getElementById(id).addEventListener('input', recalcQuote);
+    });
+
+    document.getElementById('prAddRowBtn').addEventListener('click', function () { addQuoteRow(); });
+    document.getElementById('prAddRowBtn2').addEventListener('click', function () { addQuoteRow(); });
+
+    // ---------- Xuất file ----------
+    document.getElementById('prExportPdfBtn').addEventListener('click', function () { window.print(); });
+
+    document.getElementById('prExportExcelBtn').addEventListener('click', function () {
+      if (typeof ExcelJS === 'undefined') { alert('Không tải được thư viện xuất Excel. Kiểm tra kết nối mạng và thử lại.'); return; }
+      var totals = recalcQuote();
+      var wb = new ExcelJS.Workbook();
+      wb.creator = 'HICONIQUE Internal Hub';
+      var ws = wb.addWorksheet('Báo giá');
+
+      ws.mergeCells('A1:F1');
+      ws.getCell('A1').value = 'BÁO GIÁ DỊCH VỤ — HICONIQUE VIETNAM';
+      ws.getCell('A1').font = { bold: true, size: 14 };
+      ws.getCell('A2').value = 'Khách hàng: ' + (document.getElementById('prClientName').value || '—');
+      ws.getCell('A3').value = 'Công trình: ' + (document.getElementById('prProjectName').value || '—');
+      ws.getCell('A4').value = 'Ngày báo giá: ' + (document.getElementById('prQuoteDate').value || '—');
+
+      var headerRow = 6;
+      ['Tên dịch vụ', 'Đơn vị', 'Số lượng', 'Đơn giá', 'Thành tiền'].forEach(function (h, i) {
+        var cell = ws.getCell(headerRow, i + 1);
+        cell.value = h;
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF22272E' } };
+      });
+      var r = headerRow + 1;
+      quoteRowsEl.querySelectorAll('tr[data-quote-row]').forEach(function (tr) {
+        var name = tr.querySelector('[data-q="name"]').value;
+        var unit = tr.querySelector('[data-q="unit"]').value;
+        var qty = parseFloat(tr.querySelector('[data-q="qty"]').value) || 0;
+        var price = parseFloat(tr.querySelector('[data-q="price"]').value) || 0;
+        ws.getCell(r, 1).value = name;
+        ws.getCell(r, 2).value = unit;
+        ws.getCell(r, 3).value = qty;
+        ws.getCell(r, 4).value = price;
+        ws.getCell(r, 5).value = qty * price;
+        ws.getCell(r, 5).numFmt = '#,##0';
+        ws.getCell(r, 4).numFmt = '#,##0';
+        r++;
+      });
+      r++;
+      ws.getCell(r, 4).value = 'Tạm tính'; ws.getCell(r, 5).value = totals.subtotal; ws.getCell(r, 5).numFmt = '#,##0'; r++;
+      ws.getCell(r, 4).value = 'Giảm giá ' + totals.discountPct + '%'; r++;
+      ws.getCell(r, 4).value = 'VAT ' + totals.vatPct + '%'; r++;
+      ws.getCell(r, 4).value = 'Tổng cộng'; ws.getCell(r, 4).font = { bold: true };
+      ws.getCell(r, 5).value = totals.grandTotal; ws.getCell(r, 5).numFmt = '#,##0'; ws.getCell(r, 5).font = { bold: true };
+
+      ws.getColumn(1).width = 32; ws.getColumn(2).width = 10; ws.getColumn(3).width = 10;
+      ws.getColumn(4).width = 16; ws.getColumn(5).width = 16;
+
+      wb.xlsx.writeBuffer().then(function (buffer) {
+        var blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'Bao-gia-HICONIQUE-' + new Date().toISOString().slice(0, 10) + '.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      }).catch(function (err) {
+        console.error('Export Excel failed:', err);
+        alert('Xuất file thất bại. Vui lòng thử lại.');
+      });
+    });
+
+    function boot() {
+      if (typeof TaskManager === 'undefined') { setTimeout(boot, 150); return; }
+      renderCatalog();
+      addQuoteRow();
+      setTimeout(function () { renderCatalog(); renderQuoteRowOptions(); }, 1200);
+    }
+    boot();
+
+    if (typeof Auth !== 'undefined' && Auth.getCurrentUser && !Auth.getCurrentUser()) {
+      Auth.showLoginModal();
+    }
+  })();
+  </script>
+</body>
+</html>

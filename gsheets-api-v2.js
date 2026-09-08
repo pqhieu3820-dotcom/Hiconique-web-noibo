@@ -14,7 +14,9 @@ const SHEETS = {
   documents: 'Tài liệu',
   payslips: 'Phiếu lương',
   commissions: 'Hoa hồng dự án',
-  commissionRates: 'Mức hoa hồng'
+  commissionRates: 'Mức hoa hồng',
+  priceCatalog: 'Bảng giá dịch vụ',
+  financeEntries: 'Tài chính công ty'
 };
 
 // [Vietnamese header on the Sheet, internal English key used by client JS].
@@ -88,6 +90,22 @@ const FIELD_MAP = {
   ],
   commissionRates: [
     ['Mã dòng', 'id'], ['Cấp bậc', 'roleLevel'], ['Phần trăm', 'percent'], ['Ngày cập nhật', 'updatedAt']
+  ],
+  priceCatalog: [
+    ['Mã BG', 'id'], ['Danh mục', 'category'], ['Tên dịch vụ', 'name'], ['Đơn vị tính', 'unit'],
+    ['Đơn giá', 'unitPrice'], ['Ghi chú', 'note'], ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'],
+    ['Ngày cập nhật', 'updatedAt']
+  ],
+  // Sổ tài chính công ty — CEO-only (xem mục checkFinanceAccess phía client
+  // và canManageFinance trong task-data.js). Thiết kế dạng 1 sổ giao dịch
+  // chung (type: revenue/expense/loan/repayment/bonus/penalty/idle/
+  // undisbursed) thay vì 6-7 module CRUD riêng — dễ mở rộng thêm loại giao
+  // dịch mới về sau mà không cần sửa schema, trang finance.html tự tổng hợp
+  // thành các báo cáo (lãi/lỗ, dòng tiền, vay nợ...) từ đúng 1 nguồn dữ liệu.
+  financeEntries: [
+    ['Mã GD', 'id'], ['Loại', 'type'], ['Danh mục', 'category'], ['Mô tả', 'description'],
+    ['Số tiền', 'amount'], ['Tháng', 'month'], ['Ngày', 'date'], ['Ghi chú', 'note'],
+    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
   ]
 };
 
@@ -258,6 +276,22 @@ function handleRequest(e) {
       result = updateData(ss, SHEETS.commissionRates, params.id, JSON.parse(params.data));
     } else if (action === 'deleteCommissionRate') {
       result = deleteData(ss, SHEETS.commissionRates, params.id);
+    } else if (action === 'getPriceCatalog') {
+      result = getAllData(ss, SHEETS.priceCatalog);
+    } else if (action === 'addPriceCatalog') {
+      result = addData(ss, SHEETS.priceCatalog, JSON.parse(params.data));
+    } else if (action === 'updatePriceCatalog') {
+      result = updateData(ss, SHEETS.priceCatalog, params.id, JSON.parse(params.data));
+    } else if (action === 'deletePriceCatalog') {
+      result = deleteData(ss, SHEETS.priceCatalog, params.id);
+    } else if (action === 'getFinanceEntries') {
+      result = getAllData(ss, SHEETS.financeEntries);
+    } else if (action === 'addFinanceEntry') {
+      result = addData(ss, SHEETS.financeEntries, JSON.parse(params.data));
+    } else if (action === 'updateFinanceEntry') {
+      result = updateData(ss, SHEETS.financeEntries, params.id, JSON.parse(params.data));
+    } else if (action === 'deleteFinanceEntry') {
+      result = deleteData(ss, SHEETS.financeEntries, params.id);
     } else {
       result = { error: 'Unknown action: ' + action };
     }
