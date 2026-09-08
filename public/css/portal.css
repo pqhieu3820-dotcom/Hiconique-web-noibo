@@ -549,7 +549,8 @@ main { flex: 1; }
   --hero-orb-a2: 0.11;
   --hero-orb-a3: 0.09;
   --hero-aurora-opacity: 0.2;
-  --hero-particles-opacity: 0.35;
+  --hero-dot-opacity: 0.55;
+  --hero-dot-rgb: 120, 92, 54;
   --hero-blend: normal;
   /* Bleeds past the hero's own box (bottom: -150px above) so the glow
      keeps going down to the "Cong cu chinh" divider line instead of
@@ -562,26 +563,41 @@ main { flex: 1; }
   -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 150px), transparent calc(100% - 4px));
 }
 [data-theme="dark"] .hero-bg {
-  --hero-orb-a1: 0.35;
-  --hero-orb-a2: 0.3;
-  --hero-orb-a3: 0.22;
-  --hero-aurora-opacity: 0.4;
-  --hero-particles-opacity: 0.45;
+  --hero-orb-a1: 0.3;
+  --hero-orb-a2: 0.26;
+  --hero-orb-a3: 0.19;
+  --hero-aurora-opacity: 0.32;
+  --hero-dot-opacity: 0.5;
+  --hero-dot-rgb: 212, 175, 118;
   --hero-blend: screen;
 }
+/* Three independently-timed dot layers: different sizes, paths and
+   durations (19s / 26s / 31s, not multiples of each other) so the
+   combined drift practically never repeats the same look twice. */
 .hero-particles {
   position: absolute;
-  inset: -20% -30%;
-  background-image:
-    radial-gradient(rgba(212, 175, 118, 0.9) 1.5px, transparent 1.8px),
-    radial-gradient(rgba(176, 141, 87, 0.7) 1px, transparent 1.3px),
-    radial-gradient(rgba(212, 175, 118, 0.5) 1px, transparent 1.3px);
-  background-size: 46px 46px, 68px 68px, 34px 34px;
-  background-position: 0 0, 20px 30px, 10px 15px;
-  opacity: var(--hero-particles-opacity, 0.5);
+  inset: -25% -35%;
+  background-image: radial-gradient(rgba(var(--hero-dot-rgb), 1) 1.4px, transparent 1.7px);
+  opacity: var(--hero-dot-opacity);
   mix-blend-mode: var(--hero-blend);
-  animation: heroParticlesWave 14s ease-in-out infinite;
   will-change: transform;
+}
+.hero-particles-1 {
+  background-size: 52px 52px;
+  background-position: 0 0;
+  animation: heroDotDrift1 19s ease-in-out infinite;
+}
+.hero-particles-2 {
+  background-size: 84px 84px;
+  background-position: 30px 46px;
+  opacity: calc(var(--hero-dot-opacity) * 0.7);
+  animation: heroDotDrift2 26s ease-in-out infinite;
+}
+.hero-particles-3 {
+  background-size: 37px 37px;
+  background-position: 12px 20px;
+  opacity: calc(var(--hero-dot-opacity) * 0.55);
+  animation: heroDotDrift3 31s ease-in-out infinite;
 }
 .hero-wave {
   position: absolute;
@@ -594,7 +610,7 @@ main { flex: 1; }
     transparent 70%);
   filter: blur(40px);
   mix-blend-mode: var(--hero-blend);
-  animation: heroWaveSweep 10s ease-in-out infinite;
+  animation: heroWaveSweep 22s ease-in-out infinite;
   will-change: transform;
 }
 .hero-aurora {
@@ -607,7 +623,7 @@ main { flex: 1; }
   filter: blur(50px);
   mix-blend-mode: var(--hero-blend);
   opacity: var(--hero-aurora-opacity);
-  animation: heroAuroraDrift 7.3s ease-in-out infinite;
+  animation: heroAuroraDrift 17s ease-in-out infinite;
   will-change: transform, opacity;
 }
 .hero-orb {
@@ -621,25 +637,41 @@ main { flex: 1; }
   top: 5%; right: -10%;
   width: 640px; height: 640px;
   background: radial-gradient(circle, rgba(176, 141, 87, var(--hero-orb-a1)), transparent 65%);
-  animation: heroOrbFloat1 6s ease-in-out infinite;
+  animation: heroOrbFloat1 14s ease-in-out infinite;
 }
 .hero-orb-2 {
   top: 42%; right: 8%;
   width: 420px; height: 420px;
   background: radial-gradient(circle, rgba(212, 175, 118, var(--hero-orb-a2)), transparent 65%);
-  animation: heroOrbFloat2 5s ease-in-out infinite;
+  animation: heroOrbFloat2 11.5s ease-in-out infinite;
 }
 .hero-orb-3 {
   top: -15%; left: 5%;
   width: 360px; height: 360px;
   background: radial-gradient(circle, rgba(176, 141, 87, var(--hero-orb-a3)), transparent 65%);
-  animation: heroOrbFloat3 8s ease-in-out infinite;
+  animation: heroOrbFloat3 18.5s ease-in-out infinite;
 }
-@keyframes heroParticlesWave {
+/* Irregular multi-point paths (not a simple back-and-forth) so each
+   layer's motion looks organic rather than mechanically mirrored. */
+@keyframes heroDotDrift1 {
   0%   { transform: translate(0, 0); }
-  25%  { transform: translate(22px, -14px); }
-  50%  { transform: translate(44px, 4px); }
-  75%  { transform: translate(22px, 18px); }
+  20%  { transform: translate(18px, -22px); }
+  45%  { transform: translate(38px, 6px); }
+  70%  { transform: translate(14px, 26px); }
+  100% { transform: translate(0, 0); }
+}
+@keyframes heroDotDrift2 {
+  0%   { transform: translate(0, 0) rotate(0deg); }
+  30%  { transform: translate(-26px, 14px) rotate(2deg); }
+  60%  { transform: translate(-8px, -20px) rotate(-1deg); }
+  85%  { transform: translate(16px, 8px) rotate(1deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+@keyframes heroDotDrift3 {
+  0%   { transform: translate(0, 0); }
+  25%  { transform: translate(-14px, -10px); }
+  55%  { transform: translate(20px, -18px); }
+  80%  { transform: translate(10px, 16px); }
   100% { transform: translate(0, 0); }
 }
 @keyframes heroWaveSweep {
@@ -666,7 +698,7 @@ main { flex: 1; }
   50% { transform: translate(60px, 70px) scale(1.15); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .hero-particles, .hero-wave, .hero-aurora, .hero-orb-1, .hero-orb-2, .hero-orb-3 {
+  .hero-particles-1, .hero-particles-2, .hero-particles-3, .hero-wave, .hero-aurora, .hero-orb-1, .hero-orb-2, .hero-orb-3 {
     animation: none;
   }
 }
@@ -741,8 +773,13 @@ main { flex: 1; }
   align-items: center;
   gap: var(--space-sm);
   padding: var(--space-sm) var(--space-md);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
+  position: relative;
+  z-index: 1;
+  border: 1px solid color-mix(in srgb, var(--color-bronze) 22%, var(--color-border));
+  background: color-mix(in srgb, var(--color-surface) 72%, transparent);
+  backdrop-filter: blur(14px) saturate(1.15);
+  -webkit-backdrop-filter: blur(14px) saturate(1.15);
+  box-shadow: 0 8px 28px -12px rgba(176, 141, 87, 0.28);
   font-size: var(--text-sm);
   color: var(--color-text);
 }
