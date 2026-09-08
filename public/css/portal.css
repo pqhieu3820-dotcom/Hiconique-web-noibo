@@ -539,19 +539,76 @@ main { flex: 1; }
   position: relative;
   overflow: hidden;
 }
-.hero::before {
-  content: '';
+.hero-bg {
   position: absolute;
-  top: 18%; right: -10%;
-  width: 600px; height: 600px;
-  background: radial-gradient(circle, rgba(176, 141, 87, 0.08), transparent 60%);
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
   pointer-events: none;
+}
+.hero-grid {
+  position: absolute;
+  inset: -20%;
+  background-image:
+    linear-gradient(rgba(176, 141, 87, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(176, 141, 87, 0.06) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 60% 55% at 60% 30%, #000 0%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 60% 55% at 60% 30%, #000 0%, transparent 75%);
+  animation: heroGridDrift 40s linear infinite;
+}
+.hero-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.55;
+  will-change: transform;
+}
+.hero-orb-1 {
+  top: 8%; right: -8%;
+  width: 620px; height: 620px;
+  background: radial-gradient(circle, rgba(176, 141, 87, 0.16), transparent 65%);
+  animation: heroOrbFloat1 22s ease-in-out infinite;
+}
+.hero-orb-2 {
+  top: 45%; right: 12%;
+  width: 380px; height: 380px;
+  background: radial-gradient(circle, rgba(176, 141, 87, 0.12), transparent 65%);
+  animation: heroOrbFloat2 18s ease-in-out infinite;
+}
+.hero-orb-3 {
+  top: -12%; left: 8%;
+  width: 320px; height: 320px;
+  background: radial-gradient(circle, rgba(176, 141, 87, 0.08), transparent 65%);
+  animation: heroOrbFloat3 26s ease-in-out infinite;
+}
+@keyframes heroGridDrift {
+  from { transform: translate(0, 0); }
+  to { transform: translate(56px, 56px); }
+}
+@keyframes heroOrbFloat1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-40px, 30px) scale(1.08); }
+}
+@keyframes heroOrbFloat2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(30px, -25px) scale(0.94); }
+}
+@keyframes heroOrbFloat3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(20px, 35px) scale(1.05); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-grid, .hero-orb-1, .hero-orb-2, .hero-orb-3 {
+    animation: none;
+  }
 }
 .hero-inner {
   max-width: var(--container-max);
   margin: 0 auto;
   padding: 0 var(--gutter);
   position: relative;
+  z-index: 1;
 }
 .hero-title {
   font-family: var(--font-sans);
