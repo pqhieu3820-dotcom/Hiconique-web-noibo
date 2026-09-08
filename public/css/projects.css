@@ -78,9 +78,16 @@
 }
 
 .project-icon {
-  font-size: 1rem;
   width: 24px;
-  text-align: center;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.project-icon svg {
+  width: 16px;
+  height: 16px;
 }
 
 .project-count {

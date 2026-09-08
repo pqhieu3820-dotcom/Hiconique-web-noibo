@@ -189,7 +189,7 @@
     if (tasks.length === 0) {
       var firstCol = document.querySelector('.column-tasks');
       if (firstCol) {
-        firstCol.innerHTML = '<div class="empty-column"><div class="empty-icon">📋</div><p>Không có việc nào.<br>Bấm "Việc mới" để tạo.</p></div>';
+        firstCol.innerHTML = '<div class="empty-column"><div class="empty-icon">📋</div><p>Không có việc nào.<br>Bấm "Thêm task" để tạo.</p></div>';
       }
     }
 
@@ -889,20 +889,6 @@
   }
 
   // ----- Sync from Google Sheets -----
-  function bindSyncButton() {
-    var btn = document.getElementById('btnSyncSheets');
-    if (!btn) return;
-    btn.addEventListener('click', function () {
-      if (typeof TaskManager === 'undefined' || !TaskManager.refreshFromGSheets) return;
-      btn.classList.add('spinning');
-      TaskManager.refreshFromGSheets(function () {
-        btn.classList.remove('spinning');
-        renderAll();
-        showToast('✓ Đã đồng bộ từ Google Sheets');
-      });
-    });
-  }
-
   function showToast(msg) {
     var toast = document.createElement('div');
     toast.className = 'toast';
@@ -929,7 +915,6 @@
     bindTaskModal();
     bindProjectModal();
     bindDetailModal();
-    bindSyncButton();
     if (typeof HiconiqueGantt !== 'undefined') HiconiqueGantt.bind(document.getElementById('gantt-view'));
 
     if (window.location.hash === '#gantt') {
