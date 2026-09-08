@@ -549,6 +549,7 @@ main { flex: 1; }
   --hero-orb-a2: 0.11;
   --hero-orb-a3: 0.09;
   --hero-aurora-opacity: 0.2;
+  --hero-particles-opacity: 0.35;
   --hero-blend: normal;
   /* Bleeds past the hero's own box (bottom: -150px above) so the glow
      keeps going down to the "Cong cu chinh" divider line instead of
@@ -564,17 +565,37 @@ main { flex: 1; }
   --hero-orb-a1: 0.35;
   --hero-orb-a2: 0.3;
   --hero-orb-a3: 0.22;
-  --hero-aurora-opacity: 0.5;
+  --hero-aurora-opacity: 0.4;
+  --hero-particles-opacity: 0.45;
   --hero-blend: screen;
 }
-.hero-grid {
+.hero-particles {
   position: absolute;
-  inset: -20%;
+  inset: -20% -30%;
   background-image:
-    linear-gradient(rgba(176, 141, 87, 0.09) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(176, 141, 87, 0.09) 1px, transparent 1px);
-  background-size: 56px 56px;
-  animation: heroGridDrift 22s linear infinite;
+    radial-gradient(rgba(212, 175, 118, 0.9) 1.5px, transparent 1.8px),
+    radial-gradient(rgba(176, 141, 87, 0.7) 1px, transparent 1.3px),
+    radial-gradient(rgba(212, 175, 118, 0.5) 1px, transparent 1.3px);
+  background-size: 46px 46px, 68px 68px, 34px 34px;
+  background-position: 0 0, 20px 30px, 10px 15px;
+  opacity: var(--hero-particles-opacity, 0.5);
+  mix-blend-mode: var(--hero-blend);
+  animation: heroParticlesWave 14s ease-in-out infinite;
+  will-change: transform;
+}
+.hero-wave {
+  position: absolute;
+  inset: -25% -60%;
+  background: linear-gradient(100deg,
+    transparent 30%,
+    rgba(212, 175, 118, 0.14) 44%,
+    rgba(255, 244, 222, 0.22) 50%,
+    rgba(212, 175, 118, 0.14) 56%,
+    transparent 70%);
+  filter: blur(40px);
+  mix-blend-mode: var(--hero-blend);
+  animation: heroWaveSweep 10s ease-in-out infinite;
+  will-change: transform;
 }
 .hero-aurora {
   position: absolute;
@@ -586,7 +607,7 @@ main { flex: 1; }
   filter: blur(50px);
   mix-blend-mode: var(--hero-blend);
   opacity: var(--hero-aurora-opacity);
-  animation: heroAuroraDrift 11s ease-in-out infinite;
+  animation: heroAuroraDrift 7.3s ease-in-out infinite;
   will-change: transform, opacity;
 }
 .hero-orb {
@@ -600,23 +621,31 @@ main { flex: 1; }
   top: 5%; right: -10%;
   width: 640px; height: 640px;
   background: radial-gradient(circle, rgba(176, 141, 87, var(--hero-orb-a1)), transparent 65%);
-  animation: heroOrbFloat1 9s ease-in-out infinite;
+  animation: heroOrbFloat1 6s ease-in-out infinite;
 }
 .hero-orb-2 {
   top: 42%; right: 8%;
   width: 420px; height: 420px;
   background: radial-gradient(circle, rgba(212, 175, 118, var(--hero-orb-a2)), transparent 65%);
-  animation: heroOrbFloat2 7.5s ease-in-out infinite;
+  animation: heroOrbFloat2 5s ease-in-out infinite;
 }
 .hero-orb-3 {
   top: -15%; left: 5%;
   width: 360px; height: 360px;
   background: radial-gradient(circle, rgba(176, 141, 87, var(--hero-orb-a3)), transparent 65%);
-  animation: heroOrbFloat3 12s ease-in-out infinite;
+  animation: heroOrbFloat3 8s ease-in-out infinite;
 }
-@keyframes heroGridDrift {
-  from { transform: translate(0, 0); }
-  to { transform: translate(56px, 56px); }
+@keyframes heroParticlesWave {
+  0%   { transform: translate(0, 0); }
+  25%  { transform: translate(22px, -14px); }
+  50%  { transform: translate(44px, 4px); }
+  75%  { transform: translate(22px, 18px); }
+  100% { transform: translate(0, 0); }
+}
+@keyframes heroWaveSweep {
+  0%   { transform: translate(-18%, -6%) rotate(0deg); }
+  50%  { transform: translate(14%, 6%) rotate(2deg); }
+  100% { transform: translate(-18%, -6%) rotate(0deg); }
 }
 @keyframes heroAuroraDrift {
   0%   { transform: translate(0, 0) rotate(0deg) scale(1); }
@@ -637,7 +666,7 @@ main { flex: 1; }
   50% { transform: translate(60px, 70px) scale(1.15); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .hero-grid, .hero-aurora, .hero-orb-1, .hero-orb-2, .hero-orb-3 {
+  .hero-particles, .hero-wave, .hero-aurora, .hero-orb-1, .hero-orb-2, .hero-orb-3 {
     animation: none;
   }
 }
