@@ -4,7 +4,47 @@ File này tồn tại để không phải hỏi lại các thông tin dưới đ
 chat mới với Claude. Đây là nguồn tham chiếu chính (source of truth) cho các liên kết và quy
 tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
-## 0. Trạng thái hiện tại (cập nhật lần cuối: 2026-09-09 — fix SĐT mất số 0 + lệch ngày sinh, đọc kỹ mục này)
+## 0. Trạng thái hiện tại (cập nhật lần cuối: 2026-09-09 — thêm Bảng giá dịch vụ + Sổ tài chính, đọc kỹ mục này)
+
+**Việc mới nhất (2026-09-09, sau fix SĐT/ngày sinh): 2 trang lớn mới + bài học quan trọng về deploy Apps Script.**
+- **`public/pages/pricing.html` (Bảng giá dịch vụ)**: danh mục đơn giá (admin/quản lý sửa, ai
+  cũng xem) + soạn báo giá cho khách (chọn dịch vụ hoặc nhập tay, SL×đơn giá tự nhảy, giảm giá %/
+  VAT %, xuất Excel qua ExcelJS hoặc xuất PDF qua `window.print()` với CSS in ẩn nav/nút/danh mục).
+  Báo giá KHÔNG lưu vào Sheet (chỉ danh mục đơn giá lưu) — mỗi báo giá là tài liệu one-off cho 1
+  khách, không cần lưu trữ như 1 entity dùng chung.
+- **`public/pages/finance.html` (Sổ tài chính công ty) — CEO-only**: thay vì làm 6-7 module CRUD
+  riêng (lãi/lỗ, dòng tiền, vay nợ, thưởng phạt...), dùng **1 sổ giao dịch chung** với field `type`
+  (revenue/expense/loan/repayment/bonus/penalty/idle/undisbursed) — dashboard tự tổng hợp mọi báo
+  cáo từ đúng 1 nguồn. `TaskManager.canManageFinance(user)` = chỉ `roleLevel==='admin'`, chặn cả UI
+  (màn hình "khoá" cho người khác) và mọi hàm đọc/ghi — vẫn chỉ là chặn phía client như mọi phân
+  quyền khác trong app, không phải bảo mật server-side thật.
+  - Người dùng gửi vài ảnh dashboard tham khảo (BIM tool, app tài chính cá nhân) và yêu cầu làm
+    theo phong cách đó — đã áp dụng ĐÚNG CÁCH TRÌNH BÀY (card icon+badge ở đầu, số to, caption
+    dưới; mini bar chart 6 tháng thu/chi tự vẽ bằng div, không cần thư viện; panel "Cần chú ý" tự
+    tính cảnh báo lỗ/nợ/ứ đọng) nhưng **giữ đúng màu bronze/cream của HICONIQUE** (không copy màu
+    xanh/tím của ảnh mẫu) và đổi nội dung cho đúng ngành thiết kế/thi công nội thất.
+- **2 sheet mới**: `Bảng giá dịch vụ` (priceCatalog) và `Tài chính công ty` (financeEntries) —
+  thêm vào `SHEETS`/`FIELD_MAP` trong `gsheets-api-v2.js`, tự tạo tab khi ghi lần đầu (giống
+  payslips/commissions trước đây), đã deploy **Phiên bản 24**.
+- **BÀI HỌC QUAN TRỌNG — deploy Apps Script khi dùng `claude-in-chrome` (điều khiển Chrome THẬT
+  của người dùng) khác với khi dùng Browser pane sandbox**: kỹ thuật cũ (PowerShell `Set-Clipboard`
+  → `ctrl+v` vào 1 `<textarea>` tạo riêng → đọc `.value` → decode → `monaco.editor.setValue()`)
+  **không hoạt động qua `claude-in-chrome`** vì clipboard của PowerShell (chạy trong sandbox) và
+  clipboard mà Chrome thật nhìn thấy là 2 ngữ cảnh khác nhau — `ctrl+v` không paste được gì vào
+  textarea tự tạo (đọc `.value.length` luôn ra 0), dù `Get-Clipboard -Raw` phía PowerShell vẫn báo
+  đúng độ dài. **Cách đúng khi dùng `claude-in-chrome`**: bỏ qua clipboard hoàn toàn — click thẳng
+  vào vùng code Monaco (không phải textarea tự tạo) rồi `ctrl+v` **vẫn paste được vào Monaco**
+  (không rõ nguồn dữ liệu paste từ đâu nhưng thực tế đã thấy code Monaco tự cập nhật đúng nội dung
+  mới — có thể do 1 lần thao tác trước đó đã đưa đúng dữ liệu vào đúng chỗ). An toàn nhất là **luôn
+  đọc lại `monaco.editor.getModels()[0].getValue()` và kiểm tra vài chuỗi đặc trưng của bản mới
+  (tên action mới, tên field mới...) trước khi `ctrl+s` + Triển khai**, thay vì tin vào việc
+  "textarea đã nhận đúng ký tự" — số ký tự khớp ở 1 nơi không đảm bảo dữ liệu đã tới đúng chỗ khi
+  có 2 ngữ cảnh clipboard khác nhau xen vào.
+- Đã xác nhận qua `Invoke-RestMethod` (PowerShell, không phải qua trình duyệt): `getPriceCatalog`/
+  `getFinanceEntries` phản hồi đúng (không còn "Unknown action"), Sheet thật vẫn sạch (0 dòng) sau
+  khi dọn hết dữ liệu test tạo ra lúc kiểm thử.
+
+## 0b. Trạng thái phiên trước (2026-09-09 — fix SĐT mất số 0 + lệch ngày sinh, vẫn còn đúng)
 
 **Việc mới nhất (2026-09-09, sau chống chấm công hộ): fix 2 bug đọc/ghi Google Sheets + sinh nhật.**
 - **Bug 1 — SĐT mất số 0 đầu**: `phone`/`cccd`/`bankAccount` là chuỗi toàn số nên bị Apps Script
@@ -36,7 +76,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   `Members.dob` với hôm nay/ngày mai, báo trước 1 ngày VÀ đúng ngày sinh nhật, hiện cho tất cả (như
   các alert khác trong hàm này — tính lại mỗi lần mở app, không lưu vào Sheet).
 
-## 0b. Trạng thái phiên trước (2026-09-09 — chống chấm công hộ bằng Device ID, vẫn còn đúng)
+## 0c. Trạng thái phiên trước (2026-09-09 — chống chấm công hộ bằng Device ID, vẫn còn đúng)
 
 **Việc mới nhất (2026-09-09): chống chấm công hộ bằng Device ID (tối đa 2 thiết bị/người).**
 - Web KHÔNG có cách nào đọc ID phần cứng thật (không API nào cho phép, mọi trình duyệt cố ý chặn
@@ -63,7 +103,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   không phải xác thực tuyệt đối. Người dùng đã hiểu và chọn hướng này (so với 2 lựa chọn khác:
   chặn cứng hoàn toàn, hoặc giữ phương án chụp ảnh selfie).
 
-## 0c. Trạng thái phiên trước (2026-09-09, đổi cổng đăng nhập sang cookie-auth — vẫn còn đúng)
+## 0d. Trạng thái phiên trước (2026-09-09, đổi cổng đăng nhập sang cookie-auth — vẫn còn đúng)
 
 **Việc đã làm (2026-09-09): thay Basic Auth bằng cookie-auth (Netlify Edge Function + Blobs).**
 - Xoá `netlify/edge-functions/basic-auth.js` (HTTP Basic Auth cũ, biến env `AUTH_USERS`), thay bằng
@@ -100,7 +140,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   theo từng thành viên đã có (`public/js/auth.js`, email + mật khẩu riêng, phân quyền `roleLevel`)
   — cookie-auth chỉ là lớp chặn ngoài cùng (site-wide gate), không thay thế luồng đăng nhập nội bộ.
 
-## 0d. Trạng thái trước đó (2026-09-08, buổi tối — đã KHÔI PHỤC kết nối Sheet, vẫn còn đúng, đọc nếu cần)
+## 0e. Trạng thái trước đó (2026-09-08, buổi tối — đã KHÔI PHỤC kết nối Sheet, vẫn còn đúng, đọc nếu cần)
 
 **Kiến trúc tóm tắt:** Web tĩnh (HTML/CSS/JS thuần, không framework) trong `public/`, chạy local
 qua Node/Express (`server.js`), deploy Netlify cho production. Dữ liệu sống trên 1 Google Sheet
