@@ -779,14 +779,24 @@ main { flex: 1; }
   position: relative;
   z-index: 1;
   border: none;
-  border-bottom: 1px solid color-mix(in srgb, var(--color-bronze) 28%, transparent);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--color-surface) 38%, transparent), transparent);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   box-shadow: none;
   font-size: var(--text-sm);
   color: var(--color-text-muted);
   letter-spacing: 0.01em;
+}
+.hero-stat-date::after {
+  content: '';
+  position: absolute;
+  left: 4%; right: 4%; bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent,
+    color-mix(in srgb, var(--color-bronze) 45%, transparent) 25%,
+    color-mix(in srgb, var(--color-bronze) 45%, transparent) 75%,
+    transparent);
 }
 .hero-stat-date-dot {
   width: 6px; height: 6px;
