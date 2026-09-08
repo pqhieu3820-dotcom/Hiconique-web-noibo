@@ -541,7 +541,8 @@ const Auth = (function() {
       gender: gender || '',
       color: color,
       avatar: avatar,
-      createdAt: new Date().toISOString().split('T')[0]
+      createdAt: new Date().toISOString().split('T')[0],
+      status: 'pending'
     };
 
     // Save to localStorage first (will sync to sheet)
@@ -588,6 +589,21 @@ const Auth = (function() {
     // Check password - convert both to string for comparison
     if (member.password && String(member.password) !== String(password)) {
       if (callback) callback({ success: false, error: 'Mật khẩu không đúng' });
+      return;
+    }
+
+    // Chặn đăng nhập nếu tài khoản chưa được duyệt / đã bị từ chối / đã ngưng công tác.
+    // Tài khoản không có trường status (dữ liệu cũ) được coi là đang hoạt động.
+    if (member.status === 'pending') {
+      if (callback) callback({ success: false, error: 'Tài khoản đang chờ quản lý hoặc CEO phê duyệt. Vui lòng quay lại sau.' });
+      return;
+    }
+    if (member.status === 'rejected') {
+      if (callback) callback({ success: false, error: 'Đăng ký của bạn đã bị từ chối. Vui lòng liên hệ quản lý.' });
+      return;
+    }
+    if (member.status === 'inactive') {
+      if (callback) callback({ success: false, error: 'Tài khoản đã ngưng công tác, không thể đăng nhập.' });
       return;
     }
 

@@ -746,6 +746,30 @@ var TaskManager = (function() {
     return updated;
   }
 
+  // Duyệt/từ chối thành viên đăng ký mới: CEO hoặc Manager.
+  function canManageMembers(user) {
+    return !!user && (user.roleLevel === 'admin' || user.roleLevel === 'manager');
+  }
+
+  // Ngưng công tác / khôi phục thành viên: chỉ CEO.
+  function canTerminateMembers(user) {
+    return !!user && user.roleLevel === 'admin';
+  }
+
+  // status: 'active' (duyệt / khôi phục), 'rejected' (từ chối), 'inactive' (ngưng công tác).
+  // Duyệt/từ chối một tài khoản đang "pending" chỉ cần Manager+; ngưng công tác hoặc
+  // khôi phục một tài khoản đã "inactive" bắt buộc phải là CEO.
+  function updateMemberStatus(id, status, user) {
+    var member = getMember(id);
+    if (!member) return null;
+    var isTerminateAction = status === 'inactive' || member.status === 'inactive';
+    var allowed = isTerminateAction ? canTerminateMembers(user) : canManageMembers(user);
+    if (!allowed) return null;
+    var updated = update(STORAGE_KEYS.members, id, { status: status });
+    if (updated) syncToGSheets('members', 'update', { status: status }, id);
+    return updated;
+  }
+
   // Proposals
   function getProposals(filters) {
     filters = filters || {};
@@ -1259,7 +1283,9 @@ var TaskManager = (function() {
     getMembers: getMembers,
     getMember: getMember,
     updateMember: updateMember,
-    getMember: getMember,
+    canManageMembers: canManageMembers,
+    canTerminateMembers: canTerminateMembers,
+    updateMemberStatus: updateMemberStatus,
 
     // Proposals
     getProposals: getProposals,

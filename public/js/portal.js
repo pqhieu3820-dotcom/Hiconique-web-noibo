@@ -293,13 +293,18 @@
       var color = m.color || '#6B7280';
       var role = m.role || m.position || '';
       var email = m.email || '';
-      var status = m.status || (m.roleLevel ? m.roleLevel.charAt(0).toUpperCase() + m.roleLevel.slice(1) : '—');
+      var status = m.roleLevel ? m.roleLevel.charAt(0).toUpperCase() + m.roleLevel.slice(1) : '—';
       var days = daysAtCompany(m.createdAt);
       var daysLabel = days !== null ? (days + ' ngày làm việc') : '—';
       var joinDate = m.createdAt ? new Date(m.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+      var statusBadge = m.status === 'pending' ? '<span class="team-status-badge pending">Chờ duyệt</span>'
+        : m.status === 'inactive' ? '<span class="team-status-badge inactive">Ngưng công tác</span>'
+        : m.status === 'rejected' ? '<span class="team-status-badge rejected">Đã từ chối</span>'
+        : '';
 
       return ''
         + '<article class="team-card" data-idx="' + i + '" tabindex="0" role="button" aria-haspopup="dialog">'
+        +   (statusBadge ? '<div class="team-card-flag">' + statusBadge + '</div>' : '')
         +   '<div class="team-avatar" style="background:' + color + '">' + initials + '</div>'
         +   '<h3 class="team-name">' + (m.name || '—') + '</h3>'
         +   '<p class="team-role">' + role + '</p>'
@@ -357,6 +362,25 @@
     var roleLevelLabel = m.roleLevel === 'admin' ? 'Quản trị viên' : m.roleLevel === 'manager' ? 'Quản lý' : 'Nhân viên';
     var days = daysAtCompany(m.createdAt);
     var joinDate = m.createdAt ? new Date(m.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+    var statusLabel = m.status === 'pending' ? 'Đang chờ duyệt'
+      : m.status === 'inactive' ? 'Đã ngưng công tác'
+      : m.status === 'rejected' ? 'Đăng ký đã bị từ chối'
+      : '';
+
+    var currentUser = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
+    var canManage = typeof TaskManager !== 'undefined' && TaskManager.canManageMembers && TaskManager.canManageMembers(currentUser);
+    var canTerminate = typeof TaskManager !== 'undefined' && TaskManager.canTerminateMembers && TaskManager.canTerminateMembers(currentUser);
+    var isSelf = currentUser && currentUser.id === m.id;
+
+    var actionButtons = '';
+    if (m.status === 'pending' && canManage) {
+      actionButtons += '<button type="button" class="team-modal-action approve" data-action="approve">✓ Duyệt tài khoản</button>';
+      actionButtons += '<button type="button" class="team-modal-action reject" data-action="reject">✕ Từ chối</button>';
+    } else if (m.status === 'inactive' && canTerminate) {
+      actionButtons += '<button type="button" class="team-modal-action approve" data-action="reinstate">↺ Khôi phục công tác</button>';
+    } else if ((!m.status || m.status === 'active') && canTerminate && !isSelf) {
+      actionButtons += '<button type="button" class="team-modal-action reject" data-action="terminate">⏸ Ngưng công tác</button>';
+    }
 
     document.getElementById('teamModalContent').innerHTML =
       '<div class="team-modal-header">' +
@@ -372,7 +396,27 @@
         (m.phone ? '<div class="team-modal-row">' + ICON.phone + '<span>' + escapeHtml(m.phone) + '</span></div>' : '') +
         (m.hometown ? '<div class="team-modal-row">' + ICON.pin + '<span>' + escapeHtml(m.hometown) + '</span></div>' : '') +
         (joinDate ? '<div class="team-modal-row">' + ICON.calendar + '<span>Vào làm từ ' + joinDate + (days !== null ? ' · ' + days + ' ngày' : '') + '</span></div>' : '') +
-      '</div>';
+        (statusLabel ? '<div class="team-modal-row team-modal-status-row">' + escapeHtml(statusLabel) + '</div>' : '') +
+      '</div>' +
+      (actionButtons ? '<div class="team-modal-actions">' + actionButtons + '</div>' : '');
+
+    var contentEl = document.getElementById('teamModalContent');
+    contentEl.querySelectorAll('.team-modal-action').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var action = btn.dataset.action;
+        var newStatus = action === 'approve' ? 'active' : action === 'reject' ? 'rejected' : action === 'reinstate' ? 'active' : 'inactive';
+        var confirmMsg = action === 'approve' ? 'Duyệt tài khoản này? Thành viên sẽ đăng nhập được ngay.'
+          : action === 'reject' ? 'Từ chối đăng ký này?'
+          : action === 'reinstate' ? 'Khôi phục công tác cho thành viên này?'
+          : 'Đánh dấu thành viên này đã ngưng công tác? Họ sẽ không đăng nhập được nữa.';
+        if (!window.confirm(confirmMsg)) return;
+        var result = TaskManager.updateMemberStatus(m.id, newStatus, currentUser);
+        if (!result) { alert('Bạn không có quyền thực hiện thao tác này.'); return; }
+        m.status = newStatus;
+        overlay.hidden = true;
+        loadTeam();
+      });
+    });
 
     overlay.hidden = false;
   }
