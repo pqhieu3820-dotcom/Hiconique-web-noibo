@@ -66,24 +66,38 @@ của Member đang đăng nhập, kiểm tra phía client (không có bảo mậ
   `.hero-stat-date` — đã qua rất nhiều vòng chỉnh theo yêu cầu trực tiếp, thông số hiện tại là
   kết quả cuối cùng được chấp nhận tính đến thời điểm ghi chú này.
 - **Quy tắc mới từ 2026-09-08**: cứ khoảng 10–15 phút làm việc thực tế (theo đồng hồ), hoặc sau
-  mỗi thao tác chỉnh sửa lớn hoàn tất, phải **commit + push** (không chỉ commit local) để phòng
-  trường hợp đổi máy — xem thêm trong memory `feedback_periodic_commit_push`.
+  mỗi thao tác chỉnh sửa lớn hoàn tất, phải **cập nhật lại file ghi chú này** (mục "0. Trạng thái
+  hiện tại") + **commit local** — **không tự ý push**, push vẫn phải hỏi và chờ xác nhận như bình
+  thường. Mục đích chỉ là để đổi máy khác đọc lại file này là nắm được ngữ cảnh, không phải để
+  tự động đẩy code lên GitHub. Xem thêm trong memory `feedback_periodic_commit_push`.
 
 ## 1. Liên kết quan trọng
 
 | Việc | Link |
 |---|---|
-| GitHub repo | https://github.com/pqhieu3820-dotcom/Hiconique-web-noibo |
-| Google Sheet — database chính (chỉnh sửa trực tiếp) | https://docs.google.com/spreadsheets/d/1usLh4pt5F7r1XY-SLbWPfajYuZ5mDNGaaa4neYG84nY/edit |
-| Google Apps Script — cầu nối đồng bộ Web ⇄ Sheet | https://script.google.com/u/1/home/projects/13qWJLAwWHzeH7nyfcVHlMrxwOOWAUi4X2gD7CgB2EfwQseFX30RJo_RJ/edit |
+| Việc | Link |
+|---|---|
+| **GitHub repo** | **https://github.com/pqhieu3820-dotcom/Hiconique-web-noibo** |
+| **Google Sheet — database chính** (chỉnh sửa trực tiếp) | **https://docs.google.com/spreadsheets/d/1usLh4pt5F7r1XY-SLbWPfajYuZ5mDNGaaa4neYG84nY/edit** |
+| **Google Apps Script — editor** (sửa code `gsheets-api-v2.js` tại đây) | **https://script.google.com/u/1/home/projects/13qWJLAwWHzeH7nyfcVHlMrxwOOWAUi4X2gD7CgB2EfwQseFX30RJo_RJ/edit** |
+| **Apps Script Web App — URL đang chạy thật** (client gọi `API_URL` này để ghi dữ liệu) | **https://script.google.com/macros/s/AKfycbzgg0dfNgDTFgcTGlNvF2IHLUusK6YuBk1pot9SrbYi5B9al-H2nmmMlKLz5CpDlLY/exec** |
+| **Google Drive — thư mục file thiết kế/hồ sơ kỹ thuật** | **https://drive.google.com/drive/folders/1Abs32vARD3f486LWBfgIWXjKIUV-LK6L** |
+| Netlify — hosting production | Chưa có URL cố định ghi trong repo (auto-deploy mỗi lần push `master`, xem Netlify dashboard của tài khoản để lấy link site + biến `AUTH_USERS` cho Basic Auth — chi tiết ở [README.md](README.md)) |
+
+**Lưu ý khi thay đổi các link trên:** nếu redeploy Apps Script ra **deployment mới** (không phải
+"Phiên bản mới" trên deployment cũ) thì "Apps Script Web App — URL đang chạy thật" ở trên SẼ ĐỔI
+— phải cập nhật lại `API_URL` trong `public/js/gsheets-config.js` VÀ dòng link này trong file ghi
+chú, nếu không web sẽ ngừng ghi được dữ liệu.
 
 Ghi chú:
 - Web **đọc** dữ liệu qua CSV publish-to-web (URL trong `public/js/gsheets-config.js`,
-  `DATA_URLS`) và **ghi** dữ liệu qua Apps Script Web App (`API_URL` cùng file). Cả hai đều
-  trỏ vào chính Google Sheet ở trên — chỉ khác dạng ID (ID chỉnh sửa vs. ID publish-to-web).
+  `DATA_URLS`) và **ghi** dữ liệu qua Apps Script Web App (`API_URL` cùng file, chính là link
+  "Apps Script Web App — URL đang chạy thật" ở bảng trên). Cả hai đều trỏ vào chính Google Sheet
+  ở trên — chỉ khác dạng ID (ID chỉnh sửa vs. ID publish-to-web).
 - Source code đang chạy trên Apps Script = file `gsheets-api-v2.js` ở root repo. Sửa xong phải
-  dán đè vào Apps Script rồi **Triển khai → Phiên bản mới** (không tạo deployment mới) — chi
-  tiết đầy đủ ở [SETUP_HUONG_DAN.md](SETUP_HUONG_DAN.md).
+  dán đè vào Apps Script rồi **Triển khai → Quản lý các tùy chọn triển khai → chọn "Phiên bản
+  mới"** (không tạo deployment mới, sẽ đổi URL) — chi tiết đầy đủ ở
+  [SETUP_HUONG_DAN.md](SETUP_HUONG_DAN.md).
 
 ## 2. Cấu trúc dữ liệu (11 tab trong Sheet)
 
