@@ -1,15 +1,21 @@
-/* ─── Gantt view (embedded inside Dự án page) ─── */
+/* ─── Gantt view (embedded inside Dự án page) ───
+   Semantic colors are aliases onto the site's own tokens.css palette
+   (bronze/blue/success/warning/destructive) instead of a stock
+   purple/blue/green/amber/red SaaS-template set — that mismatch (bright
+   saturated hues on an editorial bronze/cream brand, and none of them
+   adapting to light mode) is what read as "phèn". color-mix keeps the
+   *-light tints theme-aware for free. */
 :root {
-  --gantt-purple: #7C3AED;
-  --gantt-purple-light: rgba(124,58,237,0.14);
-  --gantt-blue: #2563EB;
-  --gantt-blue-light: rgba(37,99,235,0.14);
-  --gantt-green: #059669;
-  --gantt-green-light: rgba(5,150,105,0.14);
-  --gantt-amber: #D97706;
-  --gantt-amber-light: rgba(217,119,6,0.14);
-  --gantt-red: #DC2626;
-  --gantt-red-light: rgba(220,38,38,0.14);
+  --gantt-purple: var(--color-bronze);
+  --gantt-purple-light: color-mix(in srgb, var(--color-bronze) 16%, transparent);
+  --gantt-blue: var(--color-blue);
+  --gantt-blue-light: color-mix(in srgb, var(--color-blue) 16%, transparent);
+  --gantt-green: var(--color-success);
+  --gantt-green-light: color-mix(in srgb, var(--color-success) 18%, transparent);
+  --gantt-amber: var(--color-warning);
+  --gantt-amber-light: color-mix(in srgb, var(--color-warning) 20%, transparent);
+  --gantt-red: var(--color-destructive);
+  --gantt-red-light: color-mix(in srgb, var(--color-destructive) 16%, transparent);
 }
 
 .gantt-toolbar {
@@ -79,8 +85,9 @@
 
 .gantt-card {
   background: var(--color-surface);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-xs);
   overflow: hidden;
 }
 
@@ -212,7 +219,7 @@
   color: var(--gantt-purple);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  border-bottom: 1px solid rgba(124,58,237,0.15);
+  border-bottom: 1px solid var(--gantt-purple-light);
 }
 
 .gantt-section-row td:last-child {
@@ -262,24 +269,19 @@
 }
 
 .gantt-bar-item {
-  position: absolute; height: 26px; border-radius: 6px;
+  position: absolute; height: 26px; border-radius: var(--radius-md);
   display: flex; align-items: center; padding: 0 10px;
   font-size: 0.75rem; font-weight: 500; color: #fff;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   cursor: pointer; transition: transform 0.12s, box-shadow 0.12s;
   top: 4px; z-index: 2;
 }
-.gantt-bar-item:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 3; }
-.gantt-bar-item.purple { background: linear-gradient(135deg, #7C3AED, #6D28D9); }
-.gantt-bar-item.blue { background: linear-gradient(135deg, #2563EB, #1D4ED8); }
-.gantt-bar-item.green { background: linear-gradient(135deg, #059669, #047857); }
-.gantt-bar-item.amber { background: linear-gradient(135deg, #D97706, #B45309); }
-.gantt-bar-item.red { background: linear-gradient(135deg, #DC2626, #B91C1C); }
+.gantt-bar-item:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); z-index: 3; }
 
 .gantt-milestone {
-  position: absolute; width: 13px; height: 13px; background: #F59E0B;
+  position: absolute; width: 12px; height: 12px; background: var(--color-bronze);
   transform: rotate(45deg) translateY(-2px); top: 10px; z-index: 4; border-radius: 2px;
-  box-shadow: 0 2px 6px rgba(245,158,11,0.4);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--color-bronze) 45%, transparent);
 }
 
 .gantt-progress-cell { text-align: center; padding: 0 14px 0 0; }
@@ -290,8 +292,9 @@
 .gantt-progress-fill { stroke: var(--gantt-purple); stroke-linecap: round; transition: stroke-dashoffset 0.5s; }
 
 .gantt-status-badge {
-  display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px;
-  border-radius: 20px; font-size: 0.6875rem; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px;
+  border-radius: var(--radius-md); font-size: 0.6875rem; font-weight: 600;
+  letter-spacing: 0.01em;
 }
 .gantt-status-badge.on-track { background: var(--gantt-green-light); color: var(--gantt-green); }
 .gantt-status-badge.at-risk { background: var(--gantt-amber-light); color: var(--gantt-amber); }
@@ -301,9 +304,9 @@
 .gantt-tooltip {
   position: fixed; background: var(--color-surface-2); color: var(--color-text);
   border: 1px solid var(--color-border);
-  padding: 10px 14px; border-radius: 8px; font-size: 0.8125rem;
+  padding: 10px 14px; border-radius: var(--radius-lg); font-size: 0.8125rem;
   z-index: 9999; pointer-events: none; max-width: 240px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.35); opacity: 0; transition: opacity 0.15s;
+  box-shadow: var(--shadow-md); opacity: 0; transition: opacity 0.15s;
 }
 .gantt-tooltip.visible { opacity: 1; }
 .gantt-tooltip-title { font-weight: 600; margin-bottom: 4px; }
@@ -311,7 +314,7 @@
 
 .gantt-empty { text-align: center; padding: 56px 24px; color: var(--color-text-muted); }
 .gantt-empty-icon {
-  width: 52px; height: 52px; background: var(--color-surface-2); border-radius: 14px;
+  width: 52px; height: 52px; background: var(--color-surface-2); border-radius: var(--radius-lg);
   display: grid; place-items: center; margin: 0 auto 16px;
 }
 .gantt-empty-icon svg { width: 26px; height: 26px; opacity: 0.5; }
