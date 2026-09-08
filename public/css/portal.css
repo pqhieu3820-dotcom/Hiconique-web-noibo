@@ -541,7 +541,7 @@ main { flex: 1; }
 .hero-bg {
   position: absolute;
   top: 0; left: 0; right: 0;
-  bottom: -130px;
+  bottom: -64px;
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
@@ -552,15 +552,18 @@ main { flex: 1; }
   --hero-dot-opacity: 0.36;
   --hero-dot-rgb: 120, 92, 54;
   --hero-blend: normal;
-  /* Bleeds a fixed 130px past the hero's own box (bottom above) so the
-     glow reaches down to the divider line above "Cong cu chinh", then
-     fades to nothing over the last ~150px anchored to that bottom edge
-     — stable across viewports since it's pixel-anchored, not %-based. */
+  /* Bleeds a fixed 64px past the hero's own box so the bottom edge of
+     this layer lands right at "Cong cu chinh"'s eyebrow line. Stays
+     fully opaque through the title/lede down to the divider above the
+     stat row, then fades out entirely across that stat-row band —
+     both stops pixel-anchored to the bottom edge so the transition
+     zone stays pinned between those two landmarks regardless of
+     viewport/content height above it. */
   mask-image:
-    linear-gradient(to bottom, #000 0, #000 calc(100% - 150px), transparent calc(100% - 6px)),
+    linear-gradient(to bottom, #000 0, #000 calc(100% - 249px), transparent calc(100% - 4px)),
     linear-gradient(to right, transparent 0%, #000 12%, #000 82%, transparent 100%);
   mask-composite: intersect;
-  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 150px), transparent calc(100% - 6px));
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 249px), transparent calc(100% - 4px));
 }
 [data-theme="dark"] .hero-bg {
   --hero-orb-a1: 0.2;
