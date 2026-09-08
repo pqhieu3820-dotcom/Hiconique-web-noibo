@@ -10,7 +10,7 @@ const SHEETS = {
   proposals: 'Đề xuất',
   timesheet: 'Chấm công',
   notifications: 'Thông báo',
-  notices: 'Bàng tin',
+  notices: 'Bảng tin',
   documents: 'Tài liệu',
   payslips: 'Phiếu lương',
   commissions: 'Hoa hồng dự án',
@@ -278,16 +278,34 @@ function getHeaders(sheet) {
   });
 }
 
-// Auto-creates the tab if it doesn't exist yet — addData then seeds its
-// header row (in Vietnamese) from FIELD_MAP below. In practice all 11 tabs
-// already exist under their Vietnamese names, so this only fires for a
-// genuinely new sheet type.
+// Robust sheet lookup — tolerant of trailing spaces AND of Unicode form
+// differences in the Vietnamese tab names. "ả" can be stored either
+// precomposed (U+1EA3) or decomposed ("a" + U+0309 combining hook); a plain
+// ss.getSheetByName() compares bytes and misses the other form. That exact
+// mismatch (code said one form, the "Bảng tin" tab used the other) made reads
+// silently spawn empty duplicate tabs. NFC-normalising both sides fixes it
+// for every sheet at once.
+function normalizeName(s) {
+  return String(s == null ? '' : s).normalize('NFC').trim();
+}
+function findSheet(ss, sheetName) {
+  const target = normalizeName(sheetName);
+  const sheets = ss.getSheets();
+  for (let i = 0; i < sheets.length; i++) {
+    if (normalizeName(sheets[i].getName()) === target) return sheets[i];
+  }
+  return null;
+}
+// Only creates when the tab genuinely does not exist (matched via findSheet,
+// so a Unicode/whitespace variant is reused, never duplicated). Used by the
+// WRITE paths — reads must never create (see getAllData).
 function getOrCreateSheet(ss, sheetName) {
-  return ss.getSheetByName(sheetName) || ss.insertSheet(sheetName);
+  return findSheet(ss, sheetName) || ss.insertSheet(sheetName);
 }
 
 function getAllData(ss, sheetName) {
-  const sheet = getOrCreateSheet(ss, sheetName);
+  const sheet = findSheet(ss, sheetName);
+  if (!sheet) return []; // read never creates a tab — avoids phantom empties
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return [];
   const data = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
@@ -377,7 +395,8 @@ function updateData(ss, sheetName, id, updates) {
 }
 
 function deleteData(ss, sheetName, id) {
-  const sheet = ss.getSheetByName(sheetName);
+  const sheet = findSheet(ss, sheetName);
+  if (!sheet) return { error: 'Sheet not found: ' + sheetName };
   const data = getAllData(ss, sheetName);
   const index = data.findIndex(function (row) { return row.id === id; });
   if (index === -1) return { error: 'Not found' };
@@ -393,7 +412,7 @@ function onEdit(e) {
   try {
     if (!e || !e.range) return;
     const sheet = e.range.getSheet();
-    if (sheet.getName() !== SHEETS.members) return;
+    if (normalizeName(sheet.getName()) !== normalizeName(SHEETS.members)) return;
     const headers = getHeaders(sheet);
     const col = e.range.getColumn();
     if (headers[col - 1] !== enToViHeader(SHEETS.members, 'id')) return;
@@ -422,7 +441,7 @@ function cascadeMemberIdChange(oldId, newId) {
 }
 
 function replaceIdInColumn(ss, sheetName, headerNameEn, oldId, newId) {
-  const sheet = ss.getSheetByName(sheetName);
+  const sheet = findSheet(ss, sheetName);
   if (!sheet) return;
   const headers = getHeaders(sheet);
   const colIdx = headers.indexOf(enToViHeader(sheetName, headerNameEn));
@@ -442,7 +461,7 @@ function replaceIdInColumn(ss, sheetName, headerNameEn, oldId, newId) {
 }
 
 function replaceIdInListColumn(ss, sheetName, headerNameEn, oldId, newId) {
-  const sheet = ss.getSheetByName(sheetName);
+  const sheet = findSheet(ss, sheetName);
   if (!sheet) return;
   const headers = getHeaders(sheet);
   const colIdx = headers.indexOf(enToViHeader(sheetName, headerNameEn));
