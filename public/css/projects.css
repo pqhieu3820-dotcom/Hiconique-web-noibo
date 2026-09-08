@@ -786,10 +786,12 @@
 
   .kanban-board {
     flex-direction: column;
+    min-width: 0;
   }
 
   .kanban-column {
     width: 100%;
+    min-width: 0;
   }
 
   .form-row {

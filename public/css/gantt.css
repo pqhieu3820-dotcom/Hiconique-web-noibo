@@ -337,14 +337,19 @@
   .gantt-table { min-width: 1000px; }
 
   /* Freeze the task-name column so scrolling to "today" (which the view
-     does on load) doesn't leave the visible bars unlabeled. */
+     does on load) doesn't leave the visible bars unlabeled. z-index:6
+     here is deliberate: it must beat every positioned element that can
+     appear inside the scrolling timeline cell next to it (bar:2,
+     milestone:4, today-line:5) — those sit later in the DOM, so with
+     an equal or lower z-index they paint OVER this sticky (but still
+     visually "first") column instead of being hidden behind it. */
   .gantt-table th:first-child,
   .gantt-table td:first-child {
     position: sticky;
     left: 0;
-    z-index: 2;
+    z-index: 6;
   }
-  .gantt-table thead th:first-child { z-index: 4; }
+  .gantt-table thead th:first-child { z-index: 7; }
   .gantt-task-row td:first-child { background: var(--color-surface); }
   .gantt-task-row:hover td:first-child { background: var(--color-surface-2); }
   .gantt-section-row td:first-child { background: var(--gantt-purple-light); }
