@@ -4,9 +4,36 @@ File này tồn tại để không phải hỏi lại các thông tin dưới đ
 chat mới với Claude. Đây là nguồn tham chiếu chính (source of truth) cho các liên kết và quy
 tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
-## 0. Trạng thái hiện tại (cập nhật lần cuối: 2026-09-09 — đổi cổng đăng nhập sang cookie-auth, đọc kỹ mục này)
+## 0. Trạng thái hiện tại (cập nhật lần cuối: 2026-09-09 — thêm chống chấm công hộ, đọc kỹ mục này)
 
-**Việc mới nhất (2026-09-09): thay Basic Auth bằng cookie-auth (Netlify Edge Function + Blobs).**
+**Việc mới nhất (2026-09-09): chống chấm công hộ bằng Device ID (tối đa 2 thiết bị/người).**
+- Web KHÔNG có cách nào đọc ID phần cứng thật (không API nào cho phép, mọi trình duyệt cố ý chặn
+  vì riêng tư) — nên tự sinh 1 mã ngẫu nhiên (`crypto.randomUUID()`) đại diện "thiết bị này", lưu
+  bền trong `localStorage` (key `hiconique_device_id`). Ban đầu định làm chụp ảnh selfie xác thực,
+  người dùng đổi ý giữa phiên sang hướng Device ID này (không chụp ảnh).
+- Mỗi thành viên tự đăng ký tối đa **2 thiết bị** (điện thoại + laptop thường dùng) — lưu ở cột
+  mới `deviceIds` trên Members, dạng chuỗi `"id1,id2"` (`TaskManager.getMemberDeviceIds/
+  registerMemberDevice/removeMemberDevice` trong `task-data.js`). 2 thiết bị đầu tự đăng ký ngay,
+  không hỏi gì; thiết bị thứ 3 trở đi (lạ, đã đủ 2 slot) mới bị coi là "fail" cho điều kiện này.
+- **Điều kiện Thiết bị giờ là điều kiện thứ 3, cùng nhóm với GPS/Wifi công ty** (trang Chấm công,
+  `timesheet.html`) — theo yêu cầu trực tiếp: tổng 3 điều kiện, **cần đạt tối thiểu 2/3** mới cho
+  chấm công thẳng (không cần xác nhận thủ công); đạt đúng 1/3 thì hỏi xác nhận (dialog); 0/3 thì
+  chặn hẳn. Khác GPS/Wifi (có cờ enable/disable riêng), Thiết bị luôn bật, không có cờ tắt.
+  Xem `checkDeviceStatus()`, đã sửa `checkIn()`/click handler để tính chung 1 mảng `checks` gồm
+  cả 3 kết quả `{skip, ok, message}`.
+  cần thêm cột `deviceIds` (Members), `checkinDeviceId`/`devicePass` (Chấm công/Timesheet) vào
+  Sheet thật mới đồng bộ lưu lại được — chưa thêm thì vẫn hoạt động, chỉ là dữ liệu này không lưu
+  qua Sheet, chỉ có ở cache local (giống pattern "Mã tài liệu"/`code` trước đây).
+- Có 1 bảng nhỏ trên trang Chấm công ("Thiết bị chấm công đã đăng ký, tối đa 2") cho người dùng tự
+  xem + bấm "Gỡ" 1 thiết bị cũ để nhường slot cho máy mới.
+- Nhược điểm đã báo trước cho người dùng: mã mất nếu người dùng tự xoá dữ liệu trình duyệt (Clear
+  browsing data), và người rành kỹ thuật vẫn copy được mã sang máy khác — đây là lớp cảnh báo phụ,
+  không phải xác thực tuyệt đối. Người dùng đã hiểu và chọn hướng này (so với 2 lựa chọn khác:
+  chặn cứng hoàn toàn, hoặc giữ phương án chụp ảnh selfie).
+
+## 0b. Trạng thái phiên trước (2026-09-09, đổi cổng đăng nhập sang cookie-auth — vẫn còn đúng)
+
+**Việc đã làm (2026-09-09): thay Basic Auth bằng cookie-auth (Netlify Edge Function + Blobs).**
 - Xoá `netlify/edge-functions/basic-auth.js` (HTTP Basic Auth cũ, biến env `AUTH_USERS`), thay bằng
   **`netlify/edge-functions/cookie-auth.js`** — vẫn chặn toàn bộ `/*` qua `netlify.toml` như cũ,
   nhưng giờ dùng 1 trang đăng nhập riêng (`public/login.html`, tự chứa CSS, POST tới

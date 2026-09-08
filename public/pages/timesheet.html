@@ -205,6 +205,23 @@
     .ts-confirm-cancel { background: var(--color-bg); color: var(--ts-text); border: 1px solid var(--ts-border) !important; }
     .ts-confirm-ok { background: var(--ts-bronze); color: #0B0D10; }
 
+    /* Bảng thiết bị đã đăng ký chấm công (tối đa 2) */
+    .ts-device-table { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--ts-border); }
+    .ts-device-title { font-size: 0.6875rem; color: var(--ts-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .ts-device-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 10px; border-radius: 8px; background: var(--color-bg);
+      font-size: 0.8125rem; margin-bottom: 6px;
+    }
+    .ts-device-row.ts-device-empty { color: var(--ts-muted); font-style: italic; }
+    .ts-device-id { font-family: 'Courier New', monospace; letter-spacing: 0.04em; color: var(--ts-text); }
+    .ts-device-id em { color: var(--ts-bronze); font-style: normal; font-family: inherit; margin-left: 4px; }
+    .ts-device-remove {
+      border: 1px solid var(--ts-border); background: transparent; color: var(--ts-danger);
+      border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer; font-family: inherit;
+    }
+    .ts-device-remove:hover { border-color: var(--ts-danger); }
+
     .ts-checkin-btn {
       width: 100%;
       padding: 16px;
@@ -535,6 +552,13 @@
               <span class="ts-verify-state" id="tsVerifyIpState">Đang kiểm tra…</span>
             </span>
           </div>
+          <div class="ts-verify-row" id="tsVerifyDeviceRow">
+            <span class="ts-verify-dot" id="tsVerifyDeviceDot"></span>
+            <span class="ts-verify-body">
+              <span class="ts-verify-label">Thiết bị đã đăng ký</span>
+              <span class="ts-verify-state" id="tsVerifyDeviceState">Đang kiểm tra…</span>
+            </span>
+          </div>
         </div>
 
         <div class="ts-geo-status" id="tsGeoStatus" hidden></div>
@@ -542,6 +566,8 @@
         <button class="ts-checkin-btn in" id="tsCheckinBtn">Check In</button>
 
         <div class="ts-checkin-status idle" id="tsCheckinStatus">Chưa check-in hôm nay</div>
+
+        <div class="ts-device-table" id="tsDeviceTable"></div>
       </div>
 
       <!-- Calendar -->
@@ -713,18 +739,31 @@
 
     function runLiveStatusCheck() {
       var panel = document.getElementById('tsVerifyPanel');
-      if (!panel) return Promise.resolve({ geo: null, ip: null });
-      if (!GEO_RESTRICTION.enabled && !IP_RESTRICTION.enabled) { panel.hidden = true; return Promise.resolve({ geo: null, ip: null }); }
+      if (!panel) return Promise.resolve({ geo: null, ip: null, device: null });
+      // Điều kiện Thiết bị luôn bật (không có cờ enable/disable như GPS/Wifi),
+      // nên panel giờ luôn hiện để còn thấy trạng thái thiết bị.
       panel.hidden = false;
       return Promise.all([checkGeoStatus(), checkIpStatus()]).then(function (results) {
+        var deviceResult = checkDeviceStatus();
         renderVerifyRow('tsVerifyGeoDot', 'tsVerifyGeoState', results[0]);
         renderVerifyRow('tsVerifyIpDot', 'tsVerifyIpState', results[1]);
-        return { geo: results[0], ip: results[1] };
+        renderVerifyRow('tsVerifyDeviceDot', 'tsVerifyDeviceState', deviceResult);
+        return { geo: results[0], ip: results[1], device: deviceResult };
       });
     }
 
-    // Xác nhận thủ công khi chỉ có 1/2 điều kiện thoả — trả về Promise<boolean>.
-    function showConfirmDialog(geoResult, ipResult) {
+    function verifyRowHtml(label, result) {
+      var cls = result.skip ? '' : (result.ok ? 'ok' : 'fail');
+      return '<div class="ts-verify-row"><span class="ts-verify-dot ' + cls + '"></span><span class="ts-verify-body">' +
+        '<span class="ts-verify-label">' + label + '</span>' +
+        '<span class="ts-verify-state ' + cls + '">' + (result.skip ? 'Đang tắt' : result.message) + '</span>' +
+      '</span></div>';
+    }
+
+    // Xác nhận thủ công khi chưa đạt đủ tối thiểu 2/3 điều kiện (GPS/Wifi/
+    // Thiết bị) — trả về Promise<boolean>.
+    function showConfirmDialog(geoResult, ipResult, deviceResult) {
+      deviceResult = deviceResult || { skip: true };
       return new Promise(function (resolve) {
         var overlay = document.createElement('div');
         overlay.className = 'ts-confirm-overlay';
@@ -732,8 +771,9 @@
           '<div class="ts-confirm-box">' +
             '<div class="ts-confirm-title">Bạn có chắc chắn muốn chấm công không?</div>' +
             '<div class="ts-verify-panel">' +
-              '<div class="ts-verify-row"><span class="ts-verify-dot ' + (geoResult.skip ? '' : (geoResult.ok ? 'ok' : 'fail')) + '"></span><span class="ts-verify-body"><span class="ts-verify-label">Vị trí GPS</span><span class="ts-verify-state ' + (geoResult.skip ? '' : (geoResult.ok ? 'ok' : 'fail')) + '">' + (geoResult.skip ? 'Đang tắt' : geoResult.message) + '</span></span></div>' +
-              '<div class="ts-verify-row"><span class="ts-verify-dot ' + (ipResult.skip ? '' : (ipResult.ok ? 'ok' : 'fail')) + '"></span><span class="ts-verify-body"><span class="ts-verify-label">Mạng Wifi công ty</span><span class="ts-verify-state ' + (ipResult.skip ? '' : (ipResult.ok ? 'ok' : 'fail')) + '">' + (ipResult.skip ? 'Đang tắt' : ipResult.message) + '</span></span></div>' +
+              verifyRowHtml('Vị trí GPS', geoResult) +
+              verifyRowHtml('Mạng Wifi công ty', ipResult) +
+              verifyRowHtml('Thiết bị đã đăng ký', deviceResult) +
             '</div>' +
             '<div class="ts-confirm-actions">' +
               '<button type="button" class="ts-confirm-cancel">Huỷ</button>' +
@@ -748,6 +788,90 @@
         overlay.querySelector('.ts-confirm-ok').addEventListener('click', function () {
           overlay.remove();
           resolve(true);
+        });
+      });
+    }
+
+    // Chống chấm công hộ: web không đọc được ID phần cứng thật (không có API
+    // nào cho phép — cố ý bị chặn ở mọi trình duyệt vì lý do riêng tư), nên
+    // tự sinh 1 mã ngẫu nhiên đại diện cho "thiết bị này" và lưu bền trong
+    // localStorage của trình duyệt. Mỗi thành viên tự đăng ký tối đa
+    // MAX_MEMBER_DEVICES (2) mã như vậy (2 máy/điện thoại quen dùng) — 2 mã
+    // đầu tự đăng ký ngay không hỏi gì; từ mã thứ 3 trở đi (thiết bị lạ) chỉ
+    // CẢNH BÁO và hỏi xác nhận, KHÔNG chặn cứng (tài khoản đổi điện thoại/máy
+    // vẫn chấm công được, tránh tự khoá nhầm chính chủ). Nhược điểm đã báo
+    // trước: mã mất nếu xoá dữ liệu trình duyệt (Clear browsing data), và ai
+    // rành kỹ thuật vẫn có thể copy mã sang máy khác — đây là lớp cảnh báo
+    // phụ, không phải xác thực tuyệt đối.
+    var DEVICE_ID_KEY = 'hiconique_device_id';
+    function getOrCreateDeviceId() {
+      try {
+        var id = localStorage.getItem(DEVICE_ID_KEY);
+        if (!id) {
+          id = (crypto.randomUUID ? crypto.randomUUID() : ('dev_' + Date.now() + '_' + Math.random().toString(16).slice(2)));
+          localStorage.setItem(DEVICE_ID_KEY, id);
+        }
+        return id;
+      } catch (_err) {
+        return null; // localStorage bị chặn (chế độ ẩn danh khoá lưu trữ...) — bỏ qua kiểm tra
+      }
+    }
+
+    function shortDeviceId(id) {
+      return id ? id.slice(0, 8).toUpperCase() : '--';
+    }
+
+    var MAX_MEMBER_DEVICES_UI = 2;
+
+    // Điều kiện thứ 3 (cùng nhóm với GPS/Wifi) — { ok, skip, message } giống
+    // hệt format của checkGeoStatus()/checkIpStatus() nên dùng chung được với
+    // renderVerifyRow/showConfirmDialog và luật "tối thiểu 2/3 điều kiện" ở
+    // handler Check In. Đồng thời tự đăng ký thiết bị vào 1 trong 2 slot đầu
+    // nếu còn trống (silent, không tính là "fail") — chỉ tính fail khi thiết
+    // bị lạ VÀ đã đủ MAX_MEMBER_DEVICES_UI thiết bị quen dùng.
+    function checkDeviceStatus() {
+      var deviceId = getOrCreateDeviceId();
+      var userId = getUserId();
+      if (!deviceId || !userId || typeof TaskManager === 'undefined' || !TaskManager.registerMemberDevice) {
+        return { skip: true, ok: false, message: 'Đang tắt' };
+      }
+      var user = TaskManager.getCurrentUser ? TaskManager.getCurrentUser() : null;
+      var result = TaskManager.registerMemberDevice(userId, deviceId, user);
+      renderDeviceTable();
+      if (result.ok) return { skip: false, ok: true, message: 'Thiết bị quen dùng' };
+      return {
+        skip: false, ok: false,
+        message: result.full ? 'Thiết bị lạ (đã đủ ' + MAX_MEMBER_DEVICES_UI + ' thiết bị)' : 'Không xác định được thiết bị'
+      };
+    }
+
+    // Bảng nhỏ hiển thị các thiết bị đã đăng ký của chính người đang đăng
+    // nhập — cho họ tự gỡ 1 thiết bị cũ để nhường slot cho máy mới.
+    function renderDeviceTable() {
+      var wrap = document.getElementById('tsDeviceTable');
+      if (!wrap || typeof TaskManager === 'undefined' || !TaskManager.getMemberDeviceIds) return;
+      var userId = getUserId();
+      var myDeviceId = getOrCreateDeviceId();
+      var ids = TaskManager.getMemberDeviceIds(userId);
+      var rows = ids.map(function (id) {
+        var isThis = id === myDeviceId;
+        return '<div class="ts-device-row">' +
+          '<span class="ts-device-id">' + shortDeviceId(id) + (isThis ? ' <em>(thiết bị này)</em>' : '') + '</span>' +
+          '<button type="button" class="ts-device-remove" data-device-id="' + id + '">Gỡ</button>' +
+        '</div>';
+      }).join('');
+      for (var i = ids.length; i < MAX_MEMBER_DEVICES_UI; i++) {
+        rows += '<div class="ts-device-row ts-device-empty"><span class="ts-device-id">Còn trống</span></div>';
+      }
+      wrap.innerHTML =
+        '<div class="ts-device-title">Thiết bị chấm công đã đăng ký (tối đa ' + MAX_MEMBER_DEVICES_UI + ')</div>' +
+        rows;
+      wrap.querySelectorAll('.ts-device-remove').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          if (!confirm('Gỡ thiết bị này? Lần chấm công sau từ máy đó sẽ bị coi là thiết bị lạ.')) return;
+          var user = TaskManager.getCurrentUser ? TaskManager.getCurrentUser() : null;
+          TaskManager.removeMemberDevice(userId, btn.dataset.deviceId, user);
+          renderDeviceTable();
         });
       });
     }
@@ -847,16 +971,19 @@
       document.getElementById('tsAvgHours').textContent = totalDays > 0 ? (totalHours / totalDays).toFixed(1) + 'h' : '0h';
     }
 
-    function checkIn(geoResult, ipResult) {
+    function checkIn(geoResult, ipResult, deviceResult) {
       var now = new Date();
       var time = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
       var noteInput = document.getElementById('tsCheckinNote');
       geoResult = geoResult || { skip: true };
       ipResult = ipResult || { skip: true };
-      var checks = [geoResult, ipResult].filter(function (r) { return !r.skip; });
+      deviceResult = deviceResult || { skip: true };
+      var checks = [geoResult, ipResult, deviceResult].filter(function (r) { return !r.skip; });
       var passCount = checks.filter(function (r) { return r.ok; }).length;
+      var required = checks.length >= 2 ? 2 : checks.length;
       var verifyStatus = checks.length === 0 ? 'not_required'
-        : passCount === checks.length ? 'passed_all'
+        : passCount >= required && passCount === checks.length ? 'passed_all'
+        : passCount >= required ? 'passed_min_2of3'
         : passCount > 0 ? 'passed_partial_confirmed'
         : 'failed';
       var entry = {
@@ -873,8 +1000,10 @@
         checkinLng: geoResult.lng || '',
         checkinDistance: geoResult.distance || '',
         checkinIp: ipResult.ip || '',
+        checkinDeviceId: getOrCreateDeviceId() || '',
         geoPass: geoResult.skip ? '' : (geoResult.ok ? 'TRUE' : 'FALSE'),
         ipPass: ipResult.skip ? '' : (ipResult.ok ? 'TRUE' : 'FALSE'),
+        devicePass: deviceResult.skip ? '' : (deviceResult.ok ? 'TRUE' : 'FALSE'),
         verifyPassCount: checks.length === 0 ? '' : passCount + '/' + checks.length,
         verifyStatus: verifyStatus
       };
@@ -1030,9 +1159,19 @@
     // Init
     document.getElementById('tsCheckinBtn').addEventListener('click', function() {
       var record = getEntryByDate(getToday());
-      if (record && !record.checkoutTime) { checkOut(); return; }
+      var isCheckout = !!(record && !record.checkoutTime);
 
-      var btn = this;
+      if (isCheckout) {
+        var deviceResultOut = checkDeviceStatus();
+        renderVerifyRow('tsVerifyDeviceDot', 'tsVerifyDeviceState', deviceResultOut);
+        if (deviceResultOut.skip || deviceResultOut.ok) { checkOut(); return; }
+        showConfirmDialog({ skip: true }, { skip: true }, deviceResultOut).then(function (confirmed) {
+          if (confirmed) checkOut();
+        });
+        return;
+      }
+
+      var btn = document.getElementById('tsCheckinBtn');
       var originalText = btn.textContent;
       setGeoStatus(null);
       btn.disabled = true;
@@ -1040,26 +1179,31 @@
 
       Promise.all([checkGeoStatus(), checkIpStatus()]).then(function (results) {
         var geoResult = results[0], ipResult = results[1];
+        var deviceResult = checkDeviceStatus();
         renderVerifyRow('tsVerifyGeoDot', 'tsVerifyGeoState', geoResult);
         renderVerifyRow('tsVerifyIpDot', 'tsVerifyIpState', ipResult);
+        renderVerifyRow('tsVerifyDeviceDot', 'tsVerifyDeviceState', deviceResult);
         btn.disabled = false;
         btn.textContent = originalText;
 
-        // Bảo mật 2 lớp: chỉ tính các điều kiện đang BẬT. Không điều kiện nào bật
-        // -> cho qua luôn. Đủ cả các điều kiện đang bật -> cho qua luôn. Có ít
-        // nhất 1 điều kiện bật nhưng không đủ hết -> hỏi xác nhận thủ công.
-        var checks = [geoResult, ipResult].filter(function (r) { return !r.skip; });
-        if (checks.length === 0) { checkIn(geoResult, ipResult); return; }
+        // 3 điều kiện: GPS / Wifi công ty / Thiết bị đã đăng ký — chỉ tính
+        // điều kiện đang BẬT (GPS/Wifi có thể tắt qua GEO_RESTRICTION/
+        // IP_RESTRICTION, Thiết bị luôn bật). Cần đạt tối thiểu 2/3 (hoặc
+        // toàn bộ nếu chỉ có 1 điều kiện đang bật) mới cho qua thẳng; đạt
+        // đúng 1 thì hỏi xác nhận thủ công; 0 thì chặn.
+        var checks = [geoResult, ipResult, deviceResult].filter(function (r) { return !r.skip; });
+        if (checks.length === 0) { checkIn(geoResult, ipResult, deviceResult); return; }
 
         var passCount = checks.filter(function (r) { return r.ok; }).length;
-        if (passCount === checks.length) {
-          checkIn(geoResult, ipResult);
+        var required = checks.length >= 2 ? 2 : checks.length;
+        if (passCount >= required) {
+          checkIn(geoResult, ipResult, deviceResult);
         } else if (passCount > 0) {
-          showConfirmDialog(geoResult, ipResult).then(function (confirmed) {
-            if (confirmed) checkIn(geoResult, ipResult);
+          showConfirmDialog(geoResult, ipResult, deviceResult).then(function (confirmed) {
+            if (confirmed) checkIn(geoResult, ipResult, deviceResult);
           });
         } else {
-          setGeoStatus('Không thể chấm công: bạn không ở gần văn phòng và không dùng mạng Wifi công ty.', false);
+          setGeoStatus('Không thể chấm công: không đạt đủ điều kiện xác thực (GPS/Wifi/Thiết bị).', false);
         }
       });
     });
@@ -1082,6 +1226,7 @@
 
     renderCalendar();
     updateCheckinUI();
+    renderDeviceTable();
 
     if (typeof Auth !== 'undefined' && Auth.getCurrentUser && !Auth.getCurrentUser()) {
       Auth.showLoginModal();

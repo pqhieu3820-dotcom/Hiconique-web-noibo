@@ -654,7 +654,7 @@ var TaskManager = (function() {
   // các trường không nhạy cảm về quyền hạn (không cho đổi role/roleLevel/email
   // qua đường này). Chủ tài khoản luôn sửa được hồ sơ của chính mình; CEO/Manager
   // sửa được hồ sơ người khác.
-  var MEMBER_SELF_EDIT_FIELDS = ['dob', 'gender', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount', 'password'];
+  var MEMBER_SELF_EDIT_FIELDS = ['dob', 'gender', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount', 'password', 'deviceIds'];
   function updateMember(id, updates, user) {
     if (!user) return null;
     var isSelf = user.id === id;
@@ -666,6 +666,42 @@ var TaskManager = (function() {
     var updated = update(STORAGE_KEYS.members, id, safeUpdates);
     if (updated) syncToGSheets('members', 'update', safeUpdates, id);
     return updated;
+  }
+
+  // Chống chấm công hộ (kiểu 2) — mỗi thành viên tự "đăng ký" tối đa 2 thiết
+  // bị (deviceId sinh ngẫu nhiên, lưu ở localStorage của trình duyệt, xem
+  // getOrCreateDeviceId() trong timesheet.html — web không có cách nào đọc
+  // ID phần cứng thật). Lưu dạng chuỗi "id1,id2" trong 1 cột `deviceIds` của
+  // Members (cần tự thêm cột này vào Sheet mới đồng bộ được, xem
+  // GHI_CHU_DU_AN.md — code vẫn hoạt động cache-only nếu chưa có cột).
+  var MAX_MEMBER_DEVICES = 2;
+  function parseDeviceIds(member) {
+    return String((member && member.deviceIds) || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+  }
+
+  function getMemberDeviceIds(memberId) {
+    return parseDeviceIds(getMember(memberId));
+  }
+
+  // Trả về { ok, isNew, full }. full=true nghĩa là deviceId lạ nhưng đã đủ
+  // MAX_MEMBER_DEVICES thiết bị — caller (UI) tự quyết định cảnh báo/hỏi lại,
+  // hàm này không tự chặn.
+  function registerMemberDevice(memberId, deviceId, user) {
+    var member = getMember(memberId);
+    if (!member || !deviceId) return { ok: false, isNew: false, full: false };
+    var ids = parseDeviceIds(member);
+    if (ids.indexOf(deviceId) !== -1) return { ok: true, isNew: false, full: false };
+    if (ids.length >= MAX_MEMBER_DEVICES) return { ok: false, isNew: false, full: true };
+    ids.push(deviceId);
+    updateMember(memberId, { deviceIds: ids.join(',') }, user);
+    return { ok: true, isNew: true, full: false };
+  }
+
+  function removeMemberDevice(memberId, deviceId, user) {
+    var member = getMember(memberId);
+    if (!member) return null;
+    var ids = parseDeviceIds(member).filter(function (id) { return id !== deviceId; });
+    return updateMember(memberId, { deviceIds: ids.join(',') }, user);
   }
 
   // Duyệt/từ chối thành viên đăng ký mới: CEO hoặc Manager.
@@ -1205,6 +1241,9 @@ var TaskManager = (function() {
     getMembers: getMembers,
     getMember: getMember,
     updateMember: updateMember,
+    getMemberDeviceIds: getMemberDeviceIds,
+    registerMemberDevice: registerMemberDevice,
+    removeMemberDevice: removeMemberDevice,
     canManageMembers: canManageMembers,
     canTerminateMembers: canTerminateMembers,
     updateMemberStatus: updateMemberStatus,
