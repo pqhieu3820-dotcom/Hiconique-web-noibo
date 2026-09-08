@@ -92,9 +92,11 @@ Repo đã gắn Netlify — mỗi lần `git push` lên `master`, Netlify tự b
 Truy cập trang production yêu cầu qua cổng đăng nhập chung (`public/login.html` → POST
 `/login-submit`, xử lý bởi `netlify/edge-functions/cookie-auth.js`):
 
-- **Mật khẩu chung**: mặc định `Hiconique@2026`, đổi được không cần sửa code qua Netlify
-  **Site settings → Environment variables → `SITE_PASSWORD`** (redeploy hoặc chờ edge function
-  tự nạp lại biến môi trường mới).
+- **Mật khẩu chung**: tái dùng đúng biến môi trường **`AUTH_USERS`** đã có sẵn từ thời Basic Auth
+  cũ (định dạng `email:matkhau,email2:matkhau2,...` trong Netlify **Site settings → Environment
+  variables**) — vì `login.html` chỉ có 1 ô mật khẩu (không username) nên chấp nhận nếu khớp với
+  **bất kỳ** mật khẩu nào trong danh sách đó. Chưa từng set `AUTH_USERS` thì mặc định là
+  `Hiconique@2026`.
 - **Hẹn giờ tự huỷ (Tính năng A)**: cookie session luôn `Expires` vào đúng **1:00 sáng giờ VN
   (UTC+7) của ngày hôm sau** tính từ lúc đăng nhập — không phải "sau 24h" — nên tài khoản chung
   bắt buộc đăng nhập lại mỗi ngày làm việc mới.

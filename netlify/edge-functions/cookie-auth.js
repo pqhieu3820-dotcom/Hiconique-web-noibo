@@ -22,11 +22,23 @@ const BLOB_STORE = 'hiconique-auth';
 const BLOB_KEY = 'current-session';
 const VN_OFFSET_MS = 7 * 60 * 60 * 1000; // UTC+7, Việt Nam không có DST
 
-// Mật khẩu chung của cả hệ thống — có thể override bằng biến môi trường
-// SITE_PASSWORD trên Netlify (Site settings → Environment variables) nếu
-// cần đổi mà không phải sửa code / redeploy.
-function getPassword() {
-  return Netlify.env.get('SITE_PASSWORD') || 'Hiconique@2026';
+// Mật khẩu chung: tái dùng đúng biến môi trường AUTH_USERS đã có sẵn trên
+// Netlify từ thời Basic Auth cũ (định dạng "user:pass,user2:pass2,...") —
+// khỏi phải tạo biến mới trên dashboard. login.html chỉ có 1 ô mật khẩu
+// (không có username) nên chấp nhận nếu khớp với BẤT KỲ password nào có
+// trong danh sách đó. Nếu chưa từng set AUTH_USERS, fallback về đúng mật
+// khẩu mặc định "Hiconique@2026" như đặc tả ban đầu.
+function getValidPasswords() {
+  const raw = Netlify.env.get('AUTH_USERS');
+  if (!raw) return ['Hiconique@2026'];
+  const passwords = raw
+    .split(',')
+    .map((pair) => {
+      const idx = pair.indexOf(':');
+      return idx === -1 ? pair.trim() : pair.slice(idx + 1).trim();
+    })
+    .filter(Boolean);
+  return passwords.length ? passwords : ['Hiconique@2026'];
 }
 
 // Đường dẫn không cần đăng nhập mới xem được — login.html tự chứa toàn bộ
@@ -90,7 +102,7 @@ export default async (request, context) => {
       password = '';
     }
 
-    if (password !== getPassword()) {
+    if (!getValidPasswords().includes(password)) {
       return Response.redirect(new URL('/login.html?error=1', url), 303);
     }
 

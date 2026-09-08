@@ -11,8 +11,12 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   **`netlify/edge-functions/cookie-auth.js`** — vẫn chặn toàn bộ `/*` qua `netlify.toml` như cũ,
   nhưng giờ dùng 1 trang đăng nhập riêng (`public/login.html`, tự chứa CSS, POST tới
   `/login-submit`) + cookie `hiconique_session` thay vì popup Basic Auth của trình duyệt.
-- **Mật khẩu chung**: hằng số `Hiconique@2026` trong code, override được qua biến môi trường
-  Netlify `SITE_PASSWORD` (không có sẵn ở local, phải set trên Netlify dashboard nếu muốn đổi).
+- **Mật khẩu chung**: tái dùng đúng biến `AUTH_USERS` đã có sẵn trên Netlify từ thời Basic Auth cũ
+  (`email:matkhau,...`) — chỉ lấy phần password sau `:` của mỗi cặp, chấp nhận nếu khớp bất kỳ
+  password nào trong danh sách (login.html chỉ có 1 ô mật khẩu, không username). Chưa set
+  `AUTH_USERS` thì fallback `Hiconique@2026`. **Quyết định đổi từ `SITE_PASSWORD` (ý tưởng ban đầu)
+  sang tái dùng `AUTH_USERS`**: theo yêu cầu trực tiếp của người dùng, để không phải tạo thêm biến
+  môi trường mới trên Netlify dashboard.
 - **Tính năng A — hẹn giờ tự huỷ**: cookie `Expires` = đúng 1h sáng giờ VN (UTC+7) của **ngày hôm
   sau** tính từ lúc đăng nhập (không phải "+24h") — cách tính: dịch `Date.now()` +7h, đọc các
   trường UTC (lúc này chính là ngày/giờ VN thật), dựng mốc "ngày+1, 01:00" trong hệ dịch đó, rồi
