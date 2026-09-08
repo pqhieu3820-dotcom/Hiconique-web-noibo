@@ -762,19 +762,24 @@
     flex-direction: column;
   }
 
+  /* Show the actual project content first — the sidebar (nav/filters/
+     member list) can be long and would otherwise push everything else
+     below the fold on a phone. */
+  .projects-content {
+    order: 1;
+    flex: none;
+    overflow-x: visible;
+    width: 100%;
+  }
+
   .projects-sidebar {
+    order: 2;
     width: 100%;
     height: auto;
     position: relative;
     top: 0;
     border-right: none;
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .projects-content {
-    flex: none;
-    overflow-x: visible;
-    width: 100%;
+    border-top: 1px solid var(--color-border);
   }
 
   .kanban-board {
@@ -787,6 +792,38 @@
 
   .form-row {
     grid-template-columns: 1fr;
+  }
+
+  .content-header {
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+  }
+  .view-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .pd-stats {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-sm);
+  }
+  .pd-stat {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+  .pd-stat-icon {
+    width: 36px;
+    height: 36px;
+  }
+  .pd-stat-icon svg { width: 18px; height: 18px; }
+  .pd-stat-value {
+    font-size: 1.375rem;
+  }
+  .pd-stat-label {
+    font-size: 0.625rem;
   }
 }
 

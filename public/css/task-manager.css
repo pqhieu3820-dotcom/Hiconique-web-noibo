@@ -628,6 +628,7 @@
 
 .task-content {
   flex: 1;
+  min-width: 0;
 }
 
 .task-content h4 {
@@ -635,11 +636,17 @@
   font-weight: 500;
   color: var(--color-text);
   margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .task-content p {
   font-size: 0.75rem;
   color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .task-priority-badge {
@@ -713,22 +720,30 @@
 
 .member-info {
   flex: 1;
+  min-width: 0;
 }
 
 .member-info h4 {
   font-size: 0.9375rem;
   font-weight: 600;
   color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .member-info p {
   font-size: 0.75rem;
   color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .member-progress {
   text-align: right;
   min-width: 100px;
+  flex-shrink: 0;
 }
 
 .member-progress span {
@@ -1562,6 +1577,10 @@
 @media (max-width: 768px) {
   .tm-main {
     grid-template-columns: 1fr;
+    min-width: 0;
+  }
+  .tm-main > * {
+    min-width: 0;
   }
   .stats-grid {
     grid-template-columns: 1fr;
@@ -1602,6 +1621,29 @@
   .search-box-tm {
     order: 1;
     width: 100%;
+  }
+
+  /* Task/member rows: on very narrow phones the right-side metadata
+     (progress %, priority badge) competes with the truncated title —
+     shrink it instead of letting it force a horizontal overflow. */
+  .member-progress {
+    min-width: 64px;
+  }
+  .member-progress span {
+    white-space: nowrap;
+  }
+  .task-priority-badge {
+    flex-shrink: 0;
+  }
+
+  .filter-tabs {
+    justify-content: flex-start;
+    gap: var(--space-xs);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .filter-tab {
+    flex-shrink: 0;
   }
 }
 

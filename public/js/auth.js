@@ -501,8 +501,9 @@ const Auth = (function() {
     }
     var avatar = getInitials(name);
 
-    // Generate member ID: MEM.<Initials>.<DDMMYY ngày sinh> — stable and readable
-    // regardless of how many members join later, unlike a sequential counter.
+    // Generate member ID: <PREFIX>_<Initials>_<DDMMYY ngày sinh> — stable and
+    // readable regardless of how many members join later, unlike a sequential
+    // counter. Prefix depends on cấp bậc (CEO_/QL_/NV_) so IDs aren't all "MEM_".
     // Falls back to today's date if DOB wasn't provided, and appends -2/-3/... on collision.
     function formatDDMMYY(dateStr) {
       var d = dateStr ? new Date(dateStr) : new Date();
@@ -512,7 +513,9 @@ const Auth = (function() {
       var yy = String(d.getFullYear()).slice(-2);
       return dd + mm + yy;
     }
-    var baseId = 'MEM.' + avatar + '.' + formatDDMMYY(dob);
+    var ID_PREFIX_BY_ROLE_LEVEL = { admin: 'CEO', manager: 'QL', member: 'NV' };
+    var idPrefix = ID_PREFIX_BY_ROLE_LEVEL['member'] || 'NV'; // register() always creates a 'member'
+    var baseId = idPrefix + '_' + avatar + '_' + formatDDMMYY(dob);
     var id = baseId;
     var idSuffix = 2;
     while (members.some(function(m) { return m.id === id; })) {

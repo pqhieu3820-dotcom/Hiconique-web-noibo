@@ -4,7 +4,7 @@ File này tồn tại để không phải hỏi lại các thông tin dưới đ
 chat mới với Claude. Đây là nguồn tham chiếu chính (source of truth) cho các liên kết và quy
 tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
-## 0. Trạng thái hiện tại (cập nhật lần cuối: 2026-09-08, giữa buổi — phiên máy mới)
+## 0. Trạng thái hiện tại (cập nhật lần cuối: 2026-09-08, cuối buổi — SẮP CHUYỂN MÁY, đọc kỹ mục này)
 
 **Kiến trúc tóm tắt:** Web tĩnh (HTML/CSS/JS thuần, không framework) trong `public/`, chạy local
 qua Node/Express (`server.js`), deploy Netlify cho production. Dữ liệu sống trên 1 Google Sheet
@@ -80,20 +80,87 @@ của Member đang đăng nhập, kiểm tra phía client (không có bảo mậ
    - Đã test full luồng bằng 2 tài khoản test tạo tạm trên Sheet thật rồi xoá sạch sau khi xong
      (không còn sót lại trên Sheet).
 4. Đã commit 2 việc trên (2 commit local riêng, chưa push — theo đúng quy tắc chờ xác nhận).
-5. **Chưa làm** trong phiên này: đổi tên sheet/tiêu đề cột sang tiếng Việt (mục 4 dưới) — người
-   dùng sẽ tự đổi tay cho nhanh rồi gửi ảnh lại để tôi cập nhật code + Apps Script theo tên mới,
-   KHÔNG tự ý đổi tên cột/sheet trước khi có ảnh xác nhận; cải thiện UI mobile cho Task Manager và
-   Dự án — chưa bắt đầu.
 
-**Việc CHƯA làm / có thể cần làm tiếp theo:**
-- **Đổi tên sheet + tên cột sang tiếng Việt**: người dùng sẽ tự đổi tay trên Google Sheet (nhanh
-  hơn để tôi mò UI), sau đó gửi ảnh chụp tên mới → tôi cập nhật `gsheets-api-v2.js` (thêm lớp ánh
-  xạ tên-cột-tiếng-Việt ↔ key-tiếng-Anh nội bộ để không phải sửa lại toàn bộ `.name`/`.email`...
-  trong code client) + redeploy Apps Script (Phiên bản mới, không tạo deployment mới). Nội dung dữ
-  liệu giữ nguyên, chỉ đổi tên hiển thị.
-- **Cải thiện UI mobile cho Task Manager (`tasks-manager.html`) và Dự án (`projects.html`, kể cả
-  tab Gantt)** — nội dung giữ nguyên, chỉ chỉnh layout/mật độ thông tin cho gọn trên điện thoại;
-  được uỷ quyền tự quyết định cách làm đẹp/hợp lý, chưa bắt đầu nghiên cứu.
+**Việc đã làm SAU đó trong CÙNG phiên này (quan trọng nhất, đọc kỹ trước khi làm tiếp):**
+
+5. Cải thiện UI mobile cho **Task Manager** và **Dự án**: sửa lỗi tràn ngang trang trên điện thoại
+   (`.tm-sidebar`/`.tm-nav` không co lại đúng do thiếu `min-width:0` trong CSS grid — đã thêm ở
+   `public/css/task-manager.css`), sửa `.content-header` (Board/List/Timeline/Gantt tabs) bị vỡ ở
+   `public/css/projects.css`, đóng băng cột "Công việc" (task-name) trong bảng Gantt khi cuộn
+   ngang trên mobile (`public/css/gantt.css`, dùng `position:sticky; left:0`), thu nhỏ `.pd-stats`
+   (4 thẻ số liệu) ở màn hình rất hẹp. Đã test trực tiếp bằng preview mobile viewport — OK.
+6. Sửa UI trang Chấm công (`timesheet.html`) theo phản hồi trực tiếp: phân biệt rõ 3 loại lỗi định
+   vị GPS (đã làm ở mục 1 trên) + bố cục lại khối trạng thái GPS/Wifi cho gọn hơn.
+7. **VIỆC LỚN NHẤT: đổi toàn bộ tên sheet + tên cột Google Sheet sang tiếng Việt (11/11 sheet)
+   — người dùng đã tự đổi tay xong, tôi đã cập nhật code để khớp:**
+   - Người dùng tự đổi tên 11 tab + toàn bộ header trên Google Sheet sang tiếng Việt (vd:
+     `Members`→`Thành viên`, cột `id`→`Mã NV`, v.v. — xem đầy đủ trong `SETUP_HUONG_DAN.md` hoặc
+     trực tiếp trên Sheet). Việc này ban đầu làm **hỏng toàn bộ web** vì `gsheets-api-v2.js` cũ đọc
+     dữ liệu theo tên cột thật trên Sheet (đúng tên tiếng Anh cũ) — đổi tên cột làm code không tìm
+     thấy field nữa (VD: tên công việc hiển thị trống khắp nơi).
+   - **Đã viết lại hoàn toàn `gsheets-api-v2.js`**: thêm `FIELD_MAP` (bảng ánh xạ [tên cột tiếng
+     Việt trên Sheet, key tiếng Anh nội bộ] cho từng sheet) + `SHEETS` object đổi hết sang tên tab
+     tiếng Việt. `getAllData()`/`addData()`/`updateData()`/`onEdit` cascade đều đi qua
+     `viToEnHeader()`/`enToViHeader()` để dịch 2 chiều — client code (`.name`, `.status`,
+     `.assigneeId`...) **không cần sửa gì**, vẫn hoạt động y hệt như cũ.
+   - Phát hiện + sửa thêm 1 bug ăn theo: header thật trên Sheet có **khoảng trắng thừa** ở đầu (do
+     gõ tay/paste) làm sai khớp `FIELD_MAP` → đã thêm `.trim()` khi đọc header trong `getHeaders()`.
+   - Phát hiện dropdown "Trạng thái" (cột status) trên sheet Thành viên đã bị đổi giá trị hiển thị
+     sang tiếng Việt ("Còn làm việc" thay vì `active`) — **giá trị Ô, không chỉ tên cột** — nên
+     thêm thêm 1 tầng `VALUE_MAP` riêng (`viToEnValue`/`enToViValue`) chỉ áp dụng cho
+     `members.status` (map 4 giá trị: Còn làm việc/Chờ duyệt/Từ chối/Ngưng công tác ↔
+     active/pending/rejected/inactive).
+   - Người dùng sau đó tự đổi **"Cấp bậc" (admin) → "CEO"** trực tiếp trong dropdown (đổi tên item
+     trong Quy tắc xác thực dữ liệu, KHÔNG phải đổi header) — đây là field **phân quyền cực kỳ quan
+     trọng** (`Auth.isAdmin()`, `PERMISSIONS` matrix... đều so sánh `roleLevel === 'admin'` y hệt
+     chuỗi). Đã thêm `VALUE_MAP['members.roleLevel'] = [['CEO','admin']]` để Sheet hiển thị "CEO"
+     nhưng code vẫn nhận đúng `admin` — nếu không làm việc này, CEO sẽ mất hết quyền admin ngay khi
+     đổi dropdown.
+   - **Đã redeploy Apps Script 4 lần trong phiên này** (Phiên bản 14→17, cùng 1 deployment, URL
+     Web App KHÔNG đổi) — lần 1 (v14) thiếu lỗi trim(), lần 2 (v15) sửa trim() bằng find&replace
+     trực tiếp trên trình soạn thảo Apps Script (thành công), lần 3 (v16) định thêm
+     `VALUE_MAP.roleLevel` bằng cách dán đè toàn bộ file nhưng **paste bị lỗi/thiếu** (không rõ
+     nguyên nhân, có thể do sao chép nhầm nội dung cũ vào clipboard) — phát hiện qua việc gọi thử
+     API thấy `roleLevel` trả về "CEO" thay vì "admin". **Bài học: sau khi dán đè + lưu + deploy,
+     LUÔN xác nhận lại bằng cách gọi thử API thật (`fetch(API_URL + '?action=getMembers')`) chứ
+     không chỉ tin vào việc "đã paste xong, số dòng khớp"** — số dòng khớp không đảm bảo nội dung
+     đúng nếu clipboard bị sai. Lần 4 (v17) dán lại đúng, đã xác nhận qua API: `roleLevel` trả về
+     đúng `admin`/`manager`/`member`, `id` đúng, `status` đúng.
+   - **Đổi toàn bộ Mã thành viên (ID) từ dấu chấm `.` sang gạch dưới `_`, VÀ đổi tiền tố theo cấp
+     bậc thay vì đồng loạt `MEM.`** (theo yêu cầu trực tiếp — người dùng thấy mã ai cũng bắt đầu
+     `MEM.` nên tưởng nhầm bị lỗi): CEO → `CEO_`, Quản lý (manager) → `QL_` (đã thử đổi thành
+     `MNG_` theo gợi ý ban đầu rồi người dùng đổi ý bảo giữ `QL_` — đã trả lại đúng `QL_`), Nhân
+     viên (member) → `NV_`. 5 mã thật đã đổi thành: `CEO_QH_030800` (Phạm Quang Hiếu),
+     `QL_NH_200592` (Nguyễn Hiếu), `QL_TM_100888` (Trần Mạnh), `NV_GP_250395` (Giản Phương),
+     `NV_LT_081193` (Lê Thành). Đã sửa tay từng ô trên Sheet (không dùng script hàng loạt, để tận
+     dụng cơ chế `onEdit` có sẵn) — **`onEdit` đã tự cascade đúng sang mọi sheet tham chiếu**
+     (Công việc, Chấm công, Đề xuất, Dự án) — đã xác nhận qua API, tất cả đúng.
+   - Đã cập nhật `public/js/auth.js` (`register()`): đổi format ID mới tạo từ `MEM.<initials>.<dob>`
+     sang `NV_<initials>_<dob>` (đăng ký mới luôn là `member`/nhân viên nên luôn ra tiền tố `NV_`),
+     có sẵn bảng `ID_PREFIX_BY_ROLE_LEVEL` (`admin:'CEO', manager:'QL', member:'NV'`) để dùng lại
+     nếu sau này có chỗ tạo ID cho role khác.
+8. **CÒN SÓT LẠI CHƯA LÀM XONG (làm tiếp ở phiên sau):**
+   - **Chưa xoá 3 sheet tiếng Anh dư thừa** (`CommissionRates`, `Commissions`, `Payslips`) — đây là
+     3 sheet cũ bị `getOrCreateSheet()` tự tạo lại (từ trước khi đổi tên tiếng Việt, code cũ tìm
+     sheet theo tên Anh không thấy nên tự tạo mới). Code hiện tại đã trỏ đúng sang sheet tiếng Việt
+     (`Phiếu lương`, `Hoa hồng dự án`, `Mức hoa hồng`) nên 3 sheet Anh này **an toàn để xoá** (chỉ
+     cần xác nhận trống/không có dữ liệu quan trọng trước khi xoá — nhìn sơ bộ lúc nãy có vẻ trống
+     hoặc chỉ có dữ liệu cũ). Xoá bằng cách click chuột phải vào tên tab ở cuối màn hình Google
+     Sheet → Xoá. Lưu ý: bấm theo toạ độ pixel vào thanh tab sheet **rất hay trật** trong phiên này
+     (client toạ độ bị lệch khi chụp màn hình không đồng bộ) — nên dùng `read_page`/`find` lấy đúng
+     `ref` của tab rồi bấm qua ref, tương tự cách đã làm ổn với menu Apps Script.
+   - Có vài mã thành viên lạ `"A7"` xuất hiện rải rác trong Tasks/Projects (assigneeId, members
+     list...) — đây là dữ liệu lỗi **có từ trước phiên này** (không phải do các thao tác đổi ID vừa
+     rồi gây ra), chưa rõ nguồn gốc, chưa xử lý — có thể cần hỏi người dùng xem "A7" là ai/lỗi gõ
+     nhầm từ khi nào.
+   - Chưa làm phần data-validation dropdown cho các cột khác theo yêu cầu "bổ sung trình duyệt ấn
+     thả... cố định những dữ liệu fix" (người dùng muốn thêm dropdown màu như cột Cấp bậc/Giới tính
+     cho các cột enum khác) — mới dừng ở bước xem cột Cấp bậc, chưa mở rộng sang cột khác.
+   - Chưa bắt đầu: cải thiện thêm UI mobile ngoài phần đã làm ở mục 5 (nếu người dùng phản hồi cần
+     thêm), gộp 2 hệ thống quản lý dự án trùng lặp (xem mục cũ bên dưới).
+
+**Trước khi làm tiếp phiên sau, đọc `SETUP_HUONG_DAN.md` mục "Cấu trúc Spreadsheet" đã lỗi thời
+(vẫn ghi tên cột tiếng Anh) — cần cập nhật lại theo tên tiếng Việt mới, chưa làm.**
 - Bài học thao tác Google Sheets qua trình duyệt tự động: click theo toạ độ pixel trên context
   menu của Sheets **rất dễ trật** (menu re-render lệch vài px giữa các lần chụp màn hình) — cách
   an toàn nhất đã kiểm chứng: dùng `find` (tìm theo text) để lấy đúng `ref` của menu item rồi click

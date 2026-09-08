@@ -1,38 +1,154 @@
 const SPREADSHEET_ID = '1usLh4pt5F7r1XY-SLbWPfajYuZ5mDNGaaa4neYG84nY';
 
+// Tab names on the live Sheet are Vietnamese (renamed by hand). Code below
+// always reads/writes through FIELD_MAP so client JS keeps using English
+// keys (m.title, m.status...) no matter what the Sheet's header text says.
 const SHEETS = {
-  projects: 'Projects',
-  tasks: 'Tasks',
-  members: 'Members',
-  proposals: 'Proposals',
-  timesheet: 'Timesheet',
-  notifications: 'Notifications',
-  notices: 'Notices',
-  documents: 'Documents',
-  payslips: 'Payslips',
-  commissions: 'Commissions',
-  commissionRates: 'CommissionRates'
+  projects: 'Dự án',
+  tasks: 'Công việc',
+  members: 'Thành viên',
+  proposals: 'Đề xuất',
+  timesheet: 'Chấm công',
+  notifications: 'Thông báo',
+  notices: 'Bàng tin',
+  documents: 'Tài liệu',
+  payslips: 'Phiếu lương',
+  commissions: 'Hoa hồng dự án',
+  commissionRates: 'Mức hoa hồng'
 };
 
-// Reference schema only — used to seed headers on a brand-new empty sheet.
-// Reads/writes always follow the sheet's ACTUAL header row (see getHeaders),
-// so adding/reordering columns directly in Sheets never breaks sync.
-const HEADERS = {
-  projects: ['id', 'name', 'type', 'color', 'progress', 'status', 'members', 'createdAt', 'updatedAt', 'budget', 'client', 'investor', 'location', 'startDate', 'endDate', 'priority', 'description'],
-  tasks: ['id', 'title', 'description', 'projectId', 'assigneeId', 'priority', 'status', 'startDate', 'deadline', 'createdBy', 'createdAt', 'updatedAt', 'progress', 'dailyTasks'],
-  members: ['id', 'name', 'role', 'roleLevel', 'email', 'password', 'dob', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount', 'color', 'avatar', 'createdAt', 'gender', 'baseSalary'],
-  proposals: ['id', 'title', 'description', 'type', 'status', 'requesterId', 'reviewerId', 'amount', 'createdAt', 'reviewedAt'],
-  timesheet: ['id', 'memberId', 'date', 'checkinTime', 'checkoutTime', 'totalHours', 'overtimeHours', 'status', 'note', 'checkinLat', 'checkinLng', 'checkinDistance', 'checkinIp', 'geoPass', 'ipPass', 'verifyPassCount', 'verifyStatus'],
-  notifications: ['id', 'title', 'message', 'type', 'scope', 'recurring', 'recurRule', 'active', 'createdBy', 'createdAt', 'updatedAt'],
-  notices: ['id', 'title', 'message', 'color', 'createdBy', 'createdAt', 'updatedAt'],
-  documents: ['id', 'category', 'name', 'url', 'createdBy', 'createdAt', 'updatedAt'],
-  // Phiếu lương tháng — nhân viên tự tạo, CEO/quản lý duyệt.
-  payslips: ['id', 'memberId', 'month', 'workDays', 'totalHours', 'otHoursAuto', 'otHoursManual', 'otHours', 'otRate', 'otAmount', 'baseSalary', 'commissionAmount', 'otherBonus', 'otherBonusNote', 'deduction', 'deductionNote', 'totalAmount', 'status', 'note', 'createdBy', 'createdAt', 'updatedAt', 'reviewedAt', 'reviewerId'],
-  // Hoa hồng dự án theo từng thành viên (tính từ % x giá trị dự án).
-  commissions: ['id', 'projectId', 'memberId', 'projectValue', 'percent', 'amount', 'month', 'note', 'createdBy', 'createdAt', 'updatedAt'],
-  // % hoa hồng mặc định theo vai trò (admin/manager/member) — dùng để gợi ý khi tạo hoa hồng dự án.
-  commissionRates: ['id', 'roleLevel', 'percent', 'updatedAt']
+// [Vietnamese header on the Sheet, internal English key used by client JS].
+// Order here is just the seed order for a brand-new empty sheet — reads/
+// writes always follow whatever's ACTUALLY on the Sheet's header row (see
+// getHeaders), matched against this table by the Vietnamese text. A column
+// added by hand that isn't in this list still round-trips fine — it just
+// keeps its Vietnamese name as the object key instead of getting an English
+// alias, so existing client code (which never looks for it) is unaffected.
+const FIELD_MAP = {
+  members: [
+    ['Mã NV', 'id'], ['Họ tên', 'name'], ['Chức vụ', 'role'], ['Cấp bậc', 'roleLevel'],
+    ['Giới tính', 'gender'], ['Mail', 'email'], ['Mật khẩu', 'password'], ['Ngày sinh', 'dob'],
+    ['SĐT', 'phone'], ['CCCD', 'cccd'], ['Quê quán', 'hometown'], ['Số tài khoản ngân hàng', 'bankAccount'],
+    ['Ngân hàng thụ hưởng', 'bank'], ['Màu sắc đại diện', 'color'], ['Tên viết tắt đại diện', 'avatar'],
+    ['Làm việc từ', 'createdAt'], ['Lương cơ bản', 'baseSalary'], ['Trạng thái', 'status']
+  ],
+  projects: [
+    ['Mã DA', 'id'], ['Tên dự án', 'name'], ['Loại dự án', 'type'], ['Tiến độ', 'progress'],
+    ['Trạng thái', 'status'], ['Thành viên tham gia', 'members'], ['Màu sắc đại diện', 'color'],
+    ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt'], ['Ngân sách', 'budget'],
+    ['Khách hàng', 'client'], ['Nhà đầu tư', 'investor'], ['Địa điểm', 'location'],
+    ['Ngày bắt đầu', 'startDate'], ['Ngày kết thúc', 'endDate'], ['Mức độ ưu tiên', 'priority'],
+    ['Mô tả', 'description']
+  ],
+  tasks: [
+    ['Mã CV', 'id'], ['Tên công việc', 'title'], ['Mô tả', 'description'], ['Mã dự án', 'projectId'],
+    ['Mã người phụ trách', 'assigneeId'], ['Mức độ ưu tiên', 'priority'], ['Trạng thái', 'status'],
+    ['Ngày bắt đầu', 'startDate'], ['Ngày tới hạn deadline', 'deadline'], ['Người tạo', 'createdBy'],
+    ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt'], ['Tiến độ', 'progress'],
+    ['Update tiến độ việc hàng ngày', 'dailyTasks']
+  ],
+  proposals: [
+    ['Mã ĐX', 'id'], ['Tiêu đề', 'title'], ['Nội dung', 'description'], ['Loại đề xuất', 'type'],
+    ['Trạng thái', 'status'], ['Người đề xuất', 'requesterId'], ['Người phê duyệt', 'reviewerId'],
+    ['Số tiền', 'amount'], ['Ngày tạo', 'createdAt'], ['Ngày duyệt', 'reviewedAt']
+  ],
+  timesheet: [
+    ['Mã CC', 'id'], ['Mã thành viên', 'memberId'], ['Ngày', 'date'], ['Giờ checkin', 'checkinTime'],
+    ['Giờ checkout', 'checkoutTime'], ['Tổng số giờ làm việc', 'totalHours'], ['Số giờ tăng ca', 'overtimeHours'],
+    ['Trạng thái', 'status'], ['Ghi chú', 'note'], ['Vĩ độ checkin', 'checkinLat'], ['Kinh độ checkin', 'checkinLng'],
+    ['Khoảng cách checkin', 'checkinDistance'], ['IP Checkin', 'checkinIp'], ['Trạng thái đạt vị trí', 'geoPass'],
+    ['Trạng thái đạt IP', 'ipPass'], ['Số điều kiện đạt', 'verifyPassCount'], ['Trạng thái xác thực', 'verifyStatus']
+  ],
+  notifications: [
+    ['Mã TB', 'id'], ['Tiêu đề', 'title'], ['Nội dung', 'message'], ['Loại', 'type'], ['Phạm vi', 'scope'],
+    ['Định kỳ', 'recurring'], ['Quy tắc lặp', 'recurRule'], ['Trạng thái bật tắt', 'active'],
+    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
+  ],
+  notices: [
+    ['Mã TB', 'id'], ['Tiêu đề', 'title'], ['Nội dung', 'message'], ['Màu sắc', 'color'],
+    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
+  ],
+  documents: [
+    ['Mã TL', 'id'], ['Danh mục', 'category'], ['Tên tài liệu', 'name'], ['Đường liên kết', 'url'],
+    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
+  ],
+  payslips: [
+    ['Mã PL', 'id'], ['Mã thành viên', 'memberId'], ['Tháng', 'month'], ['Ngày công', 'workDays'],
+    ['Tổng số giờ', 'totalHours'], ['Giờ OT tự tính', 'otHoursAuto'], ['Giờ OT nhập tay', 'otHoursManual'],
+    ['Tổng giờ OT', 'otHours'], ['Hệ số giờ OT', 'otRate'], ['Tiền OT', 'otAmount'], ['Lương cơ bản', 'baseSalary'],
+    ['Tiền hoa hồng', 'commissionAmount'], ['Thưởng khác', 'otherBonus'], ['Ghi chú thưởng', 'otherBonusNote'],
+    ['Khấu trừ', 'deduction'], ['Ghi chú khấu trừ', 'deductionNote'], ['Thực lãnh', 'totalAmount'],
+    ['Trạng thái', 'status'], ['Ghi chú', 'note'], ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'],
+    ['Ngày cập nhật', 'updatedAt'], ['Ngày duyệt', 'reviewedAt'], ['Mã người duyệt', 'reviewerId']
+  ],
+  commissions: [
+    ['Mã dòng', 'id'], ['Dự án', 'projectId'], ['Mã thành viên', 'memberId'], ['Giá trị dự án', 'projectValue'],
+    ['Phần trăm', 'percent'], ['Số tiền', 'amount'], ['Tháng', 'month'], ['Ghi chú', 'note'],
+    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
+  ],
+  commissionRates: [
+    ['Mã dòng', 'id'], ['Cấp bậc', 'roleLevel'], ['Phần trăm', 'percent'], ['Ngày cập nhật', 'updatedAt']
+  ]
 };
+
+// Field-level VALUE translation — only needed where the cell's actual
+// content (not just its header) was changed to Vietnamese, e.g. a data-
+// validation dropdown built with Vietnamese options. Add more [sheetKey,
+// englishFieldKey] entries here if more dropdowns get "Việt hoá" later.
+const VALUE_MAP = {
+  'members.status': [
+    ['Còn làm việc', 'active'],
+    ['Chờ duyệt', 'pending'],
+    ['Từ chối', 'rejected'],
+    ['Ngưng công tác', 'inactive']
+  ],
+  // roleLevel gates permissions everywhere in the client (isAdmin(), PERMISSIONS
+  // matrix...) via the literal string 'admin' — only the Sheet's display value
+  // changed to "CEO", the internal key must stay 'admin' or the CEO silently
+  // loses every admin-only feature.
+  'members.roleLevel': [
+    ['CEO', 'admin']
+  ]
+};
+
+function sheetKeyFor(sheetName) {
+  return Object.keys(SHEETS).filter(function (k) { return SHEETS[k] === sheetName; })[0];
+}
+
+// Vietnamese header text (as it literally appears on the Sheet) -> English key.
+// Unknown/custom header: returned as-is, so manually-added columns still work.
+function viToEnHeader(sheetName, viHeader) {
+  const key = sheetKeyFor(sheetName);
+  const map = key && FIELD_MAP[key];
+  if (!map) return viHeader;
+  const hit = map.filter(function (p) { return p[0] === viHeader; })[0];
+  return hit ? hit[1] : viHeader;
+}
+
+// English key -> Vietnamese header text to write against. Unknown key: as-is.
+function enToViHeader(sheetName, enKey) {
+  const key = sheetKeyFor(sheetName);
+  const map = key && FIELD_MAP[key];
+  if (!map) return enKey;
+  const hit = map.filter(function (p) { return p[1] === enKey; })[0];
+  return hit ? hit[0] : enKey;
+}
+
+function viToEnValue(sheetName, enKey, val) {
+  const key = sheetKeyFor(sheetName);
+  const pairs = key && VALUE_MAP[key + '.' + enKey];
+  if (!pairs) return val;
+  const hit = pairs.filter(function (p) { return p[0] === val; })[0];
+  return hit ? hit[1] : val;
+}
+
+function enToViValue(sheetName, enKey, val) {
+  const key = sheetKeyFor(sheetName);
+  const pairs = key && VALUE_MAP[key + '.' + enKey];
+  if (!pairs) return val;
+  const hit = pairs.filter(function (p) { return p[1] === val; })[0];
+  return hit ? hit[0] : val;
+}
 
 function doGet(e) { return handleRequest(e); }
 function doPost(e) { return handleRequest(e); }
@@ -153,13 +269,19 @@ function handleRequest(e) {
 }
 
 // Real header row of the sheet — the single source of truth for column order/name.
+// Trimmed because manually-typed/pasted headers can carry stray leading/trailing
+// whitespace that would otherwise silently break the VN header -> EN key match.
 function getHeaders(sheet) {
   if (sheet.getLastColumn() === 0) return [];
-  return sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  return sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(function (h) {
+    return typeof h === 'string' ? h.trim() : h;
+  });
 }
 
-// Auto-creates the tab if it doesn't exist yet (e.g. Payslips/Commissions on
-// first use) — addData then seeds its header row from HEADERS below.
+// Auto-creates the tab if it doesn't exist yet — addData then seeds its
+// header row (in Vietnamese) from FIELD_MAP below. In practice all 11 tabs
+// already exist under their Vietnamese names, so this only fires for a
+// genuinely new sheet type.
 function getOrCreateSheet(ss, sheetName) {
   return ss.getSheetByName(sheetName) || ss.insertSheet(sheetName);
 }
@@ -173,12 +295,12 @@ function getAllData(ss, sheetName) {
   return data.map(function (row) {
     const obj = {};
     headers.forEach(function (h, i) {
+      const key = viToEnHeader(sheetName, h);
       let val = row[i];
       if (typeof val === 'string' && val.startsWith('[')) {
-        try { obj[h] = JSON.parse(val); } catch (e) { obj[h] = val; }
-      } else {
-        obj[h] = val;
+        try { val = JSON.parse(val); } catch (e) { /* keep raw string */ }
       }
+      obj[key] = typeof val === 'string' ? viToEnValue(sheetName, key, val) : val;
     });
     return obj;
   });
@@ -209,19 +331,23 @@ function forceTextIfDateLike(val) {
 function addData(ss, sheetName, data) {
   const sheet = getOrCreateSheet(ss, sheetName);
   let headers = getHeaders(sheet);
-  // Brand-new empty sheet with no header row yet: seed it from the reference schema.
+  // Brand-new empty sheet with no header row yet: seed it (in Vietnamese) from FIELD_MAP.
   if (headers.length === 0) {
-    const schemaKey = Object.keys(HEADERS).filter(function (k) { return k.toLowerCase() === sheetName.toLowerCase(); })[0];
-    headers = (schemaKey && HEADERS[schemaKey]) || Object.keys(data);
+    const schemaKey = sheetKeyFor(sheetName);
+    const pairs = schemaKey && FIELD_MAP[schemaKey];
+    headers = pairs ? pairs.map(function (p) { return p[0]; }) : Object.keys(data);
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   }
   if (!data.id) {
-    data.id = makeId(sheetName.toLowerCase().replace(/s$/, ''));
+    const prefix = (sheetKeyFor(sheetName) || sheetName).toLowerCase().replace(/s$/, '');
+    data.id = makeId(prefix);
   }
   data.createdAt = data.createdAt || new Date().toISOString().split('T')[0];
   const row = headers.map(function (h) {
-    const val = data[h];
+    const enKey = viToEnHeader(sheetName, h);
+    let val = data[enKey];
     if (Array.isArray(val)) return JSON.stringify(val);
+    if (typeof val === 'string') val = enToViValue(sheetName, enKey, val);
     return forceTextIfDateLike(val !== undefined && val !== null ? val : '');
   });
   sheet.appendRow(row);
@@ -235,13 +361,15 @@ function updateData(ss, sheetName, id, updates) {
   const index = data.findIndex(function (row) { return row.id === id; });
   if (index === -1) return { error: 'Not found: ' + id };
   const rowNum = index + 2;
-  if (headers.indexOf('updatedAt') !== -1) {
+  if (headers.indexOf(enToViHeader(sheetName, 'updatedAt')) !== -1) {
     updates.updatedAt = new Date().toISOString();
   }
   headers.forEach(function (h, i) {
-    if (updates[h] !== undefined) {
-      let val = updates[h];
+    const enKey = viToEnHeader(sheetName, h);
+    if (updates[enKey] !== undefined) {
+      let val = updates[enKey];
       if (Array.isArray(val)) val = JSON.stringify(val);
+      else if (typeof val === 'string') val = enToViValue(sheetName, enKey, val);
       sheet.getRange(rowNum, i + 1).setValue(forceTextIfDateLike(val) || '');
     }
   });
@@ -268,7 +396,7 @@ function onEdit(e) {
     if (sheet.getName() !== SHEETS.members) return;
     const headers = getHeaders(sheet);
     const col = e.range.getColumn();
-    if (headers[col - 1] !== 'id') return;
+    if (headers[col - 1] !== enToViHeader(SHEETS.members, 'id')) return;
     if (e.range.getRow() === 1) return; // header row itself
 
     const oldId = e.oldValue;
@@ -293,11 +421,11 @@ function cascadeMemberIdChange(oldId, newId) {
   replaceIdInListColumn(ss, SHEETS.projects, 'members', oldId, newId);
 }
 
-function replaceIdInColumn(ss, sheetName, headerName, oldId, newId) {
+function replaceIdInColumn(ss, sheetName, headerNameEn, oldId, newId) {
   const sheet = ss.getSheetByName(sheetName);
   if (!sheet) return;
   const headers = getHeaders(sheet);
-  const colIdx = headers.indexOf(headerName);
+  const colIdx = headers.indexOf(enToViHeader(sheetName, headerNameEn));
   if (colIdx === -1) return;
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return;
@@ -313,11 +441,11 @@ function replaceIdInColumn(ss, sheetName, headerName, oldId, newId) {
   if (changed) range.setValues(values);
 }
 
-function replaceIdInListColumn(ss, sheetName, headerName, oldId, newId) {
+function replaceIdInListColumn(ss, sheetName, headerNameEn, oldId, newId) {
   const sheet = ss.getSheetByName(sheetName);
   if (!sheet) return;
   const headers = getHeaders(sheet);
-  const colIdx = headers.indexOf(headerName);
+  const colIdx = headers.indexOf(enToViHeader(sheetName, headerNameEn));
   if (colIdx === -1) return;
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return;
