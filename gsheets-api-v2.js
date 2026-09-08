@@ -274,13 +274,23 @@ function replaceIdInListColumn(ss, sheetName, headerName, oldId, newId) {
   for (let i = 0; i < values.length; i++) {
     const raw = values[i][0];
     if (!raw) continue;
-    let arr;
-    try { arr = JSON.parse(raw); } catch (e2) { arr = null; }
-    if (!Array.isArray(arr)) continue;
+    // Members lists show up as either a real JSON array (newer rows, written by
+    // addData/updateData) or a plain comma-separated string (older seed rows).
+    // Handle both, and write back in whichever shape the cell already used.
+    let arr, isJson;
+    try {
+      arr = JSON.parse(raw);
+      isJson = Array.isArray(arr);
+    } catch (e2) {
+      isJson = false;
+    }
+    if (!isJson) {
+      arr = String(raw).split(',').map(function (s) { return s.trim(); });
+    }
     const idx = arr.indexOf(oldId);
     if (idx !== -1) {
       arr[idx] = newId;
-      values[i][0] = JSON.stringify(arr);
+      values[i][0] = isJson ? JSON.stringify(arr) : arr.join(',');
       changed = true;
     }
   }
