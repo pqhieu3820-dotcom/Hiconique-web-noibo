@@ -4,13 +4,14 @@ File này tồn tại để không phải hỏi lại các thông tin dưới đ
 chat mới với Claude. Đây là nguồn tham chiếu chính (source of truth) cho các liên kết và quy
 tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
-## 0. Trạng thái hiện tại (cập nhật lần cuối: 2026-09-08, cuối buổi — SẮP CHUYỂN MÁY, đọc kỹ mục này)
+## 0. Trạng thái hiện tại (cập nhật lần cuối: 2026-09-08, buổi tối — đã KHÔI PHỤC kết nối Sheet, đọc kỹ mục này)
 
 **Kiến trúc tóm tắt:** Web tĩnh (HTML/CSS/JS thuần, không framework) trong `public/`, chạy local
 qua Node/Express (`server.js`), deploy Netlify cho production. Dữ liệu sống trên 1 Google Sheet
-(11 tab) — web đọc qua CSV publish-to-web (sheet cũ) hoặc trực tiếp qua Apps Script Web App JSON
-(3 sheet mới nhất — xem mục 6), ghi luôn qua Apps Script Web App (`gsheets-api-v2.js`, deploy tại
-link ở mục 1). Lớp dữ liệu client (`public/js/task-data.js`, biến global `TaskManager`) là nguồn
+(11 tab, **tên tab + header đều tiếng Việt**) — web **đọc VÀ ghi đều qua Apps Script Web App**
+(`gsheets-api-v2.js`, deploy tại link ở mục 1), dịch VI↔EN qua `FIELD_MAP`/`VALUE_MAP`. (Đường
+đọc qua CSV publish-to-web đã BỎ HẲN — CSV trả header tiếng Việt làm hỏng web; chỉ còn 1 `API_URL`
+duy nhất trong `public/js/gsheets-config.js`.) Lớp dữ liệu client (`public/js/task-data.js`, biến global `TaskManager`) là nguồn
 sự thật phía web: mọi trang đọc/ghi qua `TaskManager.*`, tự cache vào `localStorage` và tự đồng
 bộ lên Sheet nền (`syncToGSheets`). Không có framework auth thật — `Auth` (`public/js/auth.js`)
 chỉ là session giả lưu localStorage, phân quyền dựa vào `roleLevel` (`admin`/`manager`/`member`)
@@ -139,28 +140,42 @@ của Member đang đăng nhập, kiểm tra phía client (không có bảo mậ
      sang `NV_<initials>_<dob>` (đăng ký mới luôn là `member`/nhân viên nên luôn ra tiền tố `NV_`),
      có sẵn bảng `ID_PREFIX_BY_ROLE_LEVEL` (`admin:'CEO', manager:'QL', member:'NV'`) để dùng lại
      nếu sau này có chỗ tạo ID cho role khác.
-8. **CÒN SÓT LẠI CHƯA LÀM XONG (làm tiếp ở phiên sau):**
-   - **Chưa xoá 3 sheet tiếng Anh dư thừa** (`CommissionRates`, `Commissions`, `Payslips`) — đây là
-     3 sheet cũ bị `getOrCreateSheet()` tự tạo lại (từ trước khi đổi tên tiếng Việt, code cũ tìm
-     sheet theo tên Anh không thấy nên tự tạo mới). Code hiện tại đã trỏ đúng sang sheet tiếng Việt
-     (`Phiếu lương`, `Hoa hồng dự án`, `Mức hoa hồng`) nên 3 sheet Anh này **an toàn để xoá** (chỉ
-     cần xác nhận trống/không có dữ liệu quan trọng trước khi xoá — nhìn sơ bộ lúc nãy có vẻ trống
-     hoặc chỉ có dữ liệu cũ). Xoá bằng cách click chuột phải vào tên tab ở cuối màn hình Google
-     Sheet → Xoá. Lưu ý: bấm theo toạ độ pixel vào thanh tab sheet **rất hay trật** trong phiên này
-     (client toạ độ bị lệch khi chụp màn hình không đồng bộ) — nên dùng `read_page`/`find` lấy đúng
-     `ref` của tab rồi bấm qua ref, tương tự cách đã làm ổn với menu Apps Script.
-   - Có vài mã thành viên lạ `"A7"` xuất hiện rải rác trong Tasks/Projects (assigneeId, members
-     list...) — đây là dữ liệu lỗi **có từ trước phiên này** (không phải do các thao tác đổi ID vừa
-     rồi gây ra), chưa rõ nguồn gốc, chưa xử lý — có thể cần hỏi người dùng xem "A7" là ai/lỗi gõ
-     nhầm từ khi nào.
-   - Chưa làm phần data-validation dropdown cho các cột khác theo yêu cầu "bổ sung trình duyệt ấn
-     thả... cố định những dữ liệu fix" (người dùng muốn thêm dropdown màu như cột Cấp bậc/Giới tính
-     cho các cột enum khác) — mới dừng ở bước xem cột Cấp bậc, chưa mở rộng sang cột khác.
-   - Chưa bắt đầu: cải thiện thêm UI mobile ngoài phần đã làm ở mục 5 (nếu người dùng phản hồi cần
-     thêm), gộp 2 hệ thống quản lý dự án trùng lặp (xem mục cũ bên dưới).
+8. **Đã làm nốt trong phiên tối 2026-09-08 (sau khi chuyển máy):**
+   - **KHÔI PHỤC kết nối Google Sheet — nguyên nhân "mất dữ liệu" là đường ĐỌC qua CSV.** Sau khi
+     đổi header Sheet sang tiếng Việt, CSV trả về object key tiếng Việt làm mọi tra cứu client hỏng.
+     Đã **định tuyến toàn bộ đọc qua Apps Script API** (`getFromGSheets` gọi `fetchFromAPI` cho cả
+     11 loại), xoá `fetchFromSheet()`/`parseCSV()` chết và block `DATA_URLS` trong
+     `gsheets-config.js` (commit `00b7a8d`). Đã xác nhận LIVE: app fetch `getMembers` trả 5 thành viên.
+   - **Sửa bug tab `Bảng tin` (Notices) trả 0 bản tin.** `SHEETS.notices` trong code ghi nhầm
+     `'Bàng tin'` (dấu huyền `à`) trong khi tab thật là `'Bảng tin'` (dấu hỏi `ả`) — code cũ tìm
+     không thấy nên `getOrCreateSheet` tự sinh 1 tab rỗng `Bàng tin`(à). Đã: (a) sửa đúng tên
+     `'Bảng tin'`; (b) thêm `normalizeName()`+`findSheet()` chuẩn hoá Unicode NFC + trim để khớp
+     tab bất kể dạng dấu; (c) chuyển `getAllData/deleteData/onEdit/cascade` sang `findSheet` và
+     **đọc không bao giờ tạo tab** (chỉ đường ghi mới tạo). Commit local `d85de53`.
+   - **Đã deploy Apps Script bản mới (Phiên bản 22, cùng deployment/URL cũ)** và xác minh LIVE qua
+     PowerShell: đủ 11 endpoint trả mảng đúng — members=5, projects=4, tasks=6, **notices=5**,
+     notifications=1, proposals=3, timesheet=2, documents=17, commissions=1 (payslips/
+     commissionRates=0 vì tab mới chỉ có header, chưa có dữ liệu — đúng thực tế).
+   - **Đã xoá tab rác `Bàng tin`(à) rỗng** trên Sheet (chạy hàm cleanup tạm trong Apps Script, chỉ
+     xoá đúng tab tên à-form khi `getLastRow()<1`). Nay Sheet còn đúng 11 tab, chỉ 1 `Bảng tin`(ả).
+   - **3 sheet tiếng Anh dư thừa (`Payslips`/`Commissions`/`CommissionRates`) — người dùng đã tự
+     xoá** (xác nhận qua ảnh chụp thanh tab chỉ còn 11 tab tiếng Việt). Không còn bị tạo lại vì code
+     đã trỏ đúng sang `Phiếu lương`/`Hoa hồng dự án`/`Mức hoa hồng`.
+   - **Bí ẩn `"A7"`: đã xử lý ở phiên trước** — thay bằng `QL_TM_100888` (Trần Mạnh) qua API, xác
+     nhận 0 orphan còn lại.
+   - **Đã cập nhật `SETUP_HUONG_DAN.md`** sang tên tab/cột tiếng Việt + bỏ mô tả CSV.
+   - **Mẹo deploy Apps Script tin cậy (đã kiểm chứng phiên này):** dán clipboard vào Monaco editor
+     hay trật vì mất focus. Cách chắc ăn: base64 file → set clipboard qua PowerShell → trong Chrome
+     tạo 1 `<textarea>` focus sẵn → `computer` gõ `ctrl+v` (paste thật) → JS `atob`+`TextDecoder`
+     rồi `monaco.editor.getModels()[0].setValue(text)` → `ctrl+s`. Khi deploy: mở dialog từng bước
+     (chụp màn hình sau mỗi click, KHÔNG batch), và **dùng `find`→`ref` để chọn "Phiên bản mới"**
+     rồi mới bấm Triển khai; xác nhận version tăng số trong hộp thoại kết quả + gọi API kiểm tra.
 
-**Trước khi làm tiếp phiên sau, đọc `SETUP_HUONG_DAN.md` mục "Cấu trúc Spreadsheet" đã lỗi thời
-(vẫn ghi tên cột tiếng Anh) — cần cập nhật lại theo tên tiếng Việt mới, chưa làm.**
+   **CÒN LẠI (chưa làm, không gấp):**
+   - Data-validation dropdown màu cho các cột enum khác (như Cấp bậc/Giới tính) — mới dừng ở Cấp bậc.
+   - Gộp 2 hệ thống quản lý dự án trùng lặp (`pages/projects.html` vs `tasks-manager.html`) — xem
+     mục cũ bên dưới.
+   - Cải thiện thêm UI mobile nếu người dùng phản hồi.
 - Bài học thao tác Google Sheets qua trình duyệt tự động: click theo toạ độ pixel trên context
   menu của Sheets **rất dễ trật** (menu re-render lệch vài px giữa các lần chụp màn hình) — cách
   an toàn nhất đã kiểm chứng: dùng `find` (tìm theo text) để lấy đúng `ref` của menu item rồi click
@@ -207,10 +222,9 @@ của Member đang đăng nhập, kiểm tra phía client (không có bảo mậ
 chú, nếu không web sẽ ngừng ghi được dữ liệu.
 
 Ghi chú:
-- Web **đọc** dữ liệu qua CSV publish-to-web (URL trong `public/js/gsheets-config.js`,
-  `DATA_URLS`) và **ghi** dữ liệu qua Apps Script Web App (`API_URL` cùng file, chính là link
-  "Apps Script Web App — URL đang chạy thật" ở bảng trên). Cả hai đều trỏ vào chính Google Sheet
-  ở trên — chỉ khác dạng ID (ID chỉnh sửa vs. ID publish-to-web).
+- Web **đọc VÀ ghi** dữ liệu đều qua Apps Script Web App (`API_URL` trong
+  `public/js/gsheets-config.js`, chính là link "Apps Script Web App — URL đang chạy thật" ở bảng
+  trên). Đường CSV publish-to-web (biến `DATA_URLS`) đã BỎ HẲN — không còn dùng nữa.
 - Source code đang chạy trên Apps Script = file `gsheets-api-v2.js` ở root repo. Sửa xong phải
   dán đè vào Apps Script rồi **Triển khai → Quản lý các tùy chọn triển khai → chọn "Phiên bản
   mới"** (không tạo deployment mới, sẽ đổi URL) — chi tiết đầy đủ ở
@@ -218,9 +232,10 @@ Ghi chú:
 
 ## 2. Cấu trúc dữ liệu (11 tab trong Sheet)
 
-Xem bảng đầy đủ tên cột ở [SETUP_HUONG_DAN.md](SETUP_HUONG_DAN.md#cấu-trúc-spreadsheet-hiện-tại):
-Members, Projects, Tasks, Proposals, Timesheet, Notifications, Notices, Documents, Payslips,
-Commissions, CommissionRates.
+Tên tab thật trên Sheet đều là **tiếng Việt** (code client vẫn dùng key tiếng Anh nhờ `FIELD_MAP`):
+`Thành viên`, `Dự án`, `Công việc`, `Đề xuất`, `Chấm công`, `Thông báo` (nhắc định kỳ), `Bảng tin`
+(bản tin), `Tài liệu`, `Phiếu lương`, `Hoa hồng dự án`, `Mức hoa hồng`. Xem bảng đầy đủ tên cột +
+key nội bộ ở [SETUP_HUONG_DAN.md](SETUP_HUONG_DAN.md#cấu-trúc-spreadsheet-hiện-tại).
 
 ## 3. Quy tắc làm việc với Claude trong repo này
 

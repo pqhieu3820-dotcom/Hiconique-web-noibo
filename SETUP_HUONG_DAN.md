@@ -1,36 +1,44 @@
 # Hướng dẫn Google Sheets ⇄ Web (đồng bộ 2 chiều)
 
-Web đọc dữ liệu qua **CSV publish-to-web** (nhanh, không cần đăng nhập) và ghi dữ liệu qua
-**Google Apps Script Web App** (`gsheets-api-v2.js`). Cả 2 đều đã được cấu hình sẵn cho
-Spreadsheet hiện tại — hướng dẫn này dùng khi cần **redeploy lại Apps Script** (ví dụ sau khi
-sửa `gsheets-api-v2.js`) hoặc **thêm sheet mới**.
+Web đọc **và** ghi dữ liệu đều qua **Google Apps Script Web App** (`gsheets-api-v2.js`).
+Trước đây đọc qua CSV publish-to-web, nhưng sau khi đổi tên cột/tab của Sheet sang tiếng Việt
+thì CSV trả header tiếng Việt làm hỏng toàn bộ web — **giờ mọi thao tác đọc/ghi đều đi qua Apps
+Script để được dịch VI↔EN** (xem `FIELD_MAP`/`VALUE_MAP` trong `gsheets-api-v2.js`). Chỉ còn 1
+URL duy nhất là `API_URL` trong `public/js/gsheets-config.js`. Hướng dẫn này dùng khi cần
+**redeploy lại Apps Script** (ví dụ sau khi sửa `gsheets-api-v2.js`) hoặc **thêm sheet mới**.
 
 ## Cấu trúc Spreadsheet hiện tại
 
-Spreadsheet: `HICONIQUE Task Manager` — 11 tab, mỗi tab một loại dữ liệu:
+Spreadsheet: `HICONIQUE Task Manager` — **11 tab đặt tên tiếng Việt**, mỗi tab một loại dữ liệu.
+Header (dòng 1) của mỗi tab cũng là **tiếng Việt**; code client vẫn dùng key tiếng Anh nhờ bảng
+dịch `FIELD_MAP` trong `gsheets-api-v2.js` (cột "Key nội bộ" bên dưới là key tiếng Anh client dùng):
 
-| Tab | Dùng cho | Cột chính |
+| Tab (tên thật trên Sheet) | Dùng cho | Key nội bộ (client) |
 |---|---|---|
-| `Members` | Thành viên | id, name, role, roleLevel, email, password, dob, cccd, phone, hometown, bank, bankAccount, color, avatar, createdAt, gender, baseSalary, status |
-| `Projects` | Dự án | id, name, type, color, progress, status, members, createdAt, updatedAt, budget, client, investor, location, startDate, endDate, priority, description |
-| `Tasks` | Công việc | id, title, description, projectId, assigneeId, priority, status, startDate, deadline, createdBy, createdAt, updatedAt, progress, dailyTasks |
-| `Proposals` | Đề xuất | id, title, description, type, status, requesterId, reviewerId, amount, createdAt, reviewedAt |
-| `Timesheet` | Chấm công | id, memberId, date, checkinTime, checkoutTime, totalHours, overtimeHours, status, note, checkinLat, checkinLng, checkinDistance, checkinIp, geoPass, ipPass, verifyPassCount, verifyStatus |
-| `Notifications` | Nhắc định kỳ (chuông thông báo) | id, title, message, type, scope, recurring, recurRule, active, createdBy, createdAt, updatedAt |
-| `Notices` | Bảng tin (trang Thông báo) | id, title, message, color, createdBy, createdAt, updatedAt |
-| `Documents` | Link tài liệu (trang Tài liệu) | id, category, name, url, code, createdBy, createdAt, updatedAt |
-| `Payslips` | Phiếu lương (trang Phiếu lương) | id, memberId, month, workDays, totalHours, otHoursAuto, otHoursManual, otHours, otRate, otAmount, baseSalary, commissionAmount, otherBonus, otherBonusNote, deduction, deductionNote, totalAmount, status, note, createdBy, createdAt, updatedAt, reviewedAt, reviewerId |
-| `Commissions` | Hoa hồng dự án theo thành viên (trang % Hoa hồng dự án) | id, projectId, memberId, projectValue, percent, amount, month, note, createdBy, createdAt, updatedAt |
-| `CommissionRates` | % hoa hồng mặc định theo vai trò | id, roleLevel, percent, updatedAt |
+| `Thành viên` | Thành viên | id, name, role, roleLevel, gender, email, password, dob, phone, cccd, hometown, bankAccount, bank, color, avatar, createdAt, baseSalary, status |
+| `Dự án` | Dự án | id, name, type, progress, status, members, color, createdAt, updatedAt, budget, client, investor, location, startDate, endDate, priority, description |
+| `Công việc` | Công việc | id, title, description, projectId, assigneeId, priority, status, startDate, deadline, createdBy, createdAt, updatedAt, progress, dailyTasks |
+| `Đề xuất` | Đề xuất | id, title, description, type, status, requesterId, reviewerId, amount, createdAt, reviewedAt |
+| `Chấm công` | Chấm công | id, memberId, date, checkinTime, checkoutTime, totalHours, overtimeHours, status, note, checkinLat, checkinLng, checkinDistance, checkinIp, geoPass, ipPass, verifyPassCount, verifyStatus |
+| `Thông báo` | Nhắc định kỳ (chuông thông báo) | id, title, message, type, scope, recurring, recurRule, active, createdBy, createdAt, updatedAt |
+| `Bảng tin` | Bảng tin (trang Thông báo) | id, title, message, color, createdBy, createdAt, updatedAt |
+| `Tài liệu` | Link tài liệu (trang Tài liệu) | id, category, name, url, createdBy, createdAt, updatedAt |
+| `Phiếu lương` | Phiếu lương (trang Phiếu lương) | id, memberId, month, workDays, totalHours, otHoursAuto, otHoursManual, otHours, otRate, otAmount, baseSalary, commissionAmount, otherBonus, otherBonusNote, deduction, deductionNote, totalAmount, status, note, createdBy, createdAt, updatedAt, reviewedAt, reviewerId |
+| `Hoa hồng dự án` | Hoa hồng dự án theo thành viên (trang % Hoa hồng dự án) | id, projectId, memberId, projectValue, percent, amount, month, note, createdBy, createdAt, updatedAt |
+| `Mức hoa hồng` | % hoa hồng mặc định theo vai trò | id, roleLevel, percent, updatedAt |
 
 **Quan trọng:** `gsheets-api-v2.js` đọc/ghi theo **tên cột thật trên Sheet** (không theo vị trí
-cứng trong code) — nên bạn có thể thêm cột mới trực tiếp trên Sheet mà không lo vỡ dữ liệu.
-Nếu thêm hẳn 1 sheet mới, xem mục "Thêm sheet mới" bên dưới. `Payslips`, `Commissions` và
-`CommissionRates` **tự động được tạo** (kèm header đúng schema) ngay lần ghi dữ liệu đầu tiên —
-không cần tạo tay tab mới khi mở rộng thêm loại dữ liệu tương tự (xem `getOrCreateSheet` trong
-`gsheets-api-v2.js`). `Payslips`/`Commissions`/`CommissionRates` cũng đọc trực tiếp qua Apps
-Script Web App (JSON) thay vì CSV publish, vì các sheet mới chưa có gid public — không ảnh hưởng
-gì tới cách dùng, chỉ khác đường đọc dữ liệu phía code.
+cứng trong code), khớp tên cột tiếng Việt ↔ key tiếng Anh qua `FIELD_MAP` — nên bạn có thể thêm
+cột mới trực tiếp trên Sheet mà không lo vỡ dữ liệu (cột lạ không có trong `FIELD_MAP` vẫn
+round-trip được, chỉ giữ nguyên tên tiếng Việt làm key). Việc tra tab cũng **chuẩn hoá Unicode
+(NFC) + bỏ khoảng trắng thừa** qua `findSheet()`, nên tên tab có dấu (vd `Bảng tin` với `ả` ở
+dạng precomposed U+1EA3 hay decomposed) đều khớp đúng, không tạo tab rỗng trùng lặp. Thao tác
+**đọc không bao giờ tạo tab mới** (chỉ `getOrCreateSheet` ở đường ghi mới tạo).
+
+Một vài giá trị ô cũng được dịch VI↔EN qua `VALUE_MAP` (không chỉ header): `Thành viên.status`
+(`Còn làm việc`↔`active`, `Chờ duyệt`↔`pending`, `Từ chối`↔`rejected`, `Ngưng công tác`↔`inactive`)
+và `Thành viên.roleLevel` (`CEO`↔`admin`). Nếu "Việt hoá" thêm dropdown nào thì bổ sung vào
+`VALUE_MAP` tương ứng.
 
 **Lưu ý riêng cho `Timesheet.checkinIp`, `Timesheet.verifyPassCount`, và cột `month` trên
 `Payslips`/`Commissions`:** phải để định dạng cột là **Văn bản thuần tuý** (Định dạng → Số →
@@ -57,15 +65,16 @@ bản kể cả khi ghi qua API (định dạng cột "Văn bản thuần tuý" 
 
 ## Thêm sheet mới (ví dụ mở rộng thêm 1 loại dữ liệu)
 
-1. Tạo tab mới trong Spreadsheet, đặt tên (vd `Assets`), dòng đầu là tên cột (header).
-2. Trong `gsheets-api-v2.js`: thêm vào `SHEETS` (tên tab) và `HEADERS` (schema tham khảo — chỉ
-   dùng để tạo header tự động nếu sheet trống, không bắt buộc trùng thứ tự cột thật), thêm 4
-   action `get/add/update/deleteXxx` trong `handleRequest`. Redeploy theo hướng dẫn trên.
-3. Trong `public/js/gsheets-config.js`: thêm URL CSV publish (`.../pub?output=csv&gid=<gid của
-   tab mới>`) vào `DATA_URLS`. Lấy `gid` từ URL Sheet khi đang mở đúng tab đó.
-4. Trong `public/js/task-data.js`: thêm `STORAGE_KEYS`, case trong `getFromGSheets()`, fetch
-   trong `initData()`/`refreshFromGSheets()`, và các hàm CRUD tương ứng (theo mẫu Notices/
-   Documents đã có sẵn trong file).
+1. Tạo tab mới trong Spreadsheet, đặt tên tiếng Việt (vd `Tài sản`), dòng đầu là tên cột
+   (header) tiếng Việt.
+2. Trong `gsheets-api-v2.js`: thêm vào `SHEETS` (key nội bộ → tên tab tiếng Việt) và `FIELD_MAP`
+   (danh sách cặp `['Tên cột tiếng Việt', 'keyTiếngAnh']` — dùng để tạo header tự động nếu sheet
+   trống và để dịch VI↔EN khi đọc/ghi), thêm 4 action `get/add/update/deleteXxx` trong
+   `handleRequest`. Redeploy theo hướng dẫn trên.
+3. Trong `public/js/task-data.js`: thêm case action tương ứng trong `getFromGSheets()` (map
+   `loại → action` như `getXxx`), fetch trong `initData()`/`refreshFromGSheets()`, và các hàm
+   CRUD tương ứng (theo mẫu Notices/Documents đã có sẵn trong file). **Không cần** thêm URL CSV
+   nào nữa — mọi loại dữ liệu đọc qua cùng `API_URL`.
 
 ## Cột `bank` (tên ngân hàng) và `phone` (số điện thoại) trên tab Members
 
@@ -96,8 +105,9 @@ Danh mục chung (dropdown "Danh mục" khi thêm tài liệu, và phần "Quả
 trong localStorage của từng máy/trình duyệt** — chưa đồng bộ qua Google Sheets. Nếu cần dùng
 chung nhiều máy, cho tôi biết để bổ sung 1 sheet/tab riêng cho danh mục.
 
-## Publish to web (bắt buộc để CSV đọc được)
+## Publish to web (KHÔNG còn bắt buộc)
 
-Spreadsheet phải đang **Xuất bản lên web** ở chế độ **Toàn bộ tài liệu** với tuỳ chọn **Tự động
-xuất bản lại khi có thay đổi** đang bật (File/Tệp → Chia sẻ → Xuất bản lên web). Khi bật đúng,
-mọi tab mới thêm sau này tự động có link CSV công khai mà không cần publish lại thủ công.
+Trước đây phần đọc cần Spreadsheet **Xuất bản lên web** (CSV). Từ khi chuyển toàn bộ đọc/ghi qua
+Apps Script Web App, **không còn cần publish CSV nữa** — có thể tắt cũng được. Điều bắt buộc duy
+nhất là deployment Apps Script phải để **Người có quyền truy cập = Bất kỳ ai (Anyone)** để web
+gọi được mà không phải đăng nhập (xem bước 6 mục Redeploy).
