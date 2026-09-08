@@ -902,11 +902,16 @@ main { flex: 1; }
   background: var(--color-surface-2);
 }
 .wiki-icon {
-  font-size: 1rem;
   flex-shrink: 0;
-  width: 28px;
-  text-align: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-bronze) 12%, transparent);
+  color: var(--color-bronze);
+  display: grid;
+  place-items: center;
 }
+.wiki-icon svg { width: 20px; height: 20px; }
 .wiki-content { flex: 1; }
 .wiki-content h3 {
   font-size: 0.9375rem;
@@ -950,10 +955,16 @@ main { flex: 1; }
   background: var(--color-surface-2);
 }
 .ai-icon {
-  font-size: 1rem;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-bronze) 12%, transparent);
   color: var(--color-bronze);
-  width: 32px; text-align: center;
+  display: grid;
+  place-items: center;
 }
+.ai-icon svg { width: 18px; height: 18px; }
 .ai-card b { color: var(--color-text); font-size: 0.9375rem; display: block; }
 .ai-sub { font-size: 0.75rem; color: var(--color-text-muted); }
 
