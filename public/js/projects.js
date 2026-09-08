@@ -8,6 +8,7 @@
     projectFilter: 'all',
     quickFilters: { mine: false, dueToday: false, overdue: false, done: false },
     memberFilter: null, // member id filter
+    statusFilter: null, // set by clicking the "Dang lam" stat card ('in-progress' | null)
     sortBy: 'deadline',
     timelineMonth: new Date().getMonth(),
     timelineYear: new Date().getFullYear()
@@ -107,6 +108,7 @@
     if (f.dueToday) tasks = tasks.filter(isDueToday);
     if (f.overdue) tasks = tasks.filter(isOverdue);
     if (!f.done) tasks = tasks.filter(function (t) { return t.status !== 'completed'; });
+    if (state.statusFilter) tasks = tasks.filter(function (t) { return t.status === state.statusFilter; });
 
     tasks.sort(function (a, b) {
       if (state.sortBy === 'priority') {
@@ -135,6 +137,11 @@
     document.getElementById('statTasks').textContent = tasks.length;
     document.getElementById('statInProgress').textContent = inProgress;
     document.getElementById('statOverdue').textContent = overdue;
+
+    var inProgressCard = document.getElementById('statCardInProgress');
+    if (inProgressCard) inProgressCard.classList.toggle('active', state.statusFilter === 'in-progress');
+    var overdueCard = document.getElementById('statCardOverdue');
+    if (overdueCard) overdueCard.classList.toggle('active', !!state.quickFilters.overdue);
   }
 
   // ----- Sidebar -----
@@ -428,6 +435,55 @@
         renderAll();
       });
     });
+  }
+
+  // Make the 4 top stat tiles act as quick filters/shortcuts instead of
+  // being purely decorative.
+  function bindStatCards() {
+    var projectsCard = document.getElementById('statCardProjects');
+    if (projectsCard) {
+      projectsCard.addEventListener('click', function () {
+        renderProjectListModal();
+        var listModal = document.getElementById('project-list-modal');
+        if (listModal) listModal.hidden = false;
+      });
+    }
+
+    var tasksCard = document.getElementById('statCardTasks');
+    if (tasksCard) {
+      tasksCard.addEventListener('click', function () {
+        state.statusFilter = null;
+        state.quickFilters = { mine: false, dueToday: false, overdue: false, done: false };
+        state.projectFilter = 'all';
+        state.memberFilter = null;
+        ['filterMine', 'filterDueToday', 'filterOverdue', 'filterDone'].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el) el.checked = false;
+        });
+        document.querySelectorAll('.project-nav-item').forEach(function (i) {
+          i.classList.toggle('active', i.dataset.project === 'all');
+        });
+        renderAll();
+      });
+    }
+
+    var inProgressCard = document.getElementById('statCardInProgress');
+    if (inProgressCard) {
+      inProgressCard.addEventListener('click', function () {
+        state.statusFilter = state.statusFilter === 'in-progress' ? null : 'in-progress';
+        renderAll();
+      });
+    }
+
+    var overdueCard = document.getElementById('statCardOverdue');
+    if (overdueCard) {
+      overdueCard.addEventListener('click', function () {
+        state.quickFilters.overdue = !state.quickFilters.overdue;
+        var checkbox = document.getElementById('filterOverdue');
+        if (checkbox) checkbox.checked = state.quickFilters.overdue;
+        renderAll();
+      });
+    }
   }
 
   function bindSort() {
@@ -783,6 +839,13 @@
     if (openBtn) openBtn.addEventListener('click', function () {
       form.reset();
       delete form.dataset.editingId;
+      delete form.dataset.originalType;
+      var eyebrow = modal.querySelector('.modal-eyebrow');
+      if (eyebrow) eyebrow.textContent = 'DỰ ÁN MỚI';
+      var title = document.getElementById('projectModalTitle');
+      if (title) title.textContent = 'Tạo dự án mới';
+      var submitBtn = document.getElementById('projectSubmitBtn');
+      if (submitBtn) submitBtn.textContent = 'Tạo dự án';
       // Reset type cards visual
       typeCards.forEach(function (c) { c.classList.remove('active'); });
       var defaultCard = form.querySelector('.type-card[data-type="design"]');
@@ -825,12 +888,28 @@
         priority: document.getElementById('project-priority').value,
         status: document.getElementById('project-status').value,
         description: document.getElementById('project-desc').value,
-        progress: 0,
-        members: getSelectedMembers(),
-        createdAt: new Date().toISOString().split('T')[0]
+        members: getSelectedMembers()
       };
 
       var editingId = form.dataset.editingId;
+      if (!editingId) {
+        // Only stamp these on brand-new projects — updateProject merges
+        // `data` into the existing record, so including them here would
+        // silently reset an existing project's progress/createdAt on every edit.
+        data.progress = 0;
+        data.createdAt = new Date().toISOString().split('T')[0];
+      }
+      // Preserve the project's original `type` string when the category
+      // wasn't changed (older/seed projects store a full Vietnamese label
+      // like "Thiết kế nội thất" — this page's radios only know the short
+      // codes, so re-saving unchanged would otherwise downgrade that label).
+      if (editingId && form.dataset.originalType && projectType({ type: form.dataset.originalType }) === typeVal) {
+        data.type = form.dataset.originalType;
+      } else {
+        var typeLabelEl = form.querySelector('.type-card.active .type-label');
+        data.type = typeLabelEl ? typeLabelEl.textContent.trim() : typeVal;
+      }
+
       var ok = false;
       if (editingId) {
         ok = !!(typeof TaskManager !== 'undefined' && TaskManager.updateProject && TaskManager.updateProject(editingId, data, getUser()));
@@ -845,7 +924,120 @@
 
       modal.hidden = true;
       renderAll();
+      var listModal = document.getElementById('project-list-modal');
+      if (editingId && listModal && !listModal.hidden) renderProjectListModal();
       showToast(editingId ? '✓ Đã cập nhật dự án: ' + name : '✓ Đã tạo dự án: ' + name);
+    });
+  }
+
+  // Populate the create/edit modal with an existing project's data and
+  // switch it into "edit" mode (used by the project list modal's Sửa button).
+  function openProjectForEdit(project) {
+    var modal = document.getElementById('project-modal');
+    var form = document.getElementById('projectForm');
+    if (!modal || !form || !project) return;
+
+    form.reset();
+    form.dataset.editingId = project.id;
+    form.dataset.originalType = project.type || '';
+
+    document.getElementById('project-name').value = project.name || '';
+    document.getElementById('project-client').value = project.client || '';
+    document.getElementById('project-investor').value = project.investor || '';
+    document.getElementById('project-location').value = project.location || '';
+    document.getElementById('project-start').value = project.startDate ? String(project.startDate).substring(0, 10) : '';
+    document.getElementById('project-end').value = project.endDate ? String(project.endDate).substring(0, 10) : '';
+    document.getElementById('project-budget').value = project.budget || '';
+    document.getElementById('project-priority').value = project.priority || 'medium';
+    document.getElementById('project-status').value = project.status || 'on-track';
+    document.getElementById('project-desc').value = project.description || '';
+    document.getElementById('project-color').value = project.color || '#B08D57';
+
+    var cat = projectType(project);
+    form.querySelectorAll('.type-card').forEach(function (c) {
+      c.classList.toggle('active', c.dataset.type === cat);
+    });
+    var radio = form.querySelector('input[name="project-type"][value="' + cat + '"]');
+    if (radio) radio.checked = true;
+
+    var memberIds = Array.isArray(project.members)
+      ? project.members
+      : (project.members ? String(project.members).split(',').map(function (s) { return s.trim(); }) : []);
+    renderProjectMembers(memberIds);
+
+    var eyebrow = modal.querySelector('.modal-eyebrow');
+    if (eyebrow) eyebrow.textContent = 'CHỈNH SỬA DỰ ÁN';
+    var title = document.getElementById('projectModalTitle');
+    if (title) title.textContent = 'Chỉnh sửa dự án';
+    var submitBtn = document.getElementById('projectSubmitBtn');
+    if (submitBtn) submitBtn.textContent = 'Lưu thay đổi';
+
+    var listModal = document.getElementById('project-list-modal');
+    if (listModal) listModal.hidden = true;
+    modal.hidden = false;
+  }
+
+  // ----- Project list modal (view all + edit/delete entry point) -----
+  function renderProjectListModal() {
+    var body = document.getElementById('projectListBody');
+    if (!body) return;
+    var projects = getProjects();
+    var canManage = !!currentUser && (currentUser.roleLevel === 'admin' || currentUser.roleLevel === 'manager');
+
+    if (projects.length === 0) {
+      body.innerHTML = '<p style="color:var(--color-text-muted);font-size:0.875rem;">Chưa có dự án nào.</p>';
+      return;
+    }
+
+    body.innerHTML = projects.map(function (p) {
+      var meta = [];
+      if (p.client) meta.push('KH: ' + escapeHtml(p.client));
+      if (p.investor) meta.push('NĐT: ' + escapeHtml(p.investor));
+      if (p.budget) meta.push(Number(p.budget).toLocaleString('vi-VN') + ' VNĐ');
+      meta.push((p.progress || 0) + '% hoàn thành');
+      return '<div class="project-list-row" data-project-id="' + escapeHtml(p.id) + '">'
+        + '<div class="project-list-avatar" style="background:' + (p.color || '#B08D57') + '">' + escapeHtml((p.name || '?').charAt(0)) + '</div>'
+        + '<div class="project-list-info">'
+        +   '<div class="project-list-name">' + escapeHtml(p.name || '') + ' <span style="color:var(--color-text-muted);font-weight:400;">· ' + escapeHtml(p.type || '') + '</span></div>'
+        +   '<div class="project-list-meta">' + meta.map(function (m) { return '<span>' + m + '</span>'; }).join('<span>·</span>') + '</div>'
+        + '</div>'
+        + '<div class="project-list-actions">'
+        +   (canManage ? '<button type="button" data-edit-project="' + escapeHtml(p.id) + '">Sửa</button>' : '')
+        +   (canManage ? '<button type="button" class="danger" data-delete-project="' + escapeHtml(p.id) + '">Xoá</button>' : '')
+        + '</div>'
+      + '</div>';
+    }).join('');
+
+    body.querySelectorAll('[data-edit-project]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var project = getProjectById(btn.dataset.editProject);
+        if (project) openProjectForEdit(project);
+      });
+    });
+    body.querySelectorAll('[data-delete-project]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var project = getProjectById(btn.dataset.deleteProject);
+        if (!project) return;
+        if (!confirm('Xoá dự án "' + project.name + '"? Toàn bộ task trong dự án cũng sẽ bị xoá.')) return;
+        if (!TaskManager.deleteProject(project.id, getUser())) {
+          showToast('Bạn không có quyền xoá dự án.');
+          return;
+        }
+        renderProjectListModal();
+        renderAll();
+        showToast('✓ Đã xoá dự án: ' + project.name);
+      });
+    });
+  }
+
+  function bindProjectListModal() {
+    var modal = document.getElementById('project-list-modal');
+    if (!modal) return;
+    modal.querySelectorAll('.modal-close-project-list').forEach(function (btn) {
+      btn.addEventListener('click', function () { modal.hidden = true; });
+    });
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) modal.hidden = true;
     });
   }
 
@@ -910,10 +1102,12 @@
     bindViewTabs();
     bindProjectNav();
     bindQuickFilters();
+    bindStatCards();
     bindSort();
     bindTimelineNav();
     bindTaskModal();
     bindProjectModal();
+    bindProjectListModal();
     bindDetailModal();
     if (typeof HiconiqueGantt !== 'undefined') HiconiqueGantt.bind(document.getElementById('gantt-view'));
 

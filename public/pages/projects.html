@@ -146,7 +146,7 @@
 
       <!-- Stats -->
       <div class="pd-stats">
-        <div class="pd-stat">
+        <button type="button" class="pd-stat" id="statCardProjects" data-stat="projects" title="Xem toàn bộ dự án">
           <div class="pd-stat-icon" style="background:rgba(176,141,87,0.15);color:#B08D57">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
           </div>
@@ -154,8 +154,8 @@
             <span class="pd-stat-label">Tổng dự án</span>
             <span class="pd-stat-value" id="statProjects">0</span>
           </div>
-        </div>
-        <div class="pd-stat">
+        </button>
+        <button type="button" class="pd-stat" id="statCardTasks" data-stat="tasks" title="Xem tất cả công việc">
           <div class="pd-stat-icon" style="background:rgba(59,107,140,0.15);color:#3B6B8C">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
           </div>
@@ -163,8 +163,8 @@
             <span class="pd-stat-label">Tổng việc</span>
             <span class="pd-stat-value" id="statTasks">0</span>
           </div>
-        </div>
-        <div class="pd-stat">
+        </button>
+        <button type="button" class="pd-stat" id="statCardInProgress" data-stat="in-progress" title="Lọc việc đang làm">
           <div class="pd-stat-icon" style="background:rgba(199,164,100,0.15);color:#C7A464">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           </div>
@@ -172,8 +172,8 @@
             <span class="pd-stat-label">Đang làm</span>
             <span class="pd-stat-value" id="statInProgress">0</span>
           </div>
-        </div>
-        <div class="pd-stat pd-stat-danger">
+        </button>
+        <button type="button" class="pd-stat pd-stat-danger" id="statCardOverdue" data-stat="overdue" title="Lọc việc quá hạn">
           <div class="pd-stat-icon" style="background:rgba(160,72,72,0.15);color:#A04848">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
           </div>
@@ -181,7 +181,7 @@
             <span class="pd-stat-label">Quá hạn</span>
             <span class="pd-stat-value" id="statOverdue">0</span>
           </div>
-        </div>
+        </button>
       </div>
 
       <!-- View Toggle -->
@@ -565,9 +565,25 @@
 
         <div class="modal-actions">
           <button type="button" class="btn-secondary modal-cancel-project">Hủy</button>
-          <button type="submit" class="btn-primary">Tạo dự án</button>
+          <button type="submit" class="btn-primary" id="projectSubmitBtn">Tạo dự án</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- All Projects Modal (view + edit/delete entry point) -->
+  <div class="modal-overlay" id="project-list-modal" hidden>
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <div>
+          <span class="modal-eyebrow">TẤT CẢ DỰ ÁN</span>
+          <h3>Danh sách dự án</h3>
+        </div>
+        <button class="modal-close modal-close-project-list" aria-label="Đóng">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div class="modal-body" id="projectListBody"></div>
     </div>
   </div>
 
