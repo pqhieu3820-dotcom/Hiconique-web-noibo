@@ -20,10 +20,11 @@ Ghi chú:
   dán đè vào Apps Script rồi **Triển khai → Phiên bản mới** (không tạo deployment mới) — chi
   tiết đầy đủ ở [SETUP_HUONG_DAN.md](SETUP_HUONG_DAN.md).
 
-## 2. Cấu trúc dữ liệu (8 tab trong Sheet)
+## 2. Cấu trúc dữ liệu (11 tab trong Sheet)
 
 Xem bảng đầy đủ tên cột ở [SETUP_HUONG_DAN.md](SETUP_HUONG_DAN.md#cấu-trúc-spreadsheet-hiện-tại):
-Members, Projects, Tasks, Proposals, Timesheet, Notifications, Notices, Documents.
+Members, Projects, Tasks, Proposals, Timesheet, Notifications, Notices, Documents, Payslips,
+Commissions, CommissionRates.
 
 ## 3. Quy tắc làm việc với Claude trong repo này
 
@@ -54,7 +55,27 @@ Members, Projects, Tasks, Proposals, Timesheet, Notifications, Notices, Document
   duyệt lưu `id` cũ trong localStorage, nên sau khi đổi cần đăng xuất và đăng nhập lại để
   khớp với ID mới trên Sheet.
 
-## 5. Tài liệu khác trong repo
+## 5. Phiếu lương & % Hoa hồng dự án (`payslip.html`, `commission.html`)
+
+- **Phiếu lương**: nhân viên tự chọn tháng, trang tự lấy `baseSalary` (Members), ngày công/giờ
+  OT (Timesheet của tháng đó), và tổng hoa hồng dự án (Commissions của tháng đó — chỉ hiện số
+  tiền, không lộ % hay giá trị dự án). Nhân viên có thể cộng thêm giờ OT nhập tay, thưởng khác,
+  khấu trừ. Gửi xong ở trạng thái `pending`, CEO/quản lý (`roleLevel` admin/manager) duyệt hoặc
+  từ chối. Đơn giá OT/giờ = `baseSalary / 208 giờ x 1.5` (quy ước 26 công x 8h/tháng, hệ số OT
+  ngày thường x1.5 theo Luật Lao động — có thể chỉnh 2 hằng số `OT_MULTIPLIER` và
+  `STANDARD_MONTHLY_HOURS` trong `task-data.js` nếu công ty áp dụng quy tắc khác).
+- **% Hoa hồng dự án**: 2 phần — (1) % mặc định theo vai trò (admin/manager/member, sửa được ở
+  bảng trên cùng trang), dùng làm % gợi ý; (2) bảng theo từng dự án: nhập giá trị dự án
+  (`Projects.budget`) và % riêng cho từng thành viên trong dự án, bấm Lưu để tính tiền và ghi
+  vào Commissions — số tiền này sau đó tự hiện trong Phiếu lương của người đó. Chỉ admin/quản
+  lý sửa được (regular member chỉ xem read-only).
+- **Lương cơ bản (`Members.baseSalary`)** chỉ admin/quản lý sửa được — có bảng nhỏ ngay trong
+  trang Phiếu lương (mục "Lương cơ bản nhân viên", chỉ CEO/quản lý thấy) để cập nhật.
+- Cả 3 sheet mới (`Payslips`, `Commissions`, `CommissionRates`) tự tạo khi ghi dữ liệu lần đầu
+  — không cần tạo tay. Đọc dữ liệu 3 sheet này đi qua Apps Script Web App (JSON), không qua CSV
+  publish như các sheet cũ.
+
+## 6. Tài liệu khác trong repo
 
 - [README.md](README.md) — tổng quan kiến trúc, cấu trúc thư mục, cách chạy local/deploy.
 - [SETUP_HUONG_DAN.md](SETUP_HUONG_DAN.md) — chi tiết Google Sheets ⇄ Web, redeploy Apps Script,

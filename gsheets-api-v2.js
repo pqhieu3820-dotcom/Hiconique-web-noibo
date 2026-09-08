@@ -8,21 +8,30 @@ const SHEETS = {
   timesheet: 'Timesheet',
   notifications: 'Notifications',
   notices: 'Notices',
-  documents: 'Documents'
+  documents: 'Documents',
+  payslips: 'Payslips',
+  commissions: 'Commissions',
+  commissionRates: 'CommissionRates'
 };
 
 // Reference schema only — used to seed headers on a brand-new empty sheet.
 // Reads/writes always follow the sheet's ACTUAL header row (see getHeaders),
 // so adding/reordering columns directly in Sheets never breaks sync.
 const HEADERS = {
-  projects: ['id', 'name', 'type', 'color', 'progress', 'status', 'members', 'createdAt', 'updatedAt'],
+  projects: ['id', 'name', 'type', 'color', 'progress', 'status', 'members', 'createdAt', 'updatedAt', 'budget'],
   tasks: ['id', 'title', 'description', 'projectId', 'assigneeId', 'priority', 'status', 'startDate', 'deadline', 'createdBy', 'createdAt', 'updatedAt', 'progress', 'dailyTasks'],
-  members: ['id', 'name', 'role', 'roleLevel', 'email', 'password', 'dob', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount', 'color', 'avatar', 'createdAt', 'gender'],
+  members: ['id', 'name', 'role', 'roleLevel', 'email', 'password', 'dob', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount', 'color', 'avatar', 'createdAt', 'gender', 'baseSalary'],
   proposals: ['id', 'title', 'description', 'type', 'status', 'requesterId', 'reviewerId', 'amount', 'createdAt', 'reviewedAt'],
   timesheet: ['id', 'memberId', 'date', 'checkinTime', 'checkoutTime', 'totalHours', 'overtimeHours', 'status', 'note', 'checkinLat', 'checkinLng', 'checkinDistance', 'checkinIp', 'geoPass', 'ipPass', 'verifyPassCount', 'verifyStatus'],
   notifications: ['id', 'title', 'message', 'type', 'scope', 'recurring', 'recurRule', 'active', 'createdBy', 'createdAt', 'updatedAt'],
   notices: ['id', 'title', 'message', 'color', 'createdBy', 'createdAt', 'updatedAt'],
-  documents: ['id', 'category', 'name', 'url', 'createdBy', 'createdAt', 'updatedAt']
+  documents: ['id', 'category', 'name', 'url', 'createdBy', 'createdAt', 'updatedAt'],
+  // Phiếu lương tháng — nhân viên tự tạo, CEO/quản lý duyệt.
+  payslips: ['id', 'memberId', 'month', 'workDays', 'totalHours', 'otHoursAuto', 'otHoursManual', 'otHours', 'otRate', 'otAmount', 'baseSalary', 'commissionAmount', 'otherBonus', 'otherBonusNote', 'deduction', 'deductionNote', 'totalAmount', 'status', 'note', 'createdBy', 'createdAt', 'updatedAt', 'reviewedAt', 'reviewerId'],
+  // Hoa hồng dự án theo từng thành viên (tính từ % x giá trị dự án).
+  commissions: ['id', 'projectId', 'memberId', 'projectValue', 'percent', 'amount', 'month', 'note', 'createdBy', 'createdAt', 'updatedAt'],
+  // % hoa hồng mặc định theo vai trò (admin/manager/member) — dùng để gợi ý khi tạo hoa hồng dự án.
+  commissionRates: ['id', 'roleLevel', 'percent', 'updatedAt']
 };
 
 function doGet(e) { return handleRequest(e); }
@@ -109,6 +118,30 @@ function handleRequest(e) {
       result = updateData(ss, SHEETS.documents, params.id, JSON.parse(params.data));
     } else if (action === 'deleteDocument') {
       result = deleteData(ss, SHEETS.documents, params.id);
+    } else if (action === 'getPayslips') {
+      result = getAllData(ss, SHEETS.payslips);
+    } else if (action === 'addPayslip') {
+      result = addData(ss, SHEETS.payslips, JSON.parse(params.data));
+    } else if (action === 'updatePayslip') {
+      result = updateData(ss, SHEETS.payslips, params.id, JSON.parse(params.data));
+    } else if (action === 'deletePayslip') {
+      result = deleteData(ss, SHEETS.payslips, params.id);
+    } else if (action === 'getCommissions') {
+      result = getAllData(ss, SHEETS.commissions);
+    } else if (action === 'addCommission') {
+      result = addData(ss, SHEETS.commissions, JSON.parse(params.data));
+    } else if (action === 'updateCommission') {
+      result = updateData(ss, SHEETS.commissions, params.id, JSON.parse(params.data));
+    } else if (action === 'deleteCommission') {
+      result = deleteData(ss, SHEETS.commissions, params.id);
+    } else if (action === 'getCommissionRates') {
+      result = getAllData(ss, SHEETS.commissionRates);
+    } else if (action === 'addCommissionRate') {
+      result = addData(ss, SHEETS.commissionRates, JSON.parse(params.data));
+    } else if (action === 'updateCommissionRate') {
+      result = updateData(ss, SHEETS.commissionRates, params.id, JSON.parse(params.data));
+    } else if (action === 'deleteCommissionRate') {
+      result = deleteData(ss, SHEETS.commissionRates, params.id);
     } else {
       result = { error: 'Unknown action: ' + action };
     }
@@ -125,9 +158,14 @@ function getHeaders(sheet) {
   return sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
 }
 
+// Auto-creates the tab if it doesn't exist yet (e.g. Payslips/Commissions on
+// first use) — addData then seeds its header row from HEADERS below.
+function getOrCreateSheet(ss, sheetName) {
+  return ss.getSheetByName(sheetName) || ss.insertSheet(sheetName);
+}
+
 function getAllData(ss, sheetName) {
-  const sheet = ss.getSheetByName(sheetName);
-  if (!sheet) return [];
+  const sheet = getOrCreateSheet(ss, sheetName);
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return [];
   const data = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
@@ -157,12 +195,24 @@ function makeId(prefix) {
   return prefix + '_' + stamp + '_' + Date.now();
 }
 
+// Sheets auto-parses strings that look like dates (e.g. "2026-09") into real
+// dates on write — via appendRow/setValue — REGARDLESS of the column's own
+// number format (plain-text formatting only protects manual typing, not API
+// writes). Fields like "month" ('YYYY-MM') are compared with exact string
+// equality elsewhere, so a silent date-coercion breaks all of that filtering.
+// A leading apostrophe is the standard Sheets trick to force literal text.
+function forceTextIfDateLike(val) {
+  if (typeof val === 'string' && /^\d{4}-\d{1,2}$/.test(val)) return "'" + val;
+  return val;
+}
+
 function addData(ss, sheetName, data) {
-  const sheet = ss.getSheetByName(sheetName);
+  const sheet = getOrCreateSheet(ss, sheetName);
   let headers = getHeaders(sheet);
   // Brand-new empty sheet with no header row yet: seed it from the reference schema.
   if (headers.length === 0) {
-    headers = HEADERS[sheetName.toLowerCase()] || Object.keys(data);
+    const schemaKey = Object.keys(HEADERS).filter(function (k) { return k.toLowerCase() === sheetName.toLowerCase(); })[0];
+    headers = (schemaKey && HEADERS[schemaKey]) || Object.keys(data);
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   }
   if (!data.id) {
@@ -171,14 +221,15 @@ function addData(ss, sheetName, data) {
   data.createdAt = data.createdAt || new Date().toISOString().split('T')[0];
   const row = headers.map(function (h) {
     const val = data[h];
-    return Array.isArray(val) ? JSON.stringify(val) : (val !== undefined && val !== null ? val : '');
+    if (Array.isArray(val)) return JSON.stringify(val);
+    return forceTextIfDateLike(val !== undefined && val !== null ? val : '');
   });
   sheet.appendRow(row);
   return data;
 }
 
 function updateData(ss, sheetName, id, updates) {
-  const sheet = ss.getSheetByName(sheetName);
+  const sheet = getOrCreateSheet(ss, sheetName);
   const headers = getHeaders(sheet);
   const data = getAllData(ss, sheetName);
   const index = data.findIndex(function (row) { return row.id === id; });
@@ -191,7 +242,7 @@ function updateData(ss, sheetName, id, updates) {
     if (updates[h] !== undefined) {
       let val = updates[h];
       if (Array.isArray(val)) val = JSON.stringify(val);
-      sheet.getRange(rowNum, i + 1).setValue(val || '');
+      sheet.getRange(rowNum, i + 1).setValue(forceTextIfDateLike(val) || '');
     }
   });
   return Object.assign({}, data[index], updates);
@@ -237,6 +288,8 @@ function cascadeMemberIdChange(oldId, newId) {
   replaceIdInColumn(ss, SHEETS.proposals, 'requesterId', oldId, newId);
   replaceIdInColumn(ss, SHEETS.proposals, 'reviewerId', oldId, newId);
   replaceIdInColumn(ss, SHEETS.timesheet, 'memberId', oldId, newId);
+  replaceIdInColumn(ss, SHEETS.payslips, 'memberId', oldId, newId);
+  replaceIdInColumn(ss, SHEETS.commissions, 'memberId', oldId, newId);
   replaceIdInListColumn(ss, SHEETS.projects, 'members', oldId, newId);
 }
 

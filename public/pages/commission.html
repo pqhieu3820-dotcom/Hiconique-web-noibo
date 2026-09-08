@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>% Hoa hồng dự án · HICONIQUE</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/reset.css">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/portal.css">
+  <link rel="stylesheet" href="/css/subpage.css">
+  <link rel="stylesheet" href="/css/task-manager.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <script src="/js/gsheets-config.js"></script>
+  <script src="/js/task-data.js"></script>
+  <script src="/js/auth.js"></script>
+  <style>
+    :root {
+      --cm-bg: var(--color-bg);
+      --cm-surface: var(--color-surface);
+      --cm-border: var(--color-border);
+      --cm-text: var(--color-text);
+      --cm-muted: var(--color-text-muted);
+      --cm-bronze: var(--color-bronze);
+    }
+    body { background: var(--cm-bg); color: var(--cm-text); font-family: 'Inter', -apple-system, sans-serif; min-height: 100vh; }
+    .cm-container { max-width: 1100px; }
+
+    .cm-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+    .cm-month-input { padding: 10px 14px; border-radius: 10px; border: 1px solid var(--cm-border); background: var(--cm-surface); color: var(--cm-text); font-family: inherit; font-size: 0.9375rem; }
+
+    .cm-card { background: var(--cm-surface); border: 1px solid var(--cm-border); border-radius: 18px; overflow: hidden; margin-bottom: 28px; }
+    .cm-card-head { padding: 18px 24px; border-bottom: 1px solid var(--cm-border); background: var(--cm-bg); }
+    .cm-card-title { font-size: 1rem; font-weight: 600; color: var(--cm-text); }
+    .cm-card-desc { font-size: 0.8125rem; color: var(--cm-muted); margin-top: 4px; }
+
+    .cm-rate-row { display: grid; grid-template-columns: 1fr 160px 100px; gap: 12px; align-items: center; padding: 14px 24px; border-bottom: 1px solid var(--cm-border); font-size: 0.875rem; }
+    .cm-rate-row:last-child { border-bottom: none; }
+    .cm-rate-input { width: 100px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--cm-border); background: var(--cm-bg); color: var(--cm-text); font-family: 'JetBrains Mono', monospace; font-size: 0.875rem; }
+
+    .cm-btn { padding: 8px 16px; border-radius: 8px; border: none; font-family: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; }
+    .cm-btn-primary { background: var(--cm-bronze); color: #0B0D10; }
+    .cm-btn-primary:hover { background: #C7A464; }
+    .cm-btn-ghost { background: transparent; border: 1px solid var(--cm-border); color: var(--cm-text); }
+    .cm-btn-ghost:hover { border-color: var(--cm-bronze); color: var(--cm-bronze); }
+
+    .cm-project-block { border-bottom: 1px solid var(--cm-border); padding: 18px 24px; }
+    .cm-project-block:last-child { border-bottom: none; }
+    .cm-project-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; flex-wrap: wrap; }
+    .cm-project-name { font-weight: 600; color: var(--cm-text); font-size: 0.9375rem; }
+    .cm-project-name span { color: var(--cm-muted); font-weight: 400; font-size: 0.8125rem; }
+    .cm-budget-field { display: flex; align-items: center; gap: 8px; }
+    .cm-budget-field label { font-size: 0.75rem; color: var(--cm-muted); }
+    .cm-budget-input { width: 160px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--cm-border); background: var(--cm-bg); color: var(--cm-text); font-family: 'JetBrains Mono', monospace; font-size: 0.8125rem; }
+
+    .cm-member-row { display: grid; grid-template-columns: 1.4fr 0.9fr 1fr 1fr auto; gap: 12px; align-items: center; padding: 8px 0; font-size: 0.8125rem; }
+    .cm-member-row .cm-percent-input { width: 70px; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--cm-border); background: var(--cm-bg); color: var(--cm-text); font-family: 'JetBrains Mono', monospace; }
+    .cm-amount { font-family: 'JetBrains Mono', monospace; color: var(--cm-bronze); font-weight: 600; }
+    .cm-saved-tag { font-size: 0.6875rem; color: var(--cm-muted); }
+
+    .cm-summary-row { display: grid; grid-template-columns: 1.3fr 1.1fr 1fr 0.7fr 1fr 0.9fr; gap: 12px; align-items: center; padding: 12px 24px; border-bottom: 1px solid var(--cm-border); font-size: 0.8125rem; }
+    .cm-summary-row:last-child { border-bottom: none; }
+    .cm-summary-row-head { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--cm-muted); background: var(--cm-bg); font-weight: 600; }
+    .cm-empty { padding: 32px 24px; text-align: center; color: var(--cm-muted); font-size: 0.875rem; }
+    .cm-readonly-note { padding: 14px 24px; font-size: 0.8125rem; color: var(--cm-muted); background: var(--cm-bg); }
+
+    @media (max-width: 900px) {
+      .cm-member-row, .cm-summary-row { grid-template-columns: 1fr; row-gap: 4px; }
+      .cm-summary-row-head { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/" class="brand">
+        <span class="brand-mark">H</span>
+        <span class="brand-name"><span class="brand-name-1">HICONIQUE</span></span>
+      </a>
+      <nav class="primary-nav">
+        <a href="/#tools" class="nav-link">Công cụ</a>
+        <a href="/pages/tasks-manager.html" class="nav-link">Tasks</a>
+        <a href="/pages/projects.html" class="nav-link">Dự án</a>
+        <a href="/pages/wiki.html" class="nav-link">Tài liệu</a>
+        <a href="/#ai" class="nav-link">AI</a>
+        <a href="/pages/notices.html" class="nav-link">Thông báo</a>
+        <a href="/pages/team.html" class="nav-link">Team</a>
+      </nav>
+      <div class="header-actions">
+        <button class="theme-toggle" aria-label="Chuyển đổi sáng/tối" data-theme-toggle>
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" stroke-linecap="round" />
+          </svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+        <span class="clock"><span class="clock-time" data-clock>--:--</span><span class="clock-meta">GMT+7</span></span>
+        <button class="avatar"><span>--</span></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="subpage">
+  <div class="subpage-inner cm-container">
+    <p class="eyebrow">— Hoa hồng dự án</p>
+    <h1 class="subpage-title">% Hoa hồng <span class="subpage-title-italic">dự án</span></h1>
+    <p class="subpage-lede">Cấu hình % theo vai trò hoặc theo từng dự án — số tiền hoa hồng tự động tính và hiện trong phiếu lương của thành viên.</p>
+
+    <div class="cm-toolbar">
+      <input type="month" class="cm-month-input" id="cmMonthInput">
+    </div>
+
+    <div class="cm-card">
+      <div class="cm-card-head">
+        <div class="cm-card-title">% Hoa hồng mặc định theo vai trò</div>
+        <div class="cm-card-desc">Dùng để gợi ý % khi tính hoa hồng cho từng dự án bên dưới.</div>
+      </div>
+      <div id="cmRateRows"></div>
+    </div>
+
+    <div class="cm-card">
+      <div class="cm-card-head">
+        <div class="cm-card-title">Hoa hồng theo dự án</div>
+        <div class="cm-card-desc">Nhập giá trị dự án và % cho từng thành viên — bấm Lưu để tính và ghi vào phiếu lương của tháng đang chọn.</div>
+      </div>
+      <div id="cmProjectBlocks"></div>
+    </div>
+
+    <div class="cm-card">
+      <div class="cm-card-head"><div class="cm-card-title" id="cmSummaryTitle">Hoa hồng đã lưu</div></div>
+      <div class="cm-summary-row cm-summary-row-head">
+        <span>Dự án</span><span>Thành viên</span><span>Giá trị dự án</span><span>%</span><span>Số tiền</span><span></span>
+      </div>
+      <div id="cmSummaryList"></div>
+    </div>
+  </div>
+  </main>
+
+  <script src="/js/portal.js" defer></script>
+  <script>
+  (function () {
+    'use strict';
+
+    function fmt(n) { return (Number(n) || 0).toLocaleString('vi-VN'); }
+    function currentMonthStr() {
+      var d = new Date();
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    }
+    function getUser() {
+      var session = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
+      if (!session) return null;
+      var fresh = TaskManager.getMember(session.id);
+      return fresh ? Object.assign({}, session, fresh) : session;
+    }
+    function isManager(user) {
+      return typeof TaskManager !== 'undefined' && TaskManager.canManageNotifications(user);
+    }
+    var ROLE_LABELS = { admin: 'CEO / Admin', manager: 'Quản lý', member: 'Thành viên' };
+
+    var monthInput = document.getElementById('cmMonthInput');
+    monthInput.value = currentMonthStr();
+
+    function renderRates() {
+      var user = getUser();
+      var manager = isManager(user);
+      var rates = TaskManager.getCommissionRates();
+      var order = ['admin', 'manager', 'member'];
+      document.getElementById('cmRateRows').innerHTML = order.map(function (roleLevel) {
+        var rate = rates.find(function (r) { return r.roleLevel === roleLevel; });
+        var percent = rate ? rate.percent : 0;
+        return '<div class="cm-rate-row">' +
+          '<span>' + ROLE_LABELS[roleLevel] + '</span>' +
+          (manager
+            ? '<input type="number" min="0" max="100" step="0.5" class="cm-rate-input" data-rate="' + roleLevel + '" value="' + percent + '"> %'
+            : '<span>' + percent + '%</span>') +
+          (manager ? '<button class="cm-btn cm-btn-ghost" data-save-rate="' + roleLevel + '">Lưu</button>' : '<span></span>') +
+        '</div>';
+      }).join('');
+
+      if (manager) {
+        document.querySelectorAll('[data-save-rate]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var roleLevel = btn.getAttribute('data-save-rate');
+            var input = document.querySelector('.cm-rate-input[data-rate="' + roleLevel + '"]');
+            TaskManager.saveCommissionRate(roleLevel, parseFloat(input.value) || 0, user);
+            renderAll();
+          });
+        });
+      }
+    }
+
+    function renderProjects() {
+      var user = getUser();
+      var manager = isManager(user);
+      var month = monthInput.value || currentMonthStr();
+      var projects = TaskManager.getProjects();
+      var container = document.getElementById('cmProjectBlocks');
+
+      if (projects.length === 0) {
+        container.innerHTML = '<div class="cm-empty">Chưa có dự án nào.</div>';
+        return;
+      }
+
+      container.innerHTML = projects.map(function (p) {
+        var memberIds = Array.isArray(p.members) ? p.members : (p.members ? String(p.members).split(',').map(function (s) { return s.trim(); }) : []);
+        var budget = Number(p.budget) || 0;
+
+        var memberRows = memberIds.map(function (mid) {
+          var member = TaskManager.getMember(mid);
+          if (!member) return '';
+          var roleRate = TaskManager.getCommissionRateFor(member.roleLevel);
+          var existing = TaskManager.getCommissions({ projectId: p.id, memberId: mid, month: month })[0];
+          var percent = existing ? existing.percent : roleRate;
+          var amount = existing ? existing.amount : Math.round(budget * roleRate / 100);
+          return '<div class="cm-member-row">' +
+            '<span>' + member.name + ' <span class="cm-saved-tag">(' + ROLE_LABELS[member.roleLevel] + ')</span></span>' +
+            (manager
+              ? '<span><input type="number" min="0" max="100" step="0.5" class="cm-percent-input" data-project="' + p.id + '" data-member="' + mid + '" value="' + percent + '"> %</span>'
+              : '<span>' + percent + '%</span>') +
+            '<span class="cm-amount" data-amount-for="' + p.id + '-' + mid + '">' + fmt(amount) + '</span>' +
+            '<span class="cm-saved-tag">' + (existing ? 'Đã lưu tháng ' + month : 'Chưa lưu') + '</span>' +
+            (manager ? '<button class="cm-btn cm-btn-primary" data-save-commission="' + p.id + '|' + mid + '">Lưu</button>' : '<span></span>') +
+          '</div>';
+        }).join('');
+
+        return '<div class="cm-project-block" data-project-block="' + p.id + '">' +
+          '<div class="cm-project-header">' +
+            '<div class="cm-project-name">' + p.name + ' <span>(' + (p.type || '') + ')</span></div>' +
+            '<div class="cm-budget-field">' +
+              '<label>Giá trị dự án</label>' +
+              (manager
+                ? '<input type="number" min="0" step="1000000" class="cm-budget-input" data-budget="' + p.id + '" value="' + budget + '">'
+                : '<span class="cm-amount">' + fmt(budget) + '</span>') +
+              (manager ? '<button class="cm-btn cm-btn-ghost" data-save-budget="' + p.id + '">Lưu</button>' : '') +
+            '</div>' +
+          '</div>' +
+          (memberRows || '<div class="cm-saved-tag">Dự án chưa có thành viên.</div>') +
+        '</div>';
+      }).join('');
+
+      if (!manager) return;
+
+      document.querySelectorAll('[data-save-budget]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var pid = btn.getAttribute('data-save-budget');
+          var input = document.querySelector('.cm-budget-input[data-budget="' + pid + '"]');
+          TaskManager.updateProject(pid, { budget: parseFloat(input.value) || 0 });
+          renderAll();
+        });
+      });
+
+      document.querySelectorAll('[data-save-commission]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var parts = btn.getAttribute('data-save-commission').split('|');
+          var pid = parts[0], mid = parts[1];
+          var project = TaskManager.getProject(pid);
+          var percentInput = document.querySelector('.cm-percent-input[data-project="' + pid + '"][data-member="' + mid + '"]');
+          var percent = parseFloat(percentInput.value) || 0;
+          var budget = Number(project.budget) || 0;
+          var amount = Math.round(budget * percent / 100);
+          var existing = TaskManager.getCommissions({ projectId: pid, memberId: mid, month: month })[0];
+          var data = { projectId: pid, memberId: mid, projectValue: budget, percent: percent, amount: amount, month: month, createdBy: user.id };
+          if (existing) {
+            TaskManager.updateCommission(existing.id, data, user);
+          } else {
+            TaskManager.createCommission(data, user);
+          }
+          renderAll();
+        });
+      });
+    }
+
+    function renderSummary() {
+      var user = getUser();
+      var manager = isManager(user);
+      var month = monthInput.value || currentMonthStr();
+      var list = manager ? TaskManager.getCommissions({ month: month }) : TaskManager.getCommissions({ memberId: user.id, month: month });
+      document.getElementById('cmSummaryTitle').textContent = 'Hoa hồng đã lưu — tháng ' + month;
+      var listEl = document.getElementById('cmSummaryList');
+
+      if (list.length === 0) {
+        listEl.innerHTML = '<div class="cm-empty">Chưa có hoa hồng nào được lưu cho tháng này.</div>';
+        return;
+      }
+
+      listEl.innerHTML = list.map(function (c) {
+        var project = TaskManager.getProject(c.projectId);
+        var member = TaskManager.getMember(c.memberId);
+        return '<div class="cm-summary-row">' +
+          '<span>' + (project ? project.name : c.projectId) + '</span>' +
+          '<span>' + (member ? member.name : c.memberId) + '</span>' +
+          '<span>' + fmt(c.projectValue) + '</span>' +
+          '<span>' + c.percent + '%</span>' +
+          '<span class="cm-amount">' + fmt(c.amount) + '</span>' +
+          '<span>' + (manager ? '<button class="cm-btn cm-btn-ghost" data-delete-commission="' + c.id + '">Xoá</button>' : '') + '</span>' +
+        '</div>';
+      }).join('');
+
+      if (!manager) return;
+      listEl.querySelectorAll('[data-delete-commission]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          TaskManager.deleteCommission(btn.getAttribute('data-delete-commission'), user);
+          renderAll();
+        });
+      });
+    }
+
+    function renderAll() {
+      renderRates();
+      renderProjects();
+      renderSummary();
+    }
+
+    monthInput.addEventListener('change', renderAll);
+    renderAll();
+
+    if (typeof Auth !== 'undefined' && Auth.getCurrentUser && !Auth.getCurrentUser()) {
+      Auth.showLoginModal();
+    }
+  })();
+  </script>
+</body>
+</html>

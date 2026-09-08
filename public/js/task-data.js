@@ -45,13 +45,27 @@ function syncToGSheets(type, action, data, id) {
     timesheet: { add: 'addTimesheet', update: 'updateTimesheet' },
     notifications: { add: 'addNotification', update: 'updateNotification', delete: 'deleteNotification' },
     notices: { add: 'addNotice', update: 'updateNotice', delete: 'deleteNotice' },
-    documents: { add: 'addDocument', update: 'updateDocument', delete: 'deleteDocument' }
+    documents: { add: 'addDocument', update: 'updateDocument', delete: 'deleteDocument' },
+    payslips: { add: 'addPayslip', update: 'updatePayslip', delete: 'deletePayslip' },
+    commissions: { add: 'addCommission', update: 'updateCommission', delete: 'deleteCommission' },
+    commissionRates: { add: 'addCommissionRate', update: 'updateCommissionRate', delete: 'deleteCommissionRate' }
   };
 
   var apiAction = actionMap[type] ? actionMap[type][action] : null;
   if (!apiAction) return;
 
   callGSheetsAPI(apiAction, data, id);
+}
+
+// Payslips/Commissions/CommissionRates are brand-new sheets with no CSV
+// publish gid available yet, so they're read straight from the Apps Script
+// Web App (JSON) instead of the CSV-publish path used for the older sheets.
+function fetchFromAPI(action, callback) {
+  if (!isUsingGSheets() || !GSHEETS_CONFIG.API_URL) { callback([]); return; }
+  fetch(GSHEETS_CONFIG.API_URL + '?action=' + encodeURIComponent(action), { redirect: 'follow' })
+    .then(function (r) { return r.json(); })
+    .then(function (data) { callback(Array.isArray(data) ? data : []); })
+    .catch(function (e) { console.error('GSheets API read failed:', e); callback([]); });
 }
 
 var TaskManager = (function() {
@@ -103,8 +117,19 @@ var TaskManager = (function() {
     readNotifications: 'hiconique_read_notifications',
     notices: 'hiconique_notices',
     documents: 'hiconique_documents',
-    docCategories: 'hiconique_doc_categories'
+    docCategories: 'hiconique_doc_categories',
+    payslips: 'hiconique_payslips',
+    commissions: 'hiconique_commissions',
+    commissionRates: 'hiconique_commission_rates'
   };
+
+  // % hoa hồng mặc định theo vai trò — gợi ý khi tạo hoa hồng dự án, admin/
+  // quản lý có thể chỉnh lại ở trang % Hoa hồng dự án.
+  var DEFAULT_COMMISSION_RATES = [
+    { id: 'crate_admin', roleLevel: 'admin', percent: 5, updatedAt: '2026-01-01' },
+    { id: 'crate_manager', roleLevel: 'manager', percent: 3, updatedAt: '2026-01-01' },
+    { id: 'crate_member', roleLevel: 'member', percent: 1, updatedAt: '2026-01-01' }
+  ];
 
   // Recurring notification rules — seeded once, editable by CEO from the bell panel.
   var DEFAULT_NOTIFICATIONS = [
@@ -164,7 +189,7 @@ var TaskManager = (function() {
     }
 
     var done = 0;
-    var total = 8;
+    var total = 11;
     var success = false;
 
     function checkDone() {
@@ -218,6 +243,20 @@ var TaskManager = (function() {
     getFromGSheets('documents', function(documents) {
       if (documents.length > 0) {
         localStorage.setItem(STORAGE_KEYS.documents, JSON.stringify(documents));
+      }
+      checkDone();
+    });
+    getFromGSheets('payslips', function(payslips) {
+      localStorage.setItem(STORAGE_KEYS.payslips, JSON.stringify(payslips));
+      checkDone();
+    });
+    getFromGSheets('commissions', function(commissions) {
+      localStorage.setItem(STORAGE_KEYS.commissions, JSON.stringify(commissions));
+      checkDone();
+    });
+    getFromGSheets('commissionRates', function(rates) {
+      if (rates.length > 0) {
+        localStorage.setItem(STORAGE_KEYS.commissionRates, JSON.stringify(rates));
       }
       checkDone();
     });
@@ -300,6 +339,18 @@ var TaskManager = (function() {
     // Cache for 30 seconds
     if (gsCache[type] && (now - gsCache.lastFetch) < 30000) {
       callback(gsCache[type]);
+      return;
+    }
+
+    // No CSV-publish gid exists for these brand-new sheets yet — read them
+    // straight from the Apps Script Web App instead.
+    var apiReadActions = { payslips: 'getPayslips', commissions: 'getCommissions', commissionRates: 'getCommissionRates' };
+    if (apiReadActions[type]) {
+      fetchFromAPI(apiReadActions[type], function (data) {
+        gsCache[type] = data;
+        gsCache.lastFetch = now;
+        callback(data);
+      });
       return;
     }
 
@@ -396,6 +447,15 @@ var TaskManager = (function() {
           localStorage.setItem(STORAGE_KEYS.documents, JSON.stringify(DEFAULT_DOCUMENTS));
         }
       });
+      getFromGSheets('payslips', function(payslips) {
+        localStorage.setItem(STORAGE_KEYS.payslips, JSON.stringify(payslips));
+      });
+      getFromGSheets('commissions', function(commissions) {
+        localStorage.setItem(STORAGE_KEYS.commissions, JSON.stringify(commissions));
+      });
+      getFromGSheets('commissionRates', function(rates) {
+        localStorage.setItem(STORAGE_KEYS.commissionRates, JSON.stringify(rates.length > 0 ? rates : DEFAULT_COMMISSION_RATES));
+      });
     } else {
       // Use localStorage
       if (!localStorage.getItem(STORAGE_KEYS.projects)) {
@@ -418,6 +478,15 @@ var TaskManager = (function() {
       }
       if (!localStorage.getItem(STORAGE_KEYS.documents)) {
         localStorage.setItem(STORAGE_KEYS.documents, JSON.stringify(DEFAULT_DOCUMENTS));
+      }
+      if (!localStorage.getItem(STORAGE_KEYS.payslips)) {
+        localStorage.setItem(STORAGE_KEYS.payslips, JSON.stringify([]));
+      }
+      if (!localStorage.getItem(STORAGE_KEYS.commissions)) {
+        localStorage.setItem(STORAGE_KEYS.commissions, JSON.stringify([]));
+      }
+      if (!localStorage.getItem(STORAGE_KEYS.commissionRates)) {
+        localStorage.setItem(STORAGE_KEYS.commissionRates, JSON.stringify(DEFAULT_COMMISSION_RATES));
       }
     }
   }
@@ -989,6 +1058,141 @@ var TaskManager = (function() {
     return updated;
   }
 
+  function getMonthlyTimesheetStats(memberId, month) {
+    // month: 'YYYY-MM'
+    var parts = String(month).split('-');
+    var entries = getTimesheetEntries({ memberId: memberId, year: parts[0], month: parts[1] });
+    var workDays = 0, totalHours = 0, overtimeHours = 0;
+    entries.forEach(function (e) {
+      if (e.checkoutTime) {
+        workDays++;
+        totalHours += parseFloat(e.totalHours) || 0;
+        overtimeHours += parseFloat(e.overtimeHours) || 0;
+      }
+    });
+    return { workDays: workDays, totalHours: totalHours, overtimeHours: overtimeHours };
+  }
+
+  // Lương cơ bản — chỉ admin/quản lý được sửa (không cho tự sửa lương của mình).
+  function setMemberBaseSalary(id, baseSalary, user) {
+    if (!canManageNotifications(user)) return null;
+    var updated = update(STORAGE_KEYS.members, id, { baseSalary: baseSalary });
+    if (updated) syncToGSheets('members', 'update', { baseSalary: baseSalary }, id);
+    return updated;
+  }
+
+  // % Hoa hồng dự án theo vai trò — cấu hình mặc định, admin/quản lý chỉnh được.
+  function getCommissionRates() {
+    return getAll(STORAGE_KEYS.commissionRates);
+  }
+
+  function getCommissionRateFor(roleLevel) {
+    var found = getCommissionRates().find(function (r) { return r.roleLevel === roleLevel; });
+    return found ? (Number(found.percent) || 0) : 0;
+  }
+
+  function saveCommissionRate(roleLevel, percent, user) {
+    if (!canManageNotifications(user)) return null;
+    var existing = getCommissionRates().find(function (r) { return r.roleLevel === roleLevel; });
+    if (existing) {
+      var updated = update(STORAGE_KEYS.commissionRates, existing.id, { percent: percent });
+      if (updated) syncToGSheets('commissionRates', 'update', { percent: percent }, existing.id);
+      return updated;
+    }
+    var created = add(STORAGE_KEYS.commissionRates, { roleLevel: roleLevel, percent: percent });
+    syncToGSheets('commissionRates', 'add', created);
+    return created;
+  }
+
+  // Hoa hồng dự án — mỗi dòng là hoa hồng của 1 thành viên trên 1 dự án, cho 1 tháng.
+  function getCommissions(filters) {
+    filters = filters || {};
+    var list = getAll(STORAGE_KEYS.commissions);
+    if (filters.projectId) list = list.filter(function (c) { return c.projectId === filters.projectId; });
+    if (filters.memberId) list = list.filter(function (c) { return c.memberId === filters.memberId; });
+    if (filters.month) list = list.filter(function (c) { return c.month === filters.month; });
+    return list.sort(function (a, b) { return new Date(b.createdAt) - new Date(a.createdAt); });
+  }
+
+  function createCommission(data, user) {
+    if (!canManageNotifications(user)) return null;
+    var created = add(STORAGE_KEYS.commissions, data);
+    syncToGSheets('commissions', 'add', created);
+    return created;
+  }
+
+  function updateCommission(id, updates, user) {
+    if (!canManageNotifications(user)) return null;
+    var updated = update(STORAGE_KEYS.commissions, id, updates);
+    if (updated) syncToGSheets('commissions', 'update', updates, id);
+    return updated;
+  }
+
+  function deleteCommission(id, user) {
+    if (!canManageNotifications(user)) return null;
+    var result = remove(STORAGE_KEYS.commissions, id);
+    syncToGSheets('commissions', 'delete', {}, id);
+    return result;
+  }
+
+  function getMemberCommissionTotal(memberId, month) {
+    return getCommissions({ memberId: memberId, month: month }).reduce(function (sum, c) {
+      return sum + (Number(c.amount) || 0);
+    }, 0);
+  }
+
+  // Phiếu lương — nhân viên tự tạo cho chính mình mỗi tháng, CEO/quản lý duyệt.
+  var OT_MULTIPLIER = 1.5;
+  var STANDARD_MONTHLY_HOURS = 208; // 26 công x 8 giờ/ngày — quy ước tính đơn giá giờ OT
+
+  function getPayslips(filters) {
+    filters = filters || {};
+    var list = getAll(STORAGE_KEYS.payslips);
+    if (filters.memberId) list = list.filter(function (p) { return p.memberId === filters.memberId; });
+    if (filters.month) list = list.filter(function (p) { return p.month === filters.month; });
+    if (filters.status) list = list.filter(function (p) { return p.status === filters.status; });
+    return list.sort(function (a, b) { return new Date(b.createdAt) - new Date(a.createdAt); });
+  }
+
+  function getPayslip(id) {
+    return getById(STORAGE_KEYS.payslips, id);
+  }
+
+  function createPayslip(payslip) {
+    payslip.status = 'pending';
+    var created = add(STORAGE_KEYS.payslips, payslip);
+    syncToGSheets('payslips', 'add', created);
+    return created;
+  }
+
+  function updatePayslip(id, updates) {
+    var updated = update(STORAGE_KEYS.payslips, id, updates);
+    if (updated) syncToGSheets('payslips', 'update', updates, id);
+    return updated;
+  }
+
+  function approvePayslip(id, user) {
+    if (!canManageNotifications(user)) return null;
+    return updatePayslip(id, { status: 'approved', reviewedAt: new Date().toISOString(), reviewerId: user.id });
+  }
+
+  function rejectPayslip(id, user) {
+    if (!canManageNotifications(user)) return null;
+    return updatePayslip(id, { status: 'rejected', reviewedAt: new Date().toISOString(), reviewerId: user.id });
+  }
+
+  // Chỉ chủ phiếu (hoặc quản lý) xoá được, và chỉ khi còn ở trạng thái chờ duyệt.
+  function deletePayslip(id, user) {
+    var slip = getPayslip(id);
+    if (!slip || !user) return null;
+    var isOwner = slip.memberId === user.id;
+    if (!isOwner && !canManageNotifications(user)) return null;
+    if (slip.status !== 'pending') return null;
+    var result = remove(STORAGE_KEYS.payslips, id);
+    syncToGSheets('payslips', 'delete', {}, id);
+    return result;
+  }
+
   // Statistics
   function getStats() {
     var tasks = getAll(STORAGE_KEYS.tasks);
@@ -1094,6 +1298,31 @@ var TaskManager = (function() {
     addDocCategory: addDocCategory,
     deleteDocCategory: deleteDocCategory,
     getNextDocCode: getNextDocCode,
+
+    // Lương cơ bản (Members.baseSalary)
+    setMemberBaseSalary: setMemberBaseSalary,
+
+    // % Hoa hồng dự án
+    getCommissionRates: getCommissionRates,
+    getCommissionRateFor: getCommissionRateFor,
+    saveCommissionRate: saveCommissionRate,
+    getCommissions: getCommissions,
+    createCommission: createCommission,
+    updateCommission: updateCommission,
+    deleteCommission: deleteCommission,
+    getMemberCommissionTotal: getMemberCommissionTotal,
+
+    // Phiếu lương
+    getMonthlyTimesheetStats: getMonthlyTimesheetStats,
+    getPayslips: getPayslips,
+    getPayslip: getPayslip,
+    createPayslip: createPayslip,
+    updatePayslip: updatePayslip,
+    approvePayslip: approvePayslip,
+    rejectPayslip: rejectPayslip,
+    deletePayslip: deletePayslip,
+    OT_MULTIPLIER: OT_MULTIPLIER,
+    STANDARD_MONTHLY_HOURS: STANDARD_MONTHLY_HOURS,
 
     // Storage
     STORAGE_KEYS: STORAGE_KEYS,

@@ -154,6 +154,8 @@
     { title: 'Dự án', sub: 'Board / List / Timeline / Gantt', url: '/pages/projects.html', group: 'Công cụ' },
     { title: 'Bảng tiến độ', sub: 'Theo dõi tiến độ công việc', url: '/pages/progress-board.html', group: 'Công cụ' },
     { title: 'Chấm công', sub: 'Check-in / Check-out hàng ngày', url: '/pages/timesheet.html', group: 'Công cụ' },
+    { title: 'Phiếu lương', sub: 'Đề xuất thanh toán lương hàng tháng', url: '/pages/payslip.html', group: 'Công cụ' },
+    { title: '% Hoa hồng dự án', sub: 'Cấu hình và tính hoa hồng theo dự án', url: '/pages/commission.html', group: 'Công cụ' },
     { title: 'Tài liệu / Wiki', sub: 'Quy trình, biểu mẫu, hướng dẫn', url: '/pages/wiki.html', group: 'Tài liệu' },
     { title: 'SPC', sub: 'Kiểm soát chất lượng', url: '/pages/spc.html', group: 'Tài liệu' },
     { title: 'Thông báo', sub: 'Tin tức và thông báo nội bộ', url: '/pages/notices.html', group: 'Trang' },

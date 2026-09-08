@@ -7,27 +7,38 @@ sửa `gsheets-api-v2.js`) hoặc **thêm sheet mới**.
 
 ## Cấu trúc Spreadsheet hiện tại
 
-Spreadsheet: `HICONIQUE Task Manager` — 8 tab, mỗi tab một loại dữ liệu:
+Spreadsheet: `HICONIQUE Task Manager` — 11 tab, mỗi tab một loại dữ liệu:
 
 | Tab | Dùng cho | Cột chính |
 |---|---|---|
-| `Members` | Thành viên | id, name, role, roleLevel, email, password, dob, cccd, phone, hometown, bank, bankAccount, color, avatar, createdAt, gender |
-| `Projects` | Dự án | id, name, type, color, progress, status, members, createdAt, updatedAt |
+| `Members` | Thành viên | id, name, role, roleLevel, email, password, dob, cccd, phone, hometown, bank, bankAccount, color, avatar, createdAt, gender, baseSalary |
+| `Projects` | Dự án | id, name, type, color, progress, status, members, createdAt, updatedAt, budget |
 | `Tasks` | Công việc | id, title, description, projectId, assigneeId, priority, status, startDate, deadline, createdBy, createdAt, updatedAt, progress, dailyTasks |
 | `Proposals` | Đề xuất | id, title, description, type, status, requesterId, reviewerId, amount, createdAt, reviewedAt |
 | `Timesheet` | Chấm công | id, memberId, date, checkinTime, checkoutTime, totalHours, overtimeHours, status, note, checkinLat, checkinLng, checkinDistance, checkinIp, geoPass, ipPass, verifyPassCount, verifyStatus |
 | `Notifications` | Nhắc định kỳ (chuông thông báo) | id, title, message, type, scope, recurring, recurRule, active, createdBy, createdAt, updatedAt |
 | `Notices` | Bảng tin (trang Thông báo) | id, title, message, color, createdBy, createdAt, updatedAt |
 | `Documents` | Link tài liệu (trang Tài liệu) | id, category, name, url, code, createdBy, createdAt, updatedAt |
+| `Payslips` | Phiếu lương (trang Phiếu lương) | id, memberId, month, workDays, totalHours, otHoursAuto, otHoursManual, otHours, otRate, otAmount, baseSalary, commissionAmount, otherBonus, otherBonusNote, deduction, deductionNote, totalAmount, status, note, createdBy, createdAt, updatedAt, reviewedAt, reviewerId |
+| `Commissions` | Hoa hồng dự án theo thành viên (trang % Hoa hồng dự án) | id, projectId, memberId, projectValue, percent, amount, month, note, createdBy, createdAt, updatedAt |
+| `CommissionRates` | % hoa hồng mặc định theo vai trò | id, roleLevel, percent, updatedAt |
 
 **Quan trọng:** `gsheets-api-v2.js` đọc/ghi theo **tên cột thật trên Sheet** (không theo vị trí
 cứng trong code) — nên bạn có thể thêm cột mới trực tiếp trên Sheet mà không lo vỡ dữ liệu.
-Nếu thêm hẳn 1 sheet mới, xem mục "Thêm sheet mới" bên dưới.
+Nếu thêm hẳn 1 sheet mới, xem mục "Thêm sheet mới" bên dưới. `Payslips`, `Commissions` và
+`CommissionRates` **tự động được tạo** (kèm header đúng schema) ngay lần ghi dữ liệu đầu tiên —
+không cần tạo tay tab mới khi mở rộng thêm loại dữ liệu tương tự (xem `getOrCreateSheet` trong
+`gsheets-api-v2.js`). `Payslips`/`Commissions`/`CommissionRates` cũng đọc trực tiếp qua Apps
+Script Web App (JSON) thay vì CSV publish, vì các sheet mới chưa có gid public — không ảnh hưởng
+gì tới cách dùng, chỉ khác đường đọc dữ liệu phía code.
 
-**Lưu ý riêng cho `Timesheet.checkinIp` và `Timesheet.verifyPassCount`:** phải để định dạng cột
-là **Văn bản thuần tuý** (Định dạng → Số → Văn bản thuần tuý), nếu không Google Sheets sẽ tự
-diễn giải sai: IP dạng `14.171.113.174` bị hiểu thành số (mất dấu chấm), còn `2/2` bị hiểu thành
-ngày tháng.
+**Lưu ý riêng cho `Timesheet.checkinIp`, `Timesheet.verifyPassCount`, và cột `month` trên
+`Payslips`/`Commissions`:** phải để định dạng cột là **Văn bản thuần tuý** (Định dạng → Số →
+Văn bản thuần tuý), nếu không Google Sheets sẽ tự diễn giải sai: IP dạng `14.171.113.174` bị
+hiểu thành số (mất dấu chấm), `2/2` hoặc `2026-09` bị hiểu thành ngày tháng. Với `month`,
+`gsheets-api-v2.js` còn tự thêm dấu `'` (nháy đơn) trước khi ghi để ép Google Sheets coi là văn
+bản kể cả khi ghi qua API (định dạng cột "Văn bản thuần tuý" chỉ chặn được gõ tay, không chặn
+được `appendRow`/`setValue` tự động parse ngày).
 
 ## Redeploy Apps Script sau khi sửa `gsheets-api-v2.js`
 

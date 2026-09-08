@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phiếu lương · HICONIQUE</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/reset.css">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/portal.css">
+  <link rel="stylesheet" href="/css/subpage.css">
+  <link rel="stylesheet" href="/css/task-manager.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <script src="/js/gsheets-config.js"></script>
+  <script src="/js/task-data.js"></script>
+  <script src="/js/auth.js"></script>
+  <style>
+    :root {
+      --pl-bg: var(--color-bg);
+      --pl-surface: var(--color-surface);
+      --pl-border: var(--color-border);
+      --pl-text: var(--color-text);
+      --pl-muted: var(--color-text-muted);
+      --pl-bronze: var(--color-bronze);
+      --pl-success: #4F6F52;
+      --pl-success-light: rgba(79, 111, 82, 0.12);
+      --pl-danger: #A04848;
+      --pl-danger-light: rgba(160, 72, 72, 0.12);
+    }
+    body { background: var(--pl-bg); color: var(--pl-text); font-family: 'Inter', -apple-system, sans-serif; min-height: 100vh; }
+    .pl-container { max-width: 1100px; }
+
+    .pl-top-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+    .pl-stat-card { background: var(--pl-surface); border: 1px solid var(--pl-border); border-radius: 14px; padding: 20px 24px; display: flex; align-items: center; gap: 16px; }
+    .pl-stat-icon { width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; flex-shrink: 0; }
+    .pl-stat-icon svg { width: 22px; height: 22px; }
+    .pl-stat-icon.green { background: rgba(79, 111, 82, 0.12); color: #4F6F52; }
+    .pl-stat-icon.bronze { background: rgba(176, 141, 87, 0.12); color: var(--pl-bronze); }
+    .pl-stat-icon.blue { background: rgba(59, 107, 140, 0.12); color: #3B6B8C; }
+    .pl-stat-icon.amber { background: rgba(184, 114, 90, 0.12); color: #B8725A; }
+    .pl-stat-value { font-size: 1.375rem; font-weight: 700; color: var(--pl-text); line-height: 1; font-family: 'JetBrains Mono', monospace; }
+    .pl-stat-label { font-size: 0.8125rem; color: var(--pl-muted); margin-top: 4px; }
+
+    .pl-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+    .pl-month-input {
+      padding: 10px 14px; border-radius: 10px; border: 1px solid var(--pl-border);
+      background: var(--pl-surface); color: var(--pl-text); font-family: inherit; font-size: 0.9375rem;
+    }
+    .pl-btn {
+      padding: 10px 18px; border-radius: 10px; border: none; font-family: inherit; font-size: 0.875rem;
+      font-weight: 600; cursor: pointer; transition: all 0.15s;
+    }
+    .pl-btn-primary { background: var(--pl-bronze); color: #0B0D10; }
+    .pl-btn-primary:hover { background: #C7A464; }
+    .pl-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .pl-btn-ghost { background: transparent; border: 1px solid var(--pl-border); color: var(--pl-text); }
+    .pl-btn-ghost:hover { border-color: var(--pl-bronze); color: var(--pl-bronze); }
+    .pl-btn-danger { background: var(--pl-danger); color: #fff; }
+    .pl-btn-sm { padding: 6px 14px; font-size: 0.8125rem; border-radius: 8px; }
+
+    .pl-form-card { background: var(--pl-surface); border: 1px solid var(--pl-border); border-radius: 18px; padding: 28px; margin-bottom: 28px; }
+    .pl-form-title { font-size: 1.0625rem; font-weight: 600; color: var(--pl-text); margin-bottom: 20px; }
+    .pl-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+    .pl-field-label { display: block; font-size: 0.75rem; color: var(--pl-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+    .pl-field-value {
+      background: var(--pl-bg); border: 1px solid var(--pl-border); border-radius: 10px; padding: 12px 14px;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.9375rem; color: var(--pl-text);
+    }
+    .pl-field-value.muted { color: var(--pl-muted); font-family: inherit; }
+    .pl-input {
+      width: 100%; padding: 11px 14px; border-radius: 10px; border: 1px solid var(--pl-border);
+      background: var(--pl-bg); color: var(--pl-text); font-family: 'JetBrains Mono', monospace; font-size: 0.9375rem;
+    }
+    .pl-input:focus { outline: none; border-color: var(--pl-bronze); }
+    .pl-note-input { font-family: inherit; }
+    .pl-total-row {
+      display: flex; align-items: center; justify-content: space-between; padding: 16px 20px;
+      background: rgba(176, 141, 87, 0.08); border-radius: 12px; margin-bottom: 20px;
+    }
+    .pl-total-label { font-size: 0.875rem; color: var(--pl-muted); }
+    .pl-total-value { font-size: 1.5rem; font-weight: 700; color: var(--pl-bronze); font-family: 'JetBrains Mono', monospace; }
+
+    .pl-existing-banner {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+      padding: 16px 20px; border-radius: 12px; background: var(--pl-bg); border: 1px solid var(--pl-border); margin-bottom: 16px;
+    }
+    .pl-badge { font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
+    .pl-badge.pending { background: rgba(176, 141, 87, 0.12); color: var(--pl-bronze); }
+    .pl-badge.approved { background: var(--pl-success-light); color: var(--pl-success); }
+    .pl-badge.rejected { background: var(--pl-danger-light); color: var(--pl-danger); }
+
+    .pl-list-card { background: var(--pl-surface); border: 1px solid var(--pl-border); border-radius: 18px; overflow: hidden; }
+    .pl-list-head { padding: 18px 24px; border-bottom: 1px solid var(--pl-border); font-weight: 600; font-size: 1rem; background: var(--pl-bg); }
+    .pl-row {
+      display: grid; grid-template-columns: 1.3fr 0.8fr 1fr 1fr 0.9fr 1.2fr; gap: 12px; align-items: center;
+      padding: 14px 24px; border-bottom: 1px solid var(--pl-border); font-size: 0.8125rem;
+    }
+    .pl-row:last-child { border-bottom: none; }
+    .pl-row-head { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--pl-muted); background: var(--pl-bg); font-weight: 600; }
+    .pl-row-member { font-weight: 600; color: var(--pl-text); }
+    .pl-row-amount { font-family: 'JetBrains Mono', monospace; color: var(--pl-bronze); font-weight: 600; }
+    .pl-row-actions { display: flex; gap: 8px; justify-content: flex-end; }
+    .pl-empty { padding: 40px 24px; text-align: center; color: var(--pl-muted); font-size: 0.875rem; }
+
+    .pl-salary-card { background: var(--pl-surface); border: 1px solid var(--pl-border); border-radius: 18px; overflow: hidden; margin-bottom: 28px; }
+    .pl-salary-row { display: grid; grid-template-columns: 1.5fr 1fr 1fr auto; gap: 12px; align-items: center; padding: 12px 24px; border-bottom: 1px solid var(--pl-border); font-size: 0.8125rem; }
+    .pl-salary-row:last-child { border-bottom: none; }
+    .pl-salary-input { width: 140px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--pl-border); background: var(--pl-bg); color: var(--pl-text); font-family: 'JetBrains Mono', monospace; font-size: 0.8125rem; }
+
+    @media (max-width: 900px) {
+      .pl-top-stats { grid-template-columns: repeat(2, 1fr); }
+      .pl-grid { grid-template-columns: 1fr; }
+      .pl-row, .pl-salary-row { grid-template-columns: 1fr; row-gap: 6px; }
+      .pl-row-head { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/" class="brand">
+        <span class="brand-mark">H</span>
+        <span class="brand-name"><span class="brand-name-1">HICONIQUE</span></span>
+      </a>
+      <nav class="primary-nav">
+        <a href="/#tools" class="nav-link">Công cụ</a>
+        <a href="/pages/tasks-manager.html" class="nav-link">Tasks</a>
+        <a href="/pages/projects.html" class="nav-link">Dự án</a>
+        <a href="/pages/wiki.html" class="nav-link">Tài liệu</a>
+        <a href="/#ai" class="nav-link">AI</a>
+        <a href="/pages/notices.html" class="nav-link">Thông báo</a>
+        <a href="/pages/team.html" class="nav-link">Team</a>
+      </nav>
+      <div class="header-actions">
+        <button class="theme-toggle" aria-label="Chuyển đổi sáng/tối" data-theme-toggle>
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" stroke-linecap="round" />
+          </svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+        <span class="clock"><span class="clock-time" data-clock>--:--</span><span class="clock-meta">GMT+7</span></span>
+        <button class="avatar"><span>--</span></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="subpage">
+  <div class="subpage-inner pl-container">
+    <p class="eyebrow">— Phiếu lương</p>
+    <h1 class="subpage-title">Đề xuất <span class="subpage-title-italic">thanh toán lương</span></h1>
+    <p class="subpage-lede">Tự động lấy ngày công, giờ OT và hoa hồng dự án trong tháng — bạn chỉ cần kiểm tra và gửi đề xuất.</p>
+
+    <div class="pl-top-stats">
+      <div class="pl-stat-card">
+        <div class="pl-stat-icon bronze">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+        </div>
+        <div><div class="pl-stat-value" id="plBaseSalary">0</div><div class="pl-stat-label">Lương cơ bản</div></div>
+      </div>
+      <div class="pl-stat-card">
+        <div class="pl-stat-icon amber">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div><div class="pl-stat-value" id="plOtHours">0h</div><div class="pl-stat-label">Giờ OT (tự động)</div></div>
+      </div>
+      <div class="pl-stat-card">
+        <div class="pl-stat-icon blue">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </div>
+        <div><div class="pl-stat-value" id="plCommission">0</div><div class="pl-stat-label">Hoa hồng dự án</div></div>
+      </div>
+      <div class="pl-stat-card">
+        <div class="pl-stat-icon green">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+        </div>
+        <div><div class="pl-stat-value" id="plPendingCount">0</div><div class="pl-stat-label" id="plPendingLabel">Phiếu chờ duyệt</div></div>
+      </div>
+    </div>
+
+    <div class="pl-toolbar">
+      <input type="month" class="pl-month-input" id="plMonthInput">
+      <div id="plToolbarActions"></div>
+    </div>
+
+    <div id="plFormArea"></div>
+
+    <div class="pl-salary-card" id="plSalaryCard" style="display:none;">
+      <div class="pl-list-head">Lương cơ bản nhân viên</div>
+      <div id="plSalaryRows"></div>
+    </div>
+
+    <div class="pl-list-card">
+      <div class="pl-list-head" id="plListTitle">Lịch sử phiếu lương</div>
+      <div class="pl-row pl-row-head">
+        <span>Nhân viên</span><span>Tháng</span><span>Lương cơ bản</span><span>OT + Thưởng</span><span>Trạng thái</span><span></span>
+      </div>
+      <div id="plList"></div>
+    </div>
+  </div>
+  </main>
+
+  <script src="/js/portal.js" defer></script>
+  <script>
+  (function () {
+    'use strict';
+
+    function fmt(n) { return (Number(n) || 0).toLocaleString('vi-VN'); }
+    function currentMonthStr() {
+      var d = new Date();
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    }
+    function isManager(user) {
+      return typeof TaskManager !== 'undefined' && TaskManager.canManageNotifications(user);
+    }
+    function statusLabel(s) {
+      return s === 'approved' ? 'Đã duyệt' : s === 'rejected' ? 'Từ chối' : 'Chờ duyệt';
+    }
+
+    var monthInput = document.getElementById('plMonthInput');
+    monthInput.value = currentMonthStr();
+
+    function getUser() {
+      // Auth's session is a snapshot captured at login time — it won't have
+      // fields added to Members later (e.g. baseSalary), so always merge in
+      // the live member record for anything beyond identity/roleLevel.
+      var session = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
+      if (!session) return null;
+      var fresh = TaskManager.getMember(session.id);
+      return fresh ? Object.assign({}, session, fresh) : session;
+    }
+
+    function computeOtRate(baseSalary) {
+      var hourly = (Number(baseSalary) || 0) / TaskManager.STANDARD_MONTHLY_HOURS;
+      return hourly * TaskManager.OT_MULTIPLIER;
+    }
+
+    function renderForm() {
+      var user = getUser();
+      var area = document.getElementById('plFormArea');
+      if (!user) { area.innerHTML = ''; return; }
+      var month = monthInput.value || currentMonthStr();
+
+      var existing = TaskManager.getPayslips({ memberId: user.id, month: month })[0];
+      var stats = TaskManager.getMonthlyTimesheetStats(user.id, month);
+      var baseSalary = Number(user.baseSalary) || 0;
+      var commissionAmount = TaskManager.getMemberCommissionTotal(user.id, month);
+
+      // Top stat tiles reflect the selected month, for the logged-in user.
+      document.getElementById('plBaseSalary').textContent = fmt(baseSalary);
+      document.getElementById('plOtHours').textContent = stats.overtimeHours.toFixed(1) + 'h';
+      document.getElementById('plCommission').textContent = fmt(commissionAmount);
+
+      if (existing) {
+        area.innerHTML =
+          '<div class="pl-existing-banner">' +
+            '<div>Phiếu lương tháng ' + month + ' đã được gửi — trạng thái: ' +
+              '<span class="pl-badge ' + existing.status + '">' + statusLabel(existing.status) + '</span></div>' +
+            (existing.status === 'pending' ? '<button class="pl-btn pl-btn-danger pl-btn-sm" id="plCancelBtn">Huỷ phiếu</button>' : '') +
+          '</div>';
+        var cancelBtn = document.getElementById('plCancelBtn');
+        if (cancelBtn) {
+          cancelBtn.addEventListener('click', function () {
+            TaskManager.deletePayslip(existing.id, user);
+            renderAll();
+          });
+        }
+        return;
+      }
+
+      var otHoursAuto = stats.overtimeHours;
+      var otRate = computeOtRate(baseSalary);
+
+      area.innerHTML =
+        '<div class="pl-form-card">' +
+          '<div class="pl-form-title">Tạo phiếu lương tháng ' + month + '</div>' +
+          '<div class="pl-grid">' +
+            '<div><span class="pl-field-label">Ngày công</span><div class="pl-field-value">' + stats.workDays + ' ngày</div></div>' +
+            '<div><span class="pl-field-label">Tổng giờ làm</span><div class="pl-field-value">' + stats.totalHours.toFixed(1) + 'h</div></div>' +
+            '<div><span class="pl-field-label">Giờ OT tự động (chấm công)</span><div class="pl-field-value">' + otHoursAuto.toFixed(1) + 'h</div></div>' +
+          '</div>' +
+          '<div class="pl-grid">' +
+            '<div><span class="pl-field-label">Giờ OT bổ sung (nhập tay)</span><input type="number" min="0" step="0.5" class="pl-input" id="plOtManual" value="0"></div>' +
+            '<div><span class="pl-field-label">Đơn giá OT / giờ (x' + TaskManager.OT_MULTIPLIER + ')</span><div class="pl-field-value">' + fmt(Math.round(otRate)) + '</div></div>' +
+            '<div><span class="pl-field-label">Hoa hồng dự án (tự động)</span><div class="pl-field-value">' + fmt(commissionAmount) + '</div></div>' +
+          '</div>' +
+          '<div class="pl-grid">' +
+            '<div><span class="pl-field-label">Thưởng khác</span><input type="number" min="0" step="10000" class="pl-input" id="plOtherBonus" value="0"></div>' +
+            '<div style="grid-column: span 2;"><span class="pl-field-label">Ghi chú thưởng khác</span><input type="text" class="pl-input pl-note-input" id="plOtherBonusNote" placeholder="Ví dụ: thưởng KPI quý…"></div>' +
+          '</div>' +
+          '<div class="pl-grid">' +
+            '<div><span class="pl-field-label">Khấu trừ</span><input type="number" min="0" step="10000" class="pl-input" id="plDeduction" value="0"></div>' +
+            '<div style="grid-column: span 2;"><span class="pl-field-label">Ghi chú khấu trừ</span><input type="text" class="pl-input pl-note-input" id="plDeductionNote" placeholder="Ví dụ: tạm ứng, BHXH…"></div>' +
+          '</div>' +
+          '<div class="pl-total-row"><span class="pl-total-label">Tổng đề xuất thanh toán</span><span class="pl-total-value" id="plTotalPreview">' + fmt(baseSalary) + '</span></div>' +
+          '<div><span class="pl-field-label">Ghi chú chung</span><textarea class="pl-input pl-note-input" id="plNote" rows="2" style="width:100%;" placeholder="Ghi chú thêm cho người duyệt (tuỳ chọn)"></textarea></div>' +
+          '<div style="margin-top:16px; text-align:right;"><button class="pl-btn pl-btn-primary" id="plSubmitBtn">Gửi đề xuất lương</button></div>' +
+        '</div>';
+
+      function recalcTotal() {
+        var otManual = parseFloat(document.getElementById('plOtManual').value) || 0;
+        var otherBonus = parseFloat(document.getElementById('plOtherBonus').value) || 0;
+        var deduction = parseFloat(document.getElementById('plDeduction').value) || 0;
+        var otHours = otHoursAuto + otManual;
+        var otAmount = otHours * otRate;
+        var total = baseSalary + otAmount + commissionAmount + otherBonus - deduction;
+        document.getElementById('plTotalPreview').textContent = fmt(Math.round(total));
+        return { otHours: otHours, otManual: otManual, otAmount: otAmount, otherBonus: otherBonus, deduction: deduction, total: total };
+      }
+      ['plOtManual', 'plOtherBonus', 'plDeduction'].forEach(function (id) {
+        document.getElementById(id).addEventListener('input', recalcTotal);
+      });
+      recalcTotal();
+
+      document.getElementById('plSubmitBtn').addEventListener('click', function () {
+        var vals = recalcTotal();
+        var payslip = {
+          memberId: user.id,
+          month: month,
+          workDays: stats.workDays,
+          totalHours: stats.totalHours,
+          otHoursAuto: otHoursAuto,
+          otHoursManual: vals.otManual,
+          otHours: vals.otHours,
+          otRate: Math.round(otRate),
+          otAmount: Math.round(vals.otAmount),
+          baseSalary: baseSalary,
+          commissionAmount: commissionAmount,
+          otherBonus: vals.otherBonus,
+          otherBonusNote: document.getElementById('plOtherBonusNote').value.trim(),
+          deduction: vals.deduction,
+          deductionNote: document.getElementById('plDeductionNote').value.trim(),
+          totalAmount: Math.round(vals.total),
+          note: document.getElementById('plNote').value.trim(),
+          createdBy: user.id
+        };
+        TaskManager.createPayslip(payslip);
+        renderAll();
+      });
+    }
+
+    function renderSalaryCard() {
+      var user = getUser();
+      var card = document.getElementById('plSalaryCard');
+      if (!user || !isManager(user)) { card.style.display = 'none'; return; }
+      card.style.display = 'block';
+      var members = TaskManager.getMembers();
+      var rows = members.map(function (m) {
+        return '<div class="pl-salary-row">' +
+          '<span>' + m.name + ' <span style="color:var(--pl-muted);">(' + m.role + ')</span></span>' +
+          '<span></span>' +
+          '<input type="number" min="0" step="100000" class="pl-salary-input" data-member="' + m.id + '" value="' + (Number(m.baseSalary) || 0) + '">' +
+          '<button class="pl-btn pl-btn-ghost pl-btn-sm" data-save-salary="' + m.id + '">Lưu</button>' +
+        '</div>';
+      }).join('');
+      document.getElementById('plSalaryRows').innerHTML = rows;
+      document.querySelectorAll('[data-save-salary]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var id = btn.getAttribute('data-save-salary');
+          var input = document.querySelector('.pl-salary-input[data-member="' + id + '"]');
+          TaskManager.setMemberBaseSalary(id, parseFloat(input.value) || 0, user);
+          renderAll();
+        });
+      });
+    }
+
+    function renderList() {
+      var user = getUser();
+      var month = monthInput.value || currentMonthStr();
+      var listEl = document.getElementById('plList');
+      var titleEl = document.getElementById('plListTitle');
+      if (!user) { listEl.innerHTML = ''; return; }
+
+      var manager = isManager(user);
+      var slips = manager ? TaskManager.getPayslips({ month: month }) : TaskManager.getPayslips({ memberId: user.id });
+      titleEl.textContent = manager ? 'Tất cả phiếu lương tháng ' + month : 'Lịch sử phiếu lương của bạn';
+
+      var pending = manager ? slips.filter(function (s) { return s.status === 'pending'; }) : TaskManager.getPayslips({ memberId: user.id, status: 'pending' });
+      document.getElementById('plPendingCount').textContent = pending.length;
+      document.getElementById('plPendingLabel').textContent = manager ? 'Phiếu chờ duyệt (tháng này)' : 'Phiếu của bạn đang chờ duyệt';
+
+      if (slips.length === 0) {
+        listEl.innerHTML = '<div class="pl-empty">Chưa có phiếu lương nào.</div>';
+        return;
+      }
+
+      listEl.innerHTML = slips.map(function (s) {
+        var member = TaskManager.getMember(s.memberId);
+        var canReview = manager && s.status === 'pending';
+        return '<div class="pl-row">' +
+          '<span class="pl-row-member">' + (member ? member.name : s.memberId) + '</span>' +
+          '<span>' + s.month + '</span>' +
+          '<span class="pl-row-amount">' + fmt(s.baseSalary) + '</span>' +
+          '<span class="pl-row-amount">' + fmt((Number(s.otAmount) || 0) + (Number(s.commissionAmount) || 0) + (Number(s.otherBonus) || 0)) + '</span>' +
+          '<span><span class="pl-badge ' + s.status + '">' + statusLabel(s.status) + '</span></span>' +
+          '<span class="pl-row-actions">' +
+            (canReview ?
+              '<button class="pl-btn pl-btn-primary pl-btn-sm" data-approve="' + s.id + '">Duyệt</button>' +
+              '<button class="pl-btn pl-btn-danger pl-btn-sm" data-reject="' + s.id + '">Từ chối</button>'
+              : '<span class="pl-row-amount" style="color:var(--pl-bronze);">' + fmt(s.totalAmount) + '</span>') +
+          '</span>' +
+        '</div>';
+      }).join('');
+
+      listEl.querySelectorAll('[data-approve]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          TaskManager.approvePayslip(btn.getAttribute('data-approve'), user);
+          renderAll();
+        });
+      });
+      listEl.querySelectorAll('[data-reject]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          TaskManager.rejectPayslip(btn.getAttribute('data-reject'), user);
+          renderAll();
+        });
+      });
+    }
+
+    function renderAll() {
+      renderForm();
+      renderSalaryCard();
+      renderList();
+    }
+
+    monthInput.addEventListener('change', renderAll);
+    renderAll();
+
+    if (typeof Auth !== 'undefined' && Auth.getCurrentUser && !Auth.getCurrentUser()) {
+      Auth.showLoginModal();
+    }
+  })();
+  </script>
+</body>
+</html>
