@@ -264,7 +264,7 @@
 
 .gantt-today-line { position: absolute; top: -6px; bottom: 0; width: 2px; background: var(--gantt-red); opacity: 0.85; z-index: 5; }
 .gantt-today-line::before {
-  content: 'Hôm nay'; position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
+  content: 'Hôm nay'; position: absolute; top: -18px; left: 50%; transform: translateX(-50%);
   font-size: 0.625rem; font-weight: 600; color: var(--gantt-red); white-space: nowrap;
 }
 
