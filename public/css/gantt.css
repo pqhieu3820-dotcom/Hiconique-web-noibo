@@ -321,12 +321,20 @@
 @media (max-width: 768px) {
   .gantt-toolbar { flex-direction: column; align-items: stretch; }
 
-  /* The calendar bars are positioned by percentage (see gantt.js), so
-     shrinking the table's min-width just makes every column narrower —
-     it doesn't break the bar/day-cell math. Still requires horizontal
-     scroll on a phone (standard for any Gantt view), but far less of it,
-     and .gantt-table-wrap already has overflow-x:auto with touch scroll. */
-  .gantt-table { min-width: 560px; }
+  /* The day cells are laid out by percentage (see gantt.js) inside the
+     timeline <th>/<td>, each a fixed 20px wide (below). That means the
+     timeline column can NOT be shrunk below (days-in-month × ~23px) —
+     doing so (as a previous version of this file did, forcing a flat
+     320px) packs ~30 day-cells into a box with only ~10px of pct-space
+     each, so every cell overlaps the next and the weekday/date labels
+     render as illegible overlapping text. A phone Gantt is inherently
+     a horizontally-scrolling view (this is how Lark/Asana/Monday do it
+     too — they don't try to fit a whole month in one screen width),
+     so instead we keep every day-cell fully legible and let
+     .gantt-table-wrap's overflow-x:auto (with touch scroll) handle the
+     rest. 23px × 31 days (longest month) ≈ 715px, rounded up for
+     safety. */
+  .gantt-table { min-width: 1000px; }
 
   /* Freeze the task-name column so scrolling to "today" (which the view
      does on load) doesn't leave the visible bars unlabeled. */
@@ -342,11 +350,11 @@
   .gantt-section-row td:first-child { background: var(--gantt-purple-light); }
 
   .gantt-table thead th:first-child { width: 150px; min-width: 140px; }
-  .gantt-table thead th:nth-child(2) { min-width: 320px; }
+  .gantt-table thead th:nth-child(2) { min-width: 700px; }
   .gantt-table thead th.gantt-col-progress { width: 60px; min-width: 60px; }
   .gantt-table thead th:last-child { width: 90px; min-width: 90px; padding-right: 10px; }
 
-  .gantt-day-cell { width: 22px; padding-top: 3px; }
+  .gantt-day-cell { width: 20px; padding-top: 3px; }
   .gantt-day-dow { font-size: 0.5rem; }
   .gantt-day-num { font-size: 0.6875rem; }
   .gantt-day-cell.today .gantt-day-num { width: 17px; height: 17px; }
@@ -359,4 +367,11 @@
 
   .gantt-legend { gap: 12px; padding: 10px 14px; }
   .gantt-card-header { padding: 14px 16px; }
+
+  /* A visible scroll hint so it reads as "swipe to see more days", not
+     as a broken/cut-off table — Lark shows the same affordance. */
+  .gantt-table-wrap {
+    -webkit-overflow-scrolling: touch;
+    box-shadow: inset -12px 0 12px -12px rgba(0,0,0,0.15);
+  }
 }

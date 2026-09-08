@@ -71,13 +71,7 @@
   // Apply UI permissions
   function applyPermissions(roleLevel) {
     var canManageMembers = roleLevel === 'admin';
-    var canAccessSettings = roleLevel === 'admin';
     var canCreateProject = roleLevel === 'admin' || roleLevel === 'manager';
-
-    // Settings link
-    document.querySelectorAll('[data-view="settings"]').forEach(function(el) {
-      el.style.display = canAccessSettings ? '' : 'none';
-    });
 
     // Hide "Tạo dự án" buttons for members
     if (!canCreateProject) {
@@ -166,7 +160,6 @@
       else if (view === 'team') renderTeam();
       else if (view === 'calendar') renderCalendar();
       else if (view === 'proposals') renderProposals();
-      else if (view === 'settings') renderSettings();
       else renderDashboard();
 
       if (!silent) {
@@ -249,7 +242,6 @@
         else if (view === 'team') renderTeam();
         else if (view === 'calendar') renderCalendar();
         else if (view === 'proposals') renderProposals();
-        else if (view === 'settings') renderSettings();
       }
     });
 
@@ -1708,15 +1700,15 @@
 
           return `
             <div class="proposal-card" style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; padding: 16px;">
-              <div style="display: flex; align-items: flex-start; gap: 16px;">
+              <div style="display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap;">
                 <div style="font-size: 2rem;">${typeIcon}</div>
-                <div style="flex: 1;">
-                  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                <div style="flex: 1 1 220px; min-width: 220px;">
+                  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px; flex-wrap: wrap;">
                     <h3 style="font-size: 1rem; font-weight: 600; color: var(--color-text);">${proposal.title}</h3>
                     ${statusBadge}
                   </div>
                   <p style="font-size: 0.875rem; color: var(--color-text-muted); margin-bottom: 12px;">${proposal.description}</p>
-                  <div style="display: flex; gap: 24px; font-size: 0.8125rem; color: var(--color-text-muted);">
+                  <div class="proposal-meta" style="display: flex; gap: 8px 24px; font-size: 0.8125rem; color: var(--color-text-muted); flex-wrap: wrap;">
                     <span>👤 ${requester ? requester.name : 'Không rõ'}</span>
                     <span>💰 ${proposal.amount ? proposal.amount.toLocaleString('vi-VN') + ' VNĐ' : 'Không có'}</span>
                     <span>📅 ${new Date(proposal.createdAt).toLocaleDateString('vi-VN')}</span>
@@ -1724,7 +1716,7 @@
                   </div>
                 </div>
                 ${canReview ? `
-                  <div style="display: flex; gap: 8px;">
+                  <div style="display: flex; gap: 8px; flex-basis: 100%; justify-content: flex-end;">
                     <button class="btn btn-primary" style="padding: 6px 16px;" onclick="approveProposal('${proposal.id}')">Duyệt</button>
                     <button class="btn btn-danger" style="padding: 6px 16px;" onclick="rejectProposal('${proposal.id}')">Từ chối</button>
                   </div>
@@ -1841,57 +1833,6 @@
     TaskManager.rejectProposal(proposalId);
     renderProposals();
   }
-
-  function renderSettings() {
-    const tmContent = document.querySelector('.tm-content');
-    if (!tmContent) return;
-
-    tmContent.innerHTML = `
-      <div class="tm-topbar">
-        <h2 style="font-size: 1.5rem; font-weight: 600; color: var(--color-text);">Cài đặt</h2>
-      </div>
-
-      <div style="max-width: 600px;">
-        <div class="form-group">
-          <label class="form-label">Tên người dùng</label>
-          <input type="text" class="form-input" value="${TaskManager.getCurrentUser().name}" readonly>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Vai trò</label>
-          <input type="text" class="form-input" value="${TaskManager.getCurrentUser().role}" readonly>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Dữ liệu</label>
-          <button class="btn btn-secondary" onclick="exportData()">Xuất dữ liệu</button>
-          <button class="btn btn-secondary" onclick="clearData()" style="margin-left: 8px;">Xóa dữ liệu</button>
-        </div>
-      </div>
-    `;
-  }
-
-  // Export/Import functions
-  window.exportData = function() {
-    const data = {
-      projects: TaskManager.getProjects(),
-      tasks: TaskManager.getTasks(),
-      members: TaskManager.getMembers(),
-      proposals: TaskManager.getProposals()
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `hiconique-tasks-${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  window.clearData = function() {
-    if (confirm('Bạn có chắc chắn muốn xóa tất cả dữ liệu?')) {
-      localStorage.clear();
-      location.reload();
-    }
-  };
 
   // Animate progress bars
   function animateProgressBars() {

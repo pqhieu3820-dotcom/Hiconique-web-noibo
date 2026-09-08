@@ -167,6 +167,10 @@
               <div class="pf-field-label">Email</div>
               <div class="pf-field-value" id="profileEmail">--</div>
             </div>
+            <div class="pf-field">
+              <div class="pf-field-label">Chức vụ</div>
+              <div class="pf-field-value" id="profileRoleField">--</div>
+            </div>
             <div class="pf-field" data-field="dob">
               <div class="pf-field-label">Ngày sinh</div>
               <div class="pf-field-value" id="profileDob">--</div>
@@ -271,6 +275,7 @@
       document.getElementById('profileName').textContent = user.name || '--';
       document.getElementById('profileRole').textContent = user.role || '--';
       document.getElementById('profileEmail').textContent = user.email || '--';
+      document.getElementById('profileRoleField').textContent = user.role || '--';
       document.getElementById('profileDob').textContent = fmtDob(user.dob);
       document.getElementById('profileGender').textContent = fmtGender(user.gender);
       document.getElementById('profileCccd').textContent = user.cccd || '--';
