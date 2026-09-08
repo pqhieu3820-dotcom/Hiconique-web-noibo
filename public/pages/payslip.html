@@ -73,6 +73,17 @@
     }
     .pl-input:focus { outline: none; border-color: var(--pl-bronze); }
     .pl-note-input { font-family: inherit; }
+    .pl-breakdown {
+      border: 1px solid var(--pl-border); border-radius: 12px; margin-bottom: 12px; overflow: hidden;
+    }
+    .pl-breakdown-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 10px 20px; font-size: 0.8125rem; color: var(--pl-muted);
+      border-bottom: 1px dashed var(--pl-border);
+    }
+    .pl-breakdown-row:last-child { border-bottom: none; }
+    .pl-breakdown-row span:last-child { font-family: 'JetBrains Mono', monospace; color: var(--pl-text); font-weight: 500; }
+    .pl-breakdown-row.minus span:last-child { color: var(--pl-danger); }
     .pl-total-row {
       display: flex; align-items: center; justify-content: space-between; padding: 16px 20px;
       background: rgba(176, 141, 87, 0.08); border-radius: 12px; margin-bottom: 20px;
@@ -294,6 +305,13 @@
             '<div><span class="pl-field-label">Khấu trừ</span><input type="number" min="0" step="10000" class="pl-input" id="plDeduction" value="0"></div>' +
             '<div style="grid-column: span 2;"><span class="pl-field-label">Ghi chú khấu trừ</span><input type="text" class="pl-input pl-note-input" id="plDeductionNote" placeholder="Ví dụ: tạm ứng, BHXH…"></div>' +
           '</div>' +
+          '<div class="pl-breakdown">' +
+            '<div class="pl-breakdown-row"><span>Lương cơ bản</span><span id="bdBase">' + fmt(baseSalary) + '</span></div>' +
+            '<div class="pl-breakdown-row"><span>Tăng ca (OT)</span><span id="bdOt">' + fmt(Math.round(otHoursAuto * otRate)) + '</span></div>' +
+            '<div class="pl-breakdown-row"><span>Hoa hồng dự án</span><span id="bdCommission">' + fmt(commissionAmount) + '</span></div>' +
+            '<div class="pl-breakdown-row"><span>Thưởng khác</span><span id="bdBonus">' + fmt(0) + '</span></div>' +
+            '<div class="pl-breakdown-row minus"><span>Khấu trừ</span><span id="bdDeduction">− ' + fmt(0) + '</span></div>' +
+          '</div>' +
           '<div class="pl-total-row"><span class="pl-total-label">Tổng đề xuất thanh toán</span><span class="pl-total-value" id="plTotalPreview">' + fmt(baseSalary) + '</span></div>' +
           '<div><span class="pl-field-label">Ghi chú chung</span><textarea class="pl-input pl-note-input" id="plNote" rows="2" style="width:100%;" placeholder="Ghi chú thêm cho người duyệt (tuỳ chọn)"></textarea></div>' +
           '<div style="margin-top:16px; text-align:right;"><button class="pl-btn pl-btn-primary" id="plSubmitBtn">Gửi đề xuất lương</button></div>' +
@@ -306,6 +324,11 @@
         var otHours = otHoursAuto + otManual;
         var otAmount = otHours * otRate;
         var total = baseSalary + otAmount + commissionAmount + otherBonus - deduction;
+        document.getElementById('bdBase').textContent = fmt(baseSalary);
+        document.getElementById('bdOt').textContent = fmt(Math.round(otAmount));
+        document.getElementById('bdCommission').textContent = fmt(commissionAmount);
+        document.getElementById('bdBonus').textContent = fmt(otherBonus);
+        document.getElementById('bdDeduction').textContent = '− ' + fmt(deduction);
         document.getElementById('plTotalPreview').textContent = fmt(Math.round(total));
         return { otHours: otHours, otManual: otManual, otAmount: otAmount, otherBonus: otherBonus, deduction: deduction, total: total };
       }

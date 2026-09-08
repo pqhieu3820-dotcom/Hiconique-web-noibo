@@ -242,6 +242,31 @@
 
       if (!manager) return;
 
+      // Live preview: recompute amount = budget * percent / 100 on every
+      // keystroke, no need to press Lưu first — Lưu still does the actual
+      // write to Commissions/payslip. Delegated on the container so it
+      // covers every project block without a per-input listener.
+      container.addEventListener('input', function (e) {
+        if (e.target.classList.contains('cm-percent-input')) {
+          var pid = e.target.getAttribute('data-project');
+          var mid = e.target.getAttribute('data-member');
+          var budgetInput = document.querySelector('.cm-budget-input[data-budget="' + pid + '"]');
+          var budget = budgetInput ? (parseFloat(budgetInput.value) || 0) : 0;
+          var percent = parseFloat(e.target.value) || 0;
+          var amountEl = document.querySelector('[data-amount-for="' + pid + '-' + mid + '"]');
+          if (amountEl) amountEl.textContent = fmt(Math.round(budget * percent / 100));
+        } else if (e.target.classList.contains('cm-budget-input')) {
+          var bpid = e.target.getAttribute('data-budget');
+          var newBudget = parseFloat(e.target.value) || 0;
+          document.querySelectorAll('.cm-percent-input[data-project="' + bpid + '"]').forEach(function (percentInput) {
+            var bmid = percentInput.getAttribute('data-member');
+            var pct = parseFloat(percentInput.value) || 0;
+            var amtEl = document.querySelector('[data-amount-for="' + bpid + '-' + bmid + '"]');
+            if (amtEl) amtEl.textContent = fmt(Math.round(newBudget * pct / 100));
+          });
+        }
+      });
+
       document.querySelectorAll('[data-save-budget]').forEach(function (btn) {
         btn.addEventListener('click', function () {
           var pid = btn.getAttribute('data-save-budget');
