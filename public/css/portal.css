@@ -564,8 +564,9 @@ main { flex: 1; }
 }
 .hero-title-sub {
   display: block;
-  font-size: 0.5em;
-  margin-bottom: 0.3em;
+  font-size: 0.375em;
+  line-height: 1.3;
+  margin-bottom: 0.15em;
   white-space: nowrap;
 }
 .hero-title-serif {
