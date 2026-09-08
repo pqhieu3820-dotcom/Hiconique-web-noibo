@@ -11,11 +11,11 @@ Spreadsheet: `HICONIQUE Task Manager` — 8 tab, mỗi tab một loại dữ li�
 
 | Tab | Dùng cho | Cột chính |
 |---|---|---|
-| `Members` | Thành viên | id, name, role, roleLevel, email, password, dob, cccd, phone, hometown, bank, bankAccount, color, avatar, createdAt |
+| `Members` | Thành viên | id, name, role, roleLevel, email, password, dob, cccd, phone, hometown, bank, bankAccount, color, avatar, createdAt, gender |
 | `Projects` | Dự án | id, name, type, color, progress, status, members, createdAt, updatedAt |
 | `Tasks` | Công việc | id, title, description, projectId, assigneeId, priority, status, startDate, deadline, createdBy, createdAt, updatedAt, progress, dailyTasks |
 | `Proposals` | Đề xuất | id, title, description, type, status, requesterId, reviewerId, amount, createdAt, reviewedAt |
-| `Timesheet` | Chấm công | id, memberId, date, checkinTime, checkoutTime, totalHours, overtimeHours, status |
+| `Timesheet` | Chấm công | id, memberId, date, checkinTime, checkoutTime, totalHours, overtimeHours, status, note, checkinLat, checkinLng, checkinDistance, checkinIp, geoPass, ipPass, verifyPassCount, verifyStatus |
 | `Notifications` | Nhắc định kỳ (chuông thông báo) | id, title, message, type, scope, recurring, recurRule, active, createdBy, createdAt, updatedAt |
 | `Notices` | Bảng tin (trang Thông báo) | id, title, message, color, createdBy, createdAt, updatedAt |
 | `Documents` | Link tài liệu (trang Tài liệu) | id, category, name, url, code, createdBy, createdAt, updatedAt |
@@ -23,6 +23,11 @@ Spreadsheet: `HICONIQUE Task Manager` — 8 tab, mỗi tab một loại dữ li�
 **Quan trọng:** `gsheets-api-v2.js` đọc/ghi theo **tên cột thật trên Sheet** (không theo vị trí
 cứng trong code) — nên bạn có thể thêm cột mới trực tiếp trên Sheet mà không lo vỡ dữ liệu.
 Nếu thêm hẳn 1 sheet mới, xem mục "Thêm sheet mới" bên dưới.
+
+**Lưu ý riêng cho `Timesheet.checkinIp` và `Timesheet.verifyPassCount`:** phải để định dạng cột
+là **Văn bản thuần tuý** (Định dạng → Số → Văn bản thuần tuý), nếu không Google Sheets sẽ tự
+diễn giải sai: IP dạng `14.171.113.174` bị hiểu thành số (mất dấu chấm), còn `2/2` bị hiểu thành
+ngày tháng.
 
 ## Redeploy Apps Script sau khi sửa `gsheets-api-v2.js`
 

@@ -156,6 +156,52 @@
     .ts-geo-status.ok { background: var(--ts-success-light); color: var(--ts-success); }
     .ts-geo-status svg { width: 14px; height: 14px; flex-shrink: 0; }
 
+    /* Live status of the two check-in verification factors — always visible so
+       staff can see beforehand whether they need to move closer / switch wifi. */
+    .ts-verify-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: var(--color-bg);
+      border: 1px solid var(--ts-border);
+      margin-bottom: 16px;
+    }
+    .ts-verify-panel[hidden] { display: none; }
+    .ts-verify-row { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; }
+    .ts-verify-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+      background: var(--ts-muted);
+    }
+    .ts-verify-dot.ok { background: var(--ts-success); }
+    .ts-verify-dot.fail { background: var(--ts-danger); }
+    .ts-verify-label { color: var(--ts-muted); flex: 1; }
+    .ts-verify-state { color: var(--ts-text); font-weight: 500; }
+    .ts-verify-state.ok { color: var(--ts-success); }
+    .ts-verify-state.fail { color: var(--ts-danger); }
+
+    /* Confirm dialog shown when only one of the two checks passes */
+    .ts-confirm-overlay {
+      position: fixed; inset: 0; background: rgba(11,13,16,0.7);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 10000; padding: 20px;
+    }
+    .ts-confirm-overlay[hidden] { display: none; }
+    .ts-confirm-box {
+      background: var(--ts-surface); border: 1px solid var(--ts-border);
+      border-radius: 14px; padding: 24px; max-width: 360px; width: 100%;
+    }
+    .ts-confirm-title { font-size: 1rem; font-weight: 600; color: var(--ts-text); margin-bottom: 12px; }
+    .ts-confirm-box .ts-verify-panel { margin-bottom: 20px; }
+    .ts-confirm-actions { display: flex; gap: 10px; }
+    .ts-confirm-actions button {
+      flex: 1; padding: 10px; border-radius: 8px; font-size: 0.875rem; font-weight: 600;
+      cursor: pointer; border: none; font-family: inherit;
+    }
+    .ts-confirm-cancel { background: var(--color-bg); color: var(--ts-text); border: 1px solid var(--ts-border) !important; }
+    .ts-confirm-ok { background: var(--ts-bronze); color: #0B0D10; }
+
     .ts-checkin-btn {
       width: 100%;
       padding: 16px;
@@ -471,6 +517,19 @@
         <label class="ts-note-label" for="tsCheckinNote">Ghi chú (tuỳ chọn)</label>
         <textarea class="ts-note-input" id="tsCheckinNote" rows="2" placeholder="Ví dụ: đi công trình, xin về sớm…"></textarea>
 
+        <div class="ts-verify-panel" id="tsVerifyPanel" hidden>
+          <div class="ts-verify-row" id="tsVerifyGeoRow">
+            <span class="ts-verify-dot" id="tsVerifyGeoDot"></span>
+            <span class="ts-verify-label">Vị trí GPS</span>
+            <span class="ts-verify-state" id="tsVerifyGeoState">Đang kiểm tra…</span>
+          </div>
+          <div class="ts-verify-row" id="tsVerifyIpRow">
+            <span class="ts-verify-dot" id="tsVerifyIpDot"></span>
+            <span class="ts-verify-label">Mạng Wifi công ty</span>
+            <span class="ts-verify-state" id="tsVerifyIpState">Đang kiểm tra…</span>
+          </div>
+        </div>
+
         <div class="ts-geo-status" id="tsGeoStatus" hidden></div>
 
         <button class="ts-checkin-btn in" id="tsCheckinBtn">Check In</button>
@@ -555,17 +614,17 @@
     var selectedDayDate = null;
 
     // ====== CẤU HÌNH GIỚI HẠN CHECK-IN (IP văn phòng + vị trí GPS) ======
-    // Mặc định TẮT (enabled: false) vì chưa có toạ độ/IP thực tế của văn phòng.
-    // Để bật: đổi enabled thành true và điền giá trị thật bên dưới.
+    // Bảo mật 2 lớp: chỉ cần 1 trong 2 điều kiện thoả (GPS gần văn phòng HOẶC đang
+    // dùng mạng Wifi công ty) là được chấm công; nếu chỉ có 1/2 thoả sẽ hỏi xác nhận.
     var GEO_RESTRICTION = {
-      enabled: false,
-      lat: 21.028511,     // TODO: vĩ độ văn phòng
-      lng: 105.804817,    // TODO: kinh độ văn phòng
-      radiusMeters: 50    // bán kính cho phép chấm công (mét)
+      enabled: true,
+      lat: 20.926738,      // 167 Trường Chinh, Lê Thanh Nghị, Hải Phòng
+      lng: 106.301584,
+      radiusMeters: 50     // bán kính cho phép chấm công (mét)
     };
     var IP_RESTRICTION = {
-      enabled: false,
-      allowedIPs: []      // TODO: điền IP công khai (public IP) của mạng Wifi văn phòng, vd: ['118.70.12.34']
+      enabled: true,
+      allowedIPs: ['14.171.113.174']  // IP công khai của mạng Wifi văn phòng
     };
 
     function haversineMeters(lat1, lng1, lat2, lng2) {
@@ -589,42 +648,96 @@
       el.textContent = msg;
     }
 
-    // Cảnh báo: kiểm tra IP/GPS phía frontend chỉ mang tính chất hạn chế cơ bản,
-    // người dùng rành công nghệ vẫn có thể qua mặt bằng VPN hoặc app giả lập GPS.
-    function verifyIPRestriction() {
-      if (!IP_RESTRICTION.enabled) return Promise.resolve(true);
+    // Mỗi hàm trả về { ok, message, skip } — skip = true khi điều kiện đó đang TẮT
+    // (không tính vào bảo mật 2 lớp). Cảnh báo: kiểm tra IP/GPS phía frontend chỉ
+    // mang tính chất hạn chế cơ bản, người rành công nghệ vẫn có thể qua mặt bằng
+    // VPN hoặc app giả lập GPS — đây là lớp bảo vệ phụ, không phải tuyệt đối.
+    function checkIpStatus() {
+      if (!IP_RESTRICTION.enabled) return Promise.resolve({ ok: false, skip: true, message: 'Đang tắt', ip: '' });
       return fetch('https://api.ipify.org?format=json')
         .then(function (r) { return r.json(); })
         .then(function (data) {
-          if (IP_RESTRICTION.allowedIPs.indexOf(data.ip) !== -1) return true;
-          setGeoStatus('Vui lòng kết nối Wifi công ty để chấm công.', false);
-          return false;
+          var ok = IP_RESTRICTION.allowedIPs.indexOf(data.ip) !== -1;
+          return { ok: ok, skip: false, message: ok ? 'Đúng mạng Wifi công ty' : 'Không phải mạng Wifi công ty', ip: data.ip };
         })
         .catch(function () {
-          setGeoStatus('Không kiểm tra được kết nối mạng. Vui lòng thử lại.', false);
-          return false;
+          return { ok: false, skip: false, message: 'Không kiểm tra được kết nối mạng', ip: '' };
         });
     }
 
-    function verifyGeoRestriction() {
-      if (!GEO_RESTRICTION.enabled) return Promise.resolve(true);
+    function checkGeoStatus() {
+      if (!GEO_RESTRICTION.enabled) return Promise.resolve({ ok: false, skip: true, message: 'Đang tắt', lat: '', lng: '', distance: '' });
       if (!navigator.geolocation) {
-        setGeoStatus('Thiết bị không hỗ trợ định vị GPS. Vui lòng dùng thiết bị khác để chấm công.', false);
-        return Promise.resolve(false);
+        return Promise.resolve({ ok: false, skip: false, message: 'Thiết bị không hỗ trợ định vị GPS', lat: '', lng: '', distance: '' });
       }
       return new Promise(function (resolve) {
         navigator.geolocation.getCurrentPosition(function (pos) {
-          var dist = haversineMeters(pos.coords.latitude, pos.coords.longitude, GEO_RESTRICTION.lat, GEO_RESTRICTION.lng);
+          var lat = pos.coords.latitude, lng = pos.coords.longitude;
+          var dist = Math.round(haversineMeters(lat, lng, GEO_RESTRICTION.lat, GEO_RESTRICTION.lng));
           if (dist <= GEO_RESTRICTION.radiusMeters) {
-            resolve(true);
+            resolve({ ok: true, skip: false, message: 'Đang ở gần văn phòng', lat: lat, lng: lng, distance: dist });
           } else {
-            setGeoStatus('Bạn đang cách văn phòng ' + Math.round(dist) + 'm. Vui lòng đến trong bán kính ' + GEO_RESTRICTION.radiusMeters + 'm để chấm công.', false);
-            resolve(false);
+            resolve({ ok: false, skip: false, message: 'Cách văn phòng ' + dist + 'm', lat: lat, lng: lng, distance: dist });
           }
         }, function () {
-          setGeoStatus('Không lấy được vị trí của bạn. Vui lòng bật định vị (GPS) và cấp quyền vị trí cho trình duyệt.', false);
-          resolve(false);
+          resolve({ ok: false, skip: false, message: 'Không lấy được vị trí (chưa cấp quyền định vị)', lat: '', lng: '', distance: '' });
         }, { enableHighAccuracy: true, timeout: 8000 });
+      });
+    }
+
+    function renderVerifyRow(dotId, stateId, result) {
+      var dot = document.getElementById(dotId);
+      var state = document.getElementById(stateId);
+      if (!dot || !state) return;
+      if (result.skip) {
+        dot.className = 'ts-verify-dot';
+        state.className = 'ts-verify-state';
+        state.textContent = 'Đang tắt';
+        return;
+      }
+      dot.className = 'ts-verify-dot ' + (result.ok ? 'ok' : 'fail');
+      state.className = 'ts-verify-state ' + (result.ok ? 'ok' : 'fail');
+      state.textContent = result.message;
+    }
+
+    function runLiveStatusCheck() {
+      var panel = document.getElementById('tsVerifyPanel');
+      if (!panel) return Promise.resolve({ geo: null, ip: null });
+      if (!GEO_RESTRICTION.enabled && !IP_RESTRICTION.enabled) { panel.hidden = true; return Promise.resolve({ geo: null, ip: null }); }
+      panel.hidden = false;
+      return Promise.all([checkGeoStatus(), checkIpStatus()]).then(function (results) {
+        renderVerifyRow('tsVerifyGeoDot', 'tsVerifyGeoState', results[0]);
+        renderVerifyRow('tsVerifyIpDot', 'tsVerifyIpState', results[1]);
+        return { geo: results[0], ip: results[1] };
+      });
+    }
+
+    // Xác nhận thủ công khi chỉ có 1/2 điều kiện thoả — trả về Promise<boolean>.
+    function showConfirmDialog(geoResult, ipResult) {
+      return new Promise(function (resolve) {
+        var overlay = document.createElement('div');
+        overlay.className = 'ts-confirm-overlay';
+        overlay.innerHTML =
+          '<div class="ts-confirm-box">' +
+            '<div class="ts-confirm-title">Bạn có chắc chắn muốn chấm công không?</div>' +
+            '<div class="ts-verify-panel">' +
+              '<div class="ts-verify-row"><span class="ts-verify-dot ' + (geoResult.skip ? '' : (geoResult.ok ? 'ok' : 'fail')) + '"></span><span class="ts-verify-label">Vị trí GPS</span><span class="ts-verify-state ' + (geoResult.skip ? '' : (geoResult.ok ? 'ok' : 'fail')) + '">' + (geoResult.skip ? 'Đang tắt' : geoResult.message) + '</span></div>' +
+              '<div class="ts-verify-row"><span class="ts-verify-dot ' + (ipResult.skip ? '' : (ipResult.ok ? 'ok' : 'fail')) + '"></span><span class="ts-verify-label">Mạng Wifi công ty</span><span class="ts-verify-state ' + (ipResult.skip ? '' : (ipResult.ok ? 'ok' : 'fail')) + '">' + (ipResult.skip ? 'Đang tắt' : ipResult.message) + '</span></div>' +
+            '</div>' +
+            '<div class="ts-confirm-actions">' +
+              '<button type="button" class="ts-confirm-cancel">Huỷ</button>' +
+              '<button type="button" class="ts-confirm-ok">Đồng ý chấm công</button>' +
+            '</div>' +
+          '</div>';
+        document.body.appendChild(overlay);
+        overlay.querySelector('.ts-confirm-cancel').addEventListener('click', function () {
+          overlay.remove();
+          resolve(false);
+        });
+        overlay.querySelector('.ts-confirm-ok').addEventListener('click', function () {
+          overlay.remove();
+          resolve(true);
+        });
       });
     }
 
@@ -723,10 +836,18 @@
       document.getElementById('tsAvgHours').textContent = totalDays > 0 ? (totalHours / totalDays).toFixed(1) + 'h' : '0h';
     }
 
-    function checkIn() {
+    function checkIn(geoResult, ipResult) {
       var now = new Date();
       var time = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
       var noteInput = document.getElementById('tsCheckinNote');
+      geoResult = geoResult || { skip: true };
+      ipResult = ipResult || { skip: true };
+      var checks = [geoResult, ipResult].filter(function (r) { return !r.skip; });
+      var passCount = checks.filter(function (r) { return r.ok; }).length;
+      var verifyStatus = checks.length === 0 ? 'not_required'
+        : passCount === checks.length ? 'passed_all'
+        : passCount > 0 ? 'passed_partial_confirmed'
+        : 'failed';
       var entry = {
         id: 'TS_' + Date.now(),
         memberId: getUserId(),
@@ -736,7 +857,15 @@
         totalHours: 0,
         overtimeHours: 0,
         status: 'working',
-        note: noteInput ? noteInput.value.trim() : ''
+        note: noteInput ? noteInput.value.trim() : '',
+        checkinLat: geoResult.lat || '',
+        checkinLng: geoResult.lng || '',
+        checkinDistance: geoResult.distance || '',
+        checkinIp: ipResult.ip || '',
+        geoPass: geoResult.skip ? '' : (geoResult.ok ? 'TRUE' : 'FALSE'),
+        ipPass: ipResult.skip ? '' : (ipResult.ok ? 'TRUE' : 'FALSE'),
+        verifyPassCount: checks.length === 0 ? '' : passCount + '/' + checks.length,
+        verifyStatus: verifyStatus
       };
       if (typeof TaskManager !== 'undefined' && TaskManager.addTimesheetEntry) {
         TaskManager.addTimesheetEntry(entry);
@@ -898,15 +1027,33 @@
       btn.disabled = true;
       btn.textContent = 'Đang kiểm tra...';
 
-      verifyIPRestriction().then(function (ipOk) {
-        if (!ipOk) return false;
-        return verifyGeoRestriction();
-      }).then(function (ok) {
+      Promise.all([checkGeoStatus(), checkIpStatus()]).then(function (results) {
+        var geoResult = results[0], ipResult = results[1];
+        renderVerifyRow('tsVerifyGeoDot', 'tsVerifyGeoState', geoResult);
+        renderVerifyRow('tsVerifyIpDot', 'tsVerifyIpState', ipResult);
         btn.disabled = false;
         btn.textContent = originalText;
-        if (ok) checkIn();
+
+        // Bảo mật 2 lớp: chỉ tính các điều kiện đang BẬT. Không điều kiện nào bật
+        // -> cho qua luôn. Đủ cả các điều kiện đang bật -> cho qua luôn. Có ít
+        // nhất 1 điều kiện bật nhưng không đủ hết -> hỏi xác nhận thủ công.
+        var checks = [geoResult, ipResult].filter(function (r) { return !r.skip; });
+        if (checks.length === 0) { checkIn(geoResult, ipResult); return; }
+
+        var passCount = checks.filter(function (r) { return r.ok; }).length;
+        if (passCount === checks.length) {
+          checkIn(geoResult, ipResult);
+        } else if (passCount > 0) {
+          showConfirmDialog(geoResult, ipResult).then(function (confirmed) {
+            if (confirmed) checkIn(geoResult, ipResult);
+          });
+        } else {
+          setGeoStatus('Không thể chấm công: bạn không ở gần văn phòng và không dùng mạng Wifi công ty.', false);
+        }
       });
     });
+
+    runLiveStatusCheck();
 
     document.getElementById('tsPrevMonth').addEventListener('click', function() {
       calMonth--;

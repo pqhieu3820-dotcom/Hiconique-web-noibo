@@ -19,7 +19,7 @@ const HEADERS = {
   tasks: ['id', 'title', 'description', 'projectId', 'assigneeId', 'priority', 'status', 'startDate', 'deadline', 'createdBy', 'createdAt', 'updatedAt', 'progress', 'dailyTasks'],
   members: ['id', 'name', 'role', 'roleLevel', 'email', 'password', 'dob', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount', 'color', 'avatar', 'createdAt', 'gender'],
   proposals: ['id', 'title', 'description', 'type', 'status', 'requesterId', 'reviewerId', 'amount', 'createdAt', 'reviewedAt'],
-  timesheet: ['id', 'memberId', 'date', 'checkinTime', 'checkoutTime', 'totalHours', 'overtimeHours', 'status', 'note'],
+  timesheet: ['id', 'memberId', 'date', 'checkinTime', 'checkoutTime', 'totalHours', 'overtimeHours', 'status', 'note', 'checkinLat', 'checkinLng', 'checkinDistance', 'checkinIp', 'geoPass', 'ipPass', 'verifyPassCount', 'verifyStatus'],
   notifications: ['id', 'title', 'message', 'type', 'scope', 'recurring', 'recurRule', 'active', 'createdBy', 'createdAt', 'updatedAt'],
   notices: ['id', 'title', 'message', 'color', 'createdBy', 'createdAt', 'updatedAt'],
   documents: ['id', 'category', 'name', 'url', 'createdBy', 'createdAt', 'updatedAt']
