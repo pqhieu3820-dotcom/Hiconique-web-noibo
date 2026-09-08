@@ -541,33 +541,32 @@ main { flex: 1; }
 .hero-bg {
   position: absolute;
   top: 0; left: 0; right: 0;
-  bottom: -150px;
+  bottom: 0;
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
-  --hero-orb-a1: 0.14;
-  --hero-orb-a2: 0.11;
-  --hero-orb-a3: 0.09;
-  --hero-aurora-opacity: 0.2;
-  --hero-dot-opacity: 0.55;
+  --hero-orb-a1: 0.09;
+  --hero-orb-a2: 0.07;
+  --hero-orb-a3: 0.055;
+  --hero-aurora-opacity: 0.13;
+  --hero-dot-opacity: 0.36;
   --hero-dot-rgb: 120, 92, 54;
   --hero-blend: normal;
-  /* Bleeds past the hero's own box (bottom: -150px above) so the glow
-     keeps going down to the "Cong cu chinh" divider line instead of
-     stopping short at the hero's own bottom edge; fades out in the
-     last stretch so it never shows a hard edge at that line. */
+  /* Stays within the hero's own box and fades out well before its
+     bottom edge (long, smooth taper) so it never reaches the stat/date
+     row or the divider below it. */
   mask-image:
-    linear-gradient(to bottom, #000 0, #000 calc(100% - 150px), transparent calc(100% - 4px)),
+    linear-gradient(to bottom, #000 0, #000 32%, transparent 68%),
     linear-gradient(to right, transparent 0%, #000 12%, #000 82%, transparent 100%);
   mask-composite: intersect;
-  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 150px), transparent calc(100% - 4px));
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 32%, transparent 68%);
 }
 [data-theme="dark"] .hero-bg {
-  --hero-orb-a1: 0.3;
-  --hero-orb-a2: 0.26;
-  --hero-orb-a3: 0.19;
-  --hero-aurora-opacity: 0.32;
-  --hero-dot-opacity: 0.5;
+  --hero-orb-a1: 0.2;
+  --hero-orb-a2: 0.17;
+  --hero-orb-a3: 0.13;
+  --hero-aurora-opacity: 0.21;
+  --hero-dot-opacity: 0.32;
   --hero-dot-rgb: 212, 175, 118;
   --hero-blend: screen;
 }
@@ -603,12 +602,12 @@ main { flex: 1; }
   position: absolute;
   inset: -25% -60%;
   background: linear-gradient(100deg,
-    transparent 30%,
-    rgba(212, 175, 118, 0.14) 44%,
-    rgba(255, 244, 222, 0.22) 50%,
-    rgba(212, 175, 118, 0.14) 56%,
-    transparent 70%);
-  filter: blur(40px);
+    transparent 32%,
+    rgba(212, 175, 118, 0.08) 44%,
+    rgba(255, 244, 222, 0.13) 50%,
+    rgba(212, 175, 118, 0.08) 56%,
+    transparent 68%);
+  filter: blur(45px);
   mix-blend-mode: var(--hero-blend);
   animation: heroWaveSweep 22s ease-in-out infinite;
   will-change: transform;
@@ -775,19 +774,21 @@ main { flex: 1; }
   padding: var(--space-sm) var(--space-md);
   position: relative;
   z-index: 1;
-  border: 1px solid color-mix(in srgb, var(--color-bronze) 22%, var(--color-border));
-  background: color-mix(in srgb, var(--color-surface) 72%, transparent);
-  backdrop-filter: blur(14px) saturate(1.15);
-  -webkit-backdrop-filter: blur(14px) saturate(1.15);
-  box-shadow: 0 8px 28px -12px rgba(176, 141, 87, 0.28);
+  border: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-bronze) 28%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-surface) 38%, transparent), transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: none;
   font-size: var(--text-sm);
-  color: var(--color-text);
+  color: var(--color-text-muted);
+  letter-spacing: 0.01em;
 }
 .hero-stat-date-dot {
-  width: 8px; height: 8px;
+  width: 6px; height: 6px;
   background: var(--color-bronze);
   border-radius: 50%;
-  box-shadow: 0 0 0 3px rgba(176, 141, 87, 0.18);
+  box-shadow: 0 0 0 3px rgba(176, 141, 87, 0.14);
   animation: pulse 2.4s ease-in-out infinite;
 }
 @keyframes pulse {
@@ -1200,10 +1201,10 @@ main { flex: 1; }
 .hero-stat-time {
   font-family: var(--font-mono, monospace);
   font-size: 0.75rem;
-  color: var(--color-text);
+  color: var(--color-text-muted);
   margin-left: 8px;
   padding-left: 10px;
-  border-left: 1px solid var(--color-border);
+  border-left: 1px solid color-mix(in srgb, var(--color-bronze) 20%, transparent);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
 }
