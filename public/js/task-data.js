@@ -910,6 +910,23 @@ var TaskManager = (function() {
       alerts.push({ id: 'alert_recur_' + n.id + '_' + today, title: n.title, message: n.message, type: n.type || 'system', level: 'info', createdAt: today, recurring: true });
     });
 
+    // Sinh nhật thành viên — lịch nhắc mặc định, không cần tạo tay trên
+    // Notifications sheet: so khớp tháng-ngày của Members.dob (bỏ qua năm),
+    // báo trước 1 ngày VÀ đúng ngày sinh nhật, hiện cho tất cả (scope 'all')
+    // để cả team biết mà gửi lời chúc. Tính lại mỗi lần mở app, không lưu.
+    var todayMD = today.slice(5);
+    var tomorrowDate = new Date();
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    var tomorrowMD = tomorrowDate.toISOString().split('T')[0].slice(5);
+    members.filter(function (m) { return m.dob; }).forEach(function (m) {
+      var dobMD = String(m.dob).slice(5, 10);
+      if (dobMD === todayMD) {
+        alerts.push({ id: 'alert_birthday_today_' + m.id + '_' + today, title: '🎂 Sinh nhật hôm nay', message: m.name + ' sinh nhật hôm nay — gửi lời chúc nhé!', type: 'birthday', level: 'info', createdAt: today });
+      } else if (dobMD === tomorrowMD) {
+        alerts.push({ id: 'alert_birthday_soon_' + m.id + '_' + today, title: 'Sinh nhật sắp tới', message: m.name + ' sinh nhật vào ngày mai.', type: 'birthday', level: 'info', createdAt: today });
+      }
+    });
+
     return alerts;
   }
 

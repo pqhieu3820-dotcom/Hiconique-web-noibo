@@ -155,7 +155,7 @@
     { title: 'Bảng tiến độ', sub: 'Theo dõi tiến độ công việc', url: '/pages/progress-board.html', group: 'Công cụ' },
     { title: 'Chấm công', sub: 'Check-in / Check-out hàng ngày', url: '/pages/timesheet.html', group: 'Công cụ' },
     { title: 'Phiếu lương', sub: 'Đề xuất thanh toán lương hàng tháng', url: '/pages/payslip.html', group: 'Công cụ' },
-    { title: '% Hoa hồng dự án', sub: 'Cấu hình và tính hoa hồng theo dự án', url: '/pages/commission.html', group: 'Công cụ' },
+    { title: 'Hoa hồng dự án', sub: 'Cấu hình và tính hoa hồng theo dự án', url: '/pages/commission.html', group: 'Công cụ' },
     { title: 'Tài liệu / Wiki', sub: 'Quy trình, biểu mẫu, hướng dẫn', url: '/pages/wiki.html', group: 'Tài liệu' },
     { title: 'SPC', sub: 'Kiểm soát chất lượng', url: '/pages/spc.html', group: 'Tài liệu' },
     { title: 'Thông báo', sub: 'Tin tức và thông báo nội bộ', url: '/pages/notices.html', group: 'Trang' },
@@ -253,7 +253,8 @@
     user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
     chart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>',
     logout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>',
-    phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>'
+    phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
+    cake: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-6a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v6"/><path d="M4 16h16"/><path d="M12 8V5m-3 3V6m6 2V6"/><path d="M12 3.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg>'
   };
 
   // ----- Team directory (from Google Sheets via TaskManager) -----
@@ -362,6 +363,7 @@
     var roleLevelLabel = m.roleLevel === 'admin' ? 'Quản trị viên' : m.roleLevel === 'manager' ? 'Quản lý' : 'Nhân viên';
     var days = daysAtCompany(m.createdAt);
     var joinDate = m.createdAt ? new Date(m.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+    var dobDate = m.dob ? new Date(m.dob).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
     var statusLabel = m.status === 'pending' ? 'Đang chờ duyệt'
       : m.status === 'inactive' ? 'Đã ngưng công tác'
       : m.status === 'rejected' ? 'Đăng ký đã bị từ chối'
@@ -395,6 +397,7 @@
         '<div class="team-modal-row">' + ICON.mail + '<span>' + escapeHtml(m.email || '—') + '</span></div>' +
         (m.phone ? '<div class="team-modal-row">' + ICON.phone + '<span>' + escapeHtml(m.phone) + '</span></div>' : '') +
         (m.hometown ? '<div class="team-modal-row">' + ICON.pin + '<span>' + escapeHtml(m.hometown) + '</span></div>' : '') +
+        (dobDate ? '<div class="team-modal-row">' + ICON.cake + '<span>Sinh ngày ' + dobDate + '</span></div>' : '') +
         (joinDate ? '<div class="team-modal-row">' + ICON.calendar + '<span>Vào làm từ ' + joinDate + (days !== null ? ' · ' + days + ' ngày' : '') + '</span></div>' : '') +
         (statusLabel ? '<div class="team-modal-row team-modal-status-row">' + escapeHtml(statusLabel) + '</div>' : '') +
       '</div>' +

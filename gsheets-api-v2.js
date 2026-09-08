@@ -315,8 +315,28 @@ function getAllData(ss, sheetName) {
     headers.forEach(function (h, i) {
       const key = viToEnHeader(sheetName, h);
       let val = row[i];
+      // A Sheet cell formatted/entered as an actual Date (dob, deadline,
+      // startDate...) comes back from getValues() as a real JS Date object
+      // representing midnight in the SCRIPT timezone (Asia/Ho_Chi_Minh). The
+      // JSON response later serializes any Date via toISOString(), which
+      // converts to UTC and — for a UTC+7 midnight — lands on the PREVIOUS
+      // calendar day (e.g. dob "2000-08-03" became "2000-08-02T17:00:00Z").
+      // Format it to a plain "yyyy-MM-dd" string here, in the same timezone
+      // the sheet/cell actually means, before that UTC shift can happen.
+      if (Object.prototype.toString.call(val) === '[object Date]') {
+        val = Utilities.formatDate(val, Session.getScriptTimeZone() || 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd');
+      }
       if (typeof val === 'string' && val.startsWith('[')) {
         try { val = JSON.parse(val); } catch (e) { /* keep raw string */ }
+      }
+      if (key === 'phone' && typeof val === 'number') {
+        // Legacy rows written before forceTextIfDateLike covered "phone":
+        // Sheets already stored it as a Number, so the leading "0" of a VN
+        // mobile number (10 digits) is gone for good at the cell level —
+        // a 9-digit read here means exactly that happened. Re-add it for
+        // display only — doesn't touch the cell itself.
+        val = String(val);
+        if (val.length === 9) val = '0' + val;
       }
       obj[key] = typeof val === 'string' ? viToEnValue(sheetName, key, val) : val;
     });
@@ -341,8 +361,15 @@ function makeId(prefix) {
 // writes). Fields like "month" ('YYYY-MM') are compared with exact string
 // equality elsewhere, so a silent date-coercion breaks all of that filtering.
 // A leading apostrophe is the standard Sheets trick to force literal text.
-function forceTextIfDateLike(val) {
+//
+// Same problem, different shape, for phone/CCCD/bank account numbers: an
+// all-digit string gets auto-coerced to a Number on write, which silently
+// drops any leading "0" (e.g. phone "0334828489" -> 334828489). These fields
+// are never used arithmetically, so force them to text too.
+var FORCE_TEXT_FIELDS = { phone: true, cccd: true, bankAccount: true };
+function forceTextIfDateLike(val, enKey) {
   if (typeof val === 'string' && /^\d{4}-\d{1,2}$/.test(val)) return "'" + val;
+  if (enKey && FORCE_TEXT_FIELDS[enKey] && typeof val === 'string' && /^\d+$/.test(val)) return "'" + val;
   return val;
 }
 
@@ -366,7 +393,7 @@ function addData(ss, sheetName, data) {
     let val = data[enKey];
     if (Array.isArray(val)) return JSON.stringify(val);
     if (typeof val === 'string') val = enToViValue(sheetName, enKey, val);
-    return forceTextIfDateLike(val !== undefined && val !== null ? val : '');
+    return forceTextIfDateLike(val !== undefined && val !== null ? val : '', enKey);
   });
   sheet.appendRow(row);
   return data;
@@ -388,7 +415,7 @@ function updateData(ss, sheetName, id, updates) {
       let val = updates[enKey];
       if (Array.isArray(val)) val = JSON.stringify(val);
       else if (typeof val === 'string') val = enToViValue(sheetName, enKey, val);
-      sheet.getRange(rowNum, i + 1).setValue(forceTextIfDateLike(val) || '');
+      sheet.getRange(rowNum, i + 1).setValue(forceTextIfDateLike(val, enKey) || '');
     }
   });
   return Object.assign({}, data[index], updates);
