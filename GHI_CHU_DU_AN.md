@@ -55,7 +55,22 @@ Commissions, CommissionRates.
   duyệt lưu `id` cũ trong localStorage, nên sau khi đổi cần đăng xuất và đăng nhập lại để
   khớp với ID mới trên Sheet.
 
-## 5. Phiếu lương & % Hoa hồng dự án (`payslip.html`, `commission.html`)
+## 5. Chi tiết dự án & phân quyền (`Projects` sheet)
+
+- Chỉ CEO/quản lý (`roleLevel` admin/manager) được tạo, sửa, xoá dự án —
+  `TaskManager.createProject/updateProject/deleteProject` đều yêu cầu tham số `user` và kiểm
+  tra `canManageNotifications(user)`, thành viên thường bị chặn (trả về `null`), nút "Tạo dự
+  án"/"Sửa"/"Xoá" cũng bị ẩn ở giao diện cho họ.
+- Form tạo/sửa dự án (ở cả trang `tasks-manager.html` mục Dự án — nơi có đầy đủ luồng sửa/xoá —
+  và modal tạo nhanh trên `pages/projects.html`) có thêm các trường: Khách hàng (`client`), Tên
+  nhà đầu tư (`investor`), Địa điểm (`location`), Ngày bắt đầu/kết thúc (`startDate`/`endDate`),
+  Tổng số tiền (`budget`), Độ ưu tiên (`priority`), Mô tả (`description`) — tất cả đã có cột
+  tương ứng trên Sheet thật và đồng bộ 2 chiều bình thường.
+- Sửa dự án chỉ thực hiện được từ trang Task Manager (`/pages/tasks-manager.html` → mục "Dự
+  án" → bấm vào 1 dự án → "Sửa"/"Xoá" trong modal chi tiết) — trang Dashboard Dự án
+  (`pages/projects.html`) chỉ có form tạo mới, chưa có danh sách để sửa/xoá tại đó.
+
+## 6. Phiếu lương & % Hoa hồng dự án (`payslip.html`, `commission.html`)
 
 - **Phiếu lương**: nhân viên tự chọn tháng, trang tự lấy `baseSalary` (Members), ngày công/giờ
   OT (Timesheet của tháng đó), và tổng hoa hồng dự án (Commissions của tháng đó — chỉ hiện số
@@ -75,7 +90,7 @@ Commissions, CommissionRates.
   — không cần tạo tay. Đọc dữ liệu 3 sheet này đi qua Apps Script Web App (JSON), không qua CSV
   publish như các sheet cũ.
 
-## 6. Tài liệu khác trong repo
+## 7. Tài liệu khác trong repo
 
 - [README.md](README.md) — tổng quan kiến trúc, cấu trúc thư mục, cách chạy local/deploy.
 - [SETUP_HUONG_DAN.md](SETUP_HUONG_DAN.md) — chi tiết Google Sheets ⇄ Web, redeploy Apps Script,

@@ -18,7 +18,7 @@ const SHEETS = {
 // Reads/writes always follow the sheet's ACTUAL header row (see getHeaders),
 // so adding/reordering columns directly in Sheets never breaks sync.
 const HEADERS = {
-  projects: ['id', 'name', 'type', 'color', 'progress', 'status', 'members', 'createdAt', 'updatedAt', 'budget'],
+  projects: ['id', 'name', 'type', 'color', 'progress', 'status', 'members', 'createdAt', 'updatedAt', 'budget', 'client', 'investor', 'location', 'startDate', 'endDate', 'priority', 'description'],
   tasks: ['id', 'title', 'description', 'projectId', 'assigneeId', 'priority', 'status', 'startDate', 'deadline', 'createdBy', 'createdAt', 'updatedAt', 'progress', 'dailyTasks'],
   members: ['id', 'name', 'role', 'roleLevel', 'email', 'password', 'dob', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount', 'color', 'avatar', 'createdAt', 'gender', 'baseSalary'],
   proposals: ['id', 'title', 'description', 'type', 'status', 'requesterId', 'reviewerId', 'amount', 'createdAt', 'reviewedAt'],

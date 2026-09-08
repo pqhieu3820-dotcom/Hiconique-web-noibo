@@ -335,7 +335,10 @@
         e.preventDefault();
         const projectId = deleteProjectBtn.dataset.projectId;
         if (confirm('Bạn có chắc chắn muốn xóa dự án này? Tất cả tasks trong dự án cũng sẽ bị xóa.')) {
-          TaskManager.deleteProject(projectId);
+          if (!TaskManager.deleteProject(projectId, TaskManager.getCurrentUser())) {
+            alert('Bạn không có quyền xoá dự án.');
+            return;
+          }
           closeModal();
           renderDashboard();
         }
@@ -665,6 +668,63 @@
         </div>
 
         <div class="form-group">
+          <label class="form-label">Khách hàng</label>
+          <input type="text" class="form-input" name="client"
+            placeholder="Tên khách hàng / công ty..."
+            value="${project && project.client ? project.client : ''}">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Tên nhà đầu tư</label>
+          <input type="text" class="form-input" name="investor"
+            placeholder="Tên nhà đầu tư (nếu có)..."
+            value="${project && project.investor ? project.investor : ''}">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Địa điểm</label>
+          <input type="text" class="form-input" name="location"
+            placeholder="VD: Quận 2, TP.HCM"
+            value="${project && project.location ? project.location : ''}">
+        </div>
+
+        <div class="form-group" style="display: flex; gap: 12px;">
+          <div style="flex: 1;">
+            <label class="form-label">Ngày bắt đầu</label>
+            <input type="date" class="form-input" name="startDate"
+              value="${project && project.startDate ? String(project.startDate).substring(0, 10) : ''}">
+          </div>
+          <div style="flex: 1;">
+            <label class="form-label">Ngày kết thúc dự kiến</label>
+            <input type="date" class="form-input" name="endDate"
+              value="${project && project.endDate ? String(project.endDate).substring(0, 10) : ''}">
+          </div>
+        </div>
+
+        <div class="form-group" style="display: flex; gap: 12px;">
+          <div style="flex: 1;">
+            <label class="form-label">Tổng số tiền (VNĐ)</label>
+            <input type="number" class="form-input" name="budget" min="0" step="1000000"
+              placeholder="0"
+              value="${project && project.budget ? project.budget : ''}">
+          </div>
+          <div style="flex: 1;">
+            <label class="form-label">Độ ưu tiên</label>
+            <select class="form-select" name="priority">
+              <option value="low" ${project && project.priority === 'low' ? 'selected' : ''}>Thấp</option>
+              <option value="medium" ${!project || !project.priority || project.priority === 'medium' ? 'selected' : ''}>Trung bình</option>
+              <option value="high" ${project && project.priority === 'high' ? 'selected' : ''}>Cao</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Mô tả chi tiết</label>
+          <textarea class="form-input" name="description" rows="3"
+            placeholder="Mô tả ngắn về phạm vi, mục tiêu, hạng mục chính của dự án...">${project && project.description ? project.description : ''}</textarea>
+        </div>
+
+        <div class="form-group">
           <label class="form-label">Thành viên tham gia</label>
           <div class="member-select">
             ${members.map(m => `
@@ -735,16 +795,31 @@
       name: form.name.value.trim(),
       type: form.type.value,
       color: form.color.value,
+      client: form.client.value.trim(),
+      investor: form.investor.value.trim(),
+      location: form.location.value.trim(),
+      startDate: form.startDate.value || '',
+      endDate: form.endDate.value || '',
+      budget: parseInt(form.budget.value, 10) || 0,
+      priority: form.priority.value,
+      description: form.description.value.trim(),
       progress: parseInt(form.progress.value),
       status: form.status.value,
       members: document.getElementById('membersInput').value ?
         document.getElementById('membersInput').value.split(',') : []
     };
 
+    const currentUser = TaskManager.getCurrentUser();
     if (projectId) {
-      TaskManager.updateProject(projectId, projectData);
+      if (!TaskManager.updateProject(projectId, projectData, currentUser)) {
+        alert('Bạn không có quyền sửa dự án.');
+        return;
+      }
     } else {
-      TaskManager.createProject(projectData);
+      if (!TaskManager.createProject(projectData, currentUser)) {
+        alert('Bạn không có quyền tạo dự án.');
+        return;
+      }
     }
 
     closeModal();
@@ -793,6 +868,17 @@
         <div style="display: flex; gap: 8px; margin-bottom: 16px;">
           ${memberAvatars || '<span style="font-size: 0.75rem; color: var(--color-text-muted);">Không có thành viên</span>'}
         </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px; background: var(--color-bg); border-radius: 8px; margin-bottom: 16px;">
+          ${project.client ? `<div><div style="font-size: 0.6875rem; color: var(--color-text-muted); text-transform: uppercase;">Khách hàng</div><div style="font-size: 0.8125rem; color: var(--color-text);">${project.client}</div></div>` : ''}
+          ${project.investor ? `<div><div style="font-size: 0.6875rem; color: var(--color-text-muted); text-transform: uppercase;">Nhà đầu tư</div><div style="font-size: 0.8125rem; color: var(--color-text);">${project.investor}</div></div>` : ''}
+          ${project.location ? `<div><div style="font-size: 0.6875rem; color: var(--color-text-muted); text-transform: uppercase;">Địa điểm</div><div style="font-size: 0.8125rem; color: var(--color-text);">${project.location}</div></div>` : ''}
+          ${project.budget ? `<div><div style="font-size: 0.6875rem; color: var(--color-text-muted); text-transform: uppercase;">Tổng số tiền</div><div style="font-size: 0.8125rem; color: var(--color-bronze); font-weight: 600;">${Number(project.budget).toLocaleString('vi-VN')} VNĐ</div></div>` : ''}
+          ${project.startDate ? `<div><div style="font-size: 0.6875rem; color: var(--color-text-muted); text-transform: uppercase;">Ngày bắt đầu</div><div style="font-size: 0.8125rem; color: var(--color-text);">${new Date(project.startDate).toLocaleDateString('vi-VN')}</div></div>` : ''}
+          ${project.endDate ? `<div><div style="font-size: 0.6875rem; color: var(--color-text-muted); text-transform: uppercase;">Ngày kết thúc dự kiến</div><div style="font-size: 0.8125rem; color: var(--color-text);">${new Date(project.endDate).toLocaleDateString('vi-VN')}</div></div>` : ''}
+          ${project.priority ? `<div><div style="font-size: 0.6875rem; color: var(--color-text-muted); text-transform: uppercase;">Độ ưu tiên</div><div style="font-size: 0.8125rem; color: var(--color-text);">${project.priority === 'high' ? 'Cao' : project.priority === 'low' ? 'Thấp' : 'Trung bình'}</div></div>` : ''}
+        </div>
+        ${project.description ? `<p style="font-size: 0.8125rem; color: var(--color-text-muted); line-height: 1.6; margin-bottom: 16px;">${project.description}</p>` : ''}
       </div>
 
       <h4 style="font-size: 0.875rem; font-weight: 600; color: var(--color-text); margin-bottom: 12px;">
@@ -819,10 +905,12 @@
       ` : '<p style="font-size: 0.875rem; color: var(--color-text-muted);">Chưa có task nào</p>'}
     `;
 
+    const currentUserForActions = TaskManager.getCurrentUser();
+    const canManageProject = currentUserForActions && (currentUserForActions.roleLevel === 'admin' || currentUserForActions.roleLevel === 'manager');
     const footer = `
-      <button class="btn btn-danger" data-action="delete-project" data-project-id="${project.id}">Xóa</button>
+      ${canManageProject ? `<button class="btn btn-danger" data-action="delete-project" data-project-id="${project.id}">Xóa</button>` : ''}
       <button class="btn btn-secondary" onclick="closeModal()">Đóng</button>
-      <button class="btn btn-primary" onclick="openProjectModal(TaskManager.getProject('${project.id}'));">Sửa</button>
+      ${canManageProject ? `<button class="btn btn-primary" onclick="openProjectModal(TaskManager.getProject('${project.id}'));">Sửa</button>` : ''}
     `;
 
     openModal('Chi tiết Dự án', body, footer);
@@ -1820,6 +1908,7 @@
   // Export task modal functions globally
   window.openTaskModal = openTaskModal;
   window.closeModal = closeModal;
+  window.openProjectModal = openProjectModal;
 
   // Initialize when DOM is ready
   if (document.readyState === 'loading') {

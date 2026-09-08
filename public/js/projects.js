@@ -817,6 +817,7 @@
         type: typeVal,
         color: document.getElementById('project-color').value,
         client: document.getElementById('project-client').value.trim(),
+        investor: document.getElementById('project-investor').value.trim(),
         location: document.getElementById('project-location').value.trim(),
         startDate: document.getElementById('project-start').value || '',
         endDate: document.getElementById('project-end').value || '',
@@ -829,13 +830,22 @@
         createdAt: new Date().toISOString().split('T')[0]
       };
 
-      if (typeof TaskManager !== 'undefined' && TaskManager.createProject) {
-        TaskManager.createProject(data);
+      var editingId = form.dataset.editingId;
+      var ok = false;
+      if (editingId) {
+        ok = !!(typeof TaskManager !== 'undefined' && TaskManager.updateProject && TaskManager.updateProject(editingId, data, getUser()));
+      } else if (typeof TaskManager !== 'undefined' && TaskManager.createProject) {
+        ok = !!TaskManager.createProject(data, getUser());
+      }
+
+      if (!ok) {
+        showToast('Bạn không có quyền ' + (editingId ? 'sửa' : 'tạo') + ' dự án.');
+        return;
       }
 
       modal.hidden = true;
       renderAll();
-      showToast('✓ Đã tạo dự án: ' + name);
+      showToast(editingId ? '✓ Đã cập nhật dự án: ' + name : '✓ Đã tạo dự án: ' + name);
     });
   }
 
@@ -908,6 +918,9 @@
   // ----- Init -----
   function init() {
     currentUser = getUser();
+    var canManageProjects = !!currentUser && (currentUser.roleLevel === 'admin' || currentUser.roleLevel === 'manager');
+    var addProjectBtn = document.getElementById('btnAddProject');
+    if (addProjectBtn && !canManageProjects) addProjectBtn.style.display = 'none';
     bindViewTabs();
     bindProjectNav();
     bindQuickFilters();

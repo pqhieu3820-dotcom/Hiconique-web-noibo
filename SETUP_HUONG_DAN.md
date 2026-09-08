@@ -12,7 +12,7 @@ Spreadsheet: `HICONIQUE Task Manager` — 11 tab, mỗi tab một loại dữ li
 | Tab | Dùng cho | Cột chính |
 |---|---|---|
 | `Members` | Thành viên | id, name, role, roleLevel, email, password, dob, cccd, phone, hometown, bank, bankAccount, color, avatar, createdAt, gender, baseSalary |
-| `Projects` | Dự án | id, name, type, color, progress, status, members, createdAt, updatedAt, budget |
+| `Projects` | Dự án | id, name, type, color, progress, status, members, createdAt, updatedAt, budget, client, investor, location, startDate, endDate, priority, description |
 | `Tasks` | Công việc | id, title, description, projectId, assigneeId, priority, status, startDate, deadline, createdBy, createdAt, updatedAt, progress, dailyTasks |
 | `Proposals` | Đề xuất | id, title, description, type, status, requesterId, reviewerId, amount, createdAt, reviewedAt |
 | `Timesheet` | Chấm công | id, memberId, date, checkinTime, checkoutTime, totalHours, overtimeHours, status, note, checkinLat, checkinLng, checkinDistance, checkinIp, geoPass, ipPass, verifyPassCount, verifyStatus |

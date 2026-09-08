@@ -483,8 +483,19 @@
             <input type="text" id="project-client" placeholder="Tên khách hàng / công ty...">
           </div>
           <div class="form-group">
+            <label for="project-investor">Tên nhà đầu tư</label>
+            <input type="text" id="project-investor" placeholder="Tên nhà đầu tư (nếu có)...">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
             <label for="project-location">Địa điểm</label>
             <input type="text" id="project-location" placeholder="VD: Quận 2, TP.HCM">
+          </div>
+          <div class="form-group">
+            <label for="project-budget">Tổng số tiền (VNĐ)</label>
+            <input type="number" id="project-budget" placeholder="0" min="0" step="1000000">
           </div>
         </div>
 
@@ -501,10 +512,6 @@
 
         <div class="form-row">
           <div class="form-group">
-            <label for="project-budget">Ngân sách (VNĐ)</label>
-            <input type="number" id="project-budget" placeholder="0" min="0" step="1000000">
-          </div>
-          <div class="form-group">
             <label for="project-priority">Độ ưu tiên</label>
             <select id="project-priority">
               <option value="low">Thấp</option>
@@ -512,9 +519,6 @@
               <option value="high">Cao</option>
             </select>
           </div>
-        </div>
-
-        <div class="form-row">
           <div class="form-group">
             <label for="project-status">Trạng thái</label>
             <select id="project-status">
@@ -525,6 +529,9 @@
               <option value="completed">Hoàn thành</option>
             </select>
           </div>
+        </div>
+
+        <div class="form-row">
           <div class="form-group">
             <label for="project-color">Màu nhận diện</label>
             <div class="color-picker">

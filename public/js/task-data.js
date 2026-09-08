@@ -553,7 +553,10 @@ var TaskManager = (function() {
     return getById(STORAGE_KEYS.projects, id);
   }
 
-  function createProject(project) {
+  // Chỉ CEO/quản lý được tạo, sửa, xoá dự án — thành viên chỉ xem.
+  function createProject(project, user) {
+    user = user || getCurrentUser();
+    if (!canManageNotifications(user)) return null;
     project.status = project.status || 'on-track';
     project.progress = project.progress || 0;
     var newProject = add(STORAGE_KEYS.projects, project);
@@ -562,14 +565,18 @@ var TaskManager = (function() {
     return newProject;
   }
 
-  function updateProject(id, updates) {
+  function updateProject(id, updates, user) {
+    user = user || getCurrentUser();
+    if (!canManageNotifications(user)) return null;
     var updated = update(STORAGE_KEYS.projects, id, updates);
     // Sync to Google Sheets
     if (updated) syncToGSheets('projects', 'update', updates, id);
     return updated;
   }
 
-  function deleteProject(id) {
+  function deleteProject(id, user) {
+    user = user || getCurrentUser();
+    if (!canManageNotifications(user)) return null;
     var tasks = getAll(STORAGE_KEYS.tasks).filter(function(t) { return t.projectId !== id; });
     localStorage.setItem(STORAGE_KEYS.tasks, JSON.stringify(tasks));
     var result = remove(STORAGE_KEYS.projects, id);
