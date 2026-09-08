@@ -859,6 +859,8 @@
       if (colorInput) colorInput.value = '#B08D57';
       // Set default member
       renderProjectMembers(currentUser ? [currentUser.id] : []);
+      var listModal = document.getElementById('project-list-modal');
+      if (listModal) listModal.hidden = true;
       modal.hidden = false;
     });
     if (closeBtn) closeBtn.addEventListener('click', function () { modal.hidden = true; });
@@ -1039,6 +1041,19 @@
     modal.addEventListener('click', function (e) {
       if (e.target === modal) modal.hidden = true;
     });
+
+    var addFromListBtn = document.getElementById('btnAddProjectFromList');
+    if (addFromListBtn) {
+      var canManage = !!currentUser && (currentUser.roleLevel === 'admin' || currentUser.roleLevel === 'manager');
+      if (!canManage) {
+        addFromListBtn.style.display = 'none';
+      } else {
+        addFromListBtn.addEventListener('click', function () {
+          var mainAddBtn = document.getElementById('btnAddProject');
+          if (mainAddBtn) mainAddBtn.click();
+        });
+      }
+    }
   }
 
   function renderProjectMembers(selectedIds) {
