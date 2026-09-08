@@ -169,15 +169,18 @@
       margin-bottom: 16px;
     }
     .ts-verify-panel[hidden] { display: none; }
-    .ts-verify-row { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; }
+    .ts-verify-row { display: flex; align-items: flex-start; gap: 10px; font-size: 0.75rem; }
+    .ts-verify-row + .ts-verify-row { padding-top: 8px; border-top: 1px solid var(--ts-border); }
     .ts-verify-dot {
       width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+      margin-top: 5px;
       background: var(--ts-muted);
     }
     .ts-verify-dot.ok { background: var(--ts-success); }
     .ts-verify-dot.fail { background: var(--ts-danger); }
-    .ts-verify-label { color: var(--ts-muted); flex: 1; }
-    .ts-verify-state { color: var(--ts-text); font-weight: 500; }
+    .ts-verify-body { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+    .ts-verify-label { color: var(--ts-muted); }
+    .ts-verify-state { color: var(--ts-text); font-weight: 500; line-height: 1.45; word-break: break-word; }
     .ts-verify-state.ok { color: var(--ts-success); }
     .ts-verify-state.fail { color: var(--ts-danger); }
 
@@ -520,13 +523,17 @@
         <div class="ts-verify-panel" id="tsVerifyPanel" hidden>
           <div class="ts-verify-row" id="tsVerifyGeoRow">
             <span class="ts-verify-dot" id="tsVerifyGeoDot"></span>
-            <span class="ts-verify-label">Vị trí GPS</span>
-            <span class="ts-verify-state" id="tsVerifyGeoState">Đang kiểm tra…</span>
+            <span class="ts-verify-body">
+              <span class="ts-verify-label">Vị trí GPS</span>
+              <span class="ts-verify-state" id="tsVerifyGeoState">Đang kiểm tra…</span>
+            </span>
           </div>
           <div class="ts-verify-row" id="tsVerifyIpRow">
             <span class="ts-verify-dot" id="tsVerifyIpDot"></span>
-            <span class="ts-verify-label">Mạng Wifi công ty</span>
-            <span class="ts-verify-state" id="tsVerifyIpState">Đang kiểm tra…</span>
+            <span class="ts-verify-body">
+              <span class="ts-verify-label">Mạng Wifi công ty</span>
+              <span class="ts-verify-state" id="tsVerifyIpState">Đang kiểm tra…</span>
+            </span>
           </div>
         </div>
 
@@ -679,9 +686,13 @@
           } else {
             resolve({ ok: false, skip: false, message: 'Cách văn phòng ' + dist + 'm', lat: lat, lng: lng, distance: dist });
           }
-        }, function () {
-          resolve({ ok: false, skip: false, message: 'Không lấy được vị trí (chưa cấp quyền định vị)', lat: '', lng: '', distance: '' });
-        }, { enableHighAccuracy: true, timeout: 8000 });
+        }, function (err) {
+          var msg = 'Không lấy được vị trí';
+          if (err && err.code === 1) msg = 'Trang web chưa được cấp quyền vị trí';
+          else if (err && err.code === 2) msg = 'Không xác định được vị trí (kiểm tra Location/Vị trí đã bật trong Windows chưa)';
+          else if (err && err.code === 3) msg = 'Định vị quá thời gian chờ, thử lại';
+          resolve({ ok: false, skip: false, message: msg, lat: '', lng: '', distance: '' });
+        }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
       });
     }
 
@@ -721,8 +732,8 @@
           '<div class="ts-confirm-box">' +
             '<div class="ts-confirm-title">Bạn có chắc chắn muốn chấm công không?</div>' +
             '<div class="ts-verify-panel">' +
-              '<div class="ts-verify-row"><span class="ts-verify-dot ' + (geoResult.skip ? '' : (geoResult.ok ? 'ok' : 'fail')) + '"></span><span class="ts-verify-label">Vị trí GPS</span><span class="ts-verify-state ' + (geoResult.skip ? '' : (geoResult.ok ? 'ok' : 'fail')) + '">' + (geoResult.skip ? 'Đang tắt' : geoResult.message) + '</span></div>' +
-              '<div class="ts-verify-row"><span class="ts-verify-dot ' + (ipResult.skip ? '' : (ipResult.ok ? 'ok' : 'fail')) + '"></span><span class="ts-verify-label">Mạng Wifi công ty</span><span class="ts-verify-state ' + (ipResult.skip ? '' : (ipResult.ok ? 'ok' : 'fail')) + '">' + (ipResult.skip ? 'Đang tắt' : ipResult.message) + '</span></div>' +
+              '<div class="ts-verify-row"><span class="ts-verify-dot ' + (geoResult.skip ? '' : (geoResult.ok ? 'ok' : 'fail')) + '"></span><span class="ts-verify-body"><span class="ts-verify-label">Vị trí GPS</span><span class="ts-verify-state ' + (geoResult.skip ? '' : (geoResult.ok ? 'ok' : 'fail')) + '">' + (geoResult.skip ? 'Đang tắt' : geoResult.message) + '</span></span></div>' +
+              '<div class="ts-verify-row"><span class="ts-verify-dot ' + (ipResult.skip ? '' : (ipResult.ok ? 'ok' : 'fail')) + '"></span><span class="ts-verify-body"><span class="ts-verify-label">Mạng Wifi công ty</span><span class="ts-verify-state ' + (ipResult.skip ? '' : (ipResult.ok ? 'ok' : 'fail')) + '">' + (ipResult.skip ? 'Đang tắt' : ipResult.message) + '</span></span></div>' +
             '</div>' +
             '<div class="ts-confirm-actions">' +
               '<button type="button" class="ts-confirm-cancel">Huỷ</button>' +

@@ -197,7 +197,7 @@ const Auth = (function() {
 
     var html = `
       <div id="authLoginModal" style="position: fixed; inset: 0; background: rgba(11,13,16,0.85); backdrop-filter: blur(8px); z-index: 100000; display: flex; align-items: center; justify-content: center; padding: 20px;">
-        <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 16px; max-width: 440px; width: 100%; padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.4);">
+        <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 16px; max-width: 440px; width: 100%; max-height: calc(100vh - 40px); overflow-y: auto; padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.4);">
           <div style="text-align: center; margin-bottom: 32px;">
             <div style="width: 56px; height: 56px; margin: 0 auto 16px; background: var(--color-bronze); border-radius: 14px; display: grid; place-items: center; font-family: 'Cormorant Garamond', serif; font-size: 28px; font-weight: 600; color: #0B0D10;">H</div>
             <h2 style="font-family: 'Cormorant Garamond', serif; font-size: 1.75rem; font-weight: 600; color: var(--color-text); margin: 0 0 4px;">HICONIQUE Internal Hub</h2>
@@ -308,7 +308,7 @@ const Auth = (function() {
 
     var html = `
       <div id="authLoginModal" style="position: fixed; inset: 0; background: rgba(11,13,16,0.85); backdrop-filter: blur(8px); z-index: 100000; display: flex; align-items: center; justify-content: center; padding: 20px;">
-        <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 16px; max-width: 440px; width: 100%; padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.4);">
+        <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 16px; max-width: 520px; width: 100%; max-height: calc(100vh - 40px); overflow-y: auto; padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.4);">
           <div style="text-align: center; margin-bottom: 32px;">
             <div style="width: 56px; height: 56px; margin: 0 auto 16px; background: var(--color-bronze); border-radius: 14px; display: grid; place-items: center; font-family: 'Cormorant Garamond', serif; font-size: 28px; font-weight: 600; color: #0B0D10;">H</div>
             <h2 style="font-family: 'Cormorant Garamond', serif; font-size: 1.75rem; font-weight: 600; color: var(--color-text); margin: 0 0 4px;">Đăng ký tài khoản</h2>
@@ -316,28 +316,30 @@ const Auth = (function() {
           </div>
 
           <form id="authRegisterForm" style="display: flex; flex-direction: column; gap: 16px;">
-            <div>
-              <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Họ và tên *</label>
-              <input type="text" id="regNameInput" required placeholder="Nguyễn Văn A"
-                style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none; transition: border 0.2s;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div>
+                <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Họ và tên *</label>
+                <input type="text" id="regNameInput" required placeholder="Nguyễn Văn A"
+                  style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none; transition: border 0.2s;">
+              </div>
+              <div>
+                <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Email công ty *</label>
+                <input type="email" id="regEmailInput" required placeholder="a@gmail.com"
+                  style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none; transition: border 0.2s;">
+              </div>
             </div>
 
-            <div>
-              <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Email công ty *</label>
-              <input type="email" id="regEmailInput" required placeholder="a@gmail.com"
-                style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none; transition: border 0.2s;">
-            </div>
-
-            <div>
-              <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Chức vụ</label>
-              <input type="text" id="regRoleInput" placeholder="Nhân viên thiết kế"
-                style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none; transition: border 0.2s;">
-            </div>
-
-            <div>
-              <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Mật khẩu *</label>
-              <input type="password" id="regPasswordInput" required placeholder="Nhập mật khẩu bất kỳ"
-                style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none; transition: border 0.2s;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div>
+                <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Chức vụ</label>
+                <input type="text" id="regRoleInput" placeholder="Nhân viên thiết kế"
+                  style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none; transition: border 0.2s;">
+              </div>
+              <div>
+                <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Mật khẩu *</label>
+                <input type="password" id="regPasswordInput" required placeholder="Nhập mật khẩu bất kỳ"
+                  style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none; transition: border 0.2s;">
+              </div>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
@@ -371,23 +373,23 @@ const Auth = (function() {
               </div>
             </div>
 
-            <div>
-              <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Quê quán</label>
-              <input type="text" id="regHometownInput" placeholder="Địa chỉ quê quán"
-                style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none;">
-            </div>
-
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div>
+                <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Quê quán</label>
+                <input type="text" id="regHometownInput" placeholder="Địa chỉ quê quán"
+                  style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none;">
+              </div>
               <div>
                 <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Ngân hàng</label>
                 <input type="text" id="regBankNameInput" placeholder="Vd: Vietcombank"
                   style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none;">
               </div>
-              <div>
-                <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Số tài khoản</label>
-                <input type="text" id="regBankAccountInput" placeholder="Số TK nhận lương"
-                  style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none;">
-              </div>
+            </div>
+
+            <div>
+              <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Số tài khoản</label>
+              <input type="text" id="regBankAccountInput" placeholder="Số TK nhận lương"
+                style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none;">
             </div>
 
             <div id="authError" style="display: none; padding: 10px 12px; background: rgba(160,72,72,0.1); border: 1px solid rgba(160,72,72,0.3); border-radius: 6px; color: #A04848; font-size: 0.8125rem;"></div>
