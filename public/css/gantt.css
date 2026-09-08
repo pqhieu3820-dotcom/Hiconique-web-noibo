@@ -257,14 +257,14 @@
 .gantt-task-deadline svg { width: 12px; height: 12px; }
 .gantt-task-deadline.overdue { color: var(--gantt-red); }
 
-.gantt-bar-cell { position: relative; padding: 8px 0; }
+.gantt-bar-cell { position: relative; padding: 16px 0 8px; }
 .gantt-bar-track { position: relative; height: 34px; }
 
 .gantt-month-line { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--color-border); opacity: 0.7; }
 
-.gantt-today-line { position: absolute; top: -8px; bottom: 0; width: 2px; background: var(--gantt-red); opacity: 0.85; z-index: 5; }
+.gantt-today-line { position: absolute; top: -6px; bottom: 0; width: 2px; background: var(--gantt-red); opacity: 0.85; z-index: 5; }
 .gantt-today-line::before {
-  content: 'Hôm nay'; position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
+  content: 'Hôm nay'; position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
   font-size: 0.625rem; font-weight: 600; color: var(--gantt-red); white-space: nowrap;
 }
 

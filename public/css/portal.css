@@ -719,7 +719,7 @@ main { flex: 1; }
   line-height: 1.05;
   letter-spacing: -0.025em;
   color: var(--color-text);
-  margin: var(--space-md) 0 var(--space-lg);
+  margin: var(--space-xl) 0 var(--space-lg);
 }
 .hero-title-sub {
   display: block;
@@ -745,7 +745,7 @@ main { flex: 1; }
   font-size: 0.875rem;
   line-height: 1.65;
   color: var(--color-text-muted);
-  margin-bottom: var(--space-2xl);
+  margin-bottom: var(--space-lg);
 }
 
 .hero-stat {
@@ -1108,11 +1108,22 @@ main { flex: 1; }
   margin-bottom: var(--space-sm);
   line-height: 1.3;
 }
+.team-rolelevel-badge {
+  display: inline-block;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 2px 10px;
+  border-radius: 20px;
+  margin-bottom: var(--space-sm);
+}
+.team-rolelevel-badge.admin { background: color-mix(in srgb, var(--color-bronze) 16%, transparent); color: var(--color-bronze); }
+.team-rolelevel-badge.manager { background: color-mix(in srgb, var(--color-blue) 16%, transparent); color: var(--color-blue); }
+.team-rolelevel-badge.member { background: var(--color-surface-2); color: var(--color-text-muted); }
+
 .team-stat {
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   color: var(--color-text-faint);
-  letter-spacing: 0.02em;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -1126,23 +1137,6 @@ main { flex: 1; }
   color: var(--color-bronze);
   margin-bottom: var(--space-sm);
 }
-.team-actions {
-  display: flex;
-  gap: var(--space-sm);
-  margin-top: auto;
-}
-.team-action {
-  width: 28px; height: 28px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--color-border);
-  color: var(--color-text-muted);
-  border-radius: var(--radius-sm);
-  transition: all var(--dur-base) var(--ease);
-}
-.team-action:hover { color: var(--color-bronze); border-color: var(--color-bronze); }
-.team-action svg { width: 12px; height: 12px; }
-
 .team-card-flag {
   position: absolute;
   top: 10px; right: 10px;
@@ -1883,11 +1877,13 @@ main { flex: 1; }
   border-top: 1px dashed var(--color-border);
 }
 .team-tenure {
-  font-family: var(--font-mono, monospace);
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 0.75rem;
   color: var(--color-text-muted);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
 }
-.team-tenure::before { content: ''; }
+.team-tenure svg { width: 13px; height: 13px; flex-shrink: 0; color: var(--color-bronze); }
 
 [data-theme="light"] .team-tenure { color: #475569; }

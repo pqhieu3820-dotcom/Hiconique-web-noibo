@@ -293,10 +293,8 @@
       var initials = m.avatar || getInitials(m.name);
       var color = m.color || '#6B7280';
       var role = m.role || m.position || '';
-      var email = m.email || '';
       var status = m.roleLevel ? m.roleLevel.charAt(0).toUpperCase() + m.roleLevel.slice(1) : '—';
       var days = daysAtCompany(m.createdAt);
-      var daysLabel = days !== null ? (days + ' ngày làm việc') : '—';
       var joinDate = m.createdAt ? new Date(m.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
       var statusBadge = m.status === 'pending' ? '<span class="team-status-badge pending">Chờ duyệt</span>'
         : m.status === 'inactive' ? '<span class="team-status-badge inactive">Ngưng công tác</span>'
@@ -309,25 +307,15 @@
         +   '<div class="team-avatar" style="background:' + color + '">' + initials + '</div>'
         +   '<h3 class="team-name">' + (m.name || '—') + '</h3>'
         +   '<p class="team-role">' + role + '</p>'
-        +   '<div class="team-stat">'
-        +     '<span>' + email + '</span>'
-        +     '<span>' + daysLabel + '</span>'
-        +     '<span>' + status + '</span>'
-        +   '</div>'
+        +   '<span class="team-rolelevel-badge ' + (m.roleLevel || 'member') + '">' + status + '</span>'
         +   '<div class="team-meta-row">'
-        +     (joinDate ? '<span class="team-tenure" title="Gia nhập từ ' + joinDate + '">📅 ' + joinDate + '</span>' : '')
-        +   '</div>'
-        +   '<div class="team-actions">'
-        +     '<a href="mailto:' + email + '" class="team-action" aria-label="Gửi email">'
-        +       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>'
-        +     '</a>'
+        +     (joinDate ? '<span class="team-tenure" title="Gia nhập từ ' + joinDate + '">' + ICON.calendar + '<span>' + joinDate + (days !== null ? ' · ' + days + ' ngày' : '') + '</span></span>' : '')
         +   '</div>'
         + '</article>';
     }).join('');
 
     grid.querySelectorAll('.team-card').forEach(function (card) {
       function open(e) {
-        if (e.target.closest('.team-action')) return;
         openTeamMemberModal(members[parseInt(card.dataset.idx, 10)]);
       }
       card.addEventListener('click', open);
