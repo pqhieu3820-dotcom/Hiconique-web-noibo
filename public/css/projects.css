@@ -1648,7 +1648,7 @@
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 8px;
 }
-.member-multi-item {
+.member-multi .member-multi-item {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1660,6 +1660,17 @@
   transition: all var(--dur-base) var(--ease);
   font-size: 0.8125rem;
   color: var(--color-text);
+}
+.member-multi-item .avatar-xs {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #0B0D10;
+  font-size: 0.5rem;
+  font-weight: 600;
+  flex-shrink: 0;
 }
 .member-multi-item:hover {
   border-color: var(--color-bronze);
