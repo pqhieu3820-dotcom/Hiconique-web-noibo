@@ -11,7 +11,7 @@ Spreadsheet: `HICONIQUE Task Manager` — 11 tab, mỗi tab một loại dữ li
 
 | Tab | Dùng cho | Cột chính |
 |---|---|---|
-| `Members` | Thành viên | id, name, role, roleLevel, email, password, dob, cccd, phone, hometown, bank, bankAccount, color, avatar, createdAt, gender, baseSalary |
+| `Members` | Thành viên | id, name, role, roleLevel, email, password, dob, cccd, phone, hometown, bank, bankAccount, color, avatar, createdAt, gender, baseSalary, status |
 | `Projects` | Dự án | id, name, type, color, progress, status, members, createdAt, updatedAt, budget, client, investor, location, startDate, endDate, priority, description |
 | `Tasks` | Công việc | id, title, description, projectId, assigneeId, priority, status, startDate, deadline, createdBy, createdAt, updatedAt, progress, dailyTasks |
 | `Proposals` | Đề xuất | id, title, description, type, status, requesterId, reviewerId, amount, createdAt, reviewedAt |
@@ -73,6 +73,15 @@ Form đăng ký thành viên mới đã có thêm trường "Ngân hàng" (tên 
 khoản") và "Số điện thoại". Giống mọi trường khác, giá trị này chỉ được lưu lại qua Google Sheets
 nếu tab `Members` đã có cột `bank`/`phone` trên hàng header — nếu chưa có, tự thêm cột vào Sheet
 (đặt `bank` cạnh `bankAccount`, `phone` cạnh `cccd` cho dễ nhìn), không cần redeploy Apps Script.
+
+## Cột `status` (trạng thái tài khoản) trên tab Members
+
+Đã thêm cột `status` vào hàng header của tab `Members` — dùng cho luồng phê duyệt đăng ký và ngưng
+công tác: `pending` (chờ duyệt, chưa đăng nhập được), `active` (đang hoạt động — hoặc để trống,
+tương đương active với tài khoản tạo trước khi có cột này), `rejected` (đăng ký bị từ chối),
+`inactive` (đã ngưng công tác). Duyệt/từ chối yêu cầu Manager hoặc CEO; ngưng công tác/khôi phục
+yêu cầu CEO — xem `TaskManager.canManageMembers`/`canTerminateMembers`/`updateMemberStatus` trong
+`public/js/task-data.js`.
 
 ## Cột `code` (mã tài liệu) trên tab Documents
 

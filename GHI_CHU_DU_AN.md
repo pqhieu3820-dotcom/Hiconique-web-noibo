@@ -4,7 +4,7 @@ File này tồn tại để không phải hỏi lại các thông tin dưới đ
 chat mới với Claude. Đây là nguồn tham chiếu chính (source of truth) cho các liên kết và quy
 tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
-## 0. Trạng thái hiện tại (cập nhật lần cuối: 2026-09-08, cuối buổi)
+## 0. Trạng thái hiện tại (cập nhật lần cuối: 2026-09-08, giữa buổi — phiên máy mới)
 
 **Kiến trúc tóm tắt:** Web tĩnh (HTML/CSS/JS thuần, không framework) trong `public/`, chạy local
 qua Node/Express (`server.js`), deploy Netlify cho production. Dữ liệu sống trên 1 Google Sheet
@@ -48,7 +48,57 @@ của Member đang đăng nhập, kiểm tra phía client (không có bảo mậ
    `public/css/portal.css` nếu cần chỉnh tiếp, không cần đọc lại chi tiết ở đây.
 10. Đã push toàn bộ lên GitHub (nhánh `master`).
 
+**Việc đã làm trong phiên làm việc hiện tại (sau khi chuyển máy, theo thứ tự):**
+1. Sửa GPS check-in trên `timesheet.html`: phân biệt rõ 3 loại lỗi định vị (chưa cấp quyền /
+   không xác định được vị trí — gợi ý kiểm tra Windows Location / hết thời gian chờ) thay vì luôn
+   báo chung "chưa cấp quyền định vị" kể cả khi Chrome đã cấp quyền (nguyên nhân thường gặp: Windows
+   tắt Location Services ở cấp hệ điều hành, tách biệt với quyền của từng site trên Chrome). Đồng
+   thời bố trí lại khối trạng thái Vị trí GPS/Mạng Wifi công ty (nhãn trên, trạng thái dưới) để
+   không vỡ layout khi thông báo dài.
+2. Sửa modal Đăng ký/Đăng nhập (`public/js/auth.js`) bị cắt mất ở màn hình thấp (24 inch): thêm
+   `max-height` + `overflow-y:auto`, và gộp các trường đăng ký thành lưới 2 cột (Họ tên+Email,
+   Chức vụ+Mật khẩu, Ngày sinh+Giới tính, CCCD+SĐT, Quê quán+Ngân hàng, Số tài khoản) để form ngắn
+   lại đáng kể, ít phải cuộn hơn.
+3. **Luồng phê duyệt đăng ký + ngưng công tác** — thêm trường `status` cho Member
+   (`pending`/`active`/`rejected`/`inactive`):
+   - `register()` giờ tạo tài khoản mới với `status:'pending'`.
+   - `loginWithPassword()` chặn đăng nhập nếu `status` là `pending`/`rejected`/`inactive`, báo rõ
+     lý do; tài khoản cũ không có `status` (dữ liệu trước đây) coi như đang hoạt động bình thường.
+   - `TaskManager.canManageMembers(user)` (Manager+CEO, dùng để Duyệt/Từ chối đăng ký mới) và
+     `TaskManager.canTerminateMembers(user)` (chỉ CEO, dùng để Ngưng công tác/Khôi phục) — theo
+     đúng mẫu `canManageNotifications`/`canManageRecurringRules` đã có.
+   - `TaskManager.updateMemberStatus(id, status, user)` — mutator dùng chung cho cả 4 hành động,
+     tự chọn đúng permission-check ở trên tuỳ hành động.
+   - UI: trang Team (`portal.js` → `renderTeamGrid`/`openTeamMemberModal`) hiện thẻ trạng thái
+     (Chờ duyệt/Ngưng công tác/Đã từ chối) trên card, và nút Duyệt/Từ chối/Ngưng công tác/Khôi
+     phục trong modal chi tiết, chỉ hiện đúng nút theo quyền người đang đăng nhập.
+   - **Đã thêm cột `status` vào hàng header thật của tab `Members` trên Google Sheet** (thao tác
+     tay qua tài khoản `hiconique.group@gmail.com`, không cần redeploy Apps Script vì
+     `gsheets-api-v2.js` đọc/ghi theo tên cột động) — đã kiểm tra kỹ, không đụng tới dữ liệu 5
+     member thật nào trong lúc thao tác (có 2 lần suýt gõ nhầm đè lên ô ID thật khi dùng Name Box,
+     đã phát hiện và Ctrl+Z khôi phục ngay, dữ liệu cuối cùng nguyên vẹn).
+   - Đã test full luồng bằng 2 tài khoản test tạo tạm trên Sheet thật rồi xoá sạch sau khi xong
+     (không còn sót lại trên Sheet).
+4. Đã commit 2 việc trên (2 commit local riêng, chưa push — theo đúng quy tắc chờ xác nhận).
+5. **Chưa làm** trong phiên này: đổi tên sheet/tiêu đề cột sang tiếng Việt (mục 4 dưới) — người
+   dùng sẽ tự đổi tay cho nhanh rồi gửi ảnh lại để tôi cập nhật code + Apps Script theo tên mới,
+   KHÔNG tự ý đổi tên cột/sheet trước khi có ảnh xác nhận; cải thiện UI mobile cho Task Manager và
+   Dự án — chưa bắt đầu.
+
 **Việc CHƯA làm / có thể cần làm tiếp theo:**
+- **Đổi tên sheet + tên cột sang tiếng Việt**: người dùng sẽ tự đổi tay trên Google Sheet (nhanh
+  hơn để tôi mò UI), sau đó gửi ảnh chụp tên mới → tôi cập nhật `gsheets-api-v2.js` (thêm lớp ánh
+  xạ tên-cột-tiếng-Việt ↔ key-tiếng-Anh nội bộ để không phải sửa lại toàn bộ `.name`/`.email`...
+  trong code client) + redeploy Apps Script (Phiên bản mới, không tạo deployment mới). Nội dung dữ
+  liệu giữ nguyên, chỉ đổi tên hiển thị.
+- **Cải thiện UI mobile cho Task Manager (`tasks-manager.html`) và Dự án (`projects.html`, kể cả
+  tab Gantt)** — nội dung giữ nguyên, chỉ chỉnh layout/mật độ thông tin cho gọn trên điện thoại;
+  được uỷ quyền tự quyết định cách làm đẹp/hợp lý, chưa bắt đầu nghiên cứu.
+- Bài học thao tác Google Sheets qua trình duyệt tự động: click theo toạ độ pixel trên context
+  menu của Sheets **rất dễ trật** (menu re-render lệch vài px giữa các lần chụp màn hình) — cách
+  an toàn nhất đã kiểm chứng: dùng `find` (tìm theo text) để lấy đúng `ref` của menu item rồi click
+  qua `ref`, KHÔNG click theo toạ độ khi thao tác trên Sheet thật; luôn xác nhận ô/vùng chọn qua
+  formula bar (zoom vùng `[0,60,400,80]`) trước khi gõ bất cứ gì.
 - Trang Dashboard Dự án (`pages/projects.html`) và trang Task Manager (`tasks-manager.html`) là
   **2 hệ thống quản lý dự án riêng, trùng chức năng** (mỗi trang có modal tạo/sửa dự án của
   riêng nó, dùng chung dữ liệu `TaskManager.getProjects()`). Về lâu dài nên cân nhắc gộp lại
