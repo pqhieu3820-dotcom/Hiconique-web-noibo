@@ -537,11 +537,11 @@ main { flex: 1; }
 .hero {
   padding: var(--space-4xl) 0 var(--space-2xl);
   position: relative;
-  overflow: hidden;
 }
 .hero-bg {
   position: absolute;
-  inset: 0;
+  top: 0; left: 0; right: 0;
+  bottom: -150px;
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
@@ -550,13 +550,15 @@ main { flex: 1; }
   --hero-orb-a3: 0.09;
   --hero-aurora-opacity: 0.2;
   --hero-blend: normal;
-  /* Fade the whole group to transparent well before the hero ends,
-     so nothing reaches the stat row / next section with a hard edge. */
+  /* Bleeds past the hero's own box (bottom: -150px above) so the glow
+     keeps going down to the "Cong cu chinh" divider line instead of
+     stopping short at the hero's own bottom edge; fades out in the
+     last stretch so it never shows a hard edge at that line. */
   mask-image:
-    linear-gradient(to bottom, #000 0%, #000 40%, transparent 68%),
+    linear-gradient(to bottom, #000 0, #000 calc(100% - 150px), transparent calc(100% - 4px)),
     linear-gradient(to right, transparent 0%, #000 12%, #000 82%, transparent 100%);
   mask-composite: intersect;
-  -webkit-mask-image: radial-gradient(ellipse 85% 70% at 45% 20%, #000 0%, #000 35%, transparent 72%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 150px), transparent calc(100% - 4px));
 }
 [data-theme="dark"] .hero-bg {
   --hero-orb-a1: 0.35;
