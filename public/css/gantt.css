@@ -354,7 +354,7 @@
   .gantt-task-row:hover td:first-child { background: var(--color-surface-2); }
   .gantt-section-row td:first-child { background: var(--gantt-purple-light); }
 
-  .gantt-table thead th:first-child { width: 150px; min-width: 140px; }
+  .gantt-table thead th:first-child { width: 104px; min-width: 100px; }
   .gantt-table thead th:nth-child(2) { min-width: 700px; }
   .gantt-table thead th.gantt-col-progress { width: 60px; min-width: 60px; }
   .gantt-table thead th:last-child { width: 90px; min-width: 90px; padding-right: 10px; }
@@ -364,11 +364,15 @@
   .gantt-day-num { font-size: 0.6875rem; }
   .gantt-day-cell.today .gantt-day-num { width: 17px; height: 17px; }
 
-  .gantt-task-info { padding: 10px; }
-  .gantt-task-avatar { width: 26px; height: 26px; }
-  .gantt-task-title { font-size: 0.75rem; }
-  .gantt-task-sub { padding-left: 34px; }
+  .gantt-task-info { padding: 8px 6px; }
+  .gantt-task-top { gap: 6px; margin-bottom: 4px; }
+  .gantt-task-avatar { width: 20px; height: 20px; font-size: 0.5625rem; }
+  .gantt-task-title { font-size: 0.6875rem; }
+  .gantt-task-sub { padding-left: 26px; }
+  .gantt-task-deadline { font-size: 0.625rem; }
+  .gantt-task-deadline svg { width: 10px; height: 10px; }
   .gantt-progress-ring { width: 32px; height: 32px; }
+  .gantt-section-row td:first-child { font-size: 0.6875rem; padding: 9px 6px; }
 
   /* The "Hôm nay" label floats 20px above its own line (::before,
      see base rule) — with rows packed edge-to-edge on mobile that
