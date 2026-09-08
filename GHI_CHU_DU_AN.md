@@ -4,7 +4,39 @@ File này tồn tại để không phải hỏi lại các thông tin dưới đ
 chat mới với Claude. Đây là nguồn tham chiếu chính (source of truth) cho các liên kết và quy
 tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
-## 0. Trạng thái hiện tại (cập nhật lần cuối: 2026-09-09 — thêm chống chấm công hộ, đọc kỹ mục này)
+## 0. Trạng thái hiện tại (cập nhật lần cuối: 2026-09-09 — fix SĐT mất số 0 + lệch ngày sinh, đọc kỹ mục này)
+
+**Việc mới nhất (2026-09-09, sau chống chấm công hộ): fix 2 bug đọc/ghi Google Sheets + sinh nhật.**
+- **Bug 1 — SĐT mất số 0 đầu**: `phone`/`cccd`/`bankAccount` là chuỗi toàn số nên bị Apps Script
+  tự ép thành Number khi ghi (`appendRow`/`setValue`), mất số 0 đầu vĩnh viễn ở cell (VD
+  `0334828489` → `334828489`) — **không liên quan gì đến định dạng cột** (Plain text cũng không
+  chặn được, giống bug `month` trước đây). Đã thêm `phone/cccd/bankAccount` vào
+  `FORCE_TEXT_FIELDS` trong `forceTextIfDateLike()` (ép ghi dạng text bằng dấu `'`) + thêm bù số 0
+  phía đọc cho dữ liệu cũ đã lỡ mất (`getAllData`, chỉ áp dụng khi `phone` đọc về là Number đúng 9
+  chữ số).
+- **Bug 2 — ngày sinh (và mọi cột Date khác) lệch lùi 1 ngày**: ô Sheet định dạng Date đọc về là
+  `Date` object giờ VN (00:00 giờ Asia/Ho_Chi_Minh), nhưng response JSON tự `toISOString()` sang
+  UTC → 00:00 VN (UTC+7) thành 17:00 **hôm trước** theo UTC → mọi field Date-type (dob, deadline,
+  startDate, endDate...) đều bị lệch lùi 1 ngày khi client đọc chuỗi ISO. Đã sửa `getAllData` để
+  format mọi cell Date về `'yyyy-MM-dd'` bằng `Utilities.formatDate` (đúng timezone script) trước
+  khi trả JSON — không còn qua `toISOString()` nữa.
+- **Đã deploy Apps Script bản mới (Phiên bản 22→23, cùng deployment/URL)** bằng đúng kỹ thuật base64
+  → clipboard PowerShell `Set-Clipboard` → tab Chrome đã mở sẵn Apps Script (qua `claude-in-chrome`,
+  không cần đăng nhập lại) → textarea paste thật (`ctrl+v`) → decode + `monaco.editor.getModels()[0].setValue()`
+  → `ctrl+s` → Triển khai → Quản lý các tùy chọn triển khai → sửa deployment đang hoạt động → chọn
+  "Phiên bản mới" (không tạo deployment mới). Đã xác nhận qua PowerShell `Invoke-RestMethod` gọi API
+  thật: `dob` của CEO đúng `2000-08-03` (trước đọc lệch `2000-08-02...`), `phone` đã có lại số 0.
+- **Phát hiện thêm (chưa sửa, cần hỏi người dùng)**: cả 5 thành viên thật hiện đang có **cùng 1 số
+  điện thoại `0334828489`** trên Sheet — rất giống dữ liệu placeholder chưa ai điền số thật, không
+  phải lỗi code (đã xác nhận field khác như `hometown`/`cccd` vẫn đúng riêng từng người). Cần nhắc
+  người dùng tự điền lại SĐT thật cho từng thành viên trên Sheet.
+- **Thêm hiển thị "Sinh ngày ..." trong modal Team** (`portal.js`, `openTeamMemberModal`, icon cake
+  mới trong `ICON`).
+- **Thêm nhắc sinh nhật mặc định** (`task-data.js`, `getComputedAlerts`): so khớp tháng-ngày của
+  `Members.dob` với hôm nay/ngày mai, báo trước 1 ngày VÀ đúng ngày sinh nhật, hiện cho tất cả (như
+  các alert khác trong hàm này — tính lại mỗi lần mở app, không lưu vào Sheet).
+
+## 0b. Trạng thái phiên trước (2026-09-09 — chống chấm công hộ bằng Device ID, vẫn còn đúng)
 
 **Việc mới nhất (2026-09-09): chống chấm công hộ bằng Device ID (tối đa 2 thiết bị/người).**
 - Web KHÔNG có cách nào đọc ID phần cứng thật (không API nào cho phép, mọi trình duyệt cố ý chặn
@@ -31,7 +63,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   không phải xác thực tuyệt đối. Người dùng đã hiểu và chọn hướng này (so với 2 lựa chọn khác:
   chặn cứng hoàn toàn, hoặc giữ phương án chụp ảnh selfie).
 
-## 0b. Trạng thái phiên trước (2026-09-09, đổi cổng đăng nhập sang cookie-auth — vẫn còn đúng)
+## 0c. Trạng thái phiên trước (2026-09-09, đổi cổng đăng nhập sang cookie-auth — vẫn còn đúng)
 
 **Việc đã làm (2026-09-09): thay Basic Auth bằng cookie-auth (Netlify Edge Function + Blobs).**
 - Xoá `netlify/edge-functions/basic-auth.js` (HTTP Basic Auth cũ, biến env `AUTH_USERS`), thay bằng
@@ -68,7 +100,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   theo từng thành viên đã có (`public/js/auth.js`, email + mật khẩu riêng, phân quyền `roleLevel`)
   — cookie-auth chỉ là lớp chặn ngoài cùng (site-wide gate), không thay thế luồng đăng nhập nội bộ.
 
-## 0b. Trạng thái trước đó (2026-09-08, buổi tối — đã KHÔI PHỤC kết nối Sheet, vẫn còn đúng, đọc nếu cần)
+## 0d. Trạng thái trước đó (2026-09-08, buổi tối — đã KHÔI PHỤC kết nối Sheet, vẫn còn đúng, đọc nếu cần)
 
 **Kiến trúc tóm tắt:** Web tĩnh (HTML/CSS/JS thuần, không framework) trong `public/`, chạy local
 qua Node/Express (`server.js`), deploy Netlify cho production. Dữ liệu sống trên 1 Google Sheet
