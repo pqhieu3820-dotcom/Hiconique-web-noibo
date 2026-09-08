@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Đăng nhập · HICONIQUE Hub</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<style>
+  :root {
+    --bg: #0B0D10;
+    --surface: #15181D;
+    --border: #262B33;
+    --bronze: #B08D57;
+    --bronze-hover: #C9A876;
+    --text: #F4F1EC;
+    --text-muted: #9AA0A6;
+    --error: #C96A5A;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .login-card {
+    width: 100%;
+    max-width: 380px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 40px 32px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+  .brand-mark {
+    width: 36px; height: 36px;
+    border: 1px solid var(--bronze);
+    border-radius: 6px;
+    display: grid; place-items: center;
+    color: var(--bronze);
+    font-family: Georgia, serif;
+    font-size: 1.125rem;
+  }
+  .brand-name {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--text);
+  }
+  h1 {
+    margin: 0 0 6px;
+    font-size: 1.25rem;
+    font-weight: 600;
+    text-align: center;
+    color: var(--text);
+  }
+  .sub {
+    margin: 0 0 28px;
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    text-align: center;
+  }
+  label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  input[type="password"] {
+    width: 100%;
+    padding: 12px 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 0.9375rem;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input[type="password"]:focus { border-color: var(--bronze); }
+  .error-msg {
+    margin-top: 12px;
+    font-size: 0.8125rem;
+    color: var(--error);
+    text-align: center;
+    display: none;
+  }
+  .error-msg.show { display: block; }
+  button {
+    width: 100%;
+    margin-top: 20px;
+    padding: 13px;
+    border: none;
+    border-radius: 8px;
+    background: var(--bronze);
+    color: #0B0D10;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  button:hover { background: var(--bronze-hover); }
+  .footnote {
+    margin-top: 24px;
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+    text-align: center;
+    opacity: 0.7;
+  }
+</style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="brand">
+      <div class="brand-mark">H</div>
+      <div class="brand-name">HICONIQUE HUB</div>
+    </div>
+    <h1>Khu vực nội bộ</h1>
+    <p class="sub">Nhập mật khẩu truy cập để tiếp tục.</p>
+
+    <form method="POST" action="/login-submit">
+      <label for="password">Mật khẩu</label>
+      <input type="password" id="password" name="password" required autofocus autocomplete="current-password">
+      <p class="error-msg" id="errorMsg">Sai mật khẩu, vui lòng thử lại.</p>
+      <button type="submit">Đăng nhập</button>
+    </form>
+
+    <p class="footnote">© 2026 HICONIQUE Vietnam · Internal use only</p>
+  </div>
+
+  <script>
+    if (new URLSearchParams(window.location.search).get('error') === '1') {
+      document.getElementById('errorMsg').classList.add('show');
+    }
+  </script>
+</body>
+</html>

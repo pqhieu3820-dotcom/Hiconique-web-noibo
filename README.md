@@ -10,13 +10,14 @@
 ## 1. Tổng quan
 
 Trang web tĩnh (HTML/CSS/JS thuần) + một **Node.js/Express server** để chạy local. Deploy production
-trên **Netlify** — mọi request bị chặn bởi một Edge Function yêu cầu Basic Auth (`netlify/edge-functions/basic-auth.js`)
-trước khi vào được trang.
+trên **Netlify** — mọi request bị chặn bởi một Edge Function xác thực qua **cookie + Netlify Blobs**
+(`netlify/edge-functions/cookie-auth.js`), ép đăng nhập lại mỗi ngày và chỉ cho **1 thiết bị** hoạt
+động cùng lúc (đăng nhập máy mới tự đẩy máy cũ ra) — xem chi tiết ở mục 4.
 
 | Phân vùng | Vai trò | Công cụ |
 |-----------|---------|---------|
 | **Giao diện (Portal)** | Trang chủ + các trang phụ | HTML/CSS/JS thuần + Express (local) |
-| **Hosting** | Chạy production | Netlify (edge function bảo vệ truy cập) |
+| **Hosting** | Chạy production | Netlify (edge function cookie-auth bảo vệ truy cập) |
 | **Đăng nhập nội bộ** | Xác thực thành viên | `public/js/auth.js` (email công ty + mật khẩu) |
 | **Dữ liệu** | Dự án / Task / Chấm công / Đề xuất / Thông báo / Tài liệu | Google Sheets (đọc CSV publish) + Apps Script (ghi, `gsheets-api-v2.js`) |
 | **Wiki / Tài liệu** | Danh mục + link tài liệu | Lưu trong Google Sheets (tab `Documents`), sửa trực tiếp trên web |
@@ -31,7 +32,8 @@ WEB NỘI BỘ HICONIQUE/
 ├── package.json
 ├── netlify.toml               ← Cấu hình deploy Netlify (publish dir + edge function)
 ├── netlify/edge-functions/
-│   └── basic-auth.js          ← Chặn truy cập, yêu cầu user/pass (biến env AUTH_USERS)
+│   └── cookie-auth.js          ← Cổng vào duy nhất: mật khẩu chung + cookie session (1 thiết bị, Netlify Blobs)
+├── public/login.html          ← Trang đăng nhập (tự chứa CSS, không qua cookie-auth)
 ├── gsheets-api-v2.js          ← Nguồn Apps Script đang chạy trên Google Sheets (xem SETUP_HUONG_DAN.md)
 ├── SETUP_HUONG_DAN.md         ← Hướng dẫn redeploy/mở rộng Google Sheets ⇄ Web
 ├── .env.example
@@ -87,9 +89,22 @@ NODE_ENV=production npm start
 Repo đã gắn Netlify — mỗi lần `git push` lên `master`, Netlify tự build & publish (xem
 `netlify.toml`, publish directory là `public`). Không cần bước thủ công nào thêm.
 
-Truy cập trang production yêu cầu Basic Auth (do `netlify/edge-functions/basic-auth.js`) — danh
-sách tài khoản đặt trong Netlify **Site settings → Environment variables → `AUTH_USERS`**, định
-dạng `email:matkhau,email2:matkhau2,...`.
+Truy cập trang production yêu cầu qua cổng đăng nhập chung (`public/login.html` → POST
+`/login-submit`, xử lý bởi `netlify/edge-functions/cookie-auth.js`):
+
+- **Mật khẩu chung**: mặc định `Hiconique@2026`, đổi được không cần sửa code qua Netlify
+  **Site settings → Environment variables → `SITE_PASSWORD`** (redeploy hoặc chờ edge function
+  tự nạp lại biến môi trường mới).
+- **Hẹn giờ tự huỷ (Tính năng A)**: cookie session luôn `Expires` vào đúng **1:00 sáng giờ VN
+  (UTC+7) của ngày hôm sau** tính từ lúc đăng nhập — không phải "sau 24h" — nên tài khoản chung
+  bắt buộc đăng nhập lại mỗi ngày làm việc mới.
+- **1 thiết bị / 1 phiên (Tính năng B)**: mỗi lần đăng nhập đúng mật khẩu, edge function tạo
+  `session_id` ngẫu nhiên, ghi vào cookie **và** đè lên giá trị "current" trong **Netlify Blobs**
+  (store `hiconique-auth`, key `current-session`). Mọi request sau đó đối chiếu cookie với giá trị
+  này — ai đăng nhập sau sẽ khiến mọi thiết bị đã đăng nhập trước tự động sai khớp và bị đẩy về
+  `/login.html` ở request tiếp theo.
+- Cần chạy `netlify dev` (Netlify CLI) để test đầy đủ edge function + Blobs ở local — `npm run dev`
+  (Express thuần) **không** đi qua `cookie-auth.js`, nên chạy local sẽ không bị chặn đăng nhập.
 
 ---
 

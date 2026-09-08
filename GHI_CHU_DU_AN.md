@@ -4,7 +4,40 @@ File này tồn tại để không phải hỏi lại các thông tin dưới đ
 chat mới với Claude. Đây là nguồn tham chiếu chính (source of truth) cho các liên kết và quy
 tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
-## 0. Trạng thái hiện tại (cập nhật lần cuối: 2026-09-08, buổi tối — đã KHÔI PHỤC kết nối Sheet, đọc kỹ mục này)
+## 0. Trạng thái hiện tại (cập nhật lần cuối: 2026-09-09 — đổi cổng đăng nhập sang cookie-auth, đọc kỹ mục này)
+
+**Việc mới nhất (2026-09-09): thay Basic Auth bằng cookie-auth (Netlify Edge Function + Blobs).**
+- Xoá `netlify/edge-functions/basic-auth.js` (HTTP Basic Auth cũ, biến env `AUTH_USERS`), thay bằng
+  **`netlify/edge-functions/cookie-auth.js`** — vẫn chặn toàn bộ `/*` qua `netlify.toml` như cũ,
+  nhưng giờ dùng 1 trang đăng nhập riêng (`public/login.html`, tự chứa CSS, POST tới
+  `/login-submit`) + cookie `hiconique_session` thay vì popup Basic Auth của trình duyệt.
+- **Mật khẩu chung**: hằng số `Hiconique@2026` trong code, override được qua biến môi trường
+  Netlify `SITE_PASSWORD` (không có sẵn ở local, phải set trên Netlify dashboard nếu muốn đổi).
+- **Tính năng A — hẹn giờ tự huỷ**: cookie `Expires` = đúng 1h sáng giờ VN (UTC+7) của **ngày hôm
+  sau** tính từ lúc đăng nhập (không phải "+24h") — cách tính: dịch `Date.now()` +7h, đọc các
+  trường UTC (lúc này chính là ngày/giờ VN thật), dựng mốc "ngày+1, 01:00" trong hệ dịch đó, rồi
+  dịch ngược -7h ra đúng thời điểm UTC thật để ghi header `Expires`.
+- **Tính năng B — 1 thiết bị/1 phiên**: đăng nhập đúng mật khẩu → tạo `session_id` (`crypto.randomUUID()`)
+  → ghi vào cookie **và** đè lên Netlify Blobs (store `hiconique-auth`, key `current-session`, giá
+  trị là session_id string, không phải danh sách). Mọi request sau đó so `session_id` trong cookie
+  với giá trị "current" trong Blobs — ai đăng nhập sau sẽ ghi đè Blobs, làm mọi thiết bị đăng nhập
+  trước tự động lệch `session_id` và bị đá về `/login.html` ngay request kế tiếp của họ.
+- **Chưa test được qua Netlify Blobs thật** trong phiên này — máy không có `netlify-cli` cài sẵn
+  (`npx netlify` yêu cầu tải package, không chạy được offline/không xác nhận). `npm run dev` (Express
+  local) **không** chạy edge function, nên không kiểm tra được luồng cookie-auth ở local theo cách
+  thông thường — **phải test bằng `netlify dev` (cần cài `netlify-cli`) hoặc sau khi deploy thật lên
+  Netlify** trước khi tin tưởng hoàn toàn vào luồng này. Nếu sau khi deploy mà bị đá liên tục về
+  login hoặc không đăng nhập được, đây là chỗ đầu tiên cần xem lại (đặc biệt: Netlify Blobs cần chạy
+  trong context Netlify thật, không hoạt động khi mở file tĩnh hoặc chạy Express thuần).
+- `login.html` cố tình **không** dùng CSS/JS chung của site (`/css/*.css`, `/js/*.js`) — vì mọi asset
+  cùng domain đều bị `cookie-auth.js` chặn (`PUBLIC_PATHS` chỉ whitelist đúng `/login.html`,
+  `/login-submit`, `/favicon.svg`, `/favicon.ico`), gọi ra các file đó sẽ bị redirect vòng lại chính
+  `/login.html` thay vì trả đúng CSS/JS.
+- Lưu ý: cổng đăng nhập chung này (1 mật khẩu cho cả công ty) **độc lập** với hệ thống đăng nhập
+  theo từng thành viên đã có (`public/js/auth.js`, email + mật khẩu riêng, phân quyền `roleLevel`)
+  — cookie-auth chỉ là lớp chặn ngoài cùng (site-wide gate), không thay thế luồng đăng nhập nội bộ.
+
+## 0b. Trạng thái trước đó (2026-09-08, buổi tối — đã KHÔI PHỤC kết nối Sheet, vẫn còn đúng, đọc nếu cần)
 
 **Kiến trúc tóm tắt:** Web tĩnh (HTML/CSS/JS thuần, không framework) trong `public/`, chạy local
 qua Node/Express (`server.js`), deploy Netlify cho production. Dữ liệu sống trên 1 Google Sheet
@@ -214,7 +247,7 @@ của Member đang đăng nhập, kiểm tra phía client (không có bảo mậ
 | **Google Apps Script — editor** (sửa code `gsheets-api-v2.js` tại đây) | **https://script.google.com/u/1/home/projects/13qWJLAwWHzeH7nyfcVHlMrxwOOWAUi4X2gD7CgB2EfwQseFX30RJo_RJ/edit** |
 | **Apps Script Web App — URL đang chạy thật** (client gọi `API_URL` này để ghi dữ liệu) | **https://script.google.com/macros/s/AKfycbzgg0dfNgDTFgcTGlNvF2IHLUusK6YuBk1pot9SrbYi5B9al-H2nmmMlKLz5CpDlLY/exec** |
 | **Google Drive — thư mục file thiết kế/hồ sơ kỹ thuật** | **https://drive.google.com/drive/folders/1Abs32vARD3f486LWBfgIWXjKIUV-LK6L** |
-| Netlify — hosting production | Chưa có URL cố định ghi trong repo (auto-deploy mỗi lần push `master`, xem Netlify dashboard của tài khoản để lấy link site + biến `AUTH_USERS` cho Basic Auth — chi tiết ở [README.md](README.md)) |
+| Netlify — hosting production | Chưa có URL cố định ghi trong repo (auto-deploy mỗi lần push `master`, xem Netlify dashboard của tài khoản để lấy link site + biến `SITE_PASSWORD` cho cổng đăng nhập chung (cookie-auth) — chi tiết ở [README.md](README.md)) |
 
 **Lưu ý khi thay đổi các link trên:** nếu redeploy Apps Script ra **deployment mới** (không phải
 "Phiên bản mới" trên deployment cũ) thì "Apps Script Web App — URL đang chạy thật" ở trên SẼ ĐỔI
