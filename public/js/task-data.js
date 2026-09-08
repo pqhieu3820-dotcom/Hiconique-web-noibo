@@ -262,78 +262,8 @@ var TaskManager = (function() {
     });
   }
 
-  // Fetch data from Google Sheets
-  function fetchFromSheet(url, callback) {
-    fetch(url).then(function(response) {
-      return response.text();
-    }).then(function(text) {
-      var data = parseCSV(text);
-      callback(data);
-    }).catch(function(e) {
-      console.error('Error fetching from sheet:', e);
-      callback([]);
-    });
-  }
-
-  // Parse CSV (comma-separated values) to JSON
-  function parseCSV(text) {
-    if (!text || text.trim() === '') return [];
-    var lines = text.trim().split('\n');
-    if (lines.length < 2) return [];
-
-    var parseLine = function(line) {
-      var result = [];
-      var current = '';
-      var inQuotes = false;
-      for (var i = 0; i < line.length; i++) {
-        var char = line[i];
-        if (char === '"') {
-          if (inQuotes && line[i + 1] === '"') {
-            current += '"';
-            i++;
-          } else {
-            inQuotes = !inQuotes;
-          }
-        } else if (char === ',' && !inQuotes) {
-          result.push(current.trim());
-          current = '';
-        } else {
-          current += char;
-        }
-      }
-      result.push(current.trim());
-      return result;
-    };
-
-    var headers = parseLine(lines[0]);
-    var data = [];
-
-    for (var i = 1; i < lines.length; i++) {
-      if (!lines[i].trim()) continue;
-      var values = parseLine(lines[i]);
-      var obj = {};
-      headers.forEach(function(h, index) {
-        var val = values[index] || '';
-        // Parse arrays
-        if (val.startsWith('[') && val.endsWith(']')) {
-          try { val = JSON.parse(val); } catch(e) {}
-        }
-        // Parse booleans (Sheets exports checkbox/boolean cells as "TRUE"/"FALSE")
-        if (val === 'TRUE' || val === 'FALSE') {
-          val = (val === 'TRUE');
-        }
-        // Parse numbers
-        else if (!isNaN(val) && val !== '' && h !== 'name' && h !== 'title' && h !== 'description' && h !== 'type' && h !== 'status') {
-          val = Number(val);
-        }
-        obj[h] = val;
-      });
-      data.push(obj);
-    }
-    return data;
-  }
-
-  // Get data from Google Sheets
+  // Get data from Google Sheets (all via the Apps Script Web App — see note
+  // inside about why the old CSV publish path was removed).
   function getFromGSheets(type, callback) {
     var now = Date.now();
     // Cache for 30 seconds
@@ -342,32 +272,24 @@ var TaskManager = (function() {
       return;
     }
 
-    // No CSV-publish gid exists for these brand-new sheets yet — read them
-    // straight from the Apps Script Web App instead.
-    var apiReadActions = { payslips: 'getPayslips', commissions: 'getCommissions', commissionRates: 'getCommissionRates' };
-    if (apiReadActions[type]) {
-      fetchFromAPI(apiReadActions[type], function (data) {
-        gsCache[type] = data;
-        gsCache.lastFetch = now;
-        callback(data);
-      });
-      return;
-    }
-
-    var urls = GSHEETS_CONFIG.DATA_URLS;
-    var url = '';
-    switch(type) {
-      case 'projects': url = urls.PROJECTS; break;
-      case 'tasks': url = urls.TASKS; break;
-      case 'members': url = urls.MEMBERS; break;
-      case 'proposals': url = urls.PROPOSALS; break;
-      case 'timesheet': url = urls.TIMESHEET; break;
-      case 'notifications': url = urls.NOTIFICATIONS; break;
-      case 'notices': url = urls.NOTICES; break;
-      case 'documents': url = urls.DOCUMENTS; break;
-    }
-
-    fetchFromSheet(url, function(data) {
+    // ALL reads now go through the Apps Script Web App (JSON), which
+    // translates the Sheet's Vietnamese headers AND value dropdowns back to
+    // the English keys/values the client uses (FIELD_MAP + VALUE_MAP in
+    // gsheets-api-v2.js). The old CSV publish-to-web path is intentionally
+    // no longer used: raw CSV exposes the Vietnamese column names verbatim
+    // (e.g. "Mã NV" instead of "id", "Còn làm việc" instead of "active"),
+    // which silently broke every .id/.name/.status/.roleLevel lookup after
+    // the Sheet was renamed to Vietnamese.
+    var apiReadActions = {
+      projects: 'getProjects', tasks: 'getTasks', members: 'getMembers',
+      proposals: 'getProposals', timesheet: 'getTimesheet',
+      notifications: 'getNotifications', notices: 'getNotices',
+      documents: 'getDocuments', payslips: 'getPayslips',
+      commissions: 'getCommissions', commissionRates: 'getCommissionRates'
+    };
+    var action = apiReadActions[type];
+    if (!action) { callback([]); return; }
+    fetchFromAPI(action, function (data) {
       gsCache[type] = data;
       gsCache.lastFetch = now;
       callback(data);
