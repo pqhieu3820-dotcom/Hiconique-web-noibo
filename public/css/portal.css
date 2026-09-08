@@ -556,10 +556,10 @@ main { flex: 1; }
      bottom edge (long, smooth taper) so it never reaches the stat/date
      row or the divider below it. */
   mask-image:
-    linear-gradient(to bottom, #000 0, #000 42%, transparent 68%),
+    linear-gradient(to bottom, #000 0, #000 50%, transparent 76%),
     linear-gradient(to right, transparent 0%, #000 12%, #000 82%, transparent 100%);
   mask-composite: intersect;
-  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 42%, transparent 68%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 50%, transparent 76%);
 }
 [data-theme="dark"] .hero-bg {
   --hero-orb-a1: 0.2;
