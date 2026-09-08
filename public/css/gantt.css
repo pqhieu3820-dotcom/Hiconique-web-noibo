@@ -370,6 +370,13 @@
   .gantt-task-sub { padding-left: 34px; }
   .gantt-progress-ring { width: 32px; height: 32px; }
 
+  /* The "Hôm nay" label floats 20px above its own line (::before,
+     see base rule) — with rows packed edge-to-edge on mobile that
+     spills into the row/section above it. It repeats on every single
+     row anyway (the legend already has one "— Hôm nay" key), so drop
+     the label here and keep just the red line. */
+  .gantt-today-line::before { display: none; }
+
   .gantt-legend { gap: 12px; padding: 10px 14px; }
   .gantt-card-header { padding: 14px 16px; }
 
