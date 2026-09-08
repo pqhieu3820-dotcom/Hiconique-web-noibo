@@ -1578,6 +1578,7 @@
   .tm-main {
     grid-template-columns: 1fr;
     min-width: 0;
+    min-height: auto;
   }
   .tm-main > * {
     min-width: 0;
@@ -1644,6 +1645,10 @@
   }
   .filter-tab {
     flex-shrink: 0;
+  }
+
+  .kanban-board {
+    grid-template-columns: 1fr;
   }
 }
 

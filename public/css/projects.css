@@ -760,6 +760,7 @@
 @media (max-width: 768px) {
   .projects-main {
     flex-direction: column;
+    min-height: auto;
   }
 
   /* Show the actual project content first — the sidebar (nav/filters/
@@ -768,8 +769,9 @@
   .projects-content {
     order: 1;
     flex: none;
-    overflow-x: visible;
+    overflow-x: auto;
     width: 100%;
+    max-width: 100%;
   }
 
   .projects-sidebar {

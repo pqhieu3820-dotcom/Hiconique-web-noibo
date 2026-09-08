@@ -236,7 +236,7 @@
         +     (project ? '<span class="task-project-tag" style="--project-color:' + (project.color || '#B08D57') + '">' + escapeHtml(project.name) + '</span>' : '')
         +   '</div>'
         +   '<h4 class="task-title">' + escapeHtml(task.title || '') + '</h4>'
-        +   (task.description ? '<p class="task-desc">' + escapeHtml(task.description.slice(0, 80)) + (task.description.length > 80 ? '…' : '') + '</p>' : '')
+        +   (task.description ? '<p class="task-desc">' + escapeHtml(String(task.description).slice(0, 80)) + (String(task.description).length > 80 ? '…' : '') + '</p>' : '')
         +   (progress > 0 ? '<div class="task-progress-bar"><div class="progress-track"><span style="width:' + progress + '%"></span></div><span class="progress-percent">' + progress + '%</span></div>' : '')
         +   tagsHtml
         +   '<div class="task-meta">'
