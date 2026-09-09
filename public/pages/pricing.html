@@ -198,39 +198,43 @@
         </div>
       </div>
 
-      <div style="padding:14px 24px 0;display:flex;align-items:center;gap:8px;font-size:0.8125rem;">
-        <input type="checkbox" id="desComboArchInterior" style="width:15px;height:15px;">
-        <label for="desComboArchInterior">Khách đặt <b>trọn gói</b> Kiến trúc + Nội thất — giảm còn 200.000đ/m² mỗi loại (giá riêng lẻ 250.000đ/m²)</label>
+      <div style="padding:14px 24px 0;font-size:0.8125rem;color:var(--pr-muted);">
+        Tích vào hạng mục nào thì hạng mục đó mới được tính vào tổng tiền — bỏ tích là loại trừ khỏi tổng, khỏi báo giá. Riêng <b>Kiến trúc + Nội thất</b>: tích cả 2 cùng lúc thì tự động áp giá trọn gói 200.000đ/m² mỗi loại (giá riêng lẻ 250.000đ/m²).
       </div>
 
       <table class="pr-table">
-        <thead><tr><th>Hạng mục thiết kế</th><th class="num">Diện tích tính phí (m²)</th><th class="num">Đơn giá (đ/m²)</th><th class="num">Thành tiền</th></tr></thead>
+        <thead><tr><th style="width:28px;"></th><th>Hạng mục thiết kế</th><th class="num">Diện tích tính phí (m²)</th><th class="num">Đơn giá (đ/m²)</th><th class="num">Thành tiền</th></tr></thead>
         <tbody>
           <tr>
+            <td><input type="checkbox" id="desInclArch" checked style="width:15px;height:15px;"></td>
             <td>Thiết kế kiến trúc</td>
             <td class="num pr-amount" id="desArchArea">0</td>
             <td class="num"><input class="pr-input mono" id="desArchPrice" type="number" min="0" value="250000"></td>
             <td class="num pr-amount" data-des-total="arch">0</td>
           </tr>
           <tr>
+            <td><input type="checkbox" id="desInclStruct" checked style="width:15px;height:15px;"></td>
             <td>Thiết kế kết cấu<br><select class="pr-quote-select" id="desStructType" style="margin-top:6px;"></select></td>
             <td class="num pr-amount" id="desStructArea">0</td>
             <td class="num"><input class="pr-input mono" id="desStructPrice" type="number" min="0" value="70000"></td>
             <td class="num pr-amount" data-des-total="struct">0</td>
           </tr>
           <tr>
+            <td><input type="checkbox" id="desInclMep" checked style="width:15px;height:15px;"></td>
             <td>Thiết kế điện nước (M&amp;E)</td>
             <td class="num pr-amount" id="desMepArea">0</td>
             <td class="num"><input class="pr-input mono" id="desMepPrice" type="number" min="0" value="50000"></td>
             <td class="num pr-amount" data-des-total="mep">0</td>
           </tr>
           <tr>
+            <td><input type="checkbox" id="desInclInterior" checked style="width:15px;height:15px;"></td>
             <td>Thiết kế nội thất</td>
             <td class="num"><input class="pr-input mono" id="desInteriorArea" type="number" min="0" value="0"></td>
             <td class="num"><input class="pr-input mono" id="desInteriorPrice" type="number" min="0" value="250000"></td>
             <td class="num pr-amount" data-des-total="interior">0</td>
           </tr>
           <tr>
+            <td><input type="checkbox" id="desInclExterior" checked style="width:15px;height:15px;"></td>
             <td>Thiết kế ngoại thất / cảnh quan sân vườn</td>
             <td class="num"><input class="pr-input mono" id="desExteriorArea" type="number" min="0" value="0"></td>
             <td class="num"><input class="pr-input mono" id="desExteriorPrice" type="number" min="0" value="120000"></td>
@@ -506,17 +510,27 @@
     document.getElementById('desStructType').addEventListener('change', function () { applyStructureDesignDefaults(); recalcDesign(); });
     applyStructureDesignDefaults();
 
-    // Đặt riêng lẻ Kiến trúc hoặc Nội thất: 250.000đ/m². Đặt trọn gói cả 2 cùng lúc: ưu đãi
-    // còn 200.000đ/m² mỗi loại. Bật/tắt checkbox chỉ áp lại 2 mức giá này — không đụng tới các
-    // hạng mục thiết kế khác.
+    // Đặt riêng lẻ Kiến trúc hoặc Nội thất: 250.000đ/m². Đặt cả 2 cùng lúc (2 checkbox "có làm"
+    // đều tích): tự động áp giá trọn gói 200.000đ/m² mỗi loại — không cần checkbox riêng cho
+    // combo nữa, chỉ cần dựa vào đúng 2 checkbox tích/bỏ tích của từng hạng mục.
     var ARCH_INTERIOR_STANDALONE_PRICE = 250000;
     var ARCH_INTERIOR_COMBO_PRICE = 200000;
-    document.getElementById('desComboArchInterior').addEventListener('change', function () {
-      var price = this.checked ? ARCH_INTERIOR_COMBO_PRICE : ARCH_INTERIOR_STANDALONE_PRICE;
+    var lastComboState = null; // tránh ghi đè giá mỗi lần recalc nếu trạng thái combo không đổi
+    function applyArchInteriorCombo() {
+      var comboActive = document.getElementById('desInclArch').checked && document.getElementById('desInclInterior').checked;
+      if (comboActive === lastComboState) return;
+      lastComboState = comboActive;
+      var price = comboActive ? ARCH_INTERIOR_COMBO_PRICE : ARCH_INTERIOR_STANDALONE_PRICE;
       document.getElementById('desArchPrice').value = price;
       document.getElementById('desInteriorPrice').value = price;
-      recalcDesign();
+    }
+    ['desInclArch', 'desInclInterior'].forEach(function (id) {
+      document.getElementById(id).addEventListener('change', function () { applyArchInteriorCombo(); recalcDesign(); });
     });
+    ['desInclStruct', 'desInclMep', 'desInclExterior'].forEach(function (id) {
+      document.getElementById(id).addEventListener('change', recalcDesign);
+    });
+    applyArchInteriorCombo(); // mặc định 2 checkbox Kiến trúc + Nội thất đều tích sẵn -> tự áp giá combo 200.000đ/m² ngay từ đầu
 
     function applyFoundationDefaults() {
       var t = FOUNDATION_TYPES.find(function (x) { return x.id === document.getElementById('estFoundationType').value; });
@@ -651,15 +665,17 @@
       document.getElementById('desMepArea').textContent = fmt(totalFloorArea);
 
       var lines = [
-        { key: 'arch', name: 'Thiết kế kiến trúc', area: totalFloorArea, price: num('desArchPrice') },
-        { key: 'struct', name: 'Thiết kế kết cấu', area: totalFloorArea, price: num('desStructPrice') },
-        { key: 'mep', name: 'Thiết kế điện nước (M&E)', area: totalFloorArea, price: num('desMepPrice') },
-        { key: 'interior', name: 'Thiết kế nội thất', area: num('desInteriorArea'), price: num('desInteriorPrice') },
-        { key: 'exterior', name: 'Thiết kế ngoại thất / cảnh quan sân vườn', area: num('desExteriorArea'), price: num('desExteriorPrice') }
+        { key: 'arch', name: 'Thiết kế kiến trúc', area: totalFloorArea, price: num('desArchPrice'), included: document.getElementById('desInclArch').checked },
+        { key: 'struct', name: 'Thiết kế kết cấu', area: totalFloorArea, price: num('desStructPrice'), included: document.getElementById('desInclStruct').checked },
+        { key: 'mep', name: 'Thiết kế điện nước (M&E)', area: totalFloorArea, price: num('desMepPrice'), included: document.getElementById('desInclMep').checked },
+        { key: 'interior', name: 'Thiết kế nội thất', area: num('desInteriorArea'), price: num('desInteriorPrice'), included: document.getElementById('desInclInterior').checked },
+        { key: 'exterior', name: 'Thiết kế ngoại thất / cảnh quan sân vườn', area: num('desExteriorArea'), price: num('desExteriorPrice'), included: document.getElementById('desInclExterior').checked }
       ];
+      // Không tích = loại khỏi tổng tiền VÀ khỏi báo giá — vẫn hiện đơn giá/diện tích trên bảng để
+      // tham khảo, chỉ riêng cột Thành tiền và tổng cộng coi như 0 khi bỏ tích.
       lines.forEach(function (l) {
-        l.total = l.area * l.price;
-        document.querySelector('[data-des-total="' + l.key + '"]').textContent = fmt(l.total);
+        l.total = l.included ? l.area * l.price : 0;
+        document.querySelector('[data-des-total="' + l.key + '"]').textContent = l.included ? fmt(l.total) : '—';
       });
       var grandTotal = lines.reduce(function (s, l) { return s + l.total; }, 0);
       var unitPrice = totalFloorArea > 0 ? grandTotal / totalFloorArea : 0;
