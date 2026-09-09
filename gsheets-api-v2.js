@@ -663,11 +663,17 @@ function getDataById(ss, sheetName, id) {
   return getAllData(ss, sheetName).find(function (row) { return row.id === id; });
 }
 
-// <prefix>_<yyMMdd>_<timestamp> — date prefix keeps ids sortable/scannable
-// over years of growth without ever needing to reset the sheet.
+// <prefix>_<yyMMdd>_<timestamp>_<6 random digits> — date prefix keeps ids
+// sortable/scannable over years of growth without ever needing to reset the
+// sheet; the trailing 6 random digits (2026-09-09) guard against collision
+// when addDataBatch() writes several rows within the same millisecond (seen
+// in practice — Date.now() alone isn't unique enough under a tight loop).
+// Not used for the "Thành viên" sheet — member IDs have their own scheme
+// (<PREFIX>_<Initials>_<DDMMYY>) generated client-side in auth.js.
 function makeId(prefix) {
   const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Asia/Ho_Chi_Minh', 'yyMMdd');
-  return prefix + '_' + stamp + '_' + Date.now();
+  const rand = Math.floor(100000 + Math.random() * 900000);
+  return prefix + '_' + stamp + '_' + Date.now() + '_' + rand;
 }
 
 // Sheets auto-parses strings that look like dates (e.g. "2026-09") into real
@@ -837,6 +843,72 @@ function replaceIdInColumn(ss, sheetName, headerNameEn, oldId, newId) {
     }
   }
   if (changed) range.setValues(values);
+}
+
+// ONE-TIME MIGRATION (2026-09-09) — mã ID kiểu cũ prefix_YYMMDD_timestamp đổi
+// sang prefix_YYMMDD_timestamp_6sonngaunhien (xem makeId()). Chạy TAY 1 lần từ
+// trình chỉnh sửa Apps Script (chọn hàm này ở dropdown rồi bấm Chạy) — KHÔNG
+// đi qua doGet/doPost, không có action tương ứng. Bỏ qua sheet "Thành viên"
+// (mã NV có scheme riêng <PREFIX>_<Initials>_<DDMMYY>, không đổi). Idempotent:
+// ID đã có đủ 6 số random ở cuối sẽ không khớp OLD_ID_RE nên chạy lại nhiều
+// lần vẫn an toàn, không đổi lần 2.
+function migrateAllIdsAddRandomSuffix() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const OLD_ID_RE = /^[a-zA-Z]+_\d{6}_\d+$/; // prefix_YYMMDD_timestamp — CHƯA có random suffix
+  const SKIP_KEYS = ['members'];
+  const idMaps = {}; // sheetKey -> { oldId: newId }
+  const summary = [];
+
+  Object.keys(SHEETS).forEach(function (key) {
+    if (SKIP_KEYS.indexOf(key) !== -1) return;
+    const sheetName = SHEETS[key];
+    const sheet = findSheet(ss, sheetName);
+    if (!sheet) return;
+    const headers = getHeaders(sheet);
+    const idColIdx = headers.map(function (h) { return viToEnHeader(sheetName, h); }).indexOf('id');
+    if (idColIdx === -1) return;
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return;
+    const range = sheet.getRange(2, idColIdx + 1, lastRow - 1, 1);
+    const values = range.getValues();
+    const map = {};
+    let changed = false;
+    for (let i = 0; i < values.length; i++) {
+      const oldId = String(values[i][0] || '');
+      if (oldId && OLD_ID_RE.test(oldId)) {
+        const rand = Math.floor(100000 + Math.random() * 900000);
+        const newId = oldId + '_' + rand;
+        map[oldId] = newId;
+        values[i][0] = newId;
+        changed = true;
+      }
+    }
+    if (changed) {
+      range.setValues(values);
+      idMaps[key] = map;
+      summary.push(sheetName + ': ' + Object.keys(map).length);
+    }
+  });
+
+  // Cascade sang các cột khoá ngoại (FK) ở sheet khác đang tham chiếu tới id vừa đổi.
+  const FK_PLAN = [
+    { refKey: 'projects', field: 'projectId', targets: ['tasks', 'commissions', 'receivables', 'orders', 'contractorComparisons', 'cashFlowPlans', 'changeOrders', 'scheduleItems', 'acceptanceChecks', 'projectDocuments', 'bimIssues', 'bimBoqItems'] },
+    { refKey: 'financeEntries', field: 'linkedFinanceEntryId', targets: ['orders'] },
+    { refKey: 'bimMaterials', field: 'materialId', targets: ['bimProducts'] },
+    { refKey: 'bimProducts', field: 'productId', targets: ['bimBoqItems'] }
+  ];
+  FK_PLAN.forEach(function (plan) {
+    const map = idMaps[plan.refKey];
+    if (!map) return;
+    Object.keys(map).forEach(function (oldId) {
+      plan.targets.forEach(function (targetKey) {
+        replaceIdInColumn(ss, SHEETS[targetKey], plan.field, oldId, map[oldId]);
+      });
+    });
+  });
+
+  Logger.log('Đã đổi ID: ' + JSON.stringify(summary));
+  return summary;
 }
 
 function replaceIdInListColumn(ss, sheetName, headerNameEn, oldId, newId) {
