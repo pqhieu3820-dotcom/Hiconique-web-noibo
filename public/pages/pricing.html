@@ -124,27 +124,8 @@
     <h1 class="subpage-title">Báo giá <span class="subpage-title-italic">dịch vụ</span></h1>
     <p class="subpage-lede">Danh mục đơn giá dùng chung + soạn báo giá cho khách — nhập số lượng, đơn giá tự nhảy tổng tiền, xuất Excel hoặc PDF để gửi khách.</p>
 
-    <div class="pr-tabs" id="prTabs" role="tablist">
-      <button class="pr-tab-btn" data-tab="catalog">Danh mục đơn giá</button>
-      <button class="pr-tab-btn" data-tab="province">Đơn giá theo tỉnh</button>
-      <button class="pr-tab-btn" data-tab="estimate">Dự toán xây dựng</button>
-      <button class="pr-tab-btn" data-tab="design">Dự toán thiết kế</button>
-      <button class="pr-tab-btn" data-tab="prelim">Khối lượng sơ bộ</button>
-      <button class="pr-tab-btn" data-tab="contractors">So sánh nhà thầu</button>
-      <button class="pr-tab-btn" data-tab="cashflow">Dòng tiền</button>
-      <button class="pr-tab-btn" data-tab="changeorders">Phát sinh</button>
-      <button class="pr-tab-btn" data-tab="schedule">Tiến độ</button>
-      <button class="pr-tab-btn" data-tab="acceptance">Nghiệm thu</button>
-      <button class="pr-tab-btn" data-tab="docs">Hồ sơ công trình</button>
-      <button class="pr-tab-btn" data-tab="quote">Soạn báo giá</button>
-      <button class="pr-tab-btn" data-tab="guide">Hướng dẫn</button>
-      <button class="pr-tab-btn" data-tab="sources">Nguồn</button>
-    </div>
-
-    <div class="pr-toolbar" id="prToolProjectBar" style="display:none;margin-bottom:20px;align-items:center;gap:10px;">
-      <span class="pr-field-label" style="margin:0;white-space:nowrap;">Áp dụng cho dự án</span>
-      <select class="pr-quote-select" id="prToolProjectSelect" style="min-width:260px;"></select>
-      <button type="button" class="pr-btn pr-btn-ghost pr-btn-sm" id="prNewProjectToggle" hidden>+ Tạo dự án</button>
+    <div style="margin-bottom:20px;">
+      <button type="button" class="pr-btn pr-btn-primary pr-btn-sm" id="prNewProjectToggle" hidden>+ Tạo dự án</button>
     </div>
 
     <div class="pr-card" id="prNewProjectCard" hidden style="margin-bottom:20px;">
@@ -171,6 +152,28 @@
         <button type="button" class="pr-btn pr-btn-primary" id="npSaveBtn">Tạo dự án</button>
         <button type="button" class="pr-btn pr-btn-ghost" id="npCancelBtn">Huỷ</button>
       </div>
+    </div>
+
+    <div class="pr-tabs" id="prTabs" role="tablist">
+      <button class="pr-tab-btn" data-tab="catalog">Danh mục đơn giá</button>
+      <button class="pr-tab-btn" data-tab="province">Đơn giá theo tỉnh</button>
+      <button class="pr-tab-btn" data-tab="estimate">Dự toán xây dựng</button>
+      <button class="pr-tab-btn" data-tab="design">Dự toán thiết kế</button>
+      <button class="pr-tab-btn" data-tab="prelim">Khối lượng sơ bộ</button>
+      <button class="pr-tab-btn" data-tab="contractors">So sánh nhà thầu</button>
+      <button class="pr-tab-btn" data-tab="cashflow">Dòng tiền</button>
+      <button class="pr-tab-btn" data-tab="changeorders">Phát sinh</button>
+      <button class="pr-tab-btn" data-tab="schedule">Tiến độ</button>
+      <button class="pr-tab-btn" data-tab="acceptance">Nghiệm thu</button>
+      <button class="pr-tab-btn" data-tab="docs">Hồ sơ công trình</button>
+      <button class="pr-tab-btn" data-tab="quote">Soạn báo giá</button>
+      <button class="pr-tab-btn" data-tab="guide">Hướng dẫn</button>
+      <button class="pr-tab-btn" data-tab="sources">Nguồn</button>
+    </div>
+
+    <div class="pr-toolbar" id="prToolProjectBar" style="display:none;margin-bottom:20px;align-items:center;gap:10px;">
+      <span class="pr-field-label" style="margin:0;white-space:nowrap;">Áp dụng cho dự án</span>
+      <select class="pr-quote-select" id="prToolProjectSelect" style="min-width:260px;"></select>
     </div>
 
     <div class="pr-tab-panel" data-tab-panel="catalog">
@@ -575,12 +578,15 @@
     document.querySelectorAll('.pr-tab-btn').forEach(function (btn) {
       btn.addEventListener('click', function () { activateTab(btn.getAttribute('data-tab')); });
     });
-    (function initTab() {
+    // Gọi ở CUỐI script (xem initTab() phía dưới cùng file), không gọi ngay ở đây —
+    // activateTab còn bị "đè" thêm 2 lần nữa (TOOL_TABS, guide/sources) phía dưới,
+    // gọi sớm ở đây sẽ chạy bản activateTab gốc, chưa có logic show/hide thanh dự án.
+    function initTab() {
       var saved = null;
       try { saved = localStorage.getItem(TAB_STORAGE_KEY); } catch (e) { /* ignore */ }
       var valid = saved && document.querySelector('.pr-tab-btn[data-tab="' + saved + '"]');
       activateTab(valid ? saved : 'catalog');
-    })();
+    }
 
     function fmt(n) { return Math.round(Number(n) || 0).toLocaleString('vi-VN'); }
     function getUser() {
@@ -1462,6 +1468,10 @@
       setTimeout(populateToolProjectSelect, 1200); // dự án có thể vẫn đang tải lần đầu từ Sheet
     }
     bootTools();
+    // Gọi initTab() ở đây — SAU khi activateTab đã bị đè đủ 2 lần (TOOL_TABS,
+    // guide/sources) — để lần vào trang đầu tiên (khôi phục tab đã lưu) cũng
+    // show/hide đúng thanh "Áp dụng cho dự án" như khi bấm tay đổi tab.
+    initTab();
 
     // ---------- Danh mục đơn giá ----------
     function renderCatalog() {
