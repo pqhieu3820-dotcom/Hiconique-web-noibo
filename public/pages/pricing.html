@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="/css/portal.css">
   <link rel="stylesheet" href="/css/subpage.css">
   <link rel="stylesheet" href="/css/task-manager.css">
+  <link rel="stylesheet" href="/css/projects.css">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <script src="/js/gsheets-config.js"></script>
   <script src="/js/task-data.js"></script>
@@ -59,6 +60,13 @@
     .pr-totals-row input { width: 80px; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--pr-border); background: var(--pr-bg); color: var(--pr-text); font-family: 'JetBrains Mono', monospace; font-size: 0.8125rem; text-align: right; }
 
     .pr-toolbar { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    /* task-manager.css và projects.css cùng định nghĩa .modal-overlay nhưng
+       theo 2 quy ước khác nhau (task-manager.css cần thêm class .active, còn
+       projects.css chỉ cần bỏ thuộc tính hidden) — modal "Tạo dự án" ở đây
+       copy nguyên từ trang Dự án nên dùng đúng quy ước hidden của projects.css,
+       ưu tiên lại 2 thuộc tính mà task-manager.css áp lên (opacity/visibility). */
+    .modal-overlay:not([hidden]) { opacity: 1; visibility: visible; }
 
     .pr-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; border-bottom: 1px solid var(--pr-border); }
     .pr-tab-btn { padding: 10px 16px; border-radius: 10px 10px 0 0; border: 1px solid transparent; border-bottom: none; background: transparent; color: var(--pr-muted); font-family: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; transition: all 0.15s; margin-bottom: -1px; }
@@ -125,32 +133,150 @@
     <p class="subpage-lede">Danh mục đơn giá dùng chung + soạn báo giá cho khách — nhập số lượng, đơn giá tự nhảy tổng tiền, xuất Excel hoặc PDF để gửi khách.</p>
 
     <div style="margin-bottom:20px;">
-      <button type="button" class="pr-btn pr-btn-primary pr-btn-sm" id="prNewProjectToggle" hidden>+ Tạo dự án</button>
+      <button type="button" class="pr-btn pr-btn-primary pr-btn-sm" id="btnAddProjectHere" hidden>+ Tạo dự án</button>
     </div>
 
-    <div class="pr-card" id="prNewProjectCard" hidden style="margin-bottom:20px;">
-      <div class="pr-card-head"><span class="pr-card-title">Tạo dự án mới</span></div>
-      <div class="pr-client-grid" style="grid-template-columns: repeat(3, 1fr);">
-        <div><span class="pr-field-label">Tên dự án *</span><input class="pr-input" id="npName" placeholder="VD: Biệt thự Thảo Điền"></div>
-        <div><span class="pr-field-label">Loại dự án</span><select class="pr-quote-select" id="npType">
-          <option value="Thiết kế nội thất">Thiết kế nội thất</option>
-          <option value="Thiết kế &amp; thi công">Thiết kế &amp; thi công</option>
-          <option value="Thi công xây dựng">Thi công xây dựng</option>
-          <option value="Thiết kế kiến trúc">Thiết kế kiến trúc</option>
-        </select></div>
-        <div><span class="pr-field-label">Mức độ ưu tiên</span><select class="pr-quote-select" id="npPriority">
-          <option value="low">Thấp</option><option value="medium" selected>Trung bình</option><option value="high">Cao</option>
-        </select></div>
-        <div><span class="pr-field-label">Khách hàng</span><input class="pr-input" id="npClient" placeholder="Anh/Chị..."></div>
-        <div><span class="pr-field-label">Chủ đầu tư</span><input class="pr-input" id="npInvestor"></div>
-        <div><span class="pr-field-label">Địa điểm</span><input class="pr-input" id="npLocation"></div>
-        <div><span class="pr-field-label">Ngân sách (đ)</span><input type="number" min="0" class="pr-input mono" id="npBudget" value="0"></div>
-        <div><span class="pr-field-label">Ngày bắt đầu</span><input type="date" class="pr-input" id="npStart"></div>
-        <div><span class="pr-field-label">Ngày kết thúc</span><input type="date" class="pr-input" id="npEnd"></div>
-      </div>
-      <div class="pr-totals" style="display:flex;gap:10px;">
-        <button type="button" class="pr-btn pr-btn-primary" id="npSaveBtn">Tạo dự án</button>
-        <button type="button" class="pr-btn pr-btn-ghost" id="npCancelBtn">Huỷ</button>
+    <!-- Modal tạo dự án — ĐÚNG y hệt modal ở trang Dự án (cùng id/class, dùng
+         chung /css/projects.css) để đồng bộ giao diện + hành vi, không phải
+         1 form rút gọn riêng cho trang này. -->
+    <div class="modal-overlay" id="project-modal" hidden>
+      <div class="modal modal-lg">
+        <div class="modal-header">
+          <div>
+            <span class="modal-eyebrow">DỰ ÁN MỚI</span>
+            <h3 id="projectModalTitle">Tạo dự án mới</h3>
+          </div>
+          <button class="modal-close modal-close-project" aria-label="Đóng">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <form class="modal-body" id="projectForm">
+          <div class="form-group">
+            <label for="project-name">Tên dự án *</label>
+            <input type="text" id="project-name" placeholder="VD: Thiết kế nội thất biệt thự Bình Dương..." required>
+          </div>
+
+          <div class="form-group">
+            <label>Loại dự án</label>
+            <div class="type-grid">
+              <label class="type-card" data-type="design">
+                <input type="radio" name="project-type" value="design" checked>
+                <div class="type-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
+                <div class="type-label">Thiết kế</div>
+                <div class="type-desc">Concept, 3D, bản vẽ kỹ thuật</div>
+              </label>
+              <label class="type-card" data-type="construction">
+                <input type="radio" name="project-type" value="construction">
+                <div class="type-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
+                <div class="type-label">Thi công</div>
+                <div class="type-desc">Triển khai, giám sát, nghiệm thu</div>
+              </label>
+              <label class="type-card" data-type="interior">
+                <input type="radio" name="project-type" value="interior">
+                <div class="type-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7"/><path d="M9 22V12h6v10"/><path d="M21 22V9"/><path d="M3 22V9"/></svg></div>
+                <div class="type-label">Nội thất</div>
+                <div class="type-desc">Hoàn thiện, trang trí, nội thất rời</div>
+              </label>
+              <label class="type-card" data-type="consulting">
+                <input type="radio" name="project-type" value="consulting">
+                <div class="type-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.6c.6.5 1 1.2 1 2.4h6c0-1.2.4-1.9 1-2.4A7 7 0 0 0 12 2z"/></svg></div>
+                <div class="type-label">Tư vấn</div>
+                <div class="type-desc">Phối cảnh, ý tưởng, báo giá</div>
+              </label>
+              <label class="type-card" data-type="admin">
+                <input type="radio" name="project-type" value="admin">
+                <div class="type-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+                <div class="type-label">Hành chính</div>
+                <div class="type-desc">Hợp đồng, pháp lý, giấy tờ</div>
+              </label>
+              <label class="type-card" data-type="marketing">
+                <input type="radio" name="project-type" value="marketing">
+                <div class="type-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg></div>
+                <div class="type-label">Marketing</div>
+                <div class="type-desc">Quay chụp, content, truyền thông</div>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="project-client">Khách hàng</label>
+              <input type="text" id="project-client" placeholder="Tên khách hàng / công ty...">
+            </div>
+            <div class="form-group">
+              <label for="project-investor">Tên nhà đầu tư</label>
+              <input type="text" id="project-investor" placeholder="Tên nhà đầu tư (nếu có)...">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="project-location">Địa điểm</label>
+              <input type="text" id="project-location" placeholder="VD: Quận 2, TP.HCM">
+            </div>
+            <div class="form-group">
+              <label for="project-budget">Tổng số tiền (VNĐ)</label>
+              <input type="number" id="project-budget" placeholder="0" min="0" step="1000000">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="project-start">Ngày bắt đầu</label>
+              <input type="date" id="project-start">
+            </div>
+            <div class="form-group">
+              <label for="project-end">Ngày kết thúc dự kiến</label>
+              <input type="date" id="project-end">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="project-priority">Độ ưu tiên</label>
+              <select id="project-priority">
+                <option value="low">Thấp</option>
+                <option value="medium" selected>Trung bình</option>
+                <option value="high">Cao</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="project-status">Trạng thái</label>
+              <select id="project-status">
+                <option value="planning">Đang lên kế hoạch</option>
+                <option value="on-track" selected>Đang chạy (on-track)</option>
+                <option value="at-risk">Có rủi ro</option>
+                <option value="on-hold">Tạm dừng</option>
+                <option value="completed">Hoàn thành</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="project-color">Màu nhận diện</label>
+              <div class="color-picker">
+                <input type="color" id="project-color" value="#B08D57">
+                <div class="color-presets" id="colorPresets"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="project-members">Thành viên tham gia</label>
+            <div class="member-multi" id="projectMembers"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="project-desc">Mô tả chi tiết</label>
+            <textarea id="project-desc" rows="3" placeholder="Mô tả ngắn về phạm vi, mục tiêu, hạng mục chính của dự án..."></textarea>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary modal-cancel-project">Hủy</button>
+            <button type="submit" class="btn-primary" id="projectSubmitBtn">Tạo dự án</button>
+          </div>
+        </form>
       </div>
     </div>
 
@@ -842,7 +968,7 @@
       sel.innerHTML = projects.map(function (p) { return '<option value="' + p.id + '">' + escapeHtml(p.name || p.id) + '</option>'; }).join('');
       if (projects.length && !activeToolProjectId) activeToolProjectId = projects[0].id;
       sel.value = activeToolProjectId;
-      document.getElementById('prNewProjectToggle').hidden = !isManager(getUser());
+      document.getElementById('btnAddProjectHere').hidden = !isManager(getUser());
     }
     document.getElementById('prToolProjectSelect').addEventListener('change', function () {
       activeToolProjectId = this.value;
@@ -859,43 +985,108 @@
       else if (tab === 'docs') loadDocs();
     }
 
-    // ---------- Tạo dự án mới ngay tại đây (khi dự án cần dùng chưa có trong
-    // danh sách) — dùng đúng TaskManager.createProject() thật, không phải form
-    // giả; chỉ các trường thiết yếu, sửa/bổ sung chi tiết hơn ở trang Dự án. ----------
-    document.getElementById('prNewProjectToggle').addEventListener('click', function () {
-      document.getElementById('prNewProjectCard').hidden = !document.getElementById('prNewProjectCard').hidden;
-    });
-    document.getElementById('npCancelBtn').addEventListener('click', function () {
-      document.getElementById('prNewProjectCard').hidden = true;
-    });
-    document.getElementById('npSaveBtn').addEventListener('click', function () {
-      var name = document.getElementById('npName').value.trim();
-      if (!name) { alert('Nhập tên dự án.'); return; }
-      var user = getUser();
-      var data = {
-        name: name,
-        type: document.getElementById('npType').value,
-        priority: document.getElementById('npPriority').value,
-        client: document.getElementById('npClient').value.trim(),
-        investor: document.getElementById('npInvestor').value.trim(),
-        location: document.getElementById('npLocation').value.trim(),
-        budget: parseInt(document.getElementById('npBudget').value, 10) || 0,
-        startDate: document.getElementById('npStart').value || '',
-        endDate: document.getElementById('npEnd').value || '',
-        members: user ? [user.id] : []
-      };
-      var saved = (typeof TaskManager !== 'undefined' && TaskManager.createProject) ? TaskManager.createProject(data, user) : null;
-      if (!saved) { alert('Bạn không có quyền tạo dự án.'); return; }
-      ['npName', 'npClient', 'npInvestor', 'npLocation'].forEach(function (id) { document.getElementById(id).value = ''; });
-      document.getElementById('npBudget').value = '0';
-      document.getElementById('npStart').value = '';
-      document.getElementById('npEnd').value = '';
-      document.getElementById('prNewProjectCard').hidden = true;
-      populateToolProjectSelect();
-      activeToolProjectId = saved.id;
-      document.getElementById('prToolProjectSelect').value = saved.id;
-      reloadActiveTool();
-    });
+    // ---------- Tạo dự án mới ngay tại đây (khi dự án cần báo giá chưa có
+    // trong danh sách) — dùng ĐÚNG modal + hành vi như trang Dự án (cùng id,
+    // cùng /css/projects.css), không phải 1 form rút gọn riêng cho trang này. ----------
+    (function bindProjectModalHere() {
+      var modal = document.getElementById('project-modal');
+      var form = document.getElementById('projectForm');
+      var openBtn = document.getElementById('btnAddProjectHere');
+      var closeBtn = modal.querySelector('.modal-close-project');
+      var cancelBtn = modal.querySelector('.modal-cancel-project');
+
+      var COLOR_PRESETS = ['#B08D57', '#C7A464', '#3B6B8C', '#4F6F52', '#8E7CC3', '#A04848', '#C77A40', '#475569'];
+      var presetsEl = document.getElementById('colorPresets');
+      presetsEl.innerHTML = COLOR_PRESETS.map(function (c) {
+        return '<button type="button" class="color-swatch" data-color="' + c + '" style="background:' + c + '" aria-label="Màu ' + c + '"></button>';
+      }).join('');
+      presetsEl.querySelectorAll('.color-swatch').forEach(function (sw) {
+        sw.addEventListener('click', function () { document.getElementById('project-color').value = sw.dataset.color; });
+      });
+
+      var typeCards = form.querySelectorAll('.type-card');
+      typeCards.forEach(function (card) {
+        card.addEventListener('click', function () {
+          typeCards.forEach(function (c) { c.classList.remove('active'); });
+          card.classList.add('active');
+          var radio = card.querySelector('input[type="radio"]');
+          if (radio) radio.checked = true;
+        });
+      });
+
+      function renderProjectMembersHere(selectedIds) {
+        var container = document.getElementById('projectMembers');
+        var members = (typeof TaskManager !== 'undefined' && TaskManager.getMembers) ? TaskManager.getMembers() : [];
+        if (!members.length) { container.innerHTML = '<p style="color:var(--color-text-muted);font-size:0.8125rem;">Chưa có thành viên nào.</p>'; return; }
+        container.innerHTML = members.map(function (m) {
+          var checked = selectedIds.indexOf(m.id) !== -1;
+          return '<label class="member-multi-item' + (checked ? ' active' : '') + '">'
+            + '<input type="checkbox" value="' + escapeHtml(m.id) + '"' + (checked ? ' checked' : '') + '>'
+            + '<span class="avatar-xs" style="background:' + (m.color || '#6B7280') + '">' + escapeHtml(m.avatar || (m.name || '?').substring(0, 2).toUpperCase()) + '</span>'
+            + '<span>' + escapeHtml(m.name || '') + '</span></label>';
+        }).join('');
+        container.querySelectorAll('.member-multi-item').forEach(function (item) {
+          item.addEventListener('click', function (e) {
+            e.preventDefault();
+            var input = item.querySelector('input');
+            input.checked = !input.checked;
+            item.classList.toggle('active', input.checked);
+          });
+        });
+      }
+      function getSelectedMembersHere() {
+        var ids = [];
+        document.querySelectorAll('#projectMembers input[type="checkbox"]:checked').forEach(function (cb) { ids.push(cb.value); });
+        return ids;
+      }
+
+      openBtn.addEventListener('click', function () {
+        form.reset();
+        typeCards.forEach(function (c) { c.classList.remove('active'); });
+        var defaultCard = form.querySelector('.type-card[data-type="design"]');
+        defaultCard.classList.add('active');
+        defaultCard.querySelector('input[type="radio"]').checked = true;
+        document.getElementById('project-color').value = '#B08D57';
+        var user = getUser();
+        renderProjectMembersHere(user ? [user.id] : []);
+        modal.hidden = false;
+      });
+      closeBtn.addEventListener('click', function () { modal.hidden = true; });
+      cancelBtn.addEventListener('click', function () { modal.hidden = true; });
+      modal.addEventListener('click', function (e) { if (e.target === modal) modal.hidden = true; });
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var name = document.getElementById('project-name').value.trim();
+        if (!name) return;
+        var typeInput = form.querySelector('input[name="project-type"]:checked');
+        var typeLabelEl = form.querySelector('.type-card.active .type-label');
+        var data = {
+          name: name,
+          type: typeLabelEl ? typeLabelEl.textContent.trim() : (typeInput ? typeInput.value : 'design'),
+          color: document.getElementById('project-color').value,
+          client: document.getElementById('project-client').value.trim(),
+          investor: document.getElementById('project-investor').value.trim(),
+          location: document.getElementById('project-location').value.trim(),
+          startDate: document.getElementById('project-start').value || '',
+          endDate: document.getElementById('project-end').value || '',
+          budget: parseInt(document.getElementById('project-budget').value, 10) || 0,
+          priority: document.getElementById('project-priority').value,
+          status: document.getElementById('project-status').value,
+          description: document.getElementById('project-desc').value,
+          members: getSelectedMembersHere(),
+          progress: 0,
+          createdAt: new Date().toISOString().split('T')[0]
+        };
+        var saved = (typeof TaskManager !== 'undefined' && TaskManager.createProject) ? TaskManager.createProject(data, getUser()) : null;
+        if (!saved) { alert('Bạn không có quyền tạo dự án.'); return; }
+        modal.hidden = true;
+        populateToolProjectSelect();
+        activeToolProjectId = saved.id;
+        document.getElementById('prToolProjectSelect').value = saved.id;
+        reloadActiveTool();
+      });
+    })();
     // Ghi đè activateTab đã định nghĩa ở trên để show/hide thanh chọn dự án + tự
     // load dữ liệu công cụ đúng lúc tab đó được mở (không load sẵn hết 6 tab).
     var baseActivateTab = activateTab;
