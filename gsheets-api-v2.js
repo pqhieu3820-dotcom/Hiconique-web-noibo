@@ -29,7 +29,15 @@ const SHEETS = {
   changeOrders: 'Phát sinh',
   scheduleItems: 'Tiến độ',
   acceptanceChecks: 'Nghiệm thu',
-  projectDocuments: 'Hồ sơ công trình'
+  projectDocuments: 'Hồ sơ công trình',
+  // HICON-BIM (2026-09-09) — danh mục Sản phẩm/Vật liệu/Nhà cung cấp dùng
+  // chung toàn tổ chức, và Issue/BOQ theo dự án. Tên sheet có tiền tố "BIM"
+  // để không đụng "Sản phẩm"/"Vật liệu" nếu sau này có sheet khác cùng tên.
+  bimProducts: 'Sản phẩm BIM',
+  bimMaterials: 'Vật liệu BIM',
+  bimSuppliers: 'Nhà cung cấp BIM',
+  bimIssues: 'Issue BIM',
+  bimBoqItems: 'BOQ BIM'
 };
 
 // [Vietnamese header on the Sheet, internal English key used by client JS].
@@ -197,6 +205,36 @@ const FIELD_MAP = {
   projectDocuments: [
     ['Mã', 'id'], ['Mã dự án', 'projectId'], ['Mã hồ sơ', 'docCode'], ['Trạng thái', 'status'],
     ['Nơi lưu/link', 'location'], ['Người phụ trách', 'ownerId'], ['Ghi chú', 'note'],
+    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
+  ],
+  // HICON-BIM — danh mục dùng chung toàn tổ chức (không theo dự án).
+  bimProducts: [
+    ['Mã SP', 'id'], ['Tên sản phẩm', 'name'], ['Nhóm sản phẩm', 'group'],
+    ['Vật liệu liên kết', 'materialId'], ['Đơn vị tính', 'unit'], ['Đơn giá tham khảo', 'refPrice'],
+    ['Ghi chú', 'note'], ['Trạng thái', 'status'],
+    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
+  ],
+  bimMaterials: [
+    ['Mã VL', 'id'], ['Tên vật liệu', 'name'], ['Phân loại', 'category'], ['Chiều dày', 'thickness'],
+    ['Đơn vị', 'unit'], ['Ghi chú', 'note'], ['Trạng thái', 'status'],
+    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
+  ],
+  bimSuppliers: [
+    ['Mã NCC', 'id'], ['Tên nhà cung cấp', 'name'], ['Loại', 'type'], ['Địa chỉ', 'address'],
+    ['Số điện thoại', 'phone'], ['Người liên hệ', 'contactPerson'], ['Ghi chú', 'note'], ['Trạng thái', 'status'],
+    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
+  ],
+  // HICON-BIM — theo dự án (lọc theo projectId phía client).
+  bimIssues: [
+    ['Mã Issue', 'id'], ['Mã dự án', 'projectId'], ['Tiêu đề', 'title'], ['Mô tả', 'description'],
+    ['Vị trí', 'location'], ['Trạng thái', 'status'], ['Mức độ ưu tiên', 'priority'],
+    ['Người phụ trách', 'assigneeId'],
+    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
+  ],
+  bimBoqItems: [
+    ['Mã dòng', 'id'], ['Mã dự án', 'projectId'], ['Mã hạng mục', 'code'], ['Mã sản phẩm', 'productId'],
+    ['Tên công tác', 'name'], ['Đơn vị', 'unit'], ['Khối lượng', 'quantity'], ['Đơn giá', 'unitPrice'],
+    ['Ghi chú', 'note'],
     ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
   ]
 };
@@ -495,6 +533,46 @@ function handleRequest(e) {
       result = updateData(ss, SHEETS.projectDocuments, params.id, JSON.parse(params.data));
     } else if (action === 'deleteProjectDocument') {
       result = deleteData(ss, SHEETS.projectDocuments, params.id);
+    } else if (action === 'getBimProducts') {
+      result = getAllData(ss, SHEETS.bimProducts);
+    } else if (action === 'addBimProduct') {
+      result = addData(ss, SHEETS.bimProducts, JSON.parse(params.data));
+    } else if (action === 'updateBimProduct') {
+      result = updateData(ss, SHEETS.bimProducts, params.id, JSON.parse(params.data));
+    } else if (action === 'deleteBimProduct') {
+      result = deleteData(ss, SHEETS.bimProducts, params.id);
+    } else if (action === 'getBimMaterials') {
+      result = getAllData(ss, SHEETS.bimMaterials);
+    } else if (action === 'addBimMaterial') {
+      result = addData(ss, SHEETS.bimMaterials, JSON.parse(params.data));
+    } else if (action === 'updateBimMaterial') {
+      result = updateData(ss, SHEETS.bimMaterials, params.id, JSON.parse(params.data));
+    } else if (action === 'deleteBimMaterial') {
+      result = deleteData(ss, SHEETS.bimMaterials, params.id);
+    } else if (action === 'getBimSuppliers') {
+      result = getAllData(ss, SHEETS.bimSuppliers);
+    } else if (action === 'addBimSupplier') {
+      result = addData(ss, SHEETS.bimSuppliers, JSON.parse(params.data));
+    } else if (action === 'updateBimSupplier') {
+      result = updateData(ss, SHEETS.bimSuppliers, params.id, JSON.parse(params.data));
+    } else if (action === 'deleteBimSupplier') {
+      result = deleteData(ss, SHEETS.bimSuppliers, params.id);
+    } else if (action === 'getBimIssues') {
+      result = getAllData(ss, SHEETS.bimIssues);
+    } else if (action === 'addBimIssue') {
+      result = addData(ss, SHEETS.bimIssues, JSON.parse(params.data));
+    } else if (action === 'updateBimIssue') {
+      result = updateData(ss, SHEETS.bimIssues, params.id, JSON.parse(params.data));
+    } else if (action === 'deleteBimIssue') {
+      result = deleteData(ss, SHEETS.bimIssues, params.id);
+    } else if (action === 'getBimBoqItems') {
+      result = getAllData(ss, SHEETS.bimBoqItems);
+    } else if (action === 'addBimBoqItem') {
+      result = addData(ss, SHEETS.bimBoqItems, JSON.parse(params.data));
+    } else if (action === 'updateBimBoqItem') {
+      result = updateData(ss, SHEETS.bimBoqItems, params.id, JSON.parse(params.data));
+    } else if (action === 'deleteBimBoqItem') {
+      result = deleteData(ss, SHEETS.bimBoqItems, params.id);
     } else {
       result = { error: 'Unknown action: ' + action };
     }
