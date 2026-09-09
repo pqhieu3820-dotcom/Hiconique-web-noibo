@@ -156,13 +156,32 @@ const Auth = (function() {
     return true;
   }
 
+  // Một session đã lưu có thể mang mã thành viên CŨ nếu mã đó bị đổi sau lúc
+  // đăng nhập (VD migration đổi format ID, hoặc CEO đổi mã tay) — session
+  // sống tới 24h nên không tự hết hạn kịp để bắt lỗi này. Không có gì tự
+  // cascade sang localStorage của từng máy khi mã đổi trên Sheet, nên tự dò
+  // lại theo email mỗi lần đọc session: nếu mã cũ không còn tồn tại trong
+  // Members hiện tại, tìm bản ghi có cùng email và "chữa" session tại chỗ —
+  // tránh các hàm dùng session.id trực tiếp (VD registerMemberDevice trong
+  // timesheet.html) âm thầm fail vì so sánh với 1 mã member không còn thật.
+  function reconcileStaleSession(session) {
+    if (!session || typeof TaskManager === 'undefined' || !TaskManager.getMembers) return session;
+    var members = TaskManager.getMembers();
+    var stillExists = members.some(function(m) { return m.id === session.id; });
+    if (stillExists) return session;
+    var fresh = session.email && members.find(function(m) {
+      return m.email && m.email.toLowerCase() === session.email.toLowerCase();
+    });
+    return fresh ? saveSession(fresh) : session;
+  }
+
   // Get current user (synchronous)
   function getCurrentUser() {
-    if (currentUser) return currentUser;
+    if (currentUser) return reconcileStaleSession(currentUser);
     var session = getSession();
     if (session) {
-      currentUser = session;
-      return session;
+      currentUser = reconcileStaleSession(session);
+      return currentUser;
     }
     return null;
   }

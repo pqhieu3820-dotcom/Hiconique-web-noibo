@@ -854,16 +854,30 @@ function replaceIdInColumn(ss, sheetName, headerNameEn, oldId, newId) {
   if (changed) range.setValues(values);
 }
 
-// ONE-TIME MIGRATION (2026-09-09) — mã ID kiểu cũ prefix_YYMMDD_timestamp đổi
-// sang prefix_YYMMDD_timestamp_6sonngaunhien (xem makeId()). Chạy TAY 1 lần từ
-// trình chỉnh sửa Apps Script (chọn hàm này ở dropdown rồi bấm Chạy) — KHÔNG
-// đi qua doGet/doPost, không có action tương ứng. Bỏ qua sheet "Thành viên"
-// (mã NV có scheme riêng <PREFIX>_<Initials>_<DDMMYY>, không đổi). Idempotent:
-// ID đã có đủ 6 số random ở cuối sẽ không khớp OLD_ID_RE nên chạy lại nhiều
-// lần vẫn an toàn, không đổi lần 2.
-function migrateAllIdsAddRandomSuffix() {
+// CANONICAL_ID_RE = hình dạng ID "đúng chuẩn hiện tại" mà makeId() sinh ra:
+// prefix_YYMMDD_<13 số epoch millis>_<6 số random>. Bắt buộc đúng 13 số ở
+// phần timestamp (độ dài thật của Date.now()) để KHÔNG bị nhận nhầm với các
+// ID chép tay/seed cũ có hình dạng tương tự nhưng timestamp giả ngắn hơn (VD
+// "document_260101_1_562336" — chỉ 1 số ở vị trí timestamp, không phải mã
+// thật do makeId() sinh). Đây là hằng số DÙNG CHUNG cho mọi lần "đổi form mã
+// ID" sau này — mỗi khi makeId() đổi format, cập nhật lại đúng regex này rồi
+// chạy lại normalizeAllLegacyIds(), nó sẽ tự bắt lại MỌI id (cũ hay tưởng là
+// mới) không khớp hình dạng hiện tại và sinh lại toàn bộ, không sót.
+const CANONICAL_ID_RE = /^[a-zA-Z0-9]+_\d{6}_\d{13}_\d{6}$/;
+
+// MIGRATION DÙNG LẠI ĐƯỢC (2026-09-09, mở rộng lần 2 theo yêu cầu người dùng
+// "update toàn bộ dù cũ hay mới, tránh lệch form mã ID") — quét MỌI id không
+// khớp CANONICAL_ID_RE ở MỌI sheet (trừ "Thành viên", có scheme riêng), sinh
+// mã MỚI HOÀN TOÀN qua makeId() (không phải chỉ nối thêm số như bản đầu) —
+// bắt được cả các mã chép tay/seed rất cũ như "task_001", "prj_A",
+// "document_260101_1_562336", "timesheet_1788780930898" (thiếu cả phần
+// YYMMDD) mà lần chạy đầu (chỉ khớp đúng 1 hình dạng "prefix_YYMMDD_timestamp"
+// cụ thể) đã bỏ sót. Chạy TAY từ trình chỉnh sửa Apps Script (chọn hàm này ở
+// dropdown rồi bấm Chạy) — không đi qua doGet/doPost. Idempotent: mã đã đúng
+// chuẩn hiện tại thì khớp CANONICAL_ID_RE, không bị đổi lại lần 2 — an toàn
+// chạy lại bất cứ khi nào, kể cả sau này khi form mã đổi tiếp.
+function normalizeAllLegacyIds() {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const OLD_ID_RE = /^[a-zA-Z]+_\d{6}_\d+$/; // prefix_YYMMDD_timestamp — CHƯA có random suffix
   const SKIP_KEYS = ['members'];
   const idMaps = {}; // sheetKey -> { oldId: newId }
   const summary = [];
@@ -882,11 +896,13 @@ function migrateAllIdsAddRandomSuffix() {
     const values = range.getValues();
     const map = {};
     let changed = false;
+    // Tiền tố y hệt logic addData()/addDataBatch() dùng khi tạo id mới, để id
+    // sinh lại ở đây có cùng "họ" tiền tố với id sinh ra từ giờ về sau.
+    const prefix = key.toLowerCase().replace(/s$/, '');
     for (let i = 0; i < values.length; i++) {
       const oldId = String(values[i][0] || '');
-      if (oldId && OLD_ID_RE.test(oldId)) {
-        const rand = Math.floor(100000 + Math.random() * 900000);
-        const newId = oldId + '_' + rand;
+      if (oldId && !CANONICAL_ID_RE.test(oldId)) {
+        const newId = makeId(prefix);
         map[oldId] = newId;
         values[i][0] = newId;
         changed = true;
