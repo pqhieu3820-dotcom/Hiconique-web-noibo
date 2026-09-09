@@ -884,7 +884,7 @@
 
     // ---------- Thành viên ----------
     var ROLE_LEVEL_LABEL = { admin: 'Chủ tổ chức', manager: 'Quản trị viên', member: 'Thành viên' };
-    var STATUS_LABEL = { active: 'Đang làm', pending: 'Chờ duyệt', rejected: 'Bị từ chối', inactive: 'Ngưng công tác' };
+    var STATUS_LABEL = { active: 'Đang làm', pending: 'Chờ duyệt', rejected: 'Bị từ chối', inactive: 'Ngưng công tác', 'on-leave': 'Tạm nghỉ việc' };
     function renderMembers() {
       var members = (typeof TaskManager !== 'undefined' && TaskManager.getMembers) ? TaskManager.getMembers() : [];
       var projects = (typeof TaskManager !== 'undefined' && TaskManager.getProjects) ? TaskManager.getProjects() : [];
@@ -908,7 +908,7 @@
       if (!rows.length) { wrap.innerHTML = '<div class="w-empty">Không tìm thấy thành viên phù hợp.</div>'; return; }
       wrap.innerHTML = '<table class="w-table"><thead><tr><th>Thành viên</th><th>Mã nhân viên</th><th>Chức vụ</th><th>Liên hệ</th><th>Dự án</th><th>Vai trò</th><th>Trạng thái</th></tr></thead><tbody>' +
         rows.map(function (m) {
-          var statusClass = m.status === 'active' ? 'green' : (m.status === 'pending' ? 'warn' : 'red');
+          var statusClass = m.status === 'active' ? 'green' : (m.status === 'pending' || m.status === 'on-leave' ? 'warn' : 'red');
           return '<tr><td><div class="w-row-icon"><span class="sq">' + escapeHtml(initials(m.name)) + '</span><div class="name"><b>' + escapeHtml(m.name) + '</b></div></div></td>' +
             '<td class="num" style="text-align:left">' + escapeHtml(m.id) + '</td>' +
             '<td>' + escapeHtml(m.role || '—') + '</td>' +

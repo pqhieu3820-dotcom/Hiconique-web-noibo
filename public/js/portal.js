@@ -313,6 +313,7 @@
       var statusBadge = m.status === 'pending' ? '<span class="team-status-badge pending">Chờ duyệt</span>'
         : m.status === 'inactive' ? '<span class="team-status-badge inactive">Ngưng công tác</span>'
         : m.status === 'rejected' ? '<span class="team-status-badge rejected">Đã từ chối</span>'
+        : m.status === 'on-leave' ? '<span class="team-status-badge on-leave">Tạm nghỉ việc</span>'
         : '';
 
       return ''
@@ -369,6 +370,7 @@
     var statusLabel = m.status === 'pending' ? 'Đang chờ duyệt'
       : m.status === 'inactive' ? 'Đã ngưng công tác'
       : m.status === 'rejected' ? 'Đăng ký đã bị từ chối'
+      : m.status === 'on-leave' ? 'Đang tạm nghỉ việc'
       : '';
 
     var currentUser = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
@@ -382,8 +384,12 @@
       actionButtons += '<button type="button" class="team-modal-action reject" data-action="reject">✕ Từ chối</button>';
     } else if (m.status === 'inactive' && canTerminate) {
       actionButtons += '<button type="button" class="team-modal-action approve" data-action="reinstate">↺ Khôi phục công tác</button>';
-    } else if ((!m.status || m.status === 'active') && canTerminate && !isSelf) {
-      actionButtons += '<button type="button" class="team-modal-action reject" data-action="terminate">⏸ Ngưng công tác</button>';
+    } else if (m.status === 'on-leave') {
+      if (canManage) actionButtons += '<button type="button" class="team-modal-action approve" data-action="return">↺ Trở lại làm việc</button>';
+      if (canTerminate && !isSelf) actionButtons += '<button type="button" class="team-modal-action reject" data-action="terminate">⏸ Ngưng công tác</button>';
+    } else if (!m.status || m.status === 'active') {
+      if (canManage && !isSelf) actionButtons += '<button type="button" class="team-modal-action leave" data-action="leave">‖ Tạm nghỉ việc</button>';
+      if (canTerminate && !isSelf) actionButtons += '<button type="button" class="team-modal-action reject" data-action="terminate">⏸ Ngưng công tác</button>';
     }
 
     document.getElementById('teamModalContent').innerHTML =
@@ -409,10 +415,17 @@
     contentEl.querySelectorAll('.team-modal-action').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var action = btn.dataset.action;
-        var newStatus = action === 'approve' ? 'active' : action === 'reject' ? 'rejected' : action === 'reinstate' ? 'active' : 'inactive';
+        var newStatus = action === 'approve' ? 'active'
+          : action === 'reject' ? 'rejected'
+          : action === 'reinstate' ? 'active'
+          : action === 'leave' ? 'on-leave'
+          : action === 'return' ? 'active'
+          : 'inactive';
         var confirmMsg = action === 'approve' ? 'Duyệt tài khoản này? Thành viên sẽ đăng nhập được ngay.'
           : action === 'reject' ? 'Từ chối đăng ký này?'
           : action === 'reinstate' ? 'Khôi phục công tác cho thành viên này?'
+          : action === 'leave' ? 'Đánh dấu thành viên này đang tạm nghỉ việc?'
+          : action === 'return' ? 'Đánh dấu thành viên này đã trở lại làm việc?'
           : 'Đánh dấu thành viên này đã ngưng công tác? Họ sẽ không đăng nhập được nữa.';
         if (!window.confirm(confirmMsg)) return;
         var result = TaskManager.updateMemberStatus(m.id, newStatus, currentUser);

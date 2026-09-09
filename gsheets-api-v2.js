@@ -261,6 +261,7 @@ const VALUE_MAP = {
     ['Còn làm việc', 'active'],
     ['Chờ duyệt', 'pending'],
     ['Từ chối', 'rejected'],
+    ['Tạm nghỉ việc', 'on-leave'],
     ['Ngưng công tác', 'inactive']
   ],
   // roleLevel gates permissions everywhere in the client (isAdmin(), PERMISSIONS

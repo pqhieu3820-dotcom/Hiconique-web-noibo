@@ -1153,6 +1153,7 @@ main { flex: 1; }
 .team-status-badge.pending { background: rgba(200, 164, 100, 0.16); color: var(--color-bronze); }
 .team-status-badge.inactive { background: rgba(154, 160, 166, 0.16); color: var(--color-text-faint); }
 .team-status-badge.rejected { background: rgba(160, 72, 72, 0.14); color: #A04848; }
+.team-status-badge.on-leave { background: rgba(217, 149, 40, 0.16); color: #D99528; }
 
 /* Team member detail modal */
 .team-modal-overlay {
@@ -1244,6 +1245,8 @@ main { flex: 1; }
 .team-modal-action.approve:hover { background: var(--color-success); color: #0B0D10; }
 .team-modal-action.reject { border-color: #A04848; color: #A04848; }
 .team-modal-action.reject:hover { background: #A04848; color: #fff; }
+.team-modal-action.leave { border-color: #D99528; color: #D99528; }
+.team-modal-action.leave:hover { background: #D99528; color: #0B0D10; }
 
 /* ---------- Live hero stat (real-time clock + active members) ---------- */
 .hero-stat-live .hero-stat-number {
