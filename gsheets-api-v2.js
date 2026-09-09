@@ -69,7 +69,12 @@ const FIELD_MAP = {
     ['Mô tả', 'description'], ['Loại dự án', 'type'],
     // 2026-09-09: thêm Tỉnh/Thành để tab "Đơn giá theo tỉnh" bên pricing.html
     // lọc nhanh theo dự án thay vì phải tự chọn lại tỉnh mỗi lần.
-    ['Tỉnh/Thành', 'province']
+    ['Tỉnh/Thành', 'province'],
+    // 2026-09-10: mã viết tắt dự án do người dùng tự đặt (VD "HMHOUSE") — dùng
+    // làm avatar đại diện dự án (thay vì tự lấy chữ đầu tên) và làm phần "Mã dự
+    // án" trong số hồ sơ/hợp đồng tự sinh. Đặt tên field là shortCode để không
+    // đụng field 'id' (đã map với cột "Mã DA" — mã hệ thống, không phải mã này).
+    ['Mã dự án viết tắt', 'shortCode']
   ],
   tasks: [
     ['Mã CV', 'id'], ['Tên công việc', 'title'], ['Mô tả', 'description'], ['Mã dự án', 'projectId'],

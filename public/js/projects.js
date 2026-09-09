@@ -33,6 +33,10 @@
   // lưu trong field `type`; giờ `type` = loại công trình thật (Nhà phố, Biệt
   // thự...) và hạng mục nằm ở field `category` mới. Fallback về `type` để
   // dự án cũ (tạo trước khi có field `category`) vẫn phân loại đúng như cũ.
+  //
+  // Đây CHỈ là phân loại thô 3 nhóm dùng cho bộ đếm sidebar (Thiết kế/Thi
+  // công/Khác) — không dùng để chọn đúng thẻ hạng mục trong modal (xem
+  // matchHangMucCard bên dưới, dùng danh sách đầy đủ HANG_MUC_LIST).
   function projectType(p) {
     var raw = p && (p.category || p.type);
     if (!raw) return 'admin';
@@ -40,6 +44,56 @@
     if (t.indexOf('thiết kế') !== -1 || t.indexOf('thiet ke') !== -1 || t.indexOf('design') !== -1) return 'design';
     if (t.indexOf('thi công') !== -1 || t.indexOf('thi cong') !== -1 || t.indexOf('construction') !== -1) return 'construction';
     return 'admin';
+  }
+
+  // Danh sách đầy đủ Hạng mục (khớp với các thẻ .type-card trong
+  // projects.html/pricing.html) — docCode dùng để tự sinh số hồ sơ/hợp đồng
+  // dạng "HĐ" + docCode, VD Thi công -> HĐTC. Giữ đồng bộ 1-1 với data-type
+  // của từng .type-card khi thêm/sửa hạng mục.
+  var HANG_MUC_LIST = [
+    { slug: 'design', label: 'Thiết kế', docCode: 'TK' },
+    { slug: 'construction', label: 'Thi công', docCode: 'TC' },
+    { slug: 'interior', label: 'Nội thất', docCode: 'NT' },
+    { slug: 'consulting', label: 'Tư vấn', docCode: 'TV' },
+    { slug: 'admin', label: 'Hành chính', docCode: 'HC' },
+    { slug: 'marketing', label: 'Marketing', docCode: 'MK' },
+    { slug: 'supervision', label: 'Giám sát thi công', docCode: 'GS' },
+    { slug: 'pm', label: 'Quản lý dự án', docCode: 'QL' },
+    { slug: 'general-contractor', label: 'Tổng thầu', docCode: 'TT' },
+    { slug: 'structural', label: 'Kết cấu', docCode: 'KC' },
+    { slug: 'mep', label: 'Cơ điện (M&E)', docCode: 'CD' },
+    { slug: 'landscape', label: 'Cảnh quan', docCode: 'CQ' },
+    { slug: 'bidding', label: 'Đấu thầu', docCode: 'DT' },
+    { slug: 'maintenance', label: 'Bảo trì & bảo hành', docCode: 'BH' }
+  ];
+
+  // Khớp CHÍNH XÁC hạng mục đã lưu (category) với 1 trong 14 thẻ hạng mục để
+  // tô sáng đúng thẻ khi sửa dự án — khớp theo nhãn trước (so khớp chuỗi
+  // chính xác thì không sợ nhầm như dùng substring, VD "Giám sát thi công"
+  // chứa "thi công" nhưng không phải hạng mục "Thi công"), rồi mới fallback
+  // về phân loại thô projectType() cho dữ liệu cũ/tự do không khớp nhãn nào.
+  function matchHangMucCard(category) {
+    if (!category) return 'design';
+    var t = String(category).trim().toLowerCase();
+    var exact = HANG_MUC_LIST.find(function (h) { return h.label.toLowerCase() === t; });
+    if (exact) return exact.slug;
+    var partial = HANG_MUC_LIST.find(function (h) { return t.indexOf(h.label.toLowerCase()) !== -1; });
+    if (partial) return partial.slug;
+    return projectType({ category: category });
+  }
+
+  // Số hồ sơ/hợp đồng tự sinh: {ngày}{tháng}HĐ{mã hạng mục}/{mã dự án}-HICON{năm}
+  // VD hôm nay 10/09/2026, hạng mục Thi công, mã dự án HMHOUSE:
+  // "1009HĐTC/HMHOUSE-HICON2026".
+  function buildDocNumber(hangMucSlug, shortCode) {
+    if (!shortCode) return '';
+    var hangMuc = HANG_MUC_LIST.find(function (h) { return h.slug === hangMucSlug; });
+    if (!hangMuc) return '';
+    var now = new Date();
+    var dd = String(now.getDate()).padStart(2, '0');
+    var mm = String(now.getMonth() + 1).padStart(2, '0');
+    var yyyy = now.getFullYear();
+    return dd + mm + 'HĐ' + hangMuc.docCode + '/' + shortCode.toUpperCase() + '-HICON' + yyyy;
   }
 
   function todayStr() {
@@ -855,8 +909,40 @@
         card.classList.add('active');
         var radio = card.querySelector('input[type="radio"]');
         if (radio) radio.checked = true;
+        updateDocNumberPreview();
       });
     });
+
+    // Số hồ sơ/hợp đồng tự sinh — cập nhật theo hạng mục đang chọn + mã dự án
+    // đang nhập, ẩn hẳn nếu chưa có mã dự án (không có gì để sinh số).
+    var codeInput = document.getElementById('project-code');
+    var previewWrap = document.getElementById('docNumberPreviewWrap');
+    var previewEl = document.getElementById('docNumberPreview');
+    var copyBtn = document.getElementById('docNumberCopyBtn');
+    function updateDocNumberPreview() {
+      if (!codeInput || !previewWrap || !previewEl) return;
+      var activeCard = form.querySelector('.type-card.active');
+      var slug = activeCard ? activeCard.dataset.type : 'design';
+      var docNumber = buildDocNumber(slug, codeInput.value.trim());
+      previewWrap.hidden = !docNumber;
+      if (docNumber) previewEl.textContent = docNumber;
+    }
+    if (codeInput) {
+      codeInput.addEventListener('input', function () {
+        codeInput.value = codeInput.value.toUpperCase();
+        updateDocNumberPreview();
+      });
+    }
+    if (copyBtn) {
+      copyBtn.addEventListener('click', function () {
+        if (!navigator.clipboard) return;
+        navigator.clipboard.writeText(previewEl.textContent).then(function () {
+          var old = copyBtn.textContent;
+          copyBtn.textContent = 'Đã chép!';
+          setTimeout(function () { copyBtn.textContent = old; }, 1500);
+        });
+      });
+    }
 
     if (openBtn) openBtn.addEventListener('click', function () {
       form.reset();
@@ -881,6 +967,7 @@
       if (colorInput) colorInput.value = '#B08D57';
       // Set default member
       renderProjectMembers(currentUser ? [currentUser.id] : []);
+      updateDocNumberPreview();
       var listModal = document.getElementById('project-list-modal');
       if (listModal) listModal.hidden = true;
       modal.hidden = false;
@@ -902,6 +989,7 @@
       var data = {
         name: name,
         type: document.getElementById('project-building-type').value,
+        shortCode: document.getElementById('project-code').value.trim().toUpperCase(),
         color: document.getElementById('project-color').value,
         client: document.getElementById('project-client').value.trim(),
         investor: document.getElementById('project-investor').value.trim(),
@@ -928,7 +1016,7 @@
       // wasn't changed (older/seed projects store a full Vietnamese label
       // like "Thiết kế nội thất" — this page's radios only know the short
       // codes, so re-saving unchanged would otherwise downgrade that label).
-      if (editingId && form.dataset.originalCategory && projectType({ category: form.dataset.originalCategory }) === catVal) {
+      if (editingId && form.dataset.originalCategory && matchHangMucCard(form.dataset.originalCategory) === catVal) {
         data.category = form.dataset.originalCategory;
       } else {
         var typeLabelEl = form.querySelector('.type-card.active .type-label');
@@ -968,6 +1056,7 @@
 
     document.getElementById('project-name').value = project.name || '';
     document.getElementById('project-building-type').value = project.type || '';
+    document.getElementById('project-code').value = (project.shortCode || '').toUpperCase();
     document.getElementById('project-client').value = project.client || '';
     document.getElementById('project-investor').value = project.investor || '';
     document.getElementById('project-location').value = project.location || '';
@@ -980,12 +1069,19 @@
     document.getElementById('project-desc').value = project.description || '';
     document.getElementById('project-color').value = project.color || '#B08D57';
 
-    var cat = projectType(project);
+    var cat = matchHangMucCard(project.category || project.type);
     form.querySelectorAll('.type-card').forEach(function (c) {
       c.classList.toggle('active', c.dataset.type === cat);
     });
     var radio = form.querySelector('input[name="project-type"][value="' + cat + '"]');
     if (radio) radio.checked = true;
+    var previewWrapEl = document.getElementById('docNumberPreviewWrap');
+    var previewTextEl = document.getElementById('docNumberPreview');
+    if (previewWrapEl && previewTextEl) {
+      var docNumber = buildDocNumber(cat, project.shortCode || '');
+      previewWrapEl.hidden = !docNumber;
+      if (docNumber) previewTextEl.textContent = docNumber;
+    }
 
     var memberIds = Array.isArray(project.members)
       ? project.members
@@ -1023,7 +1119,7 @@
       if (p.budget) meta.push(Number(p.budget).toLocaleString('vi-VN') + ' VNĐ');
       meta.push((p.progress || 0) + '% hoàn thành');
       return '<div class="project-list-row" data-project-id="' + escapeHtml(p.id) + '">'
-        + '<div class="project-list-avatar" style="background:' + (p.color || '#B08D57') + '">' + escapeHtml((p.name || '?').charAt(0)) + '</div>'
+        + '<div class="project-list-avatar' + (p.shortCode && p.shortCode.length > 3 ? ' project-list-avatar-long' : '') + '" style="background:' + (p.color || '#B08D57') + '">' + escapeHtml(p.shortCode || (p.name || '?').charAt(0)) + '</div>'
         + '<div class="project-list-info">'
         +   '<div class="project-list-name">' + escapeHtml(p.name || '') + ' <span style="color:var(--color-text-muted);font-weight:400;">· ' + escapeHtml([p.type, p.category].filter(Boolean).join(' · ')) + '</span></div>'
         +   '<div class="project-list-meta">' + meta.map(function (m) { return '<span>' + m + '</span>'; }).join('<span>·</span>') + '</div>'
