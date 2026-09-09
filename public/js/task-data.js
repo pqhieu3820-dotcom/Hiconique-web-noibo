@@ -50,7 +50,8 @@ function syncToGSheets(type, action, data, id) {
     commissions: { add: 'addCommission', update: 'updateCommission', delete: 'deleteCommission' },
     commissionRates: { add: 'addCommissionRate', update: 'updateCommissionRate', delete: 'deleteCommissionRate' },
     priceCatalog: { add: 'addPriceCatalog', update: 'updatePriceCatalog', delete: 'deletePriceCatalog' },
-    financeEntries: { add: 'addFinanceEntry', update: 'updateFinanceEntry', delete: 'deleteFinanceEntry' }
+    financeEntries: { add: 'addFinanceEntry', update: 'updateFinanceEntry', delete: 'deleteFinanceEntry' },
+    receivables: { add: 'addReceivable', update: 'updateReceivable', delete: 'deleteReceivable' }
   };
 
   var apiAction = actionMap[type] ? actionMap[type][action] : null;
@@ -124,7 +125,8 @@ var TaskManager = (function() {
     commissions: 'hiconique_commissions',
     commissionRates: 'hiconique_commission_rates',
     priceCatalog: 'hiconique_price_catalog',
-    financeEntries: 'hiconique_finance_entries'
+    financeEntries: 'hiconique_finance_entries',
+    receivables: 'hiconique_receivables'
   };
 
   // % hoa hồng mặc định theo vai trò — gợi ý khi tạo hoa hồng dự án, admin/
@@ -290,7 +292,8 @@ var TaskManager = (function() {
       notifications: 'getNotifications', notices: 'getNotices',
       documents: 'getDocuments', payslips: 'getPayslips',
       commissions: 'getCommissions', commissionRates: 'getCommissionRates',
-      priceCatalog: 'getPriceCatalog', financeEntries: 'getFinanceEntries'
+      priceCatalog: 'getPriceCatalog', financeEntries: 'getFinanceEntries',
+      receivables: 'getReceivables'
     };
     var action = apiReadActions[type];
     if (!action) { callback([]); return; }
@@ -389,6 +392,9 @@ var TaskManager = (function() {
       getFromGSheets('financeEntries', function(entries) {
         localStorage.setItem(STORAGE_KEYS.financeEntries, JSON.stringify(entries));
       });
+      getFromGSheets('receivables', function(list) {
+        localStorage.setItem(STORAGE_KEYS.receivables, JSON.stringify(list));
+      });
     } else {
       // Use localStorage
       if (!localStorage.getItem(STORAGE_KEYS.projects)) {
@@ -426,6 +432,9 @@ var TaskManager = (function() {
       }
       if (!localStorage.getItem(STORAGE_KEYS.financeEntries)) {
         localStorage.setItem(STORAGE_KEYS.financeEntries, JSON.stringify([]));
+      }
+      if (!localStorage.getItem(STORAGE_KEYS.receivables)) {
+        localStorage.setItem(STORAGE_KEYS.receivables, JSON.stringify([]));
       }
     }
   }
@@ -1235,6 +1244,41 @@ var TaskManager = (function() {
     return result;
   }
 
+  // Công nợ phải thu — khoản đã báo giá/xuất hoá đơn cho khách nhưng chưa
+  // thu tiền thật. Khi đánh dấu 'paid', UI (finance.html) tự tạo thêm 1
+  // dòng `revenue` bên financeEntries — 2 sheet này không tự động đồng bộ
+  // 2 chiều trong tầng dữ liệu, để tránh 1 khoản thu bị đếm 2 lần nếu tự
+  // ý sửa tay trên Sheet.
+  function getReceivables(filters) {
+    filters = filters || {};
+    var list = getAll(STORAGE_KEYS.receivables);
+    if (filters.status) list = list.filter(function (r) { return r.status === filters.status; });
+    return list.sort(function (a, b) { return new Date(a.dueDate || 0) - new Date(b.dueDate || 0); });
+  }
+
+  function createReceivable(data, user) {
+    if (!canManageFinance(user)) return null;
+    data.status = data.status || 'unpaid';
+    data.createdBy = user.id;
+    var created = add(STORAGE_KEYS.receivables, data);
+    syncToGSheets('receivables', 'add', created);
+    return created;
+  }
+
+  function updateReceivable(id, updates, user) {
+    if (!canManageFinance(user)) return null;
+    var updated = update(STORAGE_KEYS.receivables, id, updates);
+    if (updated) syncToGSheets('receivables', 'update', updates, id);
+    return updated;
+  }
+
+  function deleteReceivable(id, user) {
+    if (!canManageFinance(user)) return null;
+    var result = remove(STORAGE_KEYS.receivables, id);
+    syncToGSheets('receivables', 'delete', {}, id);
+    return result;
+  }
+
   // Phiếu lương — nhân viên tự tạo cho chính mình mỗi tháng, CEO/quản lý duyệt.
   var OT_MULTIPLIER = 1.5;
   var STANDARD_MONTHLY_HOURS = 208; // 26 công x 8 giờ/ngày — quy ước tính đơn giá giờ OT
@@ -1423,6 +1467,10 @@ var TaskManager = (function() {
     createFinanceEntry: createFinanceEntry,
     updateFinanceEntry: updateFinanceEntry,
     deleteFinanceEntry: deleteFinanceEntry,
+    getReceivables: getReceivables,
+    createReceivable: createReceivable,
+    updateReceivable: updateReceivable,
+    deleteReceivable: deleteReceivable,
 
     // Phiếu lương
     getMonthlyTimesheetStats: getMonthlyTimesheetStats,

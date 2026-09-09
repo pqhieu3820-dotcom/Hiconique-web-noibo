@@ -16,7 +16,8 @@ const SHEETS = {
   commissions: 'Hoa hồng dự án',
   commissionRates: 'Mức hoa hồng',
   priceCatalog: 'Bảng giá dịch vụ',
-  financeEntries: 'Tài chính công ty'
+  financeEntries: 'Tài chính công ty',
+  receivables: 'Công nợ khách hàng'
 };
 
 // [Vietnamese header on the Sheet, internal English key used by client JS].
@@ -105,6 +106,15 @@ const FIELD_MAP = {
   financeEntries: [
     ['Mã GD', 'id'], ['Loại', 'type'], ['Danh mục', 'category'], ['Mô tả', 'description'],
     ['Số tiền', 'amount'], ['Tháng', 'month'], ['Ngày', 'date'], ['Ghi chú', 'note'],
+    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
+  ],
+  // Công nợ phải thu từ khách hàng (không phải giao dịch tiền mặt thật —
+  // chỉ là khoản đã xuất hoá đơn/báo giá nhưng khách chưa trả). Tách riêng
+  // khỏi financeEntries vì bản chất khác nhau: đây là "hứa trả", chỉ biến
+  // thành `revenue` thật trong financeEntries khi status chuyển sang 'paid'.
+  receivables: [
+    ['Mã CN', 'id'], ['Khách hàng', 'clientName'], ['Mã dự án', 'projectId'], ['Mô tả', 'description'],
+    ['Số tiền', 'amount'], ['Hạn thanh toán', 'dueDate'], ['Trạng thái', 'status'], ['Ghi chú', 'note'],
     ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
   ]
 };
@@ -292,6 +302,14 @@ function handleRequest(e) {
       result = updateData(ss, SHEETS.financeEntries, params.id, JSON.parse(params.data));
     } else if (action === 'deleteFinanceEntry') {
       result = deleteData(ss, SHEETS.financeEntries, params.id);
+    } else if (action === 'getReceivables') {
+      result = getAllData(ss, SHEETS.receivables);
+    } else if (action === 'addReceivable') {
+      result = addData(ss, SHEETS.receivables, JSON.parse(params.data));
+    } else if (action === 'updateReceivable') {
+      result = updateData(ss, SHEETS.receivables, params.id, JSON.parse(params.data));
+    } else if (action === 'deleteReceivable') {
+      result = deleteData(ss, SHEETS.receivables, params.id);
     } else {
       result = { error: 'Unknown action: ' + action };
     }
