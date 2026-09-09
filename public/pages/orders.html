@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đơn hàng &amp; Hóa đơn · HICONIQUE</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/reset.css">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/portal.css">
+  <link rel="stylesheet" href="/css/subpage.css">
+  <link rel="stylesheet" href="/css/task-manager.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <script src="/js/gsheets-config.js"></script>
+  <script src="/js/task-data.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js" defer></script>
+  <style>
+    :root {
+      --od-bg: var(--color-bg); --od-surface: var(--color-surface); --od-border: var(--color-border);
+      --od-text: var(--color-text); --od-muted: var(--color-text-muted); --od-bronze: var(--color-bronze);
+      --od-green: #4F6F52; --od-red: #A04848; --od-blue: #3B6B8C;
+    }
+    body { background: var(--od-bg); color: var(--od-text); font-family: 'Inter', -apple-system, sans-serif; min-height: 100vh; }
+    .od-container { max-width: 1180px; }
+
+    .od-summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .od-summary-card { background: var(--od-surface); border: 1px solid var(--od-border); border-radius: 14px; padding: 18px 20px; }
+    .od-summary-label { font-size: 0.6875rem; color: var(--od-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .od-summary-value { font-size: 1.375rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+
+    .od-card { background: var(--od-surface); border: 1px solid var(--od-border); border-radius: 18px; overflow: hidden; margin-bottom: 28px; }
+    .od-card-head { padding: 18px 24px; border-bottom: 1px solid var(--od-border); background: var(--od-bg); display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .od-card-title { font-size: 1rem; font-weight: 600; }
+    .od-card-desc { font-size: 0.8125rem; color: var(--od-muted); margin-top: 4px; }
+
+    .od-btn { padding: 9px 16px; border-radius: 9px; border: none; font-family: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; }
+    .od-btn-primary { background: var(--od-bronze); color: #0B0D10; }
+    .od-btn-primary:hover { background: #C7A464; }
+    .od-btn-ghost { background: transparent; border: 1px solid var(--od-border); color: var(--od-text); }
+    .od-btn-ghost:hover { border-color: var(--od-bronze); color: var(--od-bronze); }
+    .od-btn-danger { background: transparent; border: 1px solid var(--od-border); color: var(--od-red); }
+    .od-btn-danger:hover { border-color: var(--od-red); }
+    .od-btn-sm { padding: 6px 11px; font-size: 0.75rem; border-radius: 7px; }
+    .od-toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .od-client-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; padding: 20px 24px; border-bottom: 1px solid var(--od-border); }
+    .od-field-label { display: block; font-size: 0.6875rem; color: var(--od-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+    .od-input, .od-select { width: 100%; padding: 8px 10px; border-radius: 7px; border: 1px solid var(--od-border); background: var(--od-bg); color: var(--od-text); font-family: inherit; font-size: 0.8125rem; }
+    .od-input.mono { font-family: 'JetBrains Mono', monospace; }
+
+    .od-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+    .od-table th { text-align: left; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--od-muted); font-weight: 600; padding: 10px 24px; background: var(--od-bg); border-bottom: 1px solid var(--od-border); }
+    .od-table th.num, .od-table td.num { text-align: right; }
+    .od-table td { padding: 10px 24px; border-bottom: 1px solid var(--od-border); vertical-align: middle; }
+    .od-table tr:last-child td { border-bottom: none; }
+    .od-amount { font-family: 'JetBrains Mono', monospace; color: var(--od-bronze); font-weight: 600; white-space: nowrap; }
+    .od-empty { padding: 32px 24px; text-align: center; color: var(--od-muted); font-size: 0.875rem; }
+
+    .od-totals { padding: 18px 24px; }
+    .od-totals-row { display: flex; justify-content: flex-end; align-items: center; gap: 12px; padding: 6px 0; font-size: 0.8125rem; color: var(--od-muted); }
+    .od-totals-row.grand { font-size: 1.125rem; font-weight: 700; color: var(--od-bronze); border-top: 1px solid var(--od-border); margin-top: 8px; padding-top: 14px; }
+    .od-totals-row input { width: 70px; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--od-border); background: var(--od-bg); color: var(--od-text); font-family: 'JetBrains Mono', monospace; font-size: 0.8125rem; text-align: right; }
+
+    .od-status { font-size: 0.6875rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; border: 1px solid; }
+    .od-status.draft { color: var(--od-muted); border-color: var(--od-border); background: var(--od-bg); }
+    .od-status.confirmed { color: var(--od-blue); border-color: color-mix(in srgb, var(--od-blue) 40%, transparent); background: color-mix(in srgb, var(--od-blue) 10%, transparent); }
+    .od-status.paid { color: var(--od-green); border-color: color-mix(in srgb, var(--od-green) 40%, transparent); background: color-mix(in srgb, var(--od-green) 10%, transparent); }
+    .od-status.cancelled { color: var(--od-red); border-color: color-mix(in srgb, var(--od-red) 40%, transparent); background: color-mix(in srgb, var(--od-red) 10%, transparent); }
+
+    .od-detail-row { display: none; }
+    .od-detail-row.open { display: table-row; }
+    .od-detail-box { padding: 16px 24px; background: var(--od-bg); font-size: 0.8125rem; }
+    .od-detail-items { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    .od-detail-items td, .od-detail-items th { padding: 6px 10px; border-bottom: 1px solid var(--od-border); }
+    .od-linked-tag { font-size: 0.6875rem; color: var(--od-green); margin-top: 6px; }
+
+    .od-print-invoice { display: none; }
+
+    @media (max-width: 1000px) {
+      .od-summary-grid { grid-template-columns: repeat(2, 1fr); }
+      .od-client-grid { grid-template-columns: 1fr 1fr; }
+      .od-table thead { display: none; }
+      .od-table tr:not(.od-detail-row) { display: grid; grid-template-columns: 1fr; row-gap: 4px; padding: 10px 0; }
+      .od-table td { border-bottom: none; padding: 2px 24px; }
+      .od-table tr:not(.od-detail-row):not(:last-child) { border-bottom: 1px solid var(--od-border); }
+    }
+
+    /* In hoá đơn PDF: chỉ hiện bản in sạch, ẩn toàn bộ UI còn lại. */
+    @media print {
+      body * { visibility: hidden; }
+      .od-print-invoice, .od-print-invoice * { visibility: visible; }
+      .od-print-invoice { display: block !important; position: absolute; top: 0; left: 0; width: 100%; padding: 24px; background: #fff; color: #111; }
+      .od-print-invoice table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+      .od-print-invoice th, .od-print-invoice td { border: 1px solid #ccc; padding: 8px 10px; font-size: 13px; text-align: left; }
+      .od-print-invoice th.num, .od-print-invoice td.num { text-align: right; }
+      .od-print-invoice h1 { font-size: 20px; margin: 0 0 4px; }
+      .od-print-invoice .od-print-meta { font-size: 13px; color: #444; margin-bottom: 4px; }
+      .od-print-invoice .od-print-totals { margin-top: 12px; width: 320px; margin-left: auto; }
+      .od-print-invoice .od-print-totals div { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
+      .od-print-invoice .od-print-totals div.grand { font-weight: 700; font-size: 15px; border-top: 1px solid #999; margin-top: 6px; padding-top: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/" class="brand">
+        <span class="brand-mark">H</span>
+        <span class="brand-name"><span class="brand-name-1">HICONIQUE</span></span>
+      </a>
+      <nav class="primary-nav">
+        <a href="/#tools" class="nav-link">Công cụ</a>
+        <a href="/pages/tasks-manager.html" class="nav-link">Tasks</a>
+        <a href="/pages/projects.html" class="nav-link">Dự án</a>
+        <a href="/pages/wiki.html" class="nav-link">Tài liệu</a>
+        <a href="/#ai" class="nav-link">AI</a>
+        <a href="/pages/notices.html" class="nav-link">Thông báo</a>
+        <a href="/pages/team.html" class="nav-link">Team</a>
+      </nav>
+      <div class="header-actions">
+        <button class="theme-toggle" aria-label="Chuyển đổi sáng/tối" data-theme-toggle>
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" stroke-linecap="round" /></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        </button>
+        <span class="clock"><span class="clock-time" data-clock>--:--</span><span class="clock-meta">GMT+7</span></span>
+        <button class="avatar"><span>--</span></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="subpage">
+  <div class="subpage-inner od-container">
+    <p class="eyebrow">— Đơn hàng &amp; Hóa đơn</p>
+    <h1 class="subpage-title">Đơn hàng <span class="subpage-title-italic">&amp; hóa đơn</span></h1>
+    <p class="subpage-lede">Ai cũng tạo được đơn hàng cho khách của mình — nhập hạng mục, số lượng, đơn giá tự tính tổng, xuất hóa đơn Excel/PDF. Khi đánh dấu "Đã thu tiền", hệ thống tự động ghi một khoản Doanh thu tương ứng vào Sổ tài chính công ty.</p>
+
+    <div class="od-summary-grid" id="odSummaryGrid"></div>
+
+    <div class="od-card">
+      <div class="od-card-head">
+        <div>
+          <div class="od-card-title" id="odFormTitle">Tạo đơn hàng mới</div>
+          <div class="od-card-desc">Chọn hạng mục từ Bảng giá dịch vụ hoặc nhập tay — tổng tiền tự nhảy theo số lượng và đơn giá.</div>
+        </div>
+        <div class="od-toolbar">
+          <button class="od-btn od-btn-ghost od-btn-sm" id="odResetFormBtn" hidden>Huỷ sửa</button>
+          <button class="od-btn od-btn-ghost od-btn-sm" id="odAddRowBtn">+ Thêm dòng</button>
+        </div>
+      </div>
+
+      <div class="od-client-grid">
+        <div><span class="od-field-label">Tên khách hàng</span><input type="text" class="od-input" id="odClientName" placeholder="Anh/Chị..."></div>
+        <div><span class="od-field-label">SĐT khách hàng</span><input type="text" class="od-input" id="odClientPhone" placeholder="09xx xxx xxx"></div>
+        <div><span class="od-field-label">Địa chỉ</span><input type="text" class="od-input" id="odClientAddress" placeholder="Địa chỉ giao hàng/thi công"></div>
+        <div><span class="od-field-label">Dự án liên quan</span><select class="od-select" id="odProjectId"><option value="">— Không gắn dự án —</option></select></div>
+      </div>
+
+      <table class="od-table">
+        <thead><tr><th style="width:20%;">Danh mục có sẵn</th><th>Tên hạng mục</th><th style="width:10%;">Đơn vị</th><th class="num" style="width:9%;">SL</th><th class="num" style="width:14%;">Đơn giá</th><th class="num" style="width:14%;">Thành tiền</th><th></th></tr></thead>
+        <tbody id="odItemRows"></tbody>
+      </table>
+      <div style="padding:14px 24px;"><button class="od-btn od-btn-ghost od-btn-sm" id="odAddRowBtn2">+ Thêm dòng</button></div>
+
+      <div class="od-totals">
+        <div class="od-totals-row"><span>Tạm tính</span><span class="od-amount" id="odSubtotal">0</span></div>
+        <div class="od-totals-row"><span>Giảm giá</span><span><input type="number" min="0" max="100" step="1" id="odDiscountPercent" value="0"> %</span></div>
+        <div class="od-totals-row"><span>VAT</span><span><input type="number" min="0" max="100" step="1" id="odVatPercent" value="0"> %</span></div>
+        <div class="od-totals-row grand"><span>Tổng cộng</span><span class="od-amount" id="odGrandTotal">0</span></div>
+      </div>
+
+      <div class="od-client-grid" style="border-top:1px solid var(--od-border);border-bottom:none;">
+        <div><span class="od-field-label">Trạng thái</span><select class="od-select" id="odStatus">
+          <option value="draft">Nháp</option>
+          <option value="confirmed">Đã xác nhận</option>
+          <option value="paid">Đã thanh toán</option>
+          <option value="cancelled">Đã huỷ</option>
+        </select></div>
+        <div><span class="od-field-label">Phương thức thanh toán</span><input type="text" class="od-input" id="odPaymentMethod" placeholder="Tiền mặt / Chuyển khoản..."></div>
+        <div style="grid-column: span 2;"><span class="od-field-label">Ghi chú</span><input type="text" class="od-input" id="odNote" placeholder="Ghi chú thêm về đơn hàng..."></div>
+      </div>
+      <div style="padding:0 24px 20px;"><button class="od-btn od-btn-primary" id="odSaveBtn">Lưu đơn hàng</button></div>
+    </div>
+
+    <div class="od-card">
+      <div class="od-card-head"><div class="od-card-title">Danh sách đơn hàng</div></div>
+      <table class="od-table">
+        <thead><tr><th>Số ĐH</th><th>Khách hàng</th><th>Ngày tạo</th><th>Người tạo</th><th class="num">Tổng tiền</th><th>Trạng thái</th><th></th></tr></thead>
+        <tbody id="odOrderRows"></tbody>
+      </table>
+    </div>
+  </div>
+  </main>
+
+  <!-- Bản in hoá đơn — chỉ hiện khi Ctrl+P / window.print(), ẩn hoàn toàn lúc thường -->
+  <div class="od-print-invoice" id="odPrintInvoice"></div>
+
+  <script src="/js/portal.js" defer></script>
+  <script>
+  (function () {
+    'use strict';
+
+    function fmt(n) { return Math.round(Number(n) || 0).toLocaleString('vi-VN'); }
+    function getUser() {
+      var session = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
+      if (!session) return null;
+      var fresh = TaskManager.getMember(session.id);
+      return fresh ? Object.assign({}, session, fresh) : session;
+    }
+    function escapeHtml(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+
+    var STATUS_LABEL = { draft: 'Nháp', confirmed: 'Đã xác nhận', paid: 'Đã thanh toán', cancelled: 'Đã huỷ' };
+    var user;
+    var editingOrderId = null;
+
+    // ---------- Dòng dự án cho dropdown ----------
+    function renderProjectOptions() {
+      var sel = document.getElementById('odProjectId');
+      var current = sel.value;
+      var projects = TaskManager.getProjects();
+      sel.innerHTML = '<option value="">— Không gắn dự án —</option>' +
+        projects.map(function (p) { return '<option value="' + p.id + '"' + (p.id === current ? ' selected' : '') + '>' + escapeHtml(p.name) + '</option>'; }).join('');
+    }
+
+    // ---------- Dòng hạng mục trong form ----------
+    var itemRowsEl = document.getElementById('odItemRows');
+    var rowSeq = 0;
+
+    function catalogOptionsHtml() {
+      var items = TaskManager.getPriceCatalog();
+      var html = '<option value="">— Nhập tay —</option>';
+      items.forEach(function (it) {
+        html += '<option value="' + it.id + '">' + escapeHtml(it.category ? it.category + ' · ' + it.name : it.name) + '</option>';
+      });
+      return html;
+    }
+
+    function addItemRow(prefill) {
+      prefill = prefill || {};
+      var id = 'ir' + (++rowSeq);
+      var tr = document.createElement('tr');
+      tr.setAttribute('data-item-row', id);
+      tr.innerHTML =
+        '<td><select class="od-select" data-i="catalog">' + catalogOptionsHtml() + '</select></td>' +
+        '<td><input class="od-input" data-i="name" value="' + escapeHtml(prefill.name || '') + '" placeholder="Tên hạng mục"></td>' +
+        '<td><input class="od-input" data-i="unit" value="' + escapeHtml(prefill.unit || '') + '" placeholder="m2/bộ..."></td>' +
+        '<td class="num"><input class="od-input mono" data-i="qty" type="number" min="0" step="1" value="' + (Number(prefill.qty) || 1) + '"></td>' +
+        '<td class="num"><input class="od-input mono" data-i="price" type="number" min="0" value="' + (Number(prefill.price) || 0) + '"></td>' +
+        '<td class="num od-amount" data-i="lineTotal">0</td>' +
+        '<td><button class="od-btn od-btn-danger od-btn-sm" data-remove-item-row>Xoá</button></td>';
+      itemRowsEl.appendChild(tr);
+      recalcTotals();
+    }
+
+    function readItemRows() {
+      var items = [];
+      itemRowsEl.querySelectorAll('tr[data-item-row]').forEach(function (tr) {
+        var name = tr.querySelector('[data-i="name"]').value.trim();
+        var unit = tr.querySelector('[data-i="unit"]').value.trim();
+        var qty = parseFloat(tr.querySelector('[data-i="qty"]').value) || 0;
+        var price = parseFloat(tr.querySelector('[data-i="price"]').value) || 0;
+        if (!name && qty === 0 && price === 0) return;
+        items.push({ name: name, unit: unit, qty: qty, price: price, lineTotal: qty * price });
+      });
+      return items;
+    }
+
+    function recalcTotals() {
+      var subtotal = 0;
+      itemRowsEl.querySelectorAll('tr[data-item-row]').forEach(function (tr) {
+        var qty = parseFloat(tr.querySelector('[data-i="qty"]').value) || 0;
+        var price = parseFloat(tr.querySelector('[data-i="price"]').value) || 0;
+        var lineTotal = qty * price;
+        tr.querySelector('[data-i="lineTotal"]').textContent = fmt(lineTotal);
+        subtotal += lineTotal;
+      });
+      var discountPct = parseFloat(document.getElementById('odDiscountPercent').value) || 0;
+      var vatPct = parseFloat(document.getElementById('odVatPercent').value) || 0;
+      var discountAmount = subtotal * (discountPct / 100);
+      var afterDiscount = subtotal - discountAmount;
+      var vatAmount = afterDiscount * (vatPct / 100);
+      var grandTotal = afterDiscount + vatAmount;
+      document.getElementById('odSubtotal').textContent = fmt(subtotal);
+      document.getElementById('odGrandTotal').textContent = fmt(grandTotal);
+      return { subtotal: subtotal, discountPct: discountPct, discountAmount: discountAmount, vatPct: vatPct, vatAmount: vatAmount, grandTotal: grandTotal };
+    }
+
+    itemRowsEl.addEventListener('input', function (e) {
+      if (e.target.matches('[data-i="qty"], [data-i="price"]')) recalcTotals();
+    });
+    itemRowsEl.addEventListener('change', function (e) {
+      if (e.target.matches('[data-i="catalog"]')) {
+        var tr = e.target.closest('tr');
+        var item = TaskManager.getPriceCatalog().find(function (it) { return it.id === e.target.value; });
+        if (item) {
+          tr.querySelector('[data-i="name"]').value = item.name || '';
+          tr.querySelector('[data-i="unit"]').value = item.unit || '';
+          tr.querySelector('[data-i="price"]').value = Number(item.unitPrice) || 0;
+        }
+        recalcTotals();
+      }
+    });
+    itemRowsEl.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-remove-item-row]');
+      if (!btn) return;
+      btn.closest('tr').remove();
+      recalcTotals();
+    });
+    ['odDiscountPercent', 'odVatPercent'].forEach(function (id) {
+      document.getElementById(id).addEventListener('input', recalcTotals);
+    });
+    document.getElementById('odAddRowBtn').addEventListener('click', function () { addItemRow(); });
+    document.getElementById('odAddRowBtn2').addEventListener('click', function () { addItemRow(); });
+
+    // ---------- Form: reset / load để sửa ----------
+    function resetForm() {
+      editingOrderId = null;
+      document.getElementById('odFormTitle').textContent = 'Tạo đơn hàng mới';
+      document.getElementById('odResetFormBtn').hidden = true;
+      document.getElementById('odSaveBtn').textContent = 'Lưu đơn hàng';
+      document.getElementById('odClientName').value = '';
+      document.getElementById('odClientPhone').value = '';
+      document.getElementById('odClientAddress').value = '';
+      document.getElementById('odProjectId').value = '';
+      document.getElementById('odDiscountPercent').value = 0;
+      document.getElementById('odVatPercent').value = 0;
+      document.getElementById('odStatus').value = 'draft';
+      document.getElementById('odPaymentMethod').value = '';
+      document.getElementById('odNote').value = '';
+      itemRowsEl.innerHTML = '';
+      addItemRow();
+    }
+
+    function loadOrderIntoForm(order) {
+      editingOrderId = order.id;
+      document.getElementById('odFormTitle').textContent = 'Sửa đơn hàng ' + (order.orderNumber || '');
+      document.getElementById('odResetFormBtn').hidden = false;
+      document.getElementById('odSaveBtn').textContent = 'Cập nhật đơn hàng';
+      document.getElementById('odClientName').value = order.clientName || '';
+      document.getElementById('odClientPhone').value = order.clientPhone || '';
+      document.getElementById('odClientAddress').value = order.clientAddress || '';
+      document.getElementById('odProjectId').value = order.projectId || '';
+      document.getElementById('odDiscountPercent').value = order.discountPercent || 0;
+      document.getElementById('odVatPercent').value = order.vatPercent || 0;
+      document.getElementById('odStatus').value = order.status || 'draft';
+      document.getElementById('odPaymentMethod').value = order.paymentMethod || '';
+      document.getElementById('odNote').value = order.note || '';
+      itemRowsEl.innerHTML = '';
+      var items = Array.isArray(order.items) ? order.items : [];
+      if (items.length === 0) addItemRow();
+      items.forEach(function (it) { addItemRow(it); });
+      recalcTotals();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    document.getElementById('odResetFormBtn').addEventListener('click', resetForm);
+
+    document.getElementById('odSaveBtn').addEventListener('click', function () {
+      var clientName = document.getElementById('odClientName').value.trim();
+      var items = readItemRows();
+      if (!clientName) { alert('Nhập tên khách hàng.'); return; }
+      if (items.length === 0) { alert('Thêm ít nhất 1 hạng mục.'); return; }
+      var totals = recalcTotals();
+      var data = {
+        clientName: clientName,
+        clientPhone: document.getElementById('odClientPhone').value.trim(),
+        clientAddress: document.getElementById('odClientAddress').value.trim(),
+        projectId: document.getElementById('odProjectId').value,
+        items: items,
+        subtotal: totals.subtotal,
+        discountPercent: totals.discountPct,
+        discountAmount: totals.discountAmount,
+        vatPercent: totals.vatPct,
+        vatAmount: totals.vatAmount,
+        totalAmount: totals.grandTotal,
+        status: document.getElementById('odStatus').value,
+        paymentMethod: document.getElementById('odPaymentMethod').value.trim(),
+        note: document.getElementById('odNote').value.trim()
+      };
+      var wasPaidBefore = false;
+      if (editingOrderId) {
+        var existing = TaskManager.getOrders().find(function (o) { return o.id === editingOrderId; });
+        wasPaidBefore = existing && existing.status === 'paid';
+        TaskManager.updateOrder(editingOrderId, data, user);
+        if (data.status === 'paid' && !wasPaidBefore) TaskManager.markOrderPaid(editingOrderId, user);
+      } else {
+        var created = TaskManager.createOrder(data, user);
+        if (created && data.status === 'paid') TaskManager.markOrderPaid(created.id, user);
+      }
+      resetForm();
+      renderAll();
+    });
+
+    // ---------- Danh sách đơn hàng ----------
+    function renderSummary() {
+      var orders = TaskManager.getOrders();
+      var thisMonth = new Date().toISOString().slice(0, 7);
+      var paid = orders.filter(function (o) { return o.status === 'paid'; });
+      var pending = orders.filter(function (o) { return o.status === 'confirmed' || o.status === 'draft'; });
+      var revenueThisMonth = paid.filter(function (o) { return (o.updatedAt || o.createdAt || '').slice(0, 7) === thisMonth; })
+        .reduce(function (s, o) { return s + (Number(o.totalAmount) || 0); }, 0);
+      var totalPaidAmount = paid.reduce(function (s, o) { return s + (Number(o.totalAmount) || 0); }, 0);
+
+      document.getElementById('odSummaryGrid').innerHTML =
+        '<div class="od-summary-card"><div class="od-summary-label">Tổng số đơn hàng</div><div class="od-summary-value">' + orders.length + '</div></div>' +
+        '<div class="od-summary-card"><div class="od-summary-label">Chờ xử lý / xác nhận</div><div class="od-summary-value" style="color:var(--od-blue);">' + pending.length + '</div></div>' +
+        '<div class="od-summary-card"><div class="od-summary-label">Tổng tiền đã thu</div><div class="od-summary-value" style="color:var(--od-green);">' + fmt(totalPaidAmount) + '</div></div>' +
+        '<div class="od-summary-card"><div class="od-summary-label">Doanh thu tháng này (từ đơn hàng)</div><div class="od-summary-value" style="color:var(--od-bronze);">' + fmt(revenueThisMonth) + '</div></div>';
+    }
+
+    function projectName(id) {
+      if (!id) return '—';
+      var p = TaskManager.getProjects().find(function (x) { return x.id === id; });
+      return p ? p.name : '—';
+    }
+
+    function renderOrderList() {
+      var orders = TaskManager.getOrders();
+      var rows = document.getElementById('odOrderRows');
+      if (orders.length === 0) {
+        rows.innerHTML = '<tr><td colspan="7" class="od-empty">Chưa có đơn hàng nào. Tạo đơn hàng đầu tiên ở form phía trên.</td></tr>';
+        return;
+      }
+      rows.innerHTML = orders.map(function (o) {
+        var canEdit = TaskManager.canEditOrder(o, user);
+        var itemsRows = (Array.isArray(o.items) ? o.items : []).map(function (it) {
+          return '<tr><td>' + escapeHtml(it.name) + '</td><td>' + escapeHtml(it.unit || '') + '</td><td class="num">' + fmt(it.qty) + '</td><td class="num">' + fmt(it.price) + '</td><td class="num">' + fmt(it.lineTotal) + '</td></tr>';
+        }).join('');
+        return '<tr>' +
+          '<td>' + escapeHtml(o.orderNumber || o.id) + '</td>' +
+          '<td>' + escapeHtml(o.clientName || '') + (o.projectId ? '<br><span style="color:var(--od-muted);font-size:0.75rem;">Dự án: ' + escapeHtml(projectName(o.projectId)) + '</span>' : '') + '</td>' +
+          '<td>' + escapeHtml((o.createdAt || '').slice(0, 10)) + '</td>' +
+          '<td>' + escapeHtml(o.createdBy || '') + '</td>' +
+          '<td class="num od-amount">' + fmt(o.totalAmount) + '</td>' +
+          '<td><span class="od-status ' + (o.status || 'draft') + '">' + STATUS_LABEL[o.status] + '</span></td>' +
+          '<td>' +
+            '<div class="od-toolbar">' +
+              '<button class="od-btn od-btn-ghost od-btn-sm" data-toggle-detail="' + o.id + '">Xem</button>' +
+              '<button class="od-btn od-btn-ghost od-btn-sm" data-print-invoice="' + o.id + '">In hóa đơn</button>' +
+              '<button class="od-btn od-btn-ghost od-btn-sm" data-export-excel="' + o.id + '">Xuất Excel</button>' +
+              (o.status !== 'paid' && o.status !== 'cancelled' ? '<button class="od-btn od-btn-primary od-btn-sm" data-mark-paid="' + o.id + '">Đã thu tiền</button>' : '') +
+              (canEdit ? '<button class="od-btn od-btn-ghost od-btn-sm" data-edit-order="' + o.id + '">Sửa</button>' : '') +
+              (canEdit ? '<button class="od-btn od-btn-danger od-btn-sm" data-delete-order="' + o.id + '">Xoá</button>' : '') +
+            '</div>' +
+          '</td>' +
+        '</tr>' +
+        '<tr class="od-detail-row" data-detail-for="' + o.id + '"><td colspan="7"><div class="od-detail-box">' +
+          '<table class="od-detail-items"><thead><tr><th>Hạng mục</th><th>ĐV</th><th class="num">SL</th><th class="num">Đơn giá</th><th class="num">Thành tiền</th></tr></thead><tbody>' + itemsRows + '</tbody></table>' +
+          '<div style="margin-top:8px;color:var(--od-muted);">Giảm giá ' + (o.discountPercent || 0) + '% · VAT ' + (o.vatPercent || 0) + '% · Ghi chú: ' + escapeHtml(o.note || '—') + '</div>' +
+          (o.linkedFinanceEntryId ? '<div class="od-linked-tag">✓ Đã liên kết vào Sổ tài chính công ty (Giao dịch)</div>' : '') +
+        '</div></td></tr>';
+      }).join('');
+
+      rows.querySelectorAll('[data-toggle-detail]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var id = btn.getAttribute('data-toggle-detail');
+          var detailRow = rows.querySelector('[data-detail-for="' + id + '"]');
+          detailRow.classList.toggle('open');
+        });
+      });
+      rows.querySelectorAll('[data-mark-paid]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var id = btn.getAttribute('data-mark-paid');
+          var o = orders.find(function (x) { return x.id === id; });
+          if (!confirm('Xác nhận đã thu ' + fmt(o.totalAmount) + ' từ ' + o.clientName + '? Hệ thống sẽ tự tạo 1 khoản Doanh thu tương ứng trong Sổ tài chính công ty.')) return;
+          TaskManager.markOrderPaid(id, user);
+          renderAll();
+        });
+      });
+      rows.querySelectorAll('[data-edit-order]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var o = orders.find(function (x) { return x.id === btn.getAttribute('data-edit-order'); });
+          if (o) loadOrderIntoForm(o);
+        });
+      });
+      rows.querySelectorAll('[data-delete-order]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          if (!confirm('Xoá đơn hàng này? Khoản Doanh thu đã liên kết (nếu có) sẽ KHÔNG bị xoá theo — cần xoá tay ở Sổ tài chính nếu cần.')) return;
+          TaskManager.deleteOrder(btn.getAttribute('data-delete-order'), user);
+          renderAll();
+        });
+      });
+      rows.querySelectorAll('[data-print-invoice]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var o = orders.find(function (x) { return x.id === btn.getAttribute('data-print-invoice'); });
+          if (o) printInvoice(o);
+        });
+      });
+      rows.querySelectorAll('[data-export-excel]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var o = orders.find(function (x) { return x.id === btn.getAttribute('data-export-excel'); });
+          if (o) exportOrderExcel(o);
+        });
+      });
+    }
+
+    // ---------- In hoá đơn PDF ----------
+    function printInvoice(o) {
+      var items = Array.isArray(o.items) ? o.items : [];
+      var itemsHtml = items.map(function (it, i) {
+        return '<tr><td>' + (i + 1) + '</td><td>' + escapeHtml(it.name) + '</td><td>' + escapeHtml(it.unit || '') + '</td><td class="num">' + fmt(it.qty) + '</td><td class="num">' + fmt(it.price) + '</td><td class="num">' + fmt(it.lineTotal) + '</td></tr>';
+      }).join('');
+      document.getElementById('odPrintInvoice').innerHTML =
+        '<h1>HÓA ĐƠN BÁN HÀNG — HICONIQUE</h1>' +
+        '<div class="od-print-meta">Số đơn hàng: <b>' + escapeHtml(o.orderNumber || o.id) + '</b> &nbsp;·&nbsp; Ngày: ' + escapeHtml((o.createdAt || '').slice(0, 10)) + '</div>' +
+        '<div class="od-print-meta">Khách hàng: <b>' + escapeHtml(o.clientName || '') + '</b>' + (o.clientPhone ? ' — ĐT: ' + escapeHtml(o.clientPhone) : '') + '</div>' +
+        (o.clientAddress ? '<div class="od-print-meta">Địa chỉ: ' + escapeHtml(o.clientAddress) + '</div>' : '') +
+        '<table><thead><tr><th>#</th><th>Hạng mục</th><th>ĐV</th><th class="num">SL</th><th class="num">Đơn giá</th><th class="num">Thành tiền</th></tr></thead><tbody>' + itemsHtml + '</tbody></table>' +
+        '<div class="od-print-totals">' +
+          '<div><span>Tạm tính</span><span>' + fmt(o.subtotal) + '</span></div>' +
+          '<div><span>Giảm giá (' + (o.discountPercent || 0) + '%)</span><span>-' + fmt(o.discountAmount) + '</span></div>' +
+          '<div><span>VAT (' + (o.vatPercent || 0) + '%)</span><span>+' + fmt(o.vatAmount) + '</span></div>' +
+          '<div class="grand"><span>Tổng cộng</span><span>' + fmt(o.totalAmount) + '</span></div>' +
+        '</div>' +
+        '<p style="margin-top:24px;font-size:12px;color:#666;">Cảm ơn quý khách đã sử dụng dịch vụ của HICONIQUE.</p>';
+      setTimeout(function () { window.print(); }, 50);
+    }
+
+    // ---------- Xuất Excel 1 đơn hàng ----------
+    function exportOrderExcel(o) {
+      if (typeof ExcelJS === 'undefined') { alert('Không tải được thư viện xuất Excel. Kiểm tra kết nối mạng và thử lại.'); return; }
+      var wb = new ExcelJS.Workbook();
+      var ws = wb.addWorksheet('Hóa đơn');
+      ws.mergeCells('A1:F1');
+      ws.getCell('A1').value = 'HÓA ĐƠN BÁN HÀNG — HICONIQUE — ' + (o.orderNumber || o.id);
+      ws.getCell('A1').font = { bold: true, size: 13 };
+      ws.getCell('A2').value = 'Khách hàng: ' + (o.clientName || '—');
+      ws.getCell('A3').value = 'SĐT: ' + (o.clientPhone || '—');
+      ws.getCell('A4').value = 'Địa chỉ: ' + (o.clientAddress || '—');
+      ws.getCell('A5').value = 'Ngày: ' + (o.createdAt || '').slice(0, 10);
+
+      var headerRow = 7;
+      ['Hạng mục', 'Đơn vị', 'Số lượng', 'Đơn giá', 'Thành tiền'].forEach(function (h, i) {
+        var cell = ws.getCell(headerRow, i + 1);
+        cell.value = h;
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF22272E' } };
+      });
+      var r = headerRow + 1;
+      (Array.isArray(o.items) ? o.items : []).forEach(function (it) {
+        ws.getCell(r, 1).value = it.name;
+        ws.getCell(r, 2).value = it.unit;
+        ws.getCell(r, 3).value = it.qty;
+        ws.getCell(r, 4).value = it.price; ws.getCell(r, 4).numFmt = '#,##0';
+        ws.getCell(r, 5).value = it.lineTotal; ws.getCell(r, 5).numFmt = '#,##0';
+        r++;
+      });
+      r++;
+      ws.getCell(r, 4).value = 'Tạm tính'; ws.getCell(r, 5).value = o.subtotal; ws.getCell(r, 5).numFmt = '#,##0'; r++;
+      ws.getCell(r, 4).value = 'Giảm giá ' + (o.discountPercent || 0) + '%'; ws.getCell(r, 5).value = -(o.discountAmount || 0); ws.getCell(r, 5).numFmt = '#,##0'; r++;
+      ws.getCell(r, 4).value = 'VAT ' + (o.vatPercent || 0) + '%'; ws.getCell(r, 5).value = o.vatAmount || 0; ws.getCell(r, 5).numFmt = '#,##0'; r++;
+      ws.getCell(r, 4).value = 'Tổng cộng'; ws.getCell(r, 4).font = { bold: true };
+      ws.getCell(r, 5).value = o.totalAmount; ws.getCell(r, 5).numFmt = '#,##0'; ws.getCell(r, 5).font = { bold: true };
+      ws.getColumn(1).width = 32; ws.getColumn(2).width = 10; ws.getColumn(3).width = 10;
+      ws.getColumn(4).width = 16; ws.getColumn(5).width = 16;
+
+      wb.xlsx.writeBuffer().then(function (buffer) {
+        var blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'Hoa-don-' + (o.orderNumber || o.id) + '.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      }).catch(function (err) {
+        console.error('Export Excel failed:', err);
+        alert('Xuất file thất bại. Vui lòng thử lại.');
+      });
+    }
+
+    function renderAll() {
+      renderSummary();
+      renderOrderList();
+      renderProjectOptions();
+    }
+
+    function boot() {
+      if (typeof TaskManager === 'undefined' || typeof Auth === 'undefined') { setTimeout(boot, 150); return; }
+      if (Auth.getCurrentUser && !Auth.getCurrentUser()) { Auth.showLoginModal(); return; }
+      user = getUser();
+      resetForm();
+      renderAll();
+      setTimeout(renderAll, 1200); // re-render khi dữ liệu GSheets async về
+    }
+    boot();
+  })();
+  </script>
+</body>
+</html>

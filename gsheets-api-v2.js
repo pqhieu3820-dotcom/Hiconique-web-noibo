@@ -18,7 +18,8 @@ const SHEETS = {
   priceCatalog: 'Bảng giá dịch vụ',
   financeEntries: 'Tài chính công ty',
   receivables: 'Công nợ khách hàng',
-  bsSnapshots: 'Chỉ số cân đối kế toán'
+  bsSnapshots: 'Chỉ số cân đối kế toán',
+  orders: 'Đơn hàng'
 };
 
 // [Vietnamese header on the Sheet, internal English key used by client JS].
@@ -130,6 +131,20 @@ const FIELD_MAP = {
     ['Chi phí lãi vay', 'interestExpense'], ['Chi mua sắm TSCĐ', 'capex'], ['Vốn hóa thị trường', 'marketCap'],
     ['LNST lũy kế', 'retainedEarnings'], ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'],
     ['Ngày cập nhật', 'updatedAt']
+  ],
+  // Đơn hàng / hoá đơn — AI NHÂN VIÊN CŨNG TẠO ĐƯỢC (không chỉ CEO như
+  // financeEntries). Khi 1 đơn được đánh dấu "paid", client tự tạo thêm 1
+  // dòng financeEntries loại `revenue` liên kết qua `linkedFinanceEntryId`
+  // — logic hệt receivables (mark paid -> tạo revenue), chỉ khác là bất kỳ
+  // ai cũng kích hoạt được bước link này, không riêng CEO.
+  orders: [
+    ['Mã ĐH', 'id'], ['Số đơn hàng', 'orderNumber'], ['Khách hàng', 'clientName'],
+    ['SĐT khách hàng', 'clientPhone'], ['Địa chỉ khách hàng', 'clientAddress'], ['Mã dự án', 'projectId'],
+    ['Danh sách hạng mục', 'items'], ['Tạm tính', 'subtotal'], ['Giảm giá %', 'discountPercent'],
+    ['Tiền giảm giá', 'discountAmount'], ['VAT %', 'vatPercent'], ['Tiền VAT', 'vatAmount'],
+    ['Tổng cộng', 'totalAmount'], ['Trạng thái', 'status'], ['Phương thức thanh toán', 'paymentMethod'],
+    ['Ghi chú', 'note'], ['Mã giao dịch liên kết', 'linkedFinanceEntryId'],
+    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
   ]
 };
 
@@ -332,6 +347,14 @@ function handleRequest(e) {
       result = updateData(ss, SHEETS.bsSnapshots, params.id, JSON.parse(params.data));
     } else if (action === 'deleteBsSnapshot') {
       result = deleteData(ss, SHEETS.bsSnapshots, params.id);
+    } else if (action === 'getOrders') {
+      result = getAllData(ss, SHEETS.orders);
+    } else if (action === 'addOrder') {
+      result = addData(ss, SHEETS.orders, JSON.parse(params.data));
+    } else if (action === 'updateOrder') {
+      result = updateData(ss, SHEETS.orders, params.id, JSON.parse(params.data));
+    } else if (action === 'deleteOrder') {
+      result = deleteData(ss, SHEETS.orders, params.id);
     } else {
       result = { error: 'Unknown action: ' + action };
     }

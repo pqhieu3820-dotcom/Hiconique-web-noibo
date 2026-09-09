@@ -52,7 +52,8 @@ function syncToGSheets(type, action, data, id) {
     priceCatalog: { add: 'addPriceCatalog', update: 'updatePriceCatalog', delete: 'deletePriceCatalog' },
     financeEntries: { add: 'addFinanceEntry', update: 'updateFinanceEntry', delete: 'deleteFinanceEntry' },
     receivables: { add: 'addReceivable', update: 'updateReceivable', delete: 'deleteReceivable' },
-    bsSnapshots: { add: 'addBsSnapshot', update: 'updateBsSnapshot', delete: 'deleteBsSnapshot' }
+    bsSnapshots: { add: 'addBsSnapshot', update: 'updateBsSnapshot', delete: 'deleteBsSnapshot' },
+    orders: { add: 'addOrder', update: 'updateOrder', delete: 'deleteOrder' }
   };
 
   var apiAction = actionMap[type] ? actionMap[type][action] : null;
@@ -128,7 +129,8 @@ var TaskManager = (function() {
     priceCatalog: 'hiconique_price_catalog',
     financeEntries: 'hiconique_finance_entries',
     receivables: 'hiconique_receivables',
-    bsSnapshots: 'hiconique_bs_snapshots'
+    bsSnapshots: 'hiconique_bs_snapshots',
+    orders: 'hiconique_orders'
   };
 
   // % hoa hồng mặc định theo vai trò — gợi ý khi tạo hoa hồng dự án, admin/
@@ -295,7 +297,7 @@ var TaskManager = (function() {
       documents: 'getDocuments', payslips: 'getPayslips',
       commissions: 'getCommissions', commissionRates: 'getCommissionRates',
       priceCatalog: 'getPriceCatalog', financeEntries: 'getFinanceEntries',
-      receivables: 'getReceivables', bsSnapshots: 'getBsSnapshots'
+      receivables: 'getReceivables', bsSnapshots: 'getBsSnapshots', orders: 'getOrders'
     };
     var action = apiReadActions[type];
     if (!action) { callback([]); return; }
@@ -400,6 +402,9 @@ var TaskManager = (function() {
       getFromGSheets('bsSnapshots', function(list) {
         localStorage.setItem(STORAGE_KEYS.bsSnapshots, JSON.stringify(list));
       });
+      getFromGSheets('orders', function(list) {
+        localStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(list));
+      });
     } else {
       // Use localStorage
       if (!localStorage.getItem(STORAGE_KEYS.projects)) {
@@ -443,6 +448,9 @@ var TaskManager = (function() {
       }
       if (!localStorage.getItem(STORAGE_KEYS.bsSnapshots)) {
         localStorage.setItem(STORAGE_KEYS.bsSnapshots, JSON.stringify([]));
+      }
+      if (!localStorage.getItem(STORAGE_KEYS.orders)) {
+        localStorage.setItem(STORAGE_KEYS.orders, JSON.stringify([]));
       }
     }
   }
@@ -1323,6 +1331,85 @@ var TaskManager = (function() {
     return result;
   }
 
+  // Đơn hàng & hoá đơn — CỐ Ý MỞ CHO MỌI THÀNH VIÊN (không gate bằng
+  // canManageFinance như financeEntries): bất kỳ ai đã đăng nhập cũng tạo
+  // được đơn hàng cho khách của mình. Chỉ người tạo hoặc admin/manager mới
+  // sửa/xoá được đơn của người khác. Khi đánh dấu "paid", tự tạo 1 dòng
+  // financeEntries loại `revenue` liên kết qua `linkedFinanceEntryId` —
+  // bước ghi này KHÔNG qua canManageFinance vì đây là hành động tự động do
+  // chính nhân viên tạo đơn kích hoạt, không phải thao tác trực tiếp trên
+  // Sổ tài chính (trang finance.html vẫn khoá xem/sửa cho CEO như cũ).
+  function canEditOrder(order, user) {
+    return !!user && (order.createdBy === user.id || user.roleLevel === 'admin' || user.roleLevel === 'manager');
+  }
+
+  function nextOrderNumber() {
+    var year = new Date().getFullYear();
+    var countThisYear = getAll(STORAGE_KEYS.orders).filter(function (o) {
+      return (o.orderNumber || '').indexOf('-' + year) !== -1;
+    }).length;
+    return 'DH' + String(countThisYear + 1).padStart(4, '0') + '-' + year;
+  }
+
+  function getOrders(filters) {
+    filters = filters || {};
+    var list = getAll(STORAGE_KEYS.orders);
+    if (filters.status) list = list.filter(function (o) { return o.status === filters.status; });
+    if (filters.createdBy) list = list.filter(function (o) { return o.createdBy === filters.createdBy; });
+    return list.sort(function (a, b) { return new Date(b.createdAt || 0) - new Date(a.createdAt || 0); });
+  }
+
+  function createOrder(data, user) {
+    if (!user) return null;
+    data.orderNumber = data.orderNumber || nextOrderNumber();
+    data.status = data.status || 'draft';
+    data.createdBy = user.id;
+    var created = add(STORAGE_KEYS.orders, data);
+    syncToGSheets('orders', 'add', created);
+    return created;
+  }
+
+  function updateOrder(id, updates, user) {
+    var order = getById(STORAGE_KEYS.orders, id);
+    if (!order || !canEditOrder(order, user)) return null;
+    var updated = update(STORAGE_KEYS.orders, id, updates);
+    if (updated) syncToGSheets('orders', 'update', updates, id);
+    return updated;
+  }
+
+  function deleteOrder(id, user) {
+    var order = getById(STORAGE_KEYS.orders, id);
+    if (!order || !canEditOrder(order, user)) return null;
+    var result = remove(STORAGE_KEYS.orders, id);
+    syncToGSheets('orders', 'delete', {}, id);
+    return result;
+  }
+
+  // Đánh dấu đơn hàng đã thanh toán -> tự tạo đúng 1 lần 1 khoản doanh thu
+  // tương ứng trong Sổ tài chính (idempotent nhờ `linkedFinanceEntryId`).
+  function markOrderPaid(id, user) {
+    if (!user) return null;
+    var order = getById(STORAGE_KEYS.orders, id);
+    if (!order) return null;
+    if (order.linkedFinanceEntryId) {
+      return updateOrder(id, { status: 'paid' }, user);
+    }
+    var today = new Date().toISOString().split('T')[0];
+    var financeData = {
+      type: 'revenue',
+      category: 'Đơn hàng',
+      description: 'Đơn hàng ' + (order.orderNumber || order.id) + ' — ' + (order.clientName || 'Khách lẻ'),
+      amount: order.totalAmount,
+      date: today,
+      month: today.slice(0, 7)
+    };
+    var createdEntry = add(STORAGE_KEYS.financeEntries, financeData);
+    syncToGSheets('financeEntries', 'add', createdEntry);
+    var updated = update(STORAGE_KEYS.orders, id, { status: 'paid', linkedFinanceEntryId: createdEntry.id });
+    if (updated) syncToGSheets('orders', 'update', { status: 'paid', linkedFinanceEntryId: createdEntry.id }, id);
+    return updated;
+  }
+
   // Phiếu lương — nhân viên tự tạo cho chính mình mỗi tháng, CEO/quản lý duyệt.
   var OT_MULTIPLIER = 1.5;
   var STANDARD_MONTHLY_HOURS = 208; // 26 công x 8 giờ/ngày — quy ước tính đơn giá giờ OT
@@ -1521,6 +1608,14 @@ var TaskManager = (function() {
     getBsSnapshotByYear: getBsSnapshotByYear,
     upsertBsSnapshot: upsertBsSnapshot,
     deleteBsSnapshot: deleteBsSnapshot,
+
+    // Đơn hàng & hoá đơn — mọi thành viên đều tạo được
+    getOrders: getOrders,
+    createOrder: createOrder,
+    updateOrder: updateOrder,
+    deleteOrder: deleteOrder,
+    markOrderPaid: markOrderPaid,
+    canEditOrder: canEditOrder,
 
     // Phiếu lương
     getMonthlyTimesheetStats: getMonthlyTimesheetStats,

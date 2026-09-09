@@ -4,7 +4,57 @@ File này tồn tại để không phải hỏi lại các thông tin dưới đ
 chat mới với Claude. Đây là nguồn tham chiếu chính (source of truth) cho các liên kết và quy
 tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
-## 0. Trạng thái hiện tại (cập nhật lần cuối: 2026-09-09 — thêm "Sổ tay CFO" vào finance.html, đọc kỹ mục này)
+## 0. Trạng thái hiện tại (cập nhật lần cuối: 2026-09-09 — thêm trang Đơn hàng & Hóa đơn, đọc kỹ mục này)
+
+**Việc mới nhất (2026-09-09, sau khi làm "Sổ tay CFO" + bảng Rủi ro tự động): trang mới `public/pages/orders.html` (Đơn hàng & Hóa đơn) + dọn lại trang chủ.**
+- **Trang chủ (`index.html`)**: chuyển 2 card "Bảng giá dịch vụ" và "Tài chính công ty" từ lưới
+  `wiki-grid` (mục "Tài liệu & Quy trình") sang lưới `tool-grid` (mục "Công cụ chính", `#tools`) —
+  đổi từ style `wiki-card` nhỏ sang `tool-card` to như Dashboard/Chấm công/Phiếu lương, xoá bản
+  cũ ở wiki-grid để không bị trùng. Thêm 1 card mới **"Đơn hàng & Hóa đơn"** trỏ tới
+  `/pages/orders.html`, nằm giữa "Bảng giá dịch vụ" và "Tài chính công ty" — đúng vị trí người
+  dùng khoanh đỏ trong ảnh yêu cầu.
+- **Trang `orders.html` mới — CỐ Ý MỞ CHO MỌI THÀNH VIÊN**, khác hẳn nguyên tắc CEO-only của
+  `finance.html`: bất kỳ ai đăng nhập cũng tạo được đơn hàng cho khách của mình (không có màn
+  hình khoá như Sổ tài chính). Chỉ người tạo đơn hoặc admin/manager mới sửa/xoá được đơn của
+  người khác (`TaskManager.canEditOrder`). Nội dung trang:
+  - Form tạo đơn hàng: khách hàng/SĐT/địa chỉ, gắn dự án (tuỳ chọn, lấy từ `getProjects()`),
+    bảng hạng mục — mỗi dòng chọn từ **Bảng giá dịch vụ** (`priceCatalog`, tự điền tên/đơn
+    vị/đơn giá) hoặc nhập tay, số lượng × đơn giá tự tính thành tiền theo đúng pattern đã dùng ở
+    `pricing.html`. Giảm giá %/VAT % tự tính tổng cộng.
+  - Trạng thái đơn: Nháp / Đã xác nhận / Đã thanh toán / Đã huỷ.
+  - **Tự động liên kết vào Sổ tài chính công ty**: khi đơn hàng được đánh dấu "Đã thanh toán"
+    (qua nút "Đã thu tiền" hoặc chọn trạng thái "Đã thanh toán" rồi lưu), hệ thống tự tạo đúng 1
+    dòng `financeEntries` loại `revenue` (category "Đơn hàng", mô tả kèm số đơn hàng + tên
+    khách), lưu lại `linkedFinanceEntryId` trên đơn để không bao giờ tạo trùng lần 2 (idempotent,
+    giống hệt pattern "mark paid" của `receivables`). **Điểm khác biệt quan trọng**: bước ghi
+    `financeEntries` này gọi thẳng `add()` nội bộ trong `task-data.js`, KHÔNG qua
+    `canManageFinance` — vì đây là hành động tự động do nhân viên thường kích hoạt (tạo đơn +
+    xác nhận thu tiền), không phải thao tác trực tiếp trên trang Sổ tài chính (trang
+    `finance.html` vẫn khoá xem/sửa cho CEO như cũ, không bị ảnh hưởng).
+  - Xuất hoá đơn: **In PDF** (`window.print()` + CSS `@media print` chỉ hiện đúng 1 khối
+    `#odPrintInvoice` được đổ dữ liệu động theo từng đơn, ẩn toàn bộ UI còn lại — kỹ thuật khác
+    với `pricing.html` vì `orders.html` cần in hoá đơn của TỪNG đơn trong danh sách, không phải
+    in nguyên trang) và **Xuất Excel** (ExcelJS, mỗi đơn 1 file `Hoa-don-<sốĐH>.xlsx`).
+  - Dải thống kê đầu trang: tổng số đơn, số đơn chờ xử lý, tổng tiền đã thu, doanh thu tháng này
+    từ đơn hàng (tự tính từ danh sách `orders`, không cần gọi thêm API).
+- **Sheet mới `Đơn hàng` (`orders`)**: thêm vào `SHEETS`/`FIELD_MAP` + 4 action
+  `getOrders/addOrder/updateOrder/deleteOrder` trong `gsheets-api-v2.js`; thêm
+  `getOrders/createOrder/updateOrder/deleteOrder/markOrderPaid/canEditOrder` vào `task-data.js`.
+  Trường `items` (mảng hạng mục) round-trip qua Sheet dưới dạng JSON string tự động nhờ cơ chế
+  chung sẵn có trong `addData`/`getAllData` (giống cách cột `members` xử lý mảng), không cần
+  code thêm gì riêng cho việc này.
+  Đã deploy **Phiên bản 27** (cùng deployment/URL cũ) và test đầy đủ vòng đời qua Console: tạo 1
+  đơn hàng thật (trạng thái "paid") → xác nhận `getOrders` trả về 1 dòng VÀ `getFinanceEntries`
+  tự có thêm 1 dòng `revenue` liên kết đúng → xoá cả 2 → xác nhận cả hai đều về 0 dòng trên Sheet
+  thật, không để lại rác.
+- **Bài học thao tác Apps Script deploy (khác lần trước)**: dropdown "Phiên bản" trong hộp thoại
+  "Quản lý các tuỳ chọn triển khai" đổi vị trí các item mỗi lần mở lại (không cố định toạ độ) —
+  click theo toạ độ ước lượng ("Phiên bản mới" luôn là item trên cùng) 2 lần liên tiếp đều chọn
+  nhầm "Phiên bản hiện tại". Cách chắc chắn: dùng `find` (hoặc `read_page`) để lấy đúng `ref` của
+  option có text chính xác "Phiên bản mới" rồi click theo `ref`, không click theo toạ độ pixel
+  khi danh sách dropdown có thể xê dịch.
+
+## 0a. Trạng thái phiên trước (2026-09-09 — thêm "Sổ tay CFO" vào finance.html, vẫn còn đúng)
 
 **Việc mới nhất (2026-09-09, sau khi làm sidebar cho finance.html): thêm mục "Sổ tay CFO" — chẩn đoán tài chính chuẩn CFO (thanh khoản/đòn bẩy/hiệu quả/sinh lời + Altman Z-Score + 3 dòng tiền) ngay trong app, không phải chỉ là báo cáo rời.**
 - Bối cảnh: người dùng đưa BCTC công khai của 1 công ty niêm yết (Tập đoàn Xây dựng Hòa Bình,
@@ -54,7 +104,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   dropdown + chọn "Phiên bản mới" + bấm Triển khai vào 1 batch), luôn chụp màn hình xác nhận sau
   mỗi bước quan trọng.
 
-## 0a. Trạng thái phiên trước (2026-09-09 — Sổ tài chính có sidebar + Công nợ khách hàng, vẫn còn đúng)
+## 0b. Trạng thái phiên trước (2026-09-09 — Sổ tài chính có sidebar + Công nợ khách hàng, vẫn còn đúng)
 
 **Việc trước đó (2026-09-09, sau khi làm biểu đồ cho finance.html): tái cấu trúc `finance.html` thành sổ tay tài chính đầy đủ + thêm sheet Công nợ khách hàng.**
 - **Sheet mới `Công nợ khách hàng` (receivables)**: thêm vào `SHEETS`/`FIELD_MAP` + 4 action
@@ -92,7 +142,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   khai → Quản lý các tùy chọn triển khai → sửa deployment đang hoạt động → "Phiên bản mới" (không
   tạo deployment mới, giữ nguyên URL).
 
-## 0b. Trạng thái phiên trước (2026-09-09 — Bảng giá dịch vụ + Sổ tài chính bản đầu, vẫn còn đúng)
+## 0c. Trạng thái phiên trước (2026-09-09 — Bảng giá dịch vụ + Sổ tài chính bản đầu, vẫn còn đúng)
 
 **Việc trước đó (2026-09-09, sau fix SĐT/ngày sinh): 2 trang lớn mới + bài học quan trọng về deploy Apps Script.**
 - **`public/pages/pricing.html` (Bảng giá dịch vụ)**: danh mục đơn giá (admin/quản lý sửa, ai
@@ -132,7 +182,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   `getFinanceEntries` phản hồi đúng (không còn "Unknown action"), Sheet thật vẫn sạch (0 dòng) sau
   khi dọn hết dữ liệu test tạo ra lúc kiểm thử.
 
-## 0c. Trạng thái phiên trước (2026-09-09 — fix SĐT mất số 0 + lệch ngày sinh, vẫn còn đúng)
+## 0d. Trạng thái phiên trước (2026-09-09 — fix SĐT mất số 0 + lệch ngày sinh, vẫn còn đúng)
 
 **Việc mới nhất (2026-09-09, sau chống chấm công hộ): fix 2 bug đọc/ghi Google Sheets + sinh nhật.**
 - **Bug 1 — SĐT mất số 0 đầu**: `phone`/`cccd`/`bankAccount` là chuỗi toàn số nên bị Apps Script
@@ -164,7 +214,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   `Members.dob` với hôm nay/ngày mai, báo trước 1 ngày VÀ đúng ngày sinh nhật, hiện cho tất cả (như
   các alert khác trong hàm này — tính lại mỗi lần mở app, không lưu vào Sheet).
 
-## 0d. Trạng thái phiên trước (2026-09-09 — chống chấm công hộ bằng Device ID, vẫn còn đúng)
+## 0e. Trạng thái phiên trước (2026-09-09 — chống chấm công hộ bằng Device ID, vẫn còn đúng)
 
 **Việc mới nhất (2026-09-09): chống chấm công hộ bằng Device ID (tối đa 2 thiết bị/người).**
 - Web KHÔNG có cách nào đọc ID phần cứng thật (không API nào cho phép, mọi trình duyệt cố ý chặn
@@ -191,7 +241,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   không phải xác thực tuyệt đối. Người dùng đã hiểu và chọn hướng này (so với 2 lựa chọn khác:
   chặn cứng hoàn toàn, hoặc giữ phương án chụp ảnh selfie).
 
-## 0e. Trạng thái phiên trước (2026-09-09, đổi cổng đăng nhập sang cookie-auth — vẫn còn đúng)
+## 0f. Trạng thái phiên trước (2026-09-09, đổi cổng đăng nhập sang cookie-auth — vẫn còn đúng)
 
 **Việc đã làm (2026-09-09): thay Basic Auth bằng cookie-auth (Netlify Edge Function + Blobs).**
 - Xoá `netlify/edge-functions/basic-auth.js` (HTTP Basic Auth cũ, biến env `AUTH_USERS`), thay bằng
@@ -228,7 +278,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   theo từng thành viên đã có (`public/js/auth.js`, email + mật khẩu riêng, phân quyền `roleLevel`)
   — cookie-auth chỉ là lớp chặn ngoài cùng (site-wide gate), không thay thế luồng đăng nhập nội bộ.
 
-## 0f. Trạng thái trước đó (2026-09-08, buổi tối — đã KHÔI PHỤC kết nối Sheet, vẫn còn đúng, đọc nếu cần)
+## 0g. Trạng thái trước đó (2026-09-08, buổi tối — đã KHÔI PHỤC kết nối Sheet, vẫn còn đúng, đọc nếu cần)
 
 **Kiến trúc tóm tắt:** Web tĩnh (HTML/CSS/JS thuần, không framework) trong `public/`, chạy local
 qua Node/Express (`server.js`), deploy Netlify cho production. Dữ liệu sống trên 1 Google Sheet
