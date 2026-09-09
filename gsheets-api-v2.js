@@ -17,7 +17,8 @@ const SHEETS = {
   commissionRates: 'Mức hoa hồng',
   priceCatalog: 'Bảng giá dịch vụ',
   financeEntries: 'Tài chính công ty',
-  receivables: 'Công nợ khách hàng'
+  receivables: 'Công nợ khách hàng',
+  bsSnapshots: 'Chỉ số cân đối kế toán'
 };
 
 // [Vietnamese header on the Sheet, internal English key used by client JS].
@@ -116,6 +117,19 @@ const FIELD_MAP = {
     ['Mã CN', 'id'], ['Khách hàng', 'clientName'], ['Mã dự án', 'projectId'], ['Mô tả', 'description'],
     ['Số tiền', 'amount'], ['Hạn thanh toán', 'dueDate'], ['Trạng thái', 'status'], ['Ghi chú', 'note'],
     ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
+  ],
+  // Ảnh chụp bảng cân đối kế toán theo năm, nhập tay 1 lần/năm — phục vụ
+  // riêng "Sổ tay CFO" trong finance.html (thanh khoản, đòn bẩy, Altman
+  // Z-score...) vì các khoản mục này không nằm trong sổ giao dịch
+  // financeEntries. Mỗi năm chỉ có 1 dòng (khoá theo `year`, upsert phía
+  // client trong task-data.js).
+  bsSnapshots: [
+    ['Mã', 'id'], ['Năm', 'year'], ['Tài sản ngắn hạn', 'shortTermAssets'], ['Hàng tồn kho', 'inventory'],
+    ['Tổng tài sản', 'totalAssets'], ['Nợ ngắn hạn', 'shortTermLiabilities'], ['Vay ngắn hạn', 'shortTermDebt'],
+    ['Vay dài hạn', 'longTermDebt'], ['Tổng nợ phải trả', 'totalLiabilities'], ['Vốn chủ sở hữu', 'equity'],
+    ['Chi phí lãi vay', 'interestExpense'], ['Chi mua sắm TSCĐ', 'capex'], ['Vốn hóa thị trường', 'marketCap'],
+    ['LNST lũy kế', 'retainedEarnings'], ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'],
+    ['Ngày cập nhật', 'updatedAt']
   ]
 };
 
@@ -310,6 +324,14 @@ function handleRequest(e) {
       result = updateData(ss, SHEETS.receivables, params.id, JSON.parse(params.data));
     } else if (action === 'deleteReceivable') {
       result = deleteData(ss, SHEETS.receivables, params.id);
+    } else if (action === 'getBsSnapshots') {
+      result = getAllData(ss, SHEETS.bsSnapshots);
+    } else if (action === 'addBsSnapshot') {
+      result = addData(ss, SHEETS.bsSnapshots, JSON.parse(params.data));
+    } else if (action === 'updateBsSnapshot') {
+      result = updateData(ss, SHEETS.bsSnapshots, params.id, JSON.parse(params.data));
+    } else if (action === 'deleteBsSnapshot') {
+      result = deleteData(ss, SHEETS.bsSnapshots, params.id);
     } else {
       result = { error: 'Unknown action: ' + action };
     }

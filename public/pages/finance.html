@@ -144,6 +144,11 @@
     .fn-status-badge.unpaid { color: var(--fn-bronze); border-color: color-mix(in srgb, var(--fn-bronze) 40%, transparent); background: color-mix(in srgb, var(--fn-bronze) 10%, transparent); }
     .fn-status-badge.paid { color: var(--fn-green); border-color: color-mix(in srgb, var(--fn-green) 40%, transparent); background: color-mix(in srgb, var(--fn-green) 10%, transparent); }
     .fn-status-badge.overdue { color: var(--fn-red); border-color: color-mix(in srgb, var(--fn-red) 40%, transparent); background: color-mix(in srgb, var(--fn-red) 10%, transparent); }
+    .fn-verdict { font-size: 0.6875rem; font-weight: 600; padding: 3px 10px; border-radius: 20px; white-space: nowrap; border: 1px solid; }
+    .fn-verdict.good { color: var(--fn-green); border-color: color-mix(in srgb, var(--fn-green) 40%, transparent); background: color-mix(in srgb, var(--fn-green) 10%, transparent); }
+    .fn-verdict.warn { color: var(--fn-bronze); border-color: color-mix(in srgb, var(--fn-bronze) 40%, transparent); background: color-mix(in srgb, var(--fn-bronze) 10%, transparent); }
+    .fn-verdict.bad { color: var(--fn-red); border-color: color-mix(in srgb, var(--fn-red) 40%, transparent); background: color-mix(in srgb, var(--fn-red) 10%, transparent); }
+    .fn-formula-cell { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--fn-muted); }
     .fn-empty { padding: 32px 24px; text-align: center; color: var(--fn-muted); font-size: 0.875rem; }
 
     /* P&L statement */
@@ -286,7 +291,8 @@
       report: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>',
       forecast: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>',
       health: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/><path d="M3.5 5.5A5 5 0 0 1 12 4a5 5 0 0 1 8.5 3.5"/></svg>',
-      risk: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>'
+      risk: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>',
+      cfo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 0 1 4 4v1a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"/><path d="M4 21v-2a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v2"/><path d="M9 12.5l2 2 4-4.5"/></svg>'
     };
 
     var NAV_GROUPS = [
@@ -304,6 +310,7 @@
       ] },
       { label: 'Phân tích', items: [
         { id: 'health', label: 'Sức khỏe tài chính', icon: ICONS.health },
+        { id: 'cfo', label: 'Sổ tay CFO', icon: ICONS.cfo },
         { id: 'risk', label: 'Rủi ro', icon: ICONS.risk }
       ] }
     ];
@@ -444,6 +451,50 @@
               '<div class="fn-card"><div class="fn-card-head"><div class="fn-card-title">Khuyến nghị & định hướng</div></div><div class="fn-advice-list" id="fnAdviceList"></div></div>' +
             '</div>' +
 
+            '<div class="fn-section" id="sec-cfo">' +
+              '<div class="fn-section-head"><div class="fn-section-title">Sổ tay CFO</div><div class="fn-section-desc">Chẩn đoán tài chính toàn diện theo chuẩn CFO: thanh khoản, đòn bẩy, hiệu quả, sinh lời, Altman Z-Score và 3 dòng tiền — nhập bổ sung số liệu bảng cân đối kế toán theo năm để tính đủ.</div></div>' +
+
+              '<div class="fn-card">' +
+                '<div class="fn-card-head"><div><div class="fn-card-title">Số liệu bảng cân đối kế toán</div><div class="fn-card-desc">Nhập 1 lần cho mỗi năm — sổ giao dịch chỉ có dòng tiền, không có các khoản mục này.</div></div>' +
+                  '<select class="fn-select" id="fnCfoYear" style="width:120px;"></select>' +
+                '</div>' +
+                '<div class="fn-form-grid" style="grid-template-columns:repeat(4,1fr);">' +
+                  '<div><span class="fn-field-label">Tài sản ngắn hạn</span><input type="number" class="fn-input mono" id="fnBsShortTermAssets" value="0"></div>' +
+                  '<div><span class="fn-field-label">Hàng tồn kho</span><input type="number" class="fn-input mono" id="fnBsInventory" value="0"></div>' +
+                  '<div><span class="fn-field-label">Tổng tài sản</span><input type="number" class="fn-input mono" id="fnBsTotalAssets" value="0"></div>' +
+                  '<div><span class="fn-field-label">Nợ ngắn hạn (tổng)</span><input type="number" class="fn-input mono" id="fnBsShortTermLiabilities" value="0"></div>' +
+                  '<div><span class="fn-field-label">— trong đó Vay ngắn hạn</span><input type="number" class="fn-input mono" id="fnBsShortTermDebt" value="0"></div>' +
+                  '<div><span class="fn-field-label">Vay dài hạn</span><input type="number" class="fn-input mono" id="fnBsLongTermDebt" value="0"></div>' +
+                  '<div><span class="fn-field-label">Tổng nợ phải trả</span><input type="number" class="fn-input mono" id="fnBsTotalLiabilities" value="0"></div>' +
+                  '<div><span class="fn-field-label">Vốn chủ sở hữu</span><input type="number" class="fn-input mono" id="fnBsEquity" value="0"></div>' +
+                  '<div><span class="fn-field-label">Chi phí lãi vay trong năm</span><input type="number" class="fn-input mono" id="fnBsInterestExpense" value="0"></div>' +
+                  '<div><span class="fn-field-label">Chi mua sắm TSCĐ (CAPEX)</span><input type="number" class="fn-input mono" id="fnBsCapex" value="0"></div>' +
+                  '<div><span class="fn-field-label">Vốn hóa thị trường (ước tính)</span><input type="number" class="fn-input mono" id="fnBsMarketCap" value="0"></div>' +
+                  '<div><span class="fn-field-label">LNST lũy kế (chưa phân phối)</span><input type="number" class="fn-input mono" id="fnBsRetainedEarnings" value="0"></div>' +
+                  '<div style="grid-column:span 4;"><button class="fn-btn fn-btn-primary" id="fnBsSaveBtn">Lưu số liệu năm này</button></div>' +
+                '</div>' +
+              '</div>' +
+
+              '<h3 style="font-size:1rem;font-weight:700;margin:4px 0 12px;">1. Bức tranh tài chính tổng quan</h3>' +
+              '<div class="fn-summary-grid" id="fnCfoOverviewGrid"></div>' +
+              '<div class="fn-card"><div class="fn-card-head"><div class="fn-card-title">Đọc nhanh</div></div><div style="padding:16px 24px;font-size:0.875rem;line-height:1.6;" id="fnCfoOverviewNote"></div></div>' +
+
+              '<h3 style="font-size:1rem;font-weight:700;margin:24px 0 12px;">2. Chẩn đoán sức khỏe tài chính</h3>' +
+              '<div class="fn-card"><div class="fn-card-head"><div class="fn-card-title">Nhóm thanh khoản</div></div><table class="fn-table"><thead><tr><th>Chỉ số</th><th>Công thức</th><th>Số liệu thay vào</th><th>Kết quả</th><th>Đánh giá</th></tr></thead><tbody id="fnCfoLiquidityRows"></tbody></table></div>' +
+              '<div class="fn-card"><div class="fn-card-head"><div class="fn-card-title">Nhóm đòn bẩy & cấu trúc vốn</div></div><table class="fn-table"><thead><tr><th>Chỉ số</th><th>Công thức</th><th>Số liệu thay vào</th><th>Kết quả</th><th>Đánh giá</th></tr></thead><tbody id="fnCfoLeverageRows"></tbody></table></div>' +
+              '<div class="fn-card"><div class="fn-card-head"><div class="fn-card-title">Nhóm hiệu quả hoạt động</div></div><table class="fn-table"><thead><tr><th>Chỉ số</th><th>Công thức</th><th>Số liệu thay vào</th><th>Kết quả</th></tr></thead><tbody id="fnCfoEfficiencyRows"></tbody></table></div>' +
+              '<div class="fn-card"><div class="fn-card-head"><div class="fn-card-title">Nhóm sinh lời</div></div><table class="fn-table"><thead><tr><th>Chỉ số</th><th>Công thức</th><th>Số liệu thay vào</th><th>Kết quả</th></tr></thead><tbody id="fnCfoProfitRows"></tbody></table></div>' +
+
+              '<h3 style="font-size:1rem;font-weight:700;margin:24px 0 12px;">3. Đánh giá rủi ro phá sản — Altman Z-Score</h3>' +
+              '<div class="fn-card" id="fnCfoZscore"></div>' +
+
+              '<h3 style="font-size:1rem;font-weight:700;margin:24px 0 12px;">4. Phân tích dòng tiền</h3>' +
+              '<div class="fn-card"><div class="fn-card-head"><div class="fn-card-title">3 dòng tiền &amp; dòng tiền tự do (FCF)</div></div><table class="fn-table"><thead><tr><th>Dòng tiền</th><th>Công thức / diễn giải</th><th>Kết quả năm</th></tr></thead><tbody id="fnCfoCashflowRows"></tbody></table></div>' +
+
+              '<h3 style="font-size:1rem;font-weight:700;margin:24px 0 12px;">5. Tư vấn chiến lược từ CFO</h3>' +
+              '<div class="fn-card"><div class="fn-card-head"><div class="fn-card-title">Khuyến nghị hành động</div></div><div class="fn-advice-list" id="fnCfoAdviceList"></div></div>' +
+            '</div>' +
+
             '<div class="fn-section" id="sec-risk">' +
               '<div class="fn-section-head"><div class="fn-section-title">Rủi ro</div><div class="fn-section-desc">Toàn bộ điểm cần lưu ý: dòng tiền, vay nợ, công nợ quá hạn, cơ cấu chi phí.</div></div>' +
               '<div class="fn-card"><div class="fn-card-head"><div class="fn-card-title">Danh sách rủi ro</div></div><div class="fn-attention-list" id="fnRiskList"></div></div>' +
@@ -497,6 +548,34 @@
 
       document.getElementById('fnExportBtn').addEventListener('click', exportReport);
 
+      var yearSelect = document.getElementById('fnCfoYear');
+      var curYear = new Date().getFullYear();
+      var yearsHtml = '';
+      for (var y = curYear; y >= curYear - 5; y--) { yearsHtml += '<option value="' + y + '">' + y + '</option>'; }
+      yearSelect.innerHTML = yearsHtml;
+      yearSelect.addEventListener('change', function () { loadBsSnapshotIntoForm(); renderAll(); });
+
+      document.getElementById('fnBsSaveBtn').addEventListener('click', function () {
+        var year = document.getElementById('fnCfoYear').value;
+        var data = {
+          shortTermAssets: parseFloat(document.getElementById('fnBsShortTermAssets').value) || 0,
+          inventory: parseFloat(document.getElementById('fnBsInventory').value) || 0,
+          totalAssets: parseFloat(document.getElementById('fnBsTotalAssets').value) || 0,
+          shortTermLiabilities: parseFloat(document.getElementById('fnBsShortTermLiabilities').value) || 0,
+          shortTermDebt: parseFloat(document.getElementById('fnBsShortTermDebt').value) || 0,
+          longTermDebt: parseFloat(document.getElementById('fnBsLongTermDebt').value) || 0,
+          totalLiabilities: parseFloat(document.getElementById('fnBsTotalLiabilities').value) || 0,
+          equity: parseFloat(document.getElementById('fnBsEquity').value) || 0,
+          interestExpense: parseFloat(document.getElementById('fnBsInterestExpense').value) || 0,
+          capex: parseFloat(document.getElementById('fnBsCapex').value) || 0,
+          marketCap: parseFloat(document.getElementById('fnBsMarketCap').value) || 0,
+          retainedEarnings: parseFloat(document.getElementById('fnBsRetainedEarnings').value) || 0
+        };
+        TaskManager.upsertBsSnapshot(year, data, user);
+        renderAll();
+      });
+      loadBsSnapshotIntoForm();
+
       document.getElementById('fnSidebar').addEventListener('click', function (e) {
         var btn = e.target.closest('[data-nav]');
         if (!btn) return;
@@ -528,7 +607,28 @@
       renderCashflowForecast(all);
       renderDebt(all);
       renderHealth(all);
+      renderCfoHandbook(all);
       renderRisk(all, monthEntries, month);
+    }
+
+    function loadBsSnapshotIntoForm() {
+      var year = document.getElementById('fnCfoYear').value;
+      var snap = TaskManager.getBsSnapshotByYear(year);
+      var fields = ['shortTermAssets', 'inventory', 'totalAssets', 'shortTermLiabilities', 'shortTermDebt', 'longTermDebt', 'totalLiabilities', 'equity', 'interestExpense', 'capex', 'marketCap', 'retainedEarnings'];
+      var idMap = {
+        shortTermAssets: 'fnBsShortTermAssets', inventory: 'fnBsInventory', totalAssets: 'fnBsTotalAssets',
+        shortTermLiabilities: 'fnBsShortTermLiabilities', shortTermDebt: 'fnBsShortTermDebt', longTermDebt: 'fnBsLongTermDebt',
+        totalLiabilities: 'fnBsTotalLiabilities', equity: 'fnBsEquity', interestExpense: 'fnBsInterestExpense',
+        capex: 'fnBsCapex', marketCap: 'fnBsMarketCap', retainedEarnings: 'fnBsRetainedEarnings'
+      };
+      fields.forEach(function (f) { document.getElementById(idMap[f]).value = (snap && snap[f]) || 0; });
+      if (!snap) {
+        // Chưa có ảnh chụp năm này — gợi ý sẵn LNST lũy kế tính từ toàn bộ lịch sử sổ giao dịch tới hết năm đó, CEO có thể sửa lại.
+        var all = TaskManager.getFinanceEntries();
+        var upToYear = all.filter(function (e) { return (e.month || '').slice(0, 4) <= String(year); });
+        var suggested = sumByType(upToYear, 'revenue') - sumByType(upToYear, 'expense') - sumByType(upToYear, 'bonus') + sumByType(upToYear, 'penalty');
+        document.getElementById('fnBsRetainedEarnings').value = Math.round(suggested);
+      }
     }
 
     // ============================== OVERVIEW ==============================
@@ -987,6 +1087,163 @@
         advice.push({ icon: ICONS.idle, cls: 'bronze', title: 'Nên tăng quỹ dự phòng', desc: 'Dự trữ tiền mặt dưới 3 tháng chi phí hoạt động — nên giữ lại một phần lợi nhuận các tháng lãi để làm quỹ đệm.' });
       }
       document.getElementById('fnAdviceList').innerHTML = advice.map(function (a) {
+        return '<div class="fn-advice-row">' +
+          '<div class="fn-advice-icon" style="background:color-mix(in srgb, var(--fn-' + a.cls + ') 14%, transparent);color:var(--fn-' + a.cls + ');">' + a.icon + '</div>' +
+          '<div><div class="fn-advice-title">' + a.title + '</div><div class="fn-advice-desc">' + a.desc + '</div></div>' +
+        '</div>';
+      }).join('');
+    }
+
+    // ============================== SỔ TAY CFO ==============================
+    function div(a, b) { return b ? a / b : 0; }
+    function pct1(n) { return (n * 100).toFixed(1) + '%'; }
+    function num2(n) { return (Number(n) || 0).toFixed(2); }
+    function verdictTag(cls, text) { return '<span class="fn-verdict ' + cls + '">' + text + '</span>'; }
+
+    function renderCfoHandbook(all) {
+      var yearSelect = document.getElementById('fnCfoYear');
+      if (!yearSelect) return;
+      var year = yearSelect.value || String(new Date().getFullYear());
+      var snap = TaskManager.getBsSnapshotByYear(year) || {};
+      var f = function (k) { return Number(snap[k]) || 0; };
+
+      var shortTermAssets = f('shortTermAssets'), inventory = f('inventory'), totalAssets = f('totalAssets'),
+        shortTermLiabilities = f('shortTermLiabilities'), shortTermDebt = f('shortTermDebt'), longTermDebt = f('longTermDebt'),
+        totalLiabilities = f('totalLiabilities'), equity = f('equity'), interestExpense = f('interestExpense'),
+        capex = f('capex'), marketCapInput = f('marketCap'), retainedEarnings = f('retainedEarnings');
+      var marketCap = marketCapInput > 0 ? marketCapInput : equity;
+
+      var yearEntries = all.filter(function (e) { return (e.month || '').slice(0, 4) === String(year); });
+      var revenue = sumByType(yearEntries, 'revenue');
+      var cogs = sumByType(yearEntries, 'expense'); // Giá vốn hàng bán ước tính = tổng chi phí ghi nhận trong sổ giao dịch
+      var bonus = sumByType(yearEntries, 'bonus');
+      var penalty = sumByType(yearEntries, 'penalty');
+      var loanY = sumByType(yearEntries, 'loan');
+      var repaymentY = sumByType(yearEntries, 'repayment');
+      var grossProfit = revenue - cogs;
+      var ebit = grossProfit - bonus + penalty; // trước lãi vay & thuế
+      var pnlBeforeTax = ebit - interestExpense; // LNTT sau lãi vay
+      var netProfit = pnlBeforeTax; // LNST — công ty nhỏ, chưa tách thuế TNDN riêng trong sổ
+
+      var cashNow = all.reduce(function (sum, e) {
+        var t = TYPES[e.type];
+        return sum + (t ? t.cashSign : 0) * (Number(e.amount) || 0);
+      }, 0);
+      var receivablesOutstanding = (TaskManager.getReceivables() || [])
+        .filter(function (r) { return r.status !== 'paid'; })
+        .reduce(function (s, r) { return s + (Number(r.amount) || 0); }, 0);
+
+      // ---- 1. Bức tranh tổng quan ----
+      document.getElementById('fnCfoOverviewGrid').innerHTML =
+        summaryCard('Tổng tài sản (' + year + ')', totalAssets, 'neutral', ICONS.overview, 'bronze', 'Nhập tay') +
+        summaryCard('Vốn chủ sở hữu', equity, 'neutral', ICONS.debt, 'green', 'Nhập tay') +
+        summaryCard('Doanh thu thuần ' + year, revenue, 'pos', ICONS.pnl, 'bronze', 'Từ sổ giao dịch') +
+        summaryCard('Lợi nhuận sau thuế ' + year, netProfit, netProfit >= 0 ? 'pos' : 'neg', ICONS.pnl, netProfit >= 0 ? 'green' : 'red', 'Ước tính');
+
+      var overviewNotes = [];
+      if (totalAssets === 0 || shortTermLiabilities === 0) {
+        overviewNotes.push('Chưa nhập đủ số liệu bảng cân đối kế toán năm ' + year + ' — điền vào biểu mẫu phía trên để các nhóm chỉ số bên dưới tính được chính xác.');
+      }
+      overviewNotes.push('Doanh thu và lợi nhuận lấy trực tiếp từ Sổ giao dịch (mục Giao dịch); Giá vốn hàng bán được ước tính bằng tổng chi phí đã ghi nhận trong năm do sổ chưa tách riêng giá vốn/chi phí quản lý.');
+      if (netProfit < 0) {
+        overviewNotes.push('Công ty đang lỗ trong năm ' + year + ' — nguyên nhân cốt lõi cần soi vào biên lợi nhuận gộp (mục 2.4) và tỷ lệ chi phí lãi vay/EBIT (mục 2.2) trước khi kết luận do vận hành hay do cấu trúc vốn.');
+      }
+      if (shortTermLiabilities > 0 && shortTermAssets > 0 && shortTermAssets / shortTermLiabilities < 1) {
+        overviewNotes.push('Tài sản ngắn hạn đang thấp hơn nợ ngắn hạn — đây thường là nguyên nhân cốt lõi dẫn đến nghi ngờ khả năng hoạt động liên tục nếu công ty có kiểm toán độc lập.');
+      }
+      document.getElementById('fnCfoOverviewNote').innerHTML = overviewNotes.map(function (t) { return '<p style="margin:0 0 10px;">' + t + '</p>'; }).join('');
+
+      // ---- 2.1 Thanh khoản ----
+      var currentRatio = div(shortTermAssets, shortTermLiabilities);
+      var quickRatio = div(shortTermAssets - inventory, shortTermLiabilities);
+      var cashRatioV = div(cashNow, shortTermLiabilities);
+      document.getElementById('fnCfoLiquidityRows').innerHTML =
+        '<tr><td>Hệ số thanh toán hiện hành</td><td class="fn-formula-cell">TSNH / Nợ NH</td><td class="fn-formula-cell">' + fmt(shortTermAssets) + ' / ' + fmt(shortTermLiabilities) + '</td><td class="fn-amount">' + num2(currentRatio) + '</td><td>' + verdictTag(currentRatio >= 2 ? 'good' : currentRatio < 1 ? 'bad' : 'warn', currentRatio >= 2 ? 'Tốt' : currentRatio < 1 ? 'Báo động' : 'Trung bình') + '</td></tr>' +
+        '<tr><td>Hệ số thanh toán nhanh</td><td class="fn-formula-cell">(TSNH − Tồn kho) / Nợ NH</td><td class="fn-formula-cell">(' + fmt(shortTermAssets) + ' − ' + fmt(inventory) + ') / ' + fmt(shortTermLiabilities) + '</td><td class="fn-amount">' + num2(quickRatio) + '</td><td>' + verdictTag(quickRatio >= 1 ? 'good' : quickRatio < 0.5 ? 'bad' : 'warn', quickRatio >= 1 ? 'Lành mạnh' : quickRatio < 0.5 ? 'Cực kỳ rủi ro' : 'Trung bình') + '</td></tr>' +
+        '<tr><td>Hệ số thanh toán tiền mặt</td><td class="fn-formula-cell">(Tiền + Tương đương tiền) / Nợ NH</td><td class="fn-formula-cell">' + fmt(cashNow) + ' / ' + fmt(shortTermLiabilities) + '</td><td class="fn-amount">' + num2(cashRatioV) + '</td><td>' + verdictTag(cashRatioV >= 0.2 ? 'good' : cashRatioV < 0.1 ? 'bad' : 'warn', cashRatioV >= 0.2 ? 'Đệm tốt' : cashRatioV < 0.1 ? 'Rất mỏng' : 'Trung bình') + '</td></tr>';
+
+      // ---- 2.2 Đòn bẩy ----
+      var debtToAssets = div(totalLiabilities, totalAssets);
+      var debtToEquity = div(shortTermDebt + longTermDebt, equity);
+      var interestCoverage = interestExpense > 0 ? div(pnlBeforeTax + interestExpense, interestExpense) : null;
+      document.getElementById('fnCfoLeverageRows').innerHTML =
+        '<tr><td>Nợ trên Tổng tài sản</td><td class="fn-formula-cell">Tổng nợ phải trả / Tổng TS</td><td class="fn-formula-cell">' + fmt(totalLiabilities) + ' / ' + fmt(totalAssets) + '</td><td class="fn-amount">' + pct1(debtToAssets) + '</td><td>' + verdictTag(debtToAssets <= 0.65 ? 'good' : debtToAssets > 0.8 ? 'bad' : 'warn', debtToAssets <= 0.65 ? 'An toàn' : debtToAssets > 0.8 ? 'Báo động đỏ' : 'Trung bình') + '</td></tr>' +
+        '<tr><td>Nợ vay trên Vốn chủ sở hữu</td><td class="fn-formula-cell">(Vay NH + Vay DH) / VCSH</td><td class="fn-formula-cell">(' + fmt(shortTermDebt) + ' + ' + fmt(longTermDebt) + ') / ' + fmt(equity) + '</td><td class="fn-amount">' + num2(debtToEquity) + ' lần</td><td>' + verdictTag(debtToEquity <= 1 ? 'good' : debtToEquity > 3 ? 'bad' : 'warn', debtToEquity <= 1 ? 'Thận trọng (tham khảo)' : debtToEquity > 3 ? 'Rủi ro cao (tham khảo)' : 'Trung bình (tham khảo)') + '</td></tr>' +
+        '<tr><td>Hệ số chi trả lãi vay</td><td class="fn-formula-cell">(LNTT + Chi phí lãi vay) / Chi phí lãi vay</td><td class="fn-formula-cell">(' + fmt(pnlBeforeTax) + ' + ' + fmt(interestExpense) + ') / ' + fmt(interestExpense) + '</td><td class="fn-amount">' + (interestCoverage === null ? 'N/A (chưa có lãi vay)' : num2(interestCoverage) + ' lần') + '</td><td>' + (interestCoverage === null ? '' : verdictTag(interestCoverage >= 1.5 ? 'good' : interestCoverage < 1 ? 'bad' : 'warn', interestCoverage >= 1.5 ? 'An toàn (tham khảo)' : interestCoverage < 1 ? 'Không đủ trả lãi (tham khảo)' : 'Sát ngưỡng (tham khảo)')) + '</td></tr>';
+
+      // ---- 2.3 Hiệu quả hoạt động ----
+      var dso = revenue > 0 ? div(receivablesOutstanding * 365, revenue) : 0;
+      var dio = cogs > 0 ? div(inventory * 365, cogs) : 0;
+      document.getElementById('fnCfoEfficiencyRows').innerHTML =
+        '<tr><td>Số ngày thu tiền bình quân (DSO)</td><td class="fn-formula-cell">(Phải thu NH × 365) / DTT</td><td class="fn-formula-cell">(' + fmt(receivablesOutstanding) + ' × 365) / ' + fmt(revenue) + '</td><td class="fn-amount">' + Math.round(dso) + ' ngày</td></tr>' +
+        '<tr><td>Số ngày tồn kho bình quân (DIO)</td><td class="fn-formula-cell">(Hàng tồn kho × 365) / GVHB</td><td class="fn-formula-cell">(' + fmt(inventory) + ' × 365) / ' + fmt(cogs) + '</td><td class="fn-amount">' + Math.round(dio) + ' ngày</td></tr>';
+
+      // ---- 2.4 Sinh lời ----
+      var gpm = div(grossProfit, revenue);
+      var npm = div(netProfit, revenue);
+      var roa = div(netProfit, totalAssets);
+      var roe = div(netProfit, equity);
+      document.getElementById('fnCfoProfitRows').innerHTML =
+        '<tr><td>Biên lợi nhuận gộp (GPM)</td><td class="fn-formula-cell">LN gộp / DTT</td><td class="fn-formula-cell">' + fmt(grossProfit) + ' / ' + fmt(revenue) + '</td><td class="fn-amount ' + (gpm >= 0 ? 'pos' : 'neg') + '">' + pct1(gpm) + '</td></tr>' +
+        '<tr><td>Biên lợi nhuận ròng (NPM)</td><td class="fn-formula-cell">LNST / DTT</td><td class="fn-formula-cell">' + fmt(netProfit) + ' / ' + fmt(revenue) + '</td><td class="fn-amount ' + (npm >= 0 ? 'pos' : 'neg') + '">' + pct1(npm) + '</td></tr>' +
+        '<tr><td>ROA</td><td class="fn-formula-cell">LNST / Tổng tài sản</td><td class="fn-formula-cell">' + fmt(netProfit) + ' / ' + fmt(totalAssets) + '</td><td class="fn-amount ' + (roa >= 0 ? 'pos' : 'neg') + '">' + pct1(roa) + '</td></tr>' +
+        '<tr><td>ROE</td><td class="fn-formula-cell">LNST / Vốn chủ sở hữu</td><td class="fn-formula-cell">' + fmt(netProfit) + ' / ' + fmt(equity) + '</td><td class="fn-amount ' + (roe >= 0 ? 'pos' : 'neg') + '">' + pct1(roe) + '</td></tr>';
+
+      // ---- 3. Altman Z-Score ----
+      var X1 = div(shortTermAssets - shortTermLiabilities, totalAssets);
+      var X2 = div(retainedEarnings, totalAssets);
+      var X3 = div(ebit, totalAssets);
+      var X4 = div(marketCap, totalLiabilities);
+      var X5 = div(revenue, totalAssets);
+      var Z = 1.2 * X1 + 1.4 * X2 + 3.3 * X3 + 0.6 * X4 + 1.0 * X5;
+      var zCls = Z > 2.99 ? 'good' : Z < 1.81 ? 'bad' : 'warn';
+      var zText = Z > 2.99 ? 'An toàn' : Z < 1.81 ? 'Nguy hiểm' : 'Cảnh báo';
+      document.getElementById('fnCfoZscore').innerHTML =
+        '<div class="fn-card-head"><div class="fn-card-title">Kết quả Z-Score năm ' + year + '</div>' + verdictTag(zCls, zText + ' · Z = ' + num2(Z)) + '</div>' +
+        '<table class="fn-table"><thead><tr><th>Biến số</th><th>Công thức</th><th>Số liệu thay vào</th><th>Kết quả</th></tr></thead><tbody>' +
+        '<tr><td>X1 — Vốn lưu động / Tổng TS</td><td class="fn-formula-cell">(TSNH − Nợ NH) / Tổng TS</td><td class="fn-formula-cell">(' + fmt(shortTermAssets) + ' − ' + fmt(shortTermLiabilities) + ') / ' + fmt(totalAssets) + '</td><td class="fn-amount">' + num2(X1) + '</td></tr>' +
+        '<tr><td>X2 — LNST lũy kế / Tổng TS</td><td class="fn-formula-cell">LNST chưa phân phối / Tổng TS</td><td class="fn-formula-cell">' + fmt(retainedEarnings) + ' / ' + fmt(totalAssets) + '</td><td class="fn-amount">' + num2(X2) + '</td></tr>' +
+        '<tr><td>X3 — EBIT / Tổng TS</td><td class="fn-formula-cell">(LNTT + Chi phí lãi vay) / Tổng TS</td><td class="fn-formula-cell">' + fmt(ebit) + ' / ' + fmt(totalAssets) + '</td><td class="fn-amount">' + num2(X3) + '</td></tr>' +
+        '<tr><td>X4 — Vốn hóa / Tổng nợ phải trả</td><td class="fn-formula-cell">Vốn hóa thị trường / Tổng nợ phải trả</td><td class="fn-formula-cell">' + fmt(marketCap) + (marketCapInput <= 0 ? ' (mặc định = VCSH sổ sách vì công ty chưa niêm yết)' : '') + ' / ' + fmt(totalLiabilities) + '</td><td class="fn-amount">' + num2(X4) + '</td></tr>' +
+        '<tr><td>X5 — Vòng quay tổng tài sản</td><td class="fn-formula-cell">DTT / Tổng TS</td><td class="fn-formula-cell">' + fmt(revenue) + ' / ' + fmt(totalAssets) + '</td><td class="fn-amount">' + num2(X5) + '</td></tr>' +
+        '<tr class="total"><td>Z = 1,2(X1) + 1,4(X2) + 3,3(X3) + 0,6(X4) + 1,0(X5)</td><td></td><td></td><td class="fn-amount">' + num2(Z) + '</td></tr>' +
+        '</tbody></table>';
+
+      // ---- 4. Dòng tiền ----
+      var cfo = revenue - cogs - bonus + penalty;
+      var cfi = -capex;
+      var cff = loanY - repaymentY;
+      var fcf = cfo - capex;
+      document.getElementById('fnCfoCashflowRows').innerHTML =
+        '<tr><td>HĐ Kinh doanh (CFO)</td><td class="fn-formula-cell">Doanh thu − Giá vốn − Thưởng + Phạt (từ sổ giao dịch)</td><td class="fn-amount ' + (cfo >= 0 ? 'pos' : 'neg') + '">' + fmt(cfo) + '</td></tr>' +
+        '<tr><td>HĐ Đầu tư (CFI)</td><td class="fn-formula-cell">− CAPEX (chi mua sắm TSCĐ đã nhập)</td><td class="fn-amount ' + (cfi >= 0 ? 'pos' : 'neg') + '">' + fmt(cfi) + '</td></tr>' +
+        '<tr><td>HĐ Tài chính (CFF)</td><td class="fn-formula-cell">Tiền vay nhận − Tiền trả nợ gốc (từ sổ giao dịch)</td><td class="fn-amount ' + (cff >= 0 ? 'pos' : 'neg') + '">' + fmt(cff) + '</td></tr>' +
+        '<tr class="total"><td>Dòng tiền tự do (FCF)</td><td class="fn-formula-cell">CFO − CAPEX</td><td class="fn-amount ' + (fcf >= 0 ? 'pos' : 'neg') + '">' + fmt(fcf) + '</td></tr>';
+
+      // ---- 5. Tư vấn chiến lược ----
+      var advice = [];
+      if (currentRatio > 0 && currentRatio < 1) {
+        advice.push({ icon: ICONS.warn, cls: 'red', title: 'Tái cấu trúc vốn lưu động khẩn cấp', desc: 'Hệ số thanh toán hiện hành dưới 1 — tài sản ngắn hạn không đủ che nợ ngắn hạn. Ưu tiên đàm phán giãn nợ nhà cung cấp/ngân hàng và hạn chế nhận thầu mới cần ứng vốn lớn cho tới khi tỷ lệ này về trên 1,0.' });
+      }
+      if (dso > 90) {
+        advice.push({ icon: ICONS.customers, cls: 'bronze', title: 'Siết công nợ khách hàng', desc: 'DSO ' + Math.round(dso) + ' ngày cho thấy tiền đang bị "giam" ở khách hàng quá lâu. Áp dụng điều khoản thanh toán theo mốc nghiệm thu chặt hơn ngay từ hợp đồng mới, và ưu tiên thu hồi các khoản công nợ quá hạn ở mục Công nợ khách hàng.' });
+      }
+      if (debtToAssets > 0.65) {
+        advice.push({ icon: ICONS.debt, cls: debtToAssets > 0.8 ? 'red' : 'bronze', title: 'Kiểm soát đòn bẩy nợ', desc: 'Nợ phải trả chiếm ' + pct1(debtToAssets) + ' tổng tài sản — vượt ngưỡng an toàn 65%. Hạn chế vay mới, ưu tiên dùng dòng tiền thu hồi công nợ để giảm dư nợ trước khi mở rộng quy mô.' });
+      }
+      if (gpm < 0.15 && revenue > 0) {
+        advice.push({ icon: ICONS.pnl, cls: 'bronze', title: 'Rà soát chiến lược đấu thầu', desc: 'Biên lợi nhuận gộp ' + pct1(gpm) + ' khá mỏng cho ngành thiết kế — thi công nội thất. Chỉ nhận các dự án có đơn giá đủ bù chi phí vật liệu/nhân công thực tế, tránh cạnh tranh bằng giá thấp.' });
+      }
+      if (Z < 1.81 && totalAssets > 0) {
+        advice.push({ icon: ICONS.warn, cls: 'red', title: 'Ưu tiên số một: ổn định tài chính', desc: 'Z-Score ' + num2(Z) + ' nằm trong vùng nguy hiểm. Toàn bộ quyết định đầu tư/mở rộng nên tạm hoãn, tập trung dòng tiền vào thu hồi công nợ và trả bớt nợ vay trong 2–3 quý tới.' });
+      }
+      if (fcf < 0 && (capex > 0 || cfo !== 0)) {
+        advice.push({ icon: ICONS.forecast, cls: 'bronze', title: 'Cân đối lại kế hoạch đầu tư', desc: 'Dòng tiền tự do (FCF) đang âm — công ty đang chi nhiều hơn dòng tiền hoạt động tạo ra. Cân nhắc giãn tiến độ mua sắm tài sản cố định (CAPEX) không cấp thiết.' });
+      }
+      if (advice.length === 0) {
+        advice.push({ icon: ICONS.check, cls: 'green', title: 'Nền tảng tài chính ổn định', desc: 'Các chỉ số thanh khoản, đòn bẩy và Z-Score hiện đều trong ngưỡng an toàn. Duy trì kỷ luật thu hồi công nợ và kiểm soát chi phí để giữ vững vị thế này khi mở rộng quy mô.' });
+      }
+      document.getElementById('fnCfoAdviceList').innerHTML = advice.map(function (a) {
         return '<div class="fn-advice-row">' +
           '<div class="fn-advice-icon" style="background:color-mix(in srgb, var(--fn-' + a.cls + ') 14%, transparent);color:var(--fn-' + a.cls + ');">' + a.icon + '</div>' +
           '<div><div class="fn-advice-title">' + a.title + '</div><div class="fn-advice-desc">' + a.desc + '</div></div>' +

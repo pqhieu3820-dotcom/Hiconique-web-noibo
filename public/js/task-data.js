@@ -51,7 +51,8 @@ function syncToGSheets(type, action, data, id) {
     commissionRates: { add: 'addCommissionRate', update: 'updateCommissionRate', delete: 'deleteCommissionRate' },
     priceCatalog: { add: 'addPriceCatalog', update: 'updatePriceCatalog', delete: 'deletePriceCatalog' },
     financeEntries: { add: 'addFinanceEntry', update: 'updateFinanceEntry', delete: 'deleteFinanceEntry' },
-    receivables: { add: 'addReceivable', update: 'updateReceivable', delete: 'deleteReceivable' }
+    receivables: { add: 'addReceivable', update: 'updateReceivable', delete: 'deleteReceivable' },
+    bsSnapshots: { add: 'addBsSnapshot', update: 'updateBsSnapshot', delete: 'deleteBsSnapshot' }
   };
 
   var apiAction = actionMap[type] ? actionMap[type][action] : null;
@@ -126,7 +127,8 @@ var TaskManager = (function() {
     commissionRates: 'hiconique_commission_rates',
     priceCatalog: 'hiconique_price_catalog',
     financeEntries: 'hiconique_finance_entries',
-    receivables: 'hiconique_receivables'
+    receivables: 'hiconique_receivables',
+    bsSnapshots: 'hiconique_bs_snapshots'
   };
 
   // % hoa hồng mặc định theo vai trò — gợi ý khi tạo hoa hồng dự án, admin/
@@ -293,7 +295,7 @@ var TaskManager = (function() {
       documents: 'getDocuments', payslips: 'getPayslips',
       commissions: 'getCommissions', commissionRates: 'getCommissionRates',
       priceCatalog: 'getPriceCatalog', financeEntries: 'getFinanceEntries',
-      receivables: 'getReceivables'
+      receivables: 'getReceivables', bsSnapshots: 'getBsSnapshots'
     };
     var action = apiReadActions[type];
     if (!action) { callback([]); return; }
@@ -395,6 +397,9 @@ var TaskManager = (function() {
       getFromGSheets('receivables', function(list) {
         localStorage.setItem(STORAGE_KEYS.receivables, JSON.stringify(list));
       });
+      getFromGSheets('bsSnapshots', function(list) {
+        localStorage.setItem(STORAGE_KEYS.bsSnapshots, JSON.stringify(list));
+      });
     } else {
       // Use localStorage
       if (!localStorage.getItem(STORAGE_KEYS.projects)) {
@@ -435,6 +440,9 @@ var TaskManager = (function() {
       }
       if (!localStorage.getItem(STORAGE_KEYS.receivables)) {
         localStorage.setItem(STORAGE_KEYS.receivables, JSON.stringify([]));
+      }
+      if (!localStorage.getItem(STORAGE_KEYS.bsSnapshots)) {
+        localStorage.setItem(STORAGE_KEYS.bsSnapshots, JSON.stringify([]));
       }
     }
   }
@@ -1279,6 +1287,42 @@ var TaskManager = (function() {
     return result;
   }
 
+  // Ảnh chụp bảng cân đối kế toán theo năm — các khoản mục (Tài sản ngắn
+  // hạn, Hàng tồn kho, Vốn chủ sở hữu...) không tồn tại trong sổ giao dịch
+  // financeEntries (vốn chỉ ghi nhận dòng tiền ra/vào), nên CEO nhập tay 1
+  // lần/năm để "Sổ tay CFO" có đủ dữ liệu tính các nhóm chỉ số tài chính
+  // chuẩn (thanh khoản, đòn bẩy, Altman Z-score...). Khoá theo `year`, mỗi
+  // năm chỉ có tối đa 1 bản ghi (upsert).
+  function getBsSnapshots() {
+    return getAll(STORAGE_KEYS.bsSnapshots);
+  }
+
+  function getBsSnapshotByYear(year) {
+    return getBsSnapshots().find(function (s) { return String(s.year) === String(year); }) || null;
+  }
+
+  function upsertBsSnapshot(year, data, user) {
+    if (!canManageFinance(user)) return null;
+    var existing = getBsSnapshotByYear(year);
+    data.year = String(year);
+    data.createdBy = user.id;
+    if (existing) {
+      var updated = update(STORAGE_KEYS.bsSnapshots, existing.id, data);
+      if (updated) syncToGSheets('bsSnapshots', 'update', data, existing.id);
+      return updated;
+    }
+    var created = add(STORAGE_KEYS.bsSnapshots, data);
+    syncToGSheets('bsSnapshots', 'add', created);
+    return created;
+  }
+
+  function deleteBsSnapshot(id, user) {
+    if (!canManageFinance(user)) return null;
+    var result = remove(STORAGE_KEYS.bsSnapshots, id);
+    syncToGSheets('bsSnapshots', 'delete', {}, id);
+    return result;
+  }
+
   // Phiếu lương — nhân viên tự tạo cho chính mình mỗi tháng, CEO/quản lý duyệt.
   var OT_MULTIPLIER = 1.5;
   var STANDARD_MONTHLY_HOURS = 208; // 26 công x 8 giờ/ngày — quy ước tính đơn giá giờ OT
@@ -1471,6 +1515,12 @@ var TaskManager = (function() {
     createReceivable: createReceivable,
     updateReceivable: updateReceivable,
     deleteReceivable: deleteReceivable,
+
+    // Sổ tay CFO — ảnh chụp bảng cân đối kế toán theo năm
+    getBsSnapshots: getBsSnapshots,
+    getBsSnapshotByYear: getBsSnapshotByYear,
+    upsertBsSnapshot: upsertBsSnapshot,
+    deleteBsSnapshot: deleteBsSnapshot,
 
     // Phiếu lương
     getMonthlyTimesheetStats: getMonthlyTimesheetStats,

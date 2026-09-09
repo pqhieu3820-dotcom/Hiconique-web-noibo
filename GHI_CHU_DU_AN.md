@@ -4,9 +4,59 @@ File này tồn tại để không phải hỏi lại các thông tin dưới đ
 chat mới với Claude. Đây là nguồn tham chiếu chính (source of truth) cho các liên kết và quy
 tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
-## 0. Trạng thái hiện tại (cập nhật lần cuối: 2026-09-09 — Sổ tài chính có sidebar + Công nợ khách hàng, đọc kỹ mục này)
+## 0. Trạng thái hiện tại (cập nhật lần cuối: 2026-09-09 — thêm "Sổ tay CFO" vào finance.html, đọc kỹ mục này)
 
-**Việc mới nhất (2026-09-09, sau khi làm biểu đồ cho finance.html): tái cấu trúc `finance.html` thành sổ tay tài chính đầy đủ + thêm sheet Công nợ khách hàng.**
+**Việc mới nhất (2026-09-09, sau khi làm sidebar cho finance.html): thêm mục "Sổ tay CFO" — chẩn đoán tài chính chuẩn CFO (thanh khoản/đòn bẩy/hiệu quả/sinh lời + Altman Z-Score + 3 dòng tiền) ngay trong app, không phải chỉ là báo cáo rời.**
+- Bối cảnh: người dùng đưa BCTC công khai của 1 công ty niêm yết (Tập đoàn Xây dựng Hòa Bình,
+  mã HBC, năm 2023, kiểm toán AASC, ý kiến ngoại trừ) làm ví dụ tham khảo, yêu cầu dựng cùng
+  khung phân tích ("Sổ tay Phân tích Tài chính & Quản trị Dòng tiền") nhưng áp dụng cho chính
+  HICONIQUE, đúng công thức/định mức đã cho (hệ số thanh toán hiện hành/nhanh/tiền mặt, nợ/tổng
+  tài sản, nợ vay/VCSH, hệ số chi trả lãi vay, DSO, DIO, GPM/NPM/ROA/ROE, Altman Z-Score dạng
+  niêm yết, CFO/CFI/CFF, FCF = CFO − CAPEX).
+- **Vấn đề cốt lõi phải giải quyết**: sổ giao dịch `financeEntries` của HICONIQUE chỉ ghi nhận
+  dòng tiền ra/vào (revenue/expense/loan/repayment/bonus/penalty/idle/undisbursed) — KHÔNG có
+  khái niệm bảng cân đối kế toán (Tài sản ngắn hạn, Hàng tồn kho, Tổng tài sản, VCSH...). Các
+  chỉ số CFO yêu cầu cần cả 2 nguồn: (a) số liệu từ sổ giao dịch (đã có sẵn), và (b) số liệu
+  bảng cân đối kế toán (chưa có sẵn ở đâu cả).
+- **Giải pháp**: thêm 1 sheet mới **`Chỉ số cân đối kế toán`** (key `bsSnapshots`) — CEO nhập
+  tay 1 lần/năm (Tài sản ngắn hạn, Hàng tồn kho, Tổng tài sản, Nợ ngắn hạn tổng, Vay ngắn hạn,
+  Vay dài hạn, Tổng nợ phải trả, VCSH, Chi phí lãi vay trong năm, CAPEX, Vốn hóa thị trường ước
+  tính, LNST lũy kế), khoá theo `year` (mỗi năm 1 dòng, upsert). Thêm 4 action
+  `getBsSnapshots/addBsSnapshot/updateBsSnapshot/deleteBsSnapshot` vào `gsheets-api-v2.js` và 4
+  hàm tương ứng (`getBsSnapshots/getBsSnapshotByYear/upsertBsSnapshot/deleteBsSnapshot`) vào
+  `task-data.js`, gate bằng `canManageFinance` như mọi thứ khác trong Sổ tài chính. Ô "LNST lũy
+  kế" tự gợi ý giá trị tính từ toàn bộ lịch sử sổ giao dịch tới hết năm đó khi CEO chưa nhập, vẫn
+  sửa được tay.
+- **Mục "Sổ tay CFO" mới trong `finance.html`** (nhóm "Phân tích", giữa "Sức khỏe tài chính" và
+  "Rủi ro" — KHÔNG thay thế "Sức khỏe tài chính" cũ, đây là bản chuyên sâu hơn theo đúng khung
+  người dùng yêu cầu): 1 form nhập bảng cân đối kế toán theo năm (chọn năm qua dropdown) + 5 mục
+  y hệt cấu trúc yêu cầu — (1) Bức tranh tổng quan, (2) 4 nhóm chỉ số kèm bảng công thức/số liệu
+  thay vào/kết quả/đánh giá theo đúng định mức đã cho (vd hiện hành ≥2,0 Tốt, <1,0 Báo động —
+  riêng Nợ vay/VCSH và Hệ số chi trả lãi vay không có định mức người dùng cho sẵn nên tự thêm
+  ngưỡng tham khảo và ghi rõ "(tham khảo)" để không lẫn với định mức gốc), (3) Altman Z-Score đủ
+  X1–X5 + kết luận theo 3 vùng (>2,99 an toàn; 1,81–2,99 cảnh báo; <1,81 nguy hiểm), (4) 3 dòng
+  tiền CFO/CFI/CFF + FCF, (5) khuyến nghị rule-based theo từng ngưỡng chỉ số (viết riêng cho
+  ngành thiết kế/thi công nội thất, không copy nguyên văn lời khuyên của ví dụ HBC).
+  Giá vốn hàng bán dùng để tính GPM/DIO **ước tính bằng tổng `expense`** trong sổ giao dịch năm
+  đó (sổ chưa tách riêng giá vốn/chi phí quản lý) — đã ghi chú rõ trong UI. "Phải thu ngắn hạn"
+  dùng cho DSO lấy từ tổng công nợ khách hàng chưa thu (`receivables` status khác `paid`), không
+  phải 1 field nhập tay riêng.
+- Đã deploy Apps Script (**Phiên bản 26**, cùng deployment/URL cũ) và test full vòng đời qua
+  Console (tạo bsSnapshot thật trên Sheet → xác nhận `getBsSnapshots` trả về 1 dòng → xoá → xác
+  nhận trả về 0 dòng) — không để lại dữ liệu test trên Sheet thật.
+- **Bài học lặp lại lần nữa (đã từng ghi ở bản trước nhưng lần này mới thấy rõ)**: bấm "Triển
+  khai" (nút xanh) sau khi chọn "Phiên bản mới" trong dropdown **có thể không tạo phiên bản mới
+  thật sự** nếu dropdown đóng lại quá nhanh do gộp nhiều thao tác trong 1 `browser_batch` — lần
+  đầu deploy tưởng thành công nhưng dialog vẫn hiện đúng số phiên bản CŨ, và gọi API thật vẫn ra
+  "Unknown action". Cách phát hiện chắc chắn: sau khi bấm Triển khai, luôn đọc số phiên bản
+  trong dialog kết quả ("Phiên bản XX lúc...") và so với số phiên bản trước khi sửa — nếu số
+  không tăng, nghĩa là chưa deploy thật, phải làm lại **từng bước rời rạc** (không gộp click mở
+  dropdown + chọn "Phiên bản mới" + bấm Triển khai vào 1 batch), luôn chụp màn hình xác nhận sau
+  mỗi bước quan trọng.
+
+## 0a. Trạng thái phiên trước (2026-09-09 — Sổ tài chính có sidebar + Công nợ khách hàng, vẫn còn đúng)
+
+**Việc trước đó (2026-09-09, sau khi làm biểu đồ cho finance.html): tái cấu trúc `finance.html` thành sổ tay tài chính đầy đủ + thêm sheet Công nợ khách hàng.**
 - **Sheet mới `Công nợ khách hàng` (receivables)**: thêm vào `SHEETS`/`FIELD_MAP` + 4 action
   `getReceivables/addReceivable/updateReceivable/deleteReceivable` trong `gsheets-api-v2.js`, và
   4 hàm CRUD tương ứng (`getReceivables/createReceivable/updateReceivable/deleteReceivable`) trong
@@ -42,7 +92,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   khai → Quản lý các tùy chọn triển khai → sửa deployment đang hoạt động → "Phiên bản mới" (không
   tạo deployment mới, giữ nguyên URL).
 
-## 0a. Trạng thái phiên trước (2026-09-09 — Bảng giá dịch vụ + Sổ tài chính bản đầu, vẫn còn đúng)
+## 0b. Trạng thái phiên trước (2026-09-09 — Bảng giá dịch vụ + Sổ tài chính bản đầu, vẫn còn đúng)
 
 **Việc trước đó (2026-09-09, sau fix SĐT/ngày sinh): 2 trang lớn mới + bài học quan trọng về deploy Apps Script.**
 - **`public/pages/pricing.html` (Bảng giá dịch vụ)**: danh mục đơn giá (admin/quản lý sửa, ai
@@ -82,7 +132,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   `getFinanceEntries` phản hồi đúng (không còn "Unknown action"), Sheet thật vẫn sạch (0 dòng) sau
   khi dọn hết dữ liệu test tạo ra lúc kiểm thử.
 
-## 0b. Trạng thái phiên trước (2026-09-09 — fix SĐT mất số 0 + lệch ngày sinh, vẫn còn đúng)
+## 0c. Trạng thái phiên trước (2026-09-09 — fix SĐT mất số 0 + lệch ngày sinh, vẫn còn đúng)
 
 **Việc mới nhất (2026-09-09, sau chống chấm công hộ): fix 2 bug đọc/ghi Google Sheets + sinh nhật.**
 - **Bug 1 — SĐT mất số 0 đầu**: `phone`/`cccd`/`bankAccount` là chuỗi toàn số nên bị Apps Script
@@ -114,7 +164,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   `Members.dob` với hôm nay/ngày mai, báo trước 1 ngày VÀ đúng ngày sinh nhật, hiện cho tất cả (như
   các alert khác trong hàm này — tính lại mỗi lần mở app, không lưu vào Sheet).
 
-## 0c. Trạng thái phiên trước (2026-09-09 — chống chấm công hộ bằng Device ID, vẫn còn đúng)
+## 0d. Trạng thái phiên trước (2026-09-09 — chống chấm công hộ bằng Device ID, vẫn còn đúng)
 
 **Việc mới nhất (2026-09-09): chống chấm công hộ bằng Device ID (tối đa 2 thiết bị/người).**
 - Web KHÔNG có cách nào đọc ID phần cứng thật (không API nào cho phép, mọi trình duyệt cố ý chặn
@@ -141,7 +191,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   không phải xác thực tuyệt đối. Người dùng đã hiểu và chọn hướng này (so với 2 lựa chọn khác:
   chặn cứng hoàn toàn, hoặc giữ phương án chụp ảnh selfie).
 
-## 0d. Trạng thái phiên trước (2026-09-09, đổi cổng đăng nhập sang cookie-auth — vẫn còn đúng)
+## 0e. Trạng thái phiên trước (2026-09-09, đổi cổng đăng nhập sang cookie-auth — vẫn còn đúng)
 
 **Việc đã làm (2026-09-09): thay Basic Auth bằng cookie-auth (Netlify Edge Function + Blobs).**
 - Xoá `netlify/edge-functions/basic-auth.js` (HTTP Basic Auth cũ, biến env `AUTH_USERS`), thay bằng
@@ -178,7 +228,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   theo từng thành viên đã có (`public/js/auth.js`, email + mật khẩu riêng, phân quyền `roleLevel`)
   — cookie-auth chỉ là lớp chặn ngoài cùng (site-wide gate), không thay thế luồng đăng nhập nội bộ.
 
-## 0e. Trạng thái trước đó (2026-09-08, buổi tối — đã KHÔI PHỤC kết nối Sheet, vẫn còn đúng, đọc nếu cần)
+## 0f. Trạng thái trước đó (2026-09-08, buổi tối — đã KHÔI PHỤC kết nối Sheet, vẫn còn đúng, đọc nếu cần)
 
 **Kiến trúc tóm tắt:** Web tĩnh (HTML/CSS/JS thuần, không framework) trong `public/`, chạy local
 qua Node/Express (`server.js`), deploy Netlify cho production. Dữ liệu sống trên 1 Google Sheet
