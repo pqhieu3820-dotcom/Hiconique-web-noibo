@@ -148,6 +148,7 @@
     .fn-verdict.good { color: var(--fn-green); border-color: color-mix(in srgb, var(--fn-green) 40%, transparent); background: color-mix(in srgb, var(--fn-green) 10%, transparent); }
     .fn-verdict.warn { color: var(--fn-bronze); border-color: color-mix(in srgb, var(--fn-bronze) 40%, transparent); background: color-mix(in srgb, var(--fn-bronze) 10%, transparent); }
     .fn-verdict.bad { color: var(--fn-red); border-color: color-mix(in srgb, var(--fn-red) 40%, transparent); background: color-mix(in srgb, var(--fn-red) 10%, transparent); }
+    .fn-verdict.neutral { color: var(--fn-muted); border-color: var(--fn-border); background: var(--fn-bg); }
     .fn-formula-cell { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--fn-muted); }
     .fn-empty { padding: 32px 24px; text-align: center; color: var(--fn-muted); font-size: 0.875rem; }
 
@@ -501,8 +502,17 @@
             '</div>' +
 
             '<div class="fn-section" id="sec-risk">' +
-              '<div class="fn-section-head"><div class="fn-section-title">Rủi ro</div><div class="fn-section-desc">Toàn bộ điểm cần lưu ý: dòng tiền, vay nợ, công nợ quá hạn, cơ cấu chi phí.</div></div>' +
-              '<div class="fn-card"><div class="fn-card-head"><div class="fn-card-title">Danh sách rủi ro</div></div><div class="fn-attention-list" id="fnRiskList"></div></div>' +
+              '<div class="fn-section-head"><div class="fn-section-title">Rủi ro</div><div class="fn-section-desc">Bảng tổng hợp toàn bộ rủi ro tài chính — kế toán, tính tự động từ đúng các công thức ở mục Sức khỏe tài chính và Báo cáo tài chính, không cần rà thủ công.</div></div>' +
+              '<div class="fn-summary-grid" id="fnRiskSummaryGrid" style="grid-template-columns:repeat(4,1fr);"></div>' +
+              '<div class="fn-card"><div class="fn-card-head"><div class="fn-card-title">Điểm cần chú ý ngay</div></div><div class="fn-attention-list" id="fnRiskList"></div></div>' +
+
+              '<div class="fn-card"><div class="fn-card-head"><div class="fn-card-title">Nhóm Thanh khoản</div></div><table class="fn-table"><thead><tr><th>Rủi ro</th><th>Công thức</th><th>Giá trị hiện tại</th><th>Ngưỡng</th><th>Mức độ</th></tr></thead><tbody id="fnRiskLiquidityRows"></tbody></table></div>' +
+              '<div class="fn-card"><div class="fn-card-head"><div class="fn-card-title">Nhóm Đòn bẩy & cấu trúc vốn</div></div><table class="fn-table"><thead><tr><th>Rủi ro</th><th>Công thức</th><th>Giá trị hiện tại</th><th>Ngưỡng</th><th>Mức độ</th></tr></thead><tbody id="fnRiskLeverageRows"></tbody></table></div>' +
+              '<div class="fn-card"><div class="fn-card-head"><div class="fn-card-title">Nhóm Dòng tiền</div></div><table class="fn-table"><thead><tr><th>Rủi ro</th><th>Công thức</th><th>Giá trị hiện tại</th><th>Ngưỡng</th><th>Mức độ</th></tr></thead><tbody id="fnRiskCashRows"></tbody></table></div>' +
+              '<div class="fn-card"><div class="fn-card-head"><div class="fn-card-title">Nhóm Công nợ & thu hồi</div></div><table class="fn-table"><thead><tr><th>Rủi ro</th><th>Công thức</th><th>Giá trị hiện tại</th><th>Ngưỡng</th><th>Mức độ</th></tr></thead><tbody id="fnRiskReceivableRows"></tbody></table></div>' +
+              '<div class="fn-card"><div class="fn-card-head"><div class="fn-card-title">Nhóm Sinh lời</div></div><table class="fn-table"><thead><tr><th>Rủi ro</th><th>Công thức</th><th>Giá trị hiện tại</th><th>Ngưỡng</th><th>Mức độ</th></tr></thead><tbody id="fnRiskProfitRows"></tbody></table></div>' +
+              '<div class="fn-card"><div class="fn-card-head"><div class="fn-card-title">Nhóm Chi phí & vận hành</div></div><table class="fn-table"><thead><tr><th>Rủi ro</th><th>Công thức</th><th>Giá trị hiện tại</th><th>Ngưỡng</th><th>Mức độ</th></tr></thead><tbody id="fnRiskOpsRows"></tbody></table></div>' +
+              '<div class="fn-card"><div class="fn-card-head"><div class="fn-card-title">Rủi ro phá sản — Altman Z-Score</div></div><table class="fn-table"><thead><tr><th>Rủi ro</th><th>Công thức</th><th>Giá trị hiện tại</th><th>Ngưỡng</th><th>Mức độ</th></tr></thead><tbody id="fnRiskZRows"></tbody></table></div>' +
             '</div>' +
 
           '</div>' +
@@ -1275,45 +1285,162 @@
     }
 
     // ============================== RISK ==============================
+    var SEV_LABEL = { good: 'Thấp', warn: 'Trung bình', bad: 'Cao', neutral: 'Thiếu dữ liệu' };
+    function riskRow(reg, group, name, formula, valueStr, threshold, severity, note) {
+      reg.push({ group: group, name: name, severity: severity, note: note || '' });
+      return '<tr><td>' + name + '</td><td class="fn-formula-cell">' + formula + '</td><td class="fn-amount">' + valueStr + '</td><td class="fn-formula-cell">' + threshold + '</td><td>' + verdictTag(severity, SEV_LABEL[severity]) + '</td></tr>';
+    }
+
     function renderRisk(all, monthEntries, month) {
+      var yearSelect = document.getElementById('fnCfoYear');
+      var year = (yearSelect && yearSelect.value) || String(new Date().getFullYear());
+      var snap = TaskManager.getBsSnapshotByYear(year);
+      var f = function (k) { return snap ? (Number(snap[k]) || 0) : 0; };
+      var hasSnap = !!snap;
+
+      var shortTermAssets = f('shortTermAssets'), inventory = f('inventory'), totalAssets = f('totalAssets'),
+        shortTermLiabilities = f('shortTermLiabilities'), shortTermDebt = f('shortTermDebt'), longTermDebt = f('longTermDebt'),
+        totalLiabilities = f('totalLiabilities'), equity = f('equity'), interestExpense = f('interestExpense'),
+        marketCapInput = f('marketCap'), retainedEarnings = f('retainedEarnings');
+      var marketCap = marketCapInput > 0 ? marketCapInput : equity;
+      var hasBalanceData = hasSnap && totalAssets > 0 && shortTermLiabilities > 0;
+
+      var yearEntries = all.filter(function (e) { return (e.month || '').slice(0, 4) === String(year); });
+      var revenue = sumByType(yearEntries, 'revenue');
+      var cogs = sumByType(yearEntries, 'expense');
+      var bonus = sumByType(yearEntries, 'bonus');
+      var penalty = sumByType(yearEntries, 'penalty');
+      var grossProfit = revenue - cogs;
+      var ebit = grossProfit - bonus + penalty;
+      var netProfit = ebit - interestExpense;
+
       var revenueM = sumByType(monthEntries, 'revenue');
       var expenseM = sumByType(monthEntries, 'expense');
       var pnlMonth = revenueM - expenseM - sumByType(monthEntries, 'bonus') + sumByType(monthEntries, 'penalty');
       var debtOutstanding = sumByType(all, 'loan') - sumByType(all, 'repayment');
       var idlePool = sumByType(all, 'idle') + sumByType(all, 'undisbursed');
-      var cashFlowAllTime = all.reduce(function (sum, e) {
+      var cashNow = all.reduce(function (sum, e) {
         var t = TYPES[e.type];
         return sum + (t ? t.cashSign : 0) * (Number(e.amount) || 0);
       }, 0);
 
-      var items = [];
-      if (pnlMonth < 0) items.push({ icon: ICONS.warn, cls: 'red', title: 'Lỗ trong tháng ' + month, sub: 'Chi phí đang vượt doanh thu', count: fmt(pnlMonth) });
-      if (debtOutstanding > 0) items.push({ icon: ICONS.debt, cls: 'red', title: 'Còn dư nợ vay', sub: 'Chưa trả hết các khoản đã vay', count: fmt(debtOutstanding) });
-      if (idlePool > 0) items.push({ icon: ICONS.idle, cls: 'bronze', title: 'Tiền ứ đọng / chưa giải ngân', sub: 'Cần rà soát để giải ngân hoặc thu hồi', count: fmt(idlePool) });
-      if (cashFlowAllTime < 0) items.push({ icon: ICONS.warn, cls: 'red', title: 'Dòng tiền tồn đang âm', sub: 'Công ty đang chi nhiều hơn thu luỹ kế', count: fmt(cashFlowAllTime) });
-
       var today = new Date().toISOString().split('T')[0];
       var receivables = TaskManager.getReceivables() || [];
-      var overdue = receivables.filter(function (r) { return r.status !== 'paid' && r.dueDate && r.dueDate < today; });
+      var unpaidReceivables = receivables.filter(function (r) { return r.status !== 'paid'; });
+      var receivablesOutstanding = unpaidReceivables.reduce(function (s, r) { return s + (Number(r.amount) || 0); }, 0);
+      var overdue = unpaidReceivables.filter(function (r) { return r.dueDate && r.dueDate < today; });
       var overdueTotal = overdue.reduce(function (s, r) { return s + (Number(r.amount) || 0); }, 0);
-      if (overdue.length > 0) items.push({ icon: ICONS.customers, cls: 'red', title: overdue.length + ' khoản công nợ quá hạn', sub: 'Khách hàng chưa thanh toán đúng hạn — cần nhắc thu', count: fmt(overdueTotal) });
+      var overdueRatio = div(overdueTotal, receivablesOutstanding);
 
+      var reg = []; // đăng ký toàn bộ rủi ro đã đánh giá — dùng để đếm tổng hợp Cao/Trung bình/Thấp
+
+      // ---- Thanh khoản ----
+      if (hasBalanceData) {
+        var currentRatio = div(shortTermAssets, shortTermLiabilities);
+        var quickRatio = div(shortTermAssets - inventory, shortTermLiabilities);
+        var cashRatioV = div(cashNow, shortTermLiabilities);
+        document.getElementById('fnRiskLiquidityRows').innerHTML =
+          riskRow(reg, 'Thanh khoản', 'Mất khả năng thanh toán ngắn hạn', 'TSNH / Nợ NH', num2(currentRatio) + ' lần', '≥2,0 Thấp · 1,0–2,0 Trung bình · <1,0 Cao', currentRatio >= 2 ? 'good' : currentRatio < 1 ? 'bad' : 'warn') +
+          riskRow(reg, 'Thanh khoản', 'Không đủ tài sản dễ chuyển đổi', '(TSNH − Tồn kho) / Nợ NH', num2(quickRatio) + ' lần', '≥1,0 Thấp · 0,5–1,0 Trung bình · <0,5 Cao', quickRatio >= 1 ? 'good' : quickRatio < 0.5 ? 'bad' : 'warn') +
+          riskRow(reg, 'Thanh khoản', 'Đệm tiền mặt quá mỏng', '(Tiền + Tương đương tiền) / Nợ NH', num2(cashRatioV), '≥0,2 Thấp · 0,1–0,2 Trung bình · <0,1 Cao', cashRatioV >= 0.2 ? 'good' : cashRatioV < 0.1 ? 'bad' : 'warn');
+      } else {
+        document.getElementById('fnRiskLiquidityRows').innerHTML = '<tr><td colspan="5" class="fn-empty">Chưa nhập số liệu bảng cân đối kế toán năm ' + year + ' — bổ sung tại mục "Báo cáo tài chính" để tính nhóm này.</td></tr>';
+      }
+
+      // ---- Đòn bẩy & cấu trúc vốn ----
+      if (hasBalanceData) {
+        var debtToAssets = div(totalLiabilities, totalAssets);
+        var debtToEquity = div(shortTermDebt + longTermDebt, equity);
+        var interestCoverage = interestExpense > 0 ? div(netProfit + interestExpense, interestExpense) : null;
+        document.getElementById('fnRiskLeverageRows').innerHTML =
+          riskRow(reg, 'Đòn bẩy', 'Nợ chiếm tỷ trọng quá lớn trong tài sản', 'Tổng nợ phải trả / Tổng TS', pct1(debtToAssets), '≤65% Thấp · 65–80% Trung bình · >80% Cao', debtToAssets <= 0.65 ? 'good' : debtToAssets > 0.8 ? 'bad' : 'warn') +
+          riskRow(reg, 'Đòn bẩy', 'Vay nợ vượt vốn tự có', '(Vay NH + Vay DH) / VCSH', num2(debtToEquity) + ' lần', '≤1,0 Thấp · 1,0–3,0 Trung bình · >3,0 Cao', debtToEquity <= 1 ? 'good' : debtToEquity > 3 ? 'bad' : 'warn') +
+          riskRow(reg, 'Đòn bẩy', 'Không đủ khả năng trả lãi vay', '(LNTT + Chi phí lãi vay) / Chi phí lãi vay', interestCoverage === null ? 'N/A' : num2(interestCoverage) + ' lần', '≥1,5 Thấp · 1,0–1,5 Trung bình · <1,0 Cao', interestCoverage === null ? 'neutral' : interestCoverage >= 1.5 ? 'good' : interestCoverage < 1 ? 'bad' : 'warn');
+      } else {
+        document.getElementById('fnRiskLeverageRows').innerHTML = '<tr><td colspan="5" class="fn-empty">Chưa nhập số liệu bảng cân đối kế toán năm ' + year + ' — bổ sung tại mục "Báo cáo tài chính" để tính nhóm này.</td></tr>';
+      }
+
+      // ---- Dòng tiền ----
+      var workingCapital = hasBalanceData ? (shortTermAssets - shortTermLiabilities) : null;
+      document.getElementById('fnRiskCashRows').innerHTML =
+        riskRow(reg, 'Dòng tiền', 'Chi vượt thu trong tháng ' + month, 'Doanh thu − Chi phí − Thưởng + Phạt (tháng)', fmt(pnlMonth), '≥0 Thấp · <0 Cao', pnlMonth >= 0 ? 'good' : 'bad') +
+        riskRow(reg, 'Dòng tiền', 'Dòng tiền tồn luỹ kế cạn kiệt', 'Luỹ kế Thu − Chi toàn bộ sổ giao dịch', fmt(cashNow), '≥0 Thấp · <0 Cao', cashNow >= 0 ? 'good' : 'bad') +
+        (workingCapital !== null
+          ? riskRow(reg, 'Dòng tiền', 'Vốn lưu động ròng âm', 'Tài sản ngắn hạn − Nợ ngắn hạn', fmt(workingCapital), '≥0 Thấp · <0 Cao', workingCapital >= 0 ? 'good' : 'bad')
+          : '<tr><td>Vốn lưu động ròng âm</td><td class="fn-formula-cell">Tài sản ngắn hạn − Nợ ngắn hạn</td><td colspan="3" class="fn-empty" style="text-align:left;padding-left:14px;">Chưa nhập số liệu bảng cân đối kế toán năm ' + year + '</td></tr>');
+
+      // ---- Công nợ & thu hồi ----
+      var dso = revenue > 0 ? div(receivablesOutstanding * 365, revenue) : null;
+      document.getElementById('fnRiskReceivableRows').innerHTML =
+        (dso !== null
+          ? riskRow(reg, 'Công nợ', 'Thu tiền khách hàng quá chậm (DSO)', '(Phải thu NH × 365) / DTT', Math.round(dso) + ' ngày', '<90 Thấp · 90–180 Trung bình · >180 Cao', dso < 90 ? 'good' : dso > 180 ? 'bad' : 'warn')
+          : '<tr><td>Thu tiền khách hàng quá chậm (DSO)</td><td class="fn-formula-cell">(Phải thu NH × 365) / DTT</td><td colspan="3" class="fn-empty" style="text-align:left;padding-left:14px;">Chưa có doanh thu năm ' + year + ' để tính</td></tr>') +
+        riskRow(reg, 'Công nợ', 'Tỷ lệ công nợ quá hạn trên tổng công nợ chưa thu', 'Công nợ quá hạn / Tổng công nợ chưa thu', receivablesOutstanding > 0 ? pct1(overdueRatio) : '0,0%', '0% Thấp · 1–30% Trung bình · >30% Cao', overdueRatio === 0 ? 'good' : overdueRatio > 0.3 ? 'bad' : 'warn') +
+        riskRow(reg, 'Công nợ', overdue.length + ' khoản công nợ đã quá hạn thanh toán', 'Đếm số dòng "Công nợ khách hàng" có hạn < hôm nay và chưa đánh dấu Đã thu', fmt(overdueTotal), '0 khoản Thấp · ≥1 khoản Cao', overdue.length === 0 ? 'good' : 'bad');
+
+      // ---- Sinh lời ----
+      var gpm = revenue > 0 ? div(grossProfit, revenue) : null;
+      var npm = revenue > 0 ? div(netProfit, revenue) : null;
+      document.getElementById('fnRiskProfitRows').innerHTML =
+        (gpm !== null
+          ? riskRow(reg, 'Sinh lời', 'Biên lợi nhuận gộp quá mỏng', 'Lợi nhuận gộp / DTT', pct1(gpm), '≥20% Thấp · 10–20% Trung bình · <10% Cao', gpm >= 0.2 ? 'good' : gpm < 0.1 ? 'bad' : 'warn')
+          : '<tr><td>Biên lợi nhuận gộp quá mỏng</td><td class="fn-formula-cell">Lợi nhuận gộp / DTT</td><td colspan="3" class="fn-empty" style="text-align:left;padding-left:14px;">Chưa có doanh thu năm ' + year + ' để tính</td></tr>') +
+        (npm !== null
+          ? riskRow(reg, 'Sinh lời', 'Kinh doanh thua lỗ', 'LNST / DTT', pct1(npm), '≥0% Thấp · <0% Cao', npm >= 0 ? 'good' : 'bad')
+          : '<tr><td>Kinh doanh thua lỗ</td><td class="fn-formula-cell">LNST / DTT</td><td colspan="3" class="fn-empty" style="text-align:left;padding-left:14px;">Chưa có doanh thu năm ' + year + ' để tính</td></tr>');
+
+      // ---- Chi phí & vận hành ----
       var cats = categoryBreakdown(monthEntries);
       var totalExp = cats.reduce(function (s, c) { return s + c.value; }, 0);
-      if (cats.length > 0 && totalExp > 0 && (cats[0].value / totalExp) > 0.4) {
-        items.push({ icon: ICONS.warn, cls: 'bronze', title: 'Chi phí tập trung vào "' + cats[0].name + '"', sub: 'Chiếm hơn 40% tổng chi phí tháng — rủi ro nếu danh mục này biến động giá', count: Math.round((cats[0].value / totalExp) * 100) + '%' });
+      var topCatRatio = totalExp > 0 ? div(cats[0].value, totalExp) : 0;
+      document.getElementById('fnRiskOpsRows').innerHTML =
+        riskRow(reg, 'Vận hành', 'Chi phí tháng tập trung vào 1 danh mục' + (cats.length ? ' ("' + cats[0].name + '")' : ''), 'Chi phí lớn nhất / Tổng chi phí tháng', totalExp > 0 ? pct1(topCatRatio) : '0,0%', '≤40% Thấp · >40% Cao', totalExp === 0 || topCatRatio <= 0.4 ? 'good' : 'bad') +
+        riskRow(reg, 'Vận hành', 'Tiền ứ đọng / chưa giải ngân', 'Tổng giao dịch loại "Ứ đọng" + "Chưa giải ngân"', fmt(idlePool), '0 Thấp · >0 Cần theo dõi', idlePool === 0 ? 'good' : 'warn') +
+        riskRow(reg, 'Vận hành', 'Còn dư nợ vay chưa trả hết', 'Tổng "Vay nợ (nhận)" − Tổng "Trả nợ" (luỹ kế)', fmt(debtOutstanding), '0 Thấp · >0 Cần theo dõi', debtOutstanding === 0 ? 'good' : 'warn');
+
+      // ---- Altman Z-Score ----
+      if (hasBalanceData) {
+        var X1 = div(shortTermAssets - shortTermLiabilities, totalAssets);
+        var X2 = div(retainedEarnings, totalAssets);
+        var X3 = div(ebit, totalAssets);
+        var X4 = div(marketCap, totalLiabilities);
+        var X5 = div(revenue, totalAssets);
+        var Z = 1.2 * X1 + 1.4 * X2 + 3.3 * X3 + 0.6 * X4 + 1.0 * X5;
+        document.getElementById('fnRiskZRows').innerHTML =
+          riskRow(reg, 'Phá sản', 'Nguy cơ kiệt quệ tài chính (Altman Z-Score)', 'Z = 1,2X1+1,4X2+3,3X3+0,6X4+1,0X5', num2(Z), '>2,99 Thấp · 1,81–2,99 Trung bình · <1,81 Cao', Z > 2.99 ? 'good' : Z < 1.81 ? 'bad' : 'warn');
+      } else {
+        document.getElementById('fnRiskZRows').innerHTML = '<tr><td colspan="5" class="fn-empty">Chưa nhập số liệu bảng cân đối kế toán năm ' + year + ' — bổ sung tại mục "Báo cáo tài chính" để tính Z-Score.</td></tr>';
       }
 
-      if (items.length === 0) {
-        items.push({ icon: ICONS.check, cls: 'green', title: 'Không phát hiện rủi ro nổi bật', sub: 'Tình hình tài chính công ty đang ổn định', count: '' });
-      }
-      document.getElementById('fnRiskList').innerHTML = items.map(function (it) {
-        return '<div class="fn-attention-row">' +
-          '<div class="fn-attention-icon" style="background:color-mix(in srgb, var(--fn-' + it.cls + ') 14%, transparent);color:var(--fn-' + it.cls + ');">' + it.icon + '</div>' +
-          '<div class="fn-attention-body"><div class="fn-attention-title">' + it.title + '</div><div class="fn-attention-sub">' + it.sub + '</div></div>' +
-          (it.count ? '<div class="fn-attention-count" style="color:var(--fn-' + it.cls + ');">' + it.count + '</div>' : '') +
+      // ---- Tổng hợp mức độ rủi ro ----
+      var counts = { bad: 0, warn: 0, good: 0, neutral: 0 };
+      reg.forEach(function (r) { counts[r.severity]++; });
+      document.getElementById('fnRiskSummaryGrid').innerHTML =
+        summaryCard('Rủi ro Cao', counts.bad, counts.bad > 0 ? 'neg' : 'pos', ICONS.warn, 'red', 'Cần xử lý ngay') +
+        summaryCard('Rủi ro Trung bình', counts.warn, counts.warn > 0 ? 'neutral' : 'pos', ICONS.idle, 'bronze', 'Cần theo dõi') +
+        summaryCard('Rủi ro Thấp', counts.good, 'pos', ICONS.check, 'green', 'Đang an toàn') +
+        summaryCard('Thiếu dữ liệu', counts.neutral, 'neutral', ICONS.overview, 'bronze', 'Bổ sung để tính đủ');
+
+      // ---- Điểm cần chú ý ngay (chỉ hiển thị Cao/Trung bình) ----
+      var attention = reg.filter(function (r) { return r.severity === 'bad' || r.severity === 'warn'; })
+        .sort(function (a, b) { return (a.severity === 'bad' ? 0 : 1) - (b.severity === 'bad' ? 0 : 1); });
+      var attentionHtml;
+      if (attention.length === 0) {
+        attentionHtml = '<div class="fn-attention-row">' +
+          '<div class="fn-attention-icon" style="background:color-mix(in srgb, var(--fn-green) 14%, transparent);color:var(--fn-green);">' + ICONS.check + '</div>' +
+          '<div class="fn-attention-body"><div class="fn-attention-title">Không phát hiện rủi ro nổi bật</div><div class="fn-attention-sub">Toàn bộ chỉ số đang trong ngưỡng an toàn hoặc trung bình</div></div>' +
         '</div>';
-      }).join('');
+      } else {
+        attentionHtml = attention.map(function (r) {
+          var cls = r.severity === 'bad' ? 'red' : 'bronze';
+          return '<div class="fn-attention-row">' +
+            '<div class="fn-attention-icon" style="background:color-mix(in srgb, var(--fn-' + cls + ') 14%, transparent);color:var(--fn-' + cls + ');">' + ICONS.warn + '</div>' +
+            '<div class="fn-attention-body"><div class="fn-attention-title">' + r.name + '</div><div class="fn-attention-sub">Nhóm: ' + r.group + '</div></div>' +
+            '<div class="fn-attention-count" style="color:var(--fn-' + cls + ');">' + SEV_LABEL[r.severity] + '</div>' +
+          '</div>';
+        }).join('');
+      }
+      document.getElementById('fnRiskList').innerHTML = attentionHtml;
     }
 
     // ============================== EXPORT ==============================
