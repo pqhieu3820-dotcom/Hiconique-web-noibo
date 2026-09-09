@@ -210,7 +210,7 @@
             <td class="num pr-amount" data-des-total="arch">0</td>
           </tr>
           <tr>
-            <td>Thiết kế kết cấu</td>
+            <td>Thiết kế kết cấu<br><select class="pr-quote-select" id="desStructType" style="margin-top:6px;"></select></td>
             <td class="num pr-amount" id="desStructArea">0</td>
             <td class="num"><input class="pr-input mono" id="desStructPrice" type="number" min="0" value="70000"></td>
             <td class="num pr-amount" data-des-total="struct">0</td>
@@ -462,12 +462,29 @@
       { id: 'p15', label: 'Sâu 15m, cọc 200x200', price: 4000000 },
       { id: 'p20', label: 'Sâu 20m, cọc 200x200', price: 4800000 }
     ];
+    // Đơn giá thiết kế kết cấu theo độ phức tạp — khác với "Đơn giá xây dựng phần móng/thô" ở
+    // khối trên (đây là phí THIẾT KẾ hồ sơ kết cấu, không phải chi phí THI CÔNG).
+    var STRUCTURE_DESIGN_TYPES = [
+      { id: 'don-gian', name: 'Kết cấu nhà phố tiêu chuẩn (khung BTCT thông thường)', price: 70000 },
+      { id: 'tang-ham', name: 'Có tầng hầm / móng cọc phức tạp', price: 90000 },
+      { id: 'nhip-lon', name: 'Nhịp lớn / biệt thự kết cấu phức tạp', price: 120000 },
+      { id: 'thep-tien-che', name: 'Kết cấu thép tiền chế (nhà xưởng, khung thép)', price: 55000 }
+    ];
 
     function fillSelectOptions(selectEl, list) {
       selectEl.innerHTML = list.map(function (t) { return '<option value="' + t.id + '">' + escapeHtml(t.name) + '</option>'; }).join('');
     }
     fillSelectOptions(document.getElementById('estFoundationType'), FOUNDATION_TYPES);
     fillSelectOptions(document.getElementById('estRoofType'), ROOF_TYPES);
+    fillSelectOptions(document.getElementById('desStructType'), STRUCTURE_DESIGN_TYPES);
+
+    function applyStructureDesignDefaults() {
+      var t = STRUCTURE_DESIGN_TYPES.find(function (x) { return x.id === document.getElementById('desStructType').value; });
+      if (!t) return;
+      document.getElementById('desStructPrice').value = t.price;
+    }
+    document.getElementById('desStructType').addEventListener('change', function () { applyStructureDesignDefaults(); recalcDesign(); });
+    applyStructureDesignDefaults();
 
     function applyFoundationDefaults() {
       var t = FOUNDATION_TYPES.find(function (x) { return x.id === document.getElementById('estFoundationType').value; });

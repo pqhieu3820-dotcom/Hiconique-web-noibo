@@ -4,7 +4,25 @@ File này tồn tại để không phải hỏi lại các thông tin dưới đ
 chat mới với Claude. Đây là nguồn tham chiếu chính (source of truth) cho các liên kết và quy
 tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
-## 0. Trạng thái hiện tại (cập nhật lần cuối: 2026-09-09 — thêm bảng Dự toán chi phí thiết kế, đọc kỹ mục này)
+## 0. Trạng thái hiện tại (cập nhật lần cuối: 2026-09-09 — thêm chọn loại kết cấu cho phí thiết kế, đọc kỹ mục này)
+
+**Việc mới nhất (2026-09-09, ngay sau bảng Dự toán chi phí thiết kế): thêm dropdown "loại kết cấu" cho dòng Thiết kế kết cấu trong `pricing.html`.**
+- Lúc đầu hiểu nhầm yêu cầu "bổ sung thêm đơn giá kết cấu" là thêm 1 dòng chi phí THI CÔNG kết
+  cấu vào bảng "Dự toán chi phí xây dựng" — đã sửa rồi revert lại ngay khi người dùng nói rõ
+  "Đơn giá thiết kế kết cấu nhé" (ý là bảng **thiết kế**, không phải bảng xây dựng).
+- Thêm dropdown `desStructType` (`STRUCTURE_DESIGN_TYPES`) ngay dưới nhãn "Thiết kế kết cấu"
+  trong bảng "Dự toán chi phí thiết kế", cùng UX auto-fill đơn giá như dropdown Kiểu móng/Kiểu
+  mái ở bảng xây dựng — chọn loại thì đơn giá/m² tự nhảy, vẫn sửa tay được sau đó:
+  - Kết cấu nhà phố tiêu chuẩn (khung BTCT thông thường): 70.000đ/m² (mặc định ban đầu, giữ
+    nguyên số cũ)
+  - Có tầng hầm / móng cọc phức tạp: 90.000đ/m²
+  - Nhịp lớn / biệt thự kết cấu phức tạp: 120.000đ/m²
+  - Kết cấu thép tiền chế (nhà xưởng, khung thép): 55.000đ/m²
+  Diện tích tính phí vẫn dùng chung "Tổng diện tích tầng" như trước, không đổi.
+- Đã test trên Chrome preview: đổi loại kết cấu tự nhảy đúng đơn giá + thành tiền, không lỗi
+  console. Vẫn client-side only.
+
+## 0a. Trạng thái phiên trước (2026-09-09 — thêm bảng Dự toán chi phí thiết kế, vẫn còn đúng)
 
 **Việc mới nhất (2026-09-09, ngay sau khối Dự toán chi phí xây dựng): thêm bảng riêng "Dự toán chi phí thiết kế theo m²" vào `pricing.html`, nằm ngay dưới khối dự toán xây dựng.**
 - Yêu cầu người dùng: tách riêng 1 bảng tính chi phí cho các đầu mục **thiết kế** (kết cấu, nội
@@ -38,7 +56,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   với đúng số tiền vào bảng báo giá, không lỗi console. Vẫn client-side only, không cần sửa
   `gsheets-api-v2.js`/`task-data.js`.
 
-## 0a. Trạng thái phiên trước (2026-09-09 — thêm Dự toán chi phí XD vào pricing.html, vẫn còn đúng)
+## 0b. Trạng thái phiên trước (2026-09-09 — thêm Dự toán chi phí XD vào pricing.html, vẫn còn đúng)
 
 **Việc mới nhất (2026-09-09, sau khi làm trang Đơn hàng & Hóa đơn): thêm khối "Dự toán chi phí xây dựng theo m²" vào `pricing.html`, nằm giữa "Danh mục đơn giá" và "Soạn báo giá".**
 - Bối cảnh: người dùng gửi ảnh chụp 1 livestream TikTok bán hàng xây dựng (không liên quan
@@ -83,7 +101,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 - Không cần sửa gì ở `gsheets-api-v2.js`/`task-data.js` — toàn bộ khối này là tính toán phía
   client, không có sheet/API mới.
 
-## 0b. Trạng thái phiên trước (2026-09-09 — thêm trang Đơn hàng & Hóa đơn, vẫn còn đúng)
+## 0c. Trạng thái phiên trước (2026-09-09 — thêm trang Đơn hàng & Hóa đơn, vẫn còn đúng)
 
 **Việc mới nhất (2026-09-09, sau khi làm "Sổ tay CFO" + bảng Rủi ro tự động): trang mới `public/pages/orders.html` (Đơn hàng & Hóa đơn) + dọn lại trang chủ.**
 - **Trang chủ (`index.html`)**: chuyển 2 card "Bảng giá dịch vụ" và "Tài chính công ty" từ lưới
@@ -133,7 +151,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   option có text chính xác "Phiên bản mới" rồi click theo `ref`, không click theo toạ độ pixel
   khi danh sách dropdown có thể xê dịch.
 
-## 0c. Trạng thái phiên trước (2026-09-09 — thêm "Sổ tay CFO" vào finance.html, vẫn còn đúng)
+## 0d. Trạng thái phiên trước (2026-09-09 — thêm "Sổ tay CFO" vào finance.html, vẫn còn đúng)
 
 **Việc mới nhất (2026-09-09, sau khi làm sidebar cho finance.html): thêm mục "Sổ tay CFO" — chẩn đoán tài chính chuẩn CFO (thanh khoản/đòn bẩy/hiệu quả/sinh lời + Altman Z-Score + 3 dòng tiền) ngay trong app, không phải chỉ là báo cáo rời.**
 - Bối cảnh: người dùng đưa BCTC công khai của 1 công ty niêm yết (Tập đoàn Xây dựng Hòa Bình,
@@ -183,7 +201,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   dropdown + chọn "Phiên bản mới" + bấm Triển khai vào 1 batch), luôn chụp màn hình xác nhận sau
   mỗi bước quan trọng.
 
-## 0d. Trạng thái phiên trước (2026-09-09 — Sổ tài chính có sidebar + Công nợ khách hàng, vẫn còn đúng)
+## 0e. Trạng thái phiên trước (2026-09-09 — Sổ tài chính có sidebar + Công nợ khách hàng, vẫn còn đúng)
 
 **Việc trước đó (2026-09-09, sau khi làm biểu đồ cho finance.html): tái cấu trúc `finance.html` thành sổ tay tài chính đầy đủ + thêm sheet Công nợ khách hàng.**
 - **Sheet mới `Công nợ khách hàng` (receivables)**: thêm vào `SHEETS`/`FIELD_MAP` + 4 action
@@ -221,7 +239,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   khai → Quản lý các tùy chọn triển khai → sửa deployment đang hoạt động → "Phiên bản mới" (không
   tạo deployment mới, giữ nguyên URL).
 
-## 0e. Trạng thái phiên trước (2026-09-09 — Bảng giá dịch vụ + Sổ tài chính bản đầu, vẫn còn đúng)
+## 0f. Trạng thái phiên trước (2026-09-09 — Bảng giá dịch vụ + Sổ tài chính bản đầu, vẫn còn đúng)
 
 **Việc trước đó (2026-09-09, sau fix SĐT/ngày sinh): 2 trang lớn mới + bài học quan trọng về deploy Apps Script.**
 - **`public/pages/pricing.html` (Bảng giá dịch vụ)**: danh mục đơn giá (admin/quản lý sửa, ai
@@ -261,7 +279,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   `getFinanceEntries` phản hồi đúng (không còn "Unknown action"), Sheet thật vẫn sạch (0 dòng) sau
   khi dọn hết dữ liệu test tạo ra lúc kiểm thử.
 
-## 0f. Trạng thái phiên trước (2026-09-09 — fix SĐT mất số 0 + lệch ngày sinh, vẫn còn đúng)
+## 0g. Trạng thái phiên trước (2026-09-09 — fix SĐT mất số 0 + lệch ngày sinh, vẫn còn đúng)
 
 **Việc mới nhất (2026-09-09, sau chống chấm công hộ): fix 2 bug đọc/ghi Google Sheets + sinh nhật.**
 - **Bug 1 — SĐT mất số 0 đầu**: `phone`/`cccd`/`bankAccount` là chuỗi toàn số nên bị Apps Script
@@ -293,7 +311,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   `Members.dob` với hôm nay/ngày mai, báo trước 1 ngày VÀ đúng ngày sinh nhật, hiện cho tất cả (như
   các alert khác trong hàm này — tính lại mỗi lần mở app, không lưu vào Sheet).
 
-## 0g. Trạng thái phiên trước (2026-09-09 — chống chấm công hộ bằng Device ID, vẫn còn đúng)
+## 0h. Trạng thái phiên trước (2026-09-09 — chống chấm công hộ bằng Device ID, vẫn còn đúng)
 
 **Việc mới nhất (2026-09-09): chống chấm công hộ bằng Device ID (tối đa 2 thiết bị/người).**
 - Web KHÔNG có cách nào đọc ID phần cứng thật (không API nào cho phép, mọi trình duyệt cố ý chặn
@@ -320,7 +338,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   không phải xác thực tuyệt đối. Người dùng đã hiểu và chọn hướng này (so với 2 lựa chọn khác:
   chặn cứng hoàn toàn, hoặc giữ phương án chụp ảnh selfie).
 
-## 0h. Trạng thái phiên trước (2026-09-09, đổi cổng đăng nhập sang cookie-auth — vẫn còn đúng)
+## 0i. Trạng thái phiên trước (2026-09-09, đổi cổng đăng nhập sang cookie-auth — vẫn còn đúng)
 
 **Việc đã làm (2026-09-09): thay Basic Auth bằng cookie-auth (Netlify Edge Function + Blobs).**
 - Xoá `netlify/edge-functions/basic-auth.js` (HTTP Basic Auth cũ, biến env `AUTH_USERS`), thay bằng
@@ -357,7 +375,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   theo từng thành viên đã có (`public/js/auth.js`, email + mật khẩu riêng, phân quyền `roleLevel`)
   — cookie-auth chỉ là lớp chặn ngoài cùng (site-wide gate), không thay thế luồng đăng nhập nội bộ.
 
-## 0i. Trạng thái trước đó (2026-09-08, buổi tối — đã KHÔI PHỤC kết nối Sheet, vẫn còn đúng, đọc nếu cần)
+## 0j. Trạng thái trước đó (2026-09-08, buổi tối — đã KHÔI PHỤC kết nối Sheet, vẫn còn đúng, đọc nếu cần)
 
 **Kiến trúc tóm tắt:** Web tĩnh (HTML/CSS/JS thuần, không framework) trong `public/`, chạy local
 qua Node/Express (`server.js`), deploy Netlify cho production. Dữ liệu sống trên 1 Google Sheet
