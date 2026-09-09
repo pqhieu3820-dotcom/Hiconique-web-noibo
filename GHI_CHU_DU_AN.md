@@ -4,9 +4,47 @@ File này tồn tại để không phải hỏi lại các thông tin dưới đ
 chat mới với Claude. Đây là nguồn tham chiếu chính (source of truth) cho các liên kết và quy
 tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
-## 0. Trạng thái hiện tại (cập nhật lần cuối: 2026-09-09 — thêm Bảng giá dịch vụ + Sổ tài chính, đọc kỹ mục này)
+## 0. Trạng thái hiện tại (cập nhật lần cuối: 2026-09-09 — Sổ tài chính có sidebar + Công nợ khách hàng, đọc kỹ mục này)
 
-**Việc mới nhất (2026-09-09, sau fix SĐT/ngày sinh): 2 trang lớn mới + bài học quan trọng về deploy Apps Script.**
+**Việc mới nhất (2026-09-09, sau khi làm biểu đồ cho finance.html): tái cấu trúc `finance.html` thành sổ tay tài chính đầy đủ + thêm sheet Công nợ khách hàng.**
+- **Sheet mới `Công nợ khách hàng` (receivables)**: thêm vào `SHEETS`/`FIELD_MAP` + 4 action
+  `getReceivables/addReceivable/updateReceivable/deleteReceivable` trong `gsheets-api-v2.js`, và
+  4 hàm CRUD tương ứng (`getReceivables/createReceivable/updateReceivable/deleteReceivable`) trong
+  `task-data.js`, gate bằng `canManageFinance` giống financeEntries. **Cố ý tách riêng khỏi
+  `financeEntries`**: 1 khoản công nợ là "đã báo giá/xuất hoá đơn nhưng khách chưa trả" — chỉ là lời
+  hứa trả, không phải dòng tiền thật, nên không tự động cộng vào `financeEntries` (tránh đếm trùng
+  doanh thu). Khi CEO bấm "Đã thu" trên 1 khoản công nợ, `finance.html` tự tạo 1 `financeEntry` loại
+  `revenue` tương ứng (category "Thu công nợ") NGAY LÚC ĐÓ — đây là điểm nối 2 sheet lại với nhau,
+  chỉ xảy ra 1 lần khi đổi trạng thái, không phải đồng bộ 2 chiều liên tục.
+  Đã deploy **Phiên bản 25** (cùng deployment/URL cũ), xác nhận qua PowerShell `Invoke-RestMethod`
+  gọi `getReceivables` trả về `[]` (sheet tự tạo khi có dòng ghi đầu tiên, giống payslips/priceCatalog).
+- **`finance.html` tái cấu trúc toàn bộ theo yêu cầu "sổ tay tài chính tiêu chuẩn"**: từ 1 trang dashboard
+  đơn thành layout **sidebar điều hướng** (tham khảo bố cục 1 ảnh app fintech người dùng gửi, giữ
+  nguyên màu bronze/cream/charcoal của HICONIQUE, đổi nội dung cho ngành thiết kế/thi công) với 4
+  nhóm mục: **Tổng quan** (dashboard cũ: summary card, biểu đồ 6 tháng, donut cơ cấu chi phí, top
+  danh mục, cần chú ý) · **Giao dịch** (form + bảng giao dịch cũ, **Công nợ khách hàng** mới) ·
+  **Báo cáo** (Báo cáo lãi/lỗ dạng P&L có so sánh % với tháng trước; Dòng tiền & Dự báo — biểu đồ
+  6 tháng thực tế nối thêm 3 cột dự báo vẽ nét đứt dựa trên **trung bình động 3 tháng gần nhất**;
+  Vay nợ — bảng lịch sử vay/trả nợ kèm cột dư nợ luỹ kế chạy dòng) · **Phân tích** (Sức khỏe tài
+  chính — 4 chỉ số: biên lợi nhuận, tỷ lệ chi phí/doanh thu, tỷ lệ nợ/doanh thu, số tháng dự trữ
+  tiền mặt, đều tính trên 3 tháng gần nhất, kèm danh sách khuyến nghị rule-based theo ngưỡng từng
+  chỉ số; Rủi ro — mở rộng từ panel "Cần chú ý" cũ, thêm cảnh báo công nợ quá hạn và rủi ro tập
+  trung chi phí vào 1 danh mục >40%).
+  Điều hướng là JS thuần (ẩn/hiện `.fn-section` theo `data-nav`, không dùng router/hash) — toàn bộ
+  section dùng chung 1 sổ `financeEntries` và sheet `receivables`, không có state rời rạc.
+  Đã kiểm tra bằng Chrome preview (`localhost:3000/pages/finance.html`): cả 8 mục sidebar render
+  đúng, không lỗi console, dữ liệu rỗng vẫn hiển thị hợp lý (không undefined/NaN).
+- **Cập nhật bài học deploy Apps Script qua `claude-in-chrome`**: lần này PowerShell `Set-Clipboard`
+  → `ctrl+v` **thẳng vào vùng code Monaco** (không tạo textarea riêng) hoạt động ổn định và chính
+  xác — verify bằng `monaco.editor.getModels()[0].getValue().length` khớp 100% với độ dài file gốc
+  (28026 ký tự) + kiểm tra vài chuỗi đặc trưng (`addReceivable`, `getReceivables`). Vẫn giữ nguyên
+  quy tắc an toàn: luôn đọc lại `.getValue()` để xác nhận nội dung đúng trước khi `ctrl+s` + Triển
+  khai → Quản lý các tùy chọn triển khai → sửa deployment đang hoạt động → "Phiên bản mới" (không
+  tạo deployment mới, giữ nguyên URL).
+
+## 0a. Trạng thái phiên trước (2026-09-09 — Bảng giá dịch vụ + Sổ tài chính bản đầu, vẫn còn đúng)
+
+**Việc trước đó (2026-09-09, sau fix SĐT/ngày sinh): 2 trang lớn mới + bài học quan trọng về deploy Apps Script.**
 - **`public/pages/pricing.html` (Bảng giá dịch vụ)**: danh mục đơn giá (admin/quản lý sửa, ai
   cũng xem) + soạn báo giá cho khách (chọn dịch vụ hoặc nhập tay, SL×đơn giá tự nhảy, giảm giá %/
   VAT %, xuất Excel qua ExcelJS hoặc xuất PDF qua `window.print()` với CSS in ẩn nav/nút/danh mục).
