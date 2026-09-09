@@ -128,9 +128,8 @@
       <div class="pr-card-head">
         <div>
           <div class="pr-card-title">Dự toán chi phí xây dựng theo m²</div>
-          <div class="pr-card-desc">Nhập diện tích, số tầng, kiểu móng, kiểu mái — diện tích quy đổi và chi phí từng hạng mục tự nhảy theo đúng hệ số, có thể chỉnh hệ số/đơn giá theo từng công trình.</div>
+          <div class="pr-card-desc">Nhập diện tích, số tầng, kiểu móng, kiểu mái — diện tích quy đổi, chi phí từng hạng mục và bảng Soạn báo giá bên dưới đều tự nhảy theo, không cần bấm nút nào thêm.</div>
         </div>
-        <button class="pr-btn pr-btn-primary pr-btn-sm" id="prFillQuoteBtn">Đưa vào báo giá ↓</button>
       </div>
 
       <div class="pr-client-grid" style="grid-template-columns:repeat(4,1fr);">
@@ -192,11 +191,10 @@
       <div class="pr-card-head">
         <div>
           <div class="pr-card-title">Dự toán chi phí thiết kế theo m²</div>
-          <div class="pr-card-desc">Kiến trúc, kết cấu, điện nước tính theo tổng diện tích tầng ở dự toán xây dựng bên trên; nội thất/ngoại thất có diện tích riêng vì thường không áp dụng cho toàn bộ công trình.</div>
+          <div class="pr-card-desc">Kiến trúc, kết cấu, điện nước tính theo tổng diện tích tầng ở dự toán xây dựng bên trên; nội thất/ngoại thất có diện tích riêng vì thường không áp dụng cho toàn bộ công trình. Nhập số là tự nhảy thẳng vào bảng Soạn báo giá bên dưới.</div>
         </div>
         <div class="pr-toolbar">
           <button class="pr-btn pr-btn-ghost pr-btn-sm" id="prSyncDesignAreaBtn">↺ Đồng bộ diện tích</button>
-          <button class="pr-btn pr-btn-primary pr-btn-sm" id="prFillQuoteDesignBtn">Đưa vào báo giá ↓</button>
         </div>
       </div>
 
@@ -382,21 +380,38 @@
       });
     }
 
-    function addQuoteRow(prefill) {
+    // explicitId: dùng cho các dòng tự động liên kết từ khối dự toán (mỗi hạng mục 1 id cố
+    // định) — gọi lại với cùng id sẽ CẬP NHẬT đúng dòng đó thay vì tạo dòng mới, để nhập input ở
+    // khối dự toán bên trên là số tự nhảy thẳng vào bảng báo giá, không tạo trùng dòng.
+    function addQuoteRow(prefill, explicitId) {
       prefill = prefill || {};
-      var id = 'qr' + (++rowSeq);
-      var tr = document.createElement('tr');
-      tr.setAttribute('data-quote-row', id);
-      tr.innerHTML =
-        '<td><select class="pr-quote-select" data-q="catalog">' + catalogOptionsHtml('') + '</select></td>' +
-        '<td><input class="pr-input" data-q="name" value="' + escapeHtml(prefill.name || '') + '" placeholder="Tên dịch vụ"></td>' +
-        '<td><input class="pr-input" data-q="unit" value="' + escapeHtml(prefill.unit || '') + '" placeholder="m2/bộ..."></td>' +
-        '<td class="num"><input class="pr-input mono" data-q="qty" type="number" min="0" step="1" value="1"></td>' +
-        '<td class="num"><input class="pr-input mono" data-q="price" type="number" min="0" value="' + (Number(prefill.price) || 0) + '"></td>' +
-        '<td class="num pr-amount" data-q="lineTotal">0</td>' +
-        '<td><button class="pr-btn pr-btn-danger pr-btn-sm" data-remove-quote-row>Xoá</button></td>';
-      quoteRowsEl.appendChild(tr);
+      var id = explicitId || ('qr' + (++rowSeq));
+      var tr = quoteRowsEl.querySelector('tr[data-quote-row="' + id + '"]');
+      if (tr) {
+        tr.querySelector('[data-q="name"]').value = prefill.name || '';
+        tr.querySelector('[data-q="unit"]').value = prefill.unit || '';
+        if (prefill.qty !== undefined) tr.querySelector('[data-q="qty"]').value = Number(prefill.qty) || 1;
+        tr.querySelector('[data-q="price"]').value = Number(prefill.price) || 0;
+      } else {
+        tr = document.createElement('tr');
+        tr.setAttribute('data-quote-row', id);
+        tr.innerHTML =
+          '<td><select class="pr-quote-select" data-q="catalog">' + catalogOptionsHtml('') + '</select></td>' +
+          '<td><input class="pr-input" data-q="name" value="' + escapeHtml(prefill.name || '') + '" placeholder="Tên dịch vụ"></td>' +
+          '<td><input class="pr-input" data-q="unit" value="' + escapeHtml(prefill.unit || '') + '" placeholder="m2/bộ..."></td>' +
+          '<td class="num"><input class="pr-input mono" data-q="qty" type="number" min="0" step="1" value="' + (Number(prefill.qty) || 1) + '"></td>' +
+          '<td class="num"><input class="pr-input mono" data-q="price" type="number" min="0" value="' + (Number(prefill.price) || 0) + '"></td>' +
+          '<td class="num pr-amount" data-q="lineTotal">0</td>' +
+          '<td><button class="pr-btn pr-btn-danger pr-btn-sm" data-remove-quote-row>Xoá</button></td>';
+        quoteRowsEl.appendChild(tr);
+      }
       recalcQuote();
+      return tr;
+    }
+
+    function removeQuoteRowById(id) {
+      var tr = quoteRowsEl.querySelector('tr[data-quote-row="' + id + '"]');
+      if (tr) { tr.remove(); recalcQuote(); }
     }
 
     function recalcQuote() {
@@ -549,11 +564,11 @@
       document.getElementById('estRoofArea').textContent = fmt(roofArea) + ' m²';
 
       var lines = [
-        { name: 'Phần móng', area: foundationArea, price: foundationPrice },
-        { name: 'Phần thô', area: totalFloorArea, price: roughPrice },
-        { name: 'Phần hoàn thiện', area: totalFloorArea, price: finishPrice },
-        { name: 'Phần điện nước', area: totalFloorArea, price: mepPrice },
-        { name: 'Phần mái', area: roofArea, price: roofPrice }
+        { key: 'foundation', name: 'Phần móng', area: foundationArea, price: foundationPrice },
+        { key: 'rough', name: 'Phần thô', area: totalFloorArea, price: roughPrice },
+        { key: 'finish', name: 'Phần hoàn thiện', area: totalFloorArea, price: finishPrice },
+        { key: 'mep', name: 'Phần điện nước', area: totalFloorArea, price: mepPrice },
+        { key: 'roof', name: 'Phần mái', area: roofArea, price: roofPrice }
       ];
       lines.forEach(function (l) { l.total = l.area * l.price; });
       var subtotal = lines.reduce(function (s, l) { return s + l.total; }, 0);
@@ -583,24 +598,29 @@
       document.getElementById('estGrandTotalWithPile').textContent = fmt(grandTotalWithPile);
 
       lastEstimateResult = { lines: lines, subtotal: subtotal, contingencyPct: contingencyPct, grandTotal: grandTotal, totalFloorArea: totalFloorArea, groundArea: floorArea, unitPrice: unitPrice, pileTotal: pileTotal, grandTotalWithPile: grandTotalWithPile };
+      syncEstimateToQuote(lastEstimateResult);
       recalcDesign();
       return lastEstimateResult;
+    }
+
+    // Đẩy thẳng từng dòng dự toán xây dựng vào bảng Soạn báo giá bên dưới — gọi mỗi lần
+    // recalcEstimate() chạy nên chỉ cần gõ số ở khối dự toán là báo giá tự nhảy theo, không cần
+    // bấm nút nào nữa. Mỗi hạng mục có 1 id cố định (addQuoteRow tự cập nhật đúng dòng đó thay
+    // vì tạo dòng mới); hạng mục nào về 0 (area/đơn giá = 0) thì tự xoá dòng tương ứng.
+    function syncEstimateToQuote(r) {
+      r.lines.forEach(function (l) {
+        var id = 'auto-est-' + l.key;
+        if (l.total > 0) addQuoteRow({ name: l.name + ' (dự toán ' + fmt(l.area) + ' m²)', unit: 'trọn gói', qty: 1, price: l.total }, id);
+        else removeQuoteRowById(id);
+      });
+      if (r.pileTotal > 0) addQuoteRow({ name: 'Ép cọc bê tông', unit: 'trọn gói', qty: 1, price: r.pileTotal }, 'auto-est-pile');
+      else removeQuoteRowById('auto-est-pile');
     }
 
     document.getElementById('prEstimateCard').addEventListener('input', function (e) {
       if (e.target.closest('#prEstimateCard')) recalcEstimate();
     });
     recalcEstimate();
-
-    document.getElementById('prFillQuoteBtn').addEventListener('click', function () {
-      var r = recalcEstimate();
-      r.lines.filter(function (l) { return l.total > 0; }).forEach(function (l) {
-        addQuoteRow({ name: l.name + ' (dự toán ' + fmt(l.area) + ' m²)', unit: 'trọn gói', qty: 1, price: l.total });
-      });
-      if (r.pileTotal > 0) addQuoteRow({ name: 'Ép cọc bê tông', unit: 'trọn gói', qty: 1, price: r.pileTotal });
-      recalcQuote();
-      document.getElementById('prEstimateCard').nextElementSibling.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
 
     // ---------- Dự toán chi phí thiết kế theo m² ----------
     // Kiến trúc/kết cấu/điện nước áp theo Tổng diện tích tầng của khối xây dựng bên trên (thiết
@@ -649,21 +669,22 @@
       document.getElementById('desUnitPrice').textContent = fmt(unitPrice) + ' đ/m²';
 
       lastDesignResult = { lines: lines, grandTotal: grandTotal, unitPrice: unitPrice };
+      syncDesignToQuote(lastDesignResult);
       return lastDesignResult;
+    }
+
+    // Y hệt syncEstimateToQuote nhưng cho khối thiết kế — cũng tự nhảy vào báo giá ngay khi gõ,
+    // không cần bấm nút.
+    function syncDesignToQuote(r) {
+      r.lines.forEach(function (l) {
+        var id = 'auto-des-' + l.key;
+        if (l.total > 0) addQuoteRow({ name: l.name + ' (dự toán ' + fmt(l.area) + ' m²)', unit: 'trọn gói', qty: 1, price: l.total }, id);
+        else removeQuoteRowById(id);
+      });
     }
 
     document.getElementById('prDesignCard').addEventListener('input', function (e) {
       if (e.target.closest('#prDesignCard')) recalcDesign();
-    });
-
-    document.getElementById('prFillQuoteDesignBtn').addEventListener('click', function () {
-      var r = recalcDesign();
-      if (!r) return;
-      r.lines.filter(function (l) { return l.total > 0; }).forEach(function (l) {
-        addQuoteRow({ name: l.name + ' (dự toán ' + fmt(l.area) + ' m²)', unit: 'trọn gói', qty: 1, price: l.total });
-      });
-      recalcQuote();
-      document.getElementById('prDesignCard').nextElementSibling.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
 
     // ---------- Xuất file ----------
