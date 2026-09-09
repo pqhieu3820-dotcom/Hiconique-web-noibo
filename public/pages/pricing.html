@@ -60,6 +60,14 @@
 
     .pr-toolbar { display: flex; gap: 10px; flex-wrap: wrap; }
 
+    .pr-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; border-bottom: 1px solid var(--pr-border); }
+    .pr-tab-btn { padding: 10px 16px; border-radius: 10px 10px 0 0; border: 1px solid transparent; border-bottom: none; background: transparent; color: var(--pr-muted); font-family: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; transition: all 0.15s; margin-bottom: -1px; }
+    .pr-tab-btn:hover { color: var(--pr-text); }
+    .pr-tab-btn.active { color: var(--pr-bronze); background: var(--pr-surface); border-color: var(--pr-border); }
+    .pr-tab-panel { display: none; }
+    .pr-tab-panel.active { display: block; }
+    @media print { .pr-tabs { display: none !important; } .pr-tab-panel { display: block !important; } }
+
     .pr-prov-table { font-size: 0.75rem; min-width: 720px; }
     .pr-prov-table td, .pr-prov-table th { padding: 7px 12px; white-space: nowrap; }
     .pr-prov-table td { white-space: normal; }
@@ -116,6 +124,29 @@
     <h1 class="subpage-title">Báo giá <span class="subpage-title-italic">dịch vụ</span></h1>
     <p class="subpage-lede">Danh mục đơn giá dùng chung + soạn báo giá cho khách — nhập số lượng, đơn giá tự nhảy tổng tiền, xuất Excel hoặc PDF để gửi khách.</p>
 
+    <div class="pr-tabs" id="prTabs" role="tablist">
+      <button class="pr-tab-btn" data-tab="catalog">Danh mục đơn giá</button>
+      <button class="pr-tab-btn" data-tab="province">Đơn giá theo tỉnh</button>
+      <button class="pr-tab-btn" data-tab="prelim">Khối lượng sơ bộ</button>
+      <button class="pr-tab-btn" data-tab="estimate">Dự toán xây dựng</button>
+      <button class="pr-tab-btn" data-tab="design">Dự toán thiết kế</button>
+      <button class="pr-tab-btn" data-tab="contractors">So sánh nhà thầu</button>
+      <button class="pr-tab-btn" data-tab="cashflow">Dòng tiền</button>
+      <button class="pr-tab-btn" data-tab="changeorders">Phát sinh</button>
+      <button class="pr-tab-btn" data-tab="schedule">Tiến độ</button>
+      <button class="pr-tab-btn" data-tab="acceptance">Nghiệm thu</button>
+      <button class="pr-tab-btn" data-tab="docs">Hồ sơ công trình</button>
+      <button class="pr-tab-btn" data-tab="quote">Soạn báo giá</button>
+      <button class="pr-tab-btn" data-tab="guide">Hướng dẫn</button>
+      <button class="pr-tab-btn" data-tab="sources">Nguồn</button>
+    </div>
+
+    <div class="pr-toolbar" id="prToolProjectBar" style="display:none;margin-bottom:20px;align-items:center;gap:10px;">
+      <span class="pr-field-label" style="margin:0;white-space:nowrap;">Áp dụng cho dự án</span>
+      <select class="pr-quote-select" id="prToolProjectSelect" style="min-width:260px;"></select>
+    </div>
+
+    <div class="pr-tab-panel" data-tab-panel="catalog">
     <div class="pr-card" id="prCatalogCard">
       <div class="pr-card-head">
         <div>
@@ -129,7 +160,9 @@
         <tbody id="prCatalogRows"></tbody>
       </table>
     </div>
+    </div>
 
+    <div class="pr-tab-panel" data-tab-panel="province">
     <div class="pr-card" id="prProvinceCard">
       <div class="pr-card-head">
         <div>
@@ -142,7 +175,32 @@
       </div>
       <div id="prProvinceTableWrap" class="pr-empty">Chọn tỉnh/thành phía trên để xem bảng đơn giá.</div>
     </div>
+    </div>
 
+    <div class="pr-tab-panel" data-tab-panel="prelim">
+    <div class="pr-card" id="prPrelimQtyCard">
+      <div class="pr-card-head">
+        <div>
+          <div class="pr-card-title">Dự toán khối lượng chi tiết sơ bộ</div>
+          <div class="pr-card-desc">Định mức/m² tham khảo (bê tông, thép, cửa, điện nước...) nhân với tổng diện tích tầng ở tab "Dự toán xây dựng" ra khối lượng sơ bộ — đơn giá tham khảo tự lấy từ tỉnh đang chọn ở tab "Đơn giá theo tỉnh" (khớp theo từ khoá tên vật tư), có thể sửa tay nếu không khớp đúng ý.</div>
+        </div>
+      </div>
+      <div id="prPrelimQtyNotice" style="padding:14px 24px 0;font-size:0.8125rem;color:var(--pr-muted);"></div>
+      <div class="pr-client-grid" style="grid-template-columns:repeat(2,1fr);">
+        <div><span class="pr-field-label">Tổng diện tích tầng (lấy từ Dự toán xây dựng)</span><div class="pr-amount" id="prelimFloorAreaRef" style="padding-top:8px;">0</div></div>
+        <div><span class="pr-field-label">Số phòng vệ sinh</span><input type="number" min="0" step="1" class="pr-input mono" id="prelimToiletCount" value="2"></div>
+      </div>
+      <table class="pr-table">
+        <thead><tr><th>Nhóm</th><th>Hạng mục</th><th class="num">KL thấp</th><th class="num">KL cao</th><th>ĐVT</th><th class="num">Đơn giá tham khảo</th><th class="num">Thành tiền thấp</th><th class="num">Thành tiền cao</th></tr></thead>
+        <tbody id="prelimRows"></tbody>
+      </table>
+      <div class="pr-totals">
+        <div class="pr-totals-row grand"><span>TỔNG THÀNH TIỀN (KHOẢNG)</span><span class="pr-amount" id="prelimGrandTotal">0</span></div>
+      </div>
+    </div>
+    </div>
+
+    <div class="pr-tab-panel" data-tab-panel="estimate">
     <div class="pr-card" id="prEstimateCard">
       <div class="pr-card-head">
         <div>
@@ -205,7 +263,9 @@
         <div class="pr-totals-row grand"><span>CHI PHÍ TỔNG THỂ + ÉP CỌC</span><span class="pr-amount" id="estGrandTotalWithPile">0</span></div>
       </div>
     </div>
+    </div>
 
+    <div class="pr-tab-panel" data-tab-panel="design">
     <div class="pr-card" id="prDesignCard">
       <div class="pr-card-head">
         <div>
@@ -268,7 +328,139 @@
         <div class="pr-totals-row grand"><span>ĐƠN GIÁ THIẾT KẾ BÌNH QUÂN / m²</span><span class="pr-amount" id="desUnitPrice">0</span></div>
       </div>
     </div>
+    </div>
 
+    <div class="pr-tab-panel" data-tab-panel="contractors">
+    <div class="pr-card" id="prContractorsCard">
+      <div class="pr-card-head">
+        <div>
+          <div class="pr-card-title">So sánh nhà thầu</div>
+          <div class="pr-card-desc">Đưa 3 báo giá về cùng phạm vi theo 16 nhóm công việc, cộng thêm bảng chấm điểm kỹ thuật-thương mại — lưu theo dự án đã chọn phía trên.</div>
+        </div>
+        <div class="pr-toolbar">
+          <button class="pr-btn pr-btn-primary pr-btn-sm" id="prContractorsSaveBtn">Lưu</button>
+        </div>
+      </div>
+      <div class="pr-client-grid" style="grid-template-columns:repeat(3,1fr);">
+        <div><span class="pr-field-label">Tên nhà thầu A</span><input class="pr-input" id="ctrNameA" placeholder="Nhà thầu A"></div>
+        <div><span class="pr-field-label">Tên nhà thầu B</span><input class="pr-input" id="ctrNameB" placeholder="Nhà thầu B"></div>
+        <div><span class="pr-field-label">Tên nhà thầu C</span><input class="pr-input" id="ctrNameC" placeholder="Nhà thầu C"></div>
+      </div>
+      <table class="pr-table">
+        <thead><tr><th>Nhóm công việc</th><th>Phạm vi/spec bắt buộc</th><th class="num">Giá A</th><th class="num">Giá B</th><th class="num">Giá C</th><th>Ghi chú thiếu/loại trừ</th></tr></thead>
+        <tbody id="ctrPriceRows"></tbody>
+      </table>
+      <div class="pr-totals">
+        <div class="pr-totals-row grand"><span>TỔNG BÁO GIÁ</span><span class="pr-amount" id="ctrPriceTotals">A: 0 · B: 0 · C: 0</span></div>
+      </div>
+      <div class="pr-card-head" style="border-top:1px solid var(--pr-border);">
+        <div><div class="pr-card-title" style="font-size:0.875rem;">Chấm điểm kỹ thuật-thương mại</div></div>
+      </div>
+      <table class="pr-table">
+        <thead><tr><th>Tiêu chí</th><th class="num">Trọng số</th><th>Cách chấm</th><th class="num">A</th><th class="num">B</th><th class="num">C</th></tr></thead>
+        <tbody id="ctrScoreRows"></tbody>
+      </table>
+      <div class="pr-totals">
+        <div class="pr-totals-row grand"><span>ĐIỂM QUY ĐỔI / 5</span><span class="pr-amount" id="ctrScoreTotals">A: 0,00 · B: 0,00 · C: 0,00</span></div>
+      </div>
+    </div>
+    </div>
+
+    <div class="pr-tab-panel" data-tab-panel="cashflow">
+    <div class="pr-card" id="prCashflowCard">
+      <div class="pr-card-head">
+        <div>
+          <div class="pr-card-title">Dòng tiền theo mốc thanh toán</div>
+          <div class="pr-card-desc">Chia giá trị hợp đồng theo 10 mốc chuẩn, theo dõi số tiền/ngày thực tế đã thanh toán — lưu theo dự án đã chọn phía trên.</div>
+        </div>
+        <div class="pr-toolbar">
+          <button class="pr-btn pr-btn-primary pr-btn-sm" id="prCashflowSaveBtn">Lưu</button>
+        </div>
+      </div>
+      <div class="pr-client-grid" style="grid-template-columns:1fr;">
+        <div><span class="pr-field-label">Giá trị hợp đồng</span><input type="number" min="0" class="pr-input mono" id="cfContractValue" value="0"></div>
+      </div>
+      <table class="pr-table">
+        <thead><tr><th>Mốc thanh toán</th><th class="num">Tỷ lệ</th><th class="num">Số tiền kế hoạch</th><th class="num">Đã thanh toán</th><th>Ngày thực tế</th><th>Trạng thái</th><th>Điều kiện giải ngân</th></tr></thead>
+        <tbody id="cfRows"></tbody>
+      </table>
+      <div class="pr-totals">
+        <div class="pr-totals-row"><span>Tổng kế hoạch</span><span class="pr-amount" id="cfPlannedTotal">0</span></div>
+        <div class="pr-totals-row grand"><span>ĐÃ THANH TOÁN</span><span class="pr-amount" id="cfPaidTotal">0</span></div>
+      </div>
+    </div>
+    </div>
+
+    <div class="pr-tab-panel" data-tab-panel="changeorders">
+    <div class="pr-card" id="prChangeOrdersCard">
+      <div class="pr-card-head">
+        <div>
+          <div class="pr-card-title">Phát sinh</div>
+          <div class="pr-card-desc">Ghi nhận khối lượng, đơn giá, trạng thái duyệt trước khi thi công — mỗi dòng lưu ngay khi Lưu, gắn theo dự án đã chọn phía trên.</div>
+        </div>
+        <div class="pr-toolbar">
+          <button class="pr-btn pr-btn-ghost pr-btn-sm" id="prChangeOrderAddBtn">+ Thêm phát sinh</button>
+        </div>
+      </div>
+      <table class="pr-table">
+        <thead><tr><th>Ngày</th><th>Giai đoạn</th><th>Mô tả</th><th>Nguyên nhân</th><th>ĐVT</th><th class="num">KL</th><th class="num">Đơn giá</th><th class="num">Thành tiền</th><th>Trạng thái</th><th></th></tr></thead>
+        <tbody id="coRows"></tbody>
+      </table>
+      <div class="pr-totals">
+        <div class="pr-totals-row grand"><span>TỔNG PHÁT SINH ĐÃ DUYỆT</span><span class="pr-amount" id="coApprovedTotal">0</span></div>
+      </div>
+    </div>
+    </div>
+
+    <div class="pr-tab-panel" data-tab-panel="schedule">
+    <div class="pr-card" id="prScheduleCard">
+      <div class="pr-card-head">
+        <div>
+          <div class="pr-card-title">Tiến độ thi công</div>
+          <div class="pr-card-desc">18 đầu việc mẫu theo trình tự thi công nhà dân — nhập ngày thực tế và trạng thái, có thể thêm/xoá đầu việc riêng cho dự án.</div>
+        </div>
+        <div class="pr-toolbar">
+          <button class="pr-btn pr-btn-ghost pr-btn-sm" id="prScheduleAddBtn">+ Thêm đầu việc</button>
+        </div>
+      </div>
+      <table class="pr-table">
+        <thead><tr><th>Công việc</th><th class="num">Thời lượng (ngày)</th><th>Bắt đầu KH</th><th>Kết thúc KH</th><th>Bắt đầu TT</th><th>Kết thúc TT</th><th>Trạng thái</th><th></th></tr></thead>
+        <tbody id="schRows"></tbody>
+      </table>
+    </div>
+    </div>
+
+    <div class="pr-tab-panel" data-tab-panel="acceptance">
+    <div class="pr-card" id="prAcceptanceCard">
+      <div class="pr-card-head">
+        <div>
+          <div class="pr-card-title">Nghiệm thu</div>
+          <div class="pr-card-desc">50 điểm kiểm tra từ móng đến bàn giao — cập nhật kết quả từng mục, tự lưu ngay khi đổi.</div>
+        </div>
+      </div>
+      <table class="pr-table">
+        <thead><tr><th>Giai đoạn</th><th>Nội dung kiểm tra</th><th>Tiêu chí chấp nhận</th><th>Kết quả</th><th>Ngày</th><th>Lỗi/cách xử lý</th><th>Xác nhận</th></tr></thead>
+        <tbody id="accRows"></tbody>
+      </table>
+    </div>
+    </div>
+
+    <div class="pr-tab-panel" data-tab-panel="docs">
+    <div class="pr-card" id="prDocsCard">
+      <div class="pr-card-head">
+        <div>
+          <div class="pr-card-title">Hồ sơ công trình</div>
+          <div class="pr-card-desc">35 đầu hồ sơ/tài liệu theo dõi suốt vòng đời công trình — cập nhật trạng thái và nơi lưu, tự lưu ngay khi đổi.</div>
+        </div>
+      </div>
+      <table class="pr-table">
+        <thead><tr><th>Nhóm</th><th>Hồ sơ/tài liệu</th><th>Trạng thái</th><th>Nơi lưu/link</th><th>Ghi chú</th></tr></thead>
+        <tbody id="docRows"></tbody>
+      </table>
+    </div>
+    </div>
+
+    <div class="pr-tab-panel" data-tab-panel="quote">
     <div class="pr-card">
       <div class="pr-card-head">
         <div>
@@ -305,6 +497,31 @@
         <div class="pr-totals-row grand"><span>Tổng cộng</span><span class="pr-amount" id="prGrandTotal">0</span></div>
       </div>
     </div>
+    </div>
+
+    <div class="pr-tab-panel" data-tab-panel="guide">
+    <div class="pr-card" id="prGuideCard">
+      <div class="pr-card-head">
+        <div>
+          <div class="pr-card-title">Hướng dẫn sử dụng</div>
+          <div class="pr-card-desc">Lấy trực tiếp từ Google Sheet — cách đọc đơn giá, ý nghĩa các cột và công cụ trong bộ database 34 tỉnh.</div>
+        </div>
+      </div>
+      <div id="prGuideWrap" class="pr-empty">Đang tải...</div>
+    </div>
+    </div>
+
+    <div class="pr-tab-panel" data-tab-panel="sources">
+    <div class="pr-card" id="prSourcesCard">
+      <div class="pr-card-head">
+        <div>
+          <div class="pr-card-title">Nguồn dữ liệu</div>
+          <div class="pr-card-desc">Danh sách tổ chức/NCC/khảo sát dùng để xây database đơn giá 34 tỉnh — lấy trực tiếp từ Google Sheet.</div>
+        </div>
+      </div>
+      <div id="prSourcesWrap" class="pr-empty">Đang tải...</div>
+    </div>
+    </div>
   </div>
   </main>
 
@@ -312,6 +529,31 @@
   <script>
   (function () {
     'use strict';
+
+    // ---------- Tab bar ----------
+    // Mọi panel vẫn nằm trong DOM (chỉ ẩn/hiện qua CSS), không dựng lại mỗi lần
+    // chuyển tab — các khối tính toán bên dưới (dự toán xây dựng/thiết kế/khối
+    // lượng sơ bộ) phụ thuộc lẫn nhau qua biến JS nên không thể chỉ render khi
+    // tab đang mở, phải luôn chạy nền dù panel đang ẩn.
+    var TAB_STORAGE_KEY = 'pr-active-tab';
+    function activateTab(tab) {
+      document.querySelectorAll('.pr-tab-btn').forEach(function (btn) {
+        btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
+      });
+      document.querySelectorAll('.pr-tab-panel').forEach(function (panel) {
+        panel.classList.toggle('active', panel.getAttribute('data-tab-panel') === tab);
+      });
+      try { localStorage.setItem(TAB_STORAGE_KEY, tab); } catch (e) { /* ignore */ }
+    }
+    document.querySelectorAll('.pr-tab-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () { activateTab(btn.getAttribute('data-tab')); });
+    });
+    (function initTab() {
+      var saved = null;
+      try { saved = localStorage.getItem(TAB_STORAGE_KEY); } catch (e) { /* ignore */ }
+      var valid = saved && document.querySelector('.pr-tab-btn[data-tab="' + saved + '"]');
+      activateTab(valid ? saved : 'catalog');
+    })();
 
     function fmt(n) { return Math.round(Number(n) || 0).toLocaleString('vi-VN'); }
     function getUser() {
@@ -383,10 +625,73 @@
       wrap.className = '';
       wrap.innerHTML = html;
     }
+    // Trích danh sách vật tư/thiết bị phẳng (tên + giá thấp/cao) từ lưới thô của 1
+    // tỉnh — quét tới dòng header nào có cả "Vật tư/thiết bị" và "Giá thấp" trong
+    // hàng (đúng bảng mục C trong sheet tỉnh), gom các dòng dữ liệu ngay sau đó
+    // tới khi gặp dòng tiêu đề mục kế tiếp hoặc hết dữ liệu. Dùng để dò đơn giá
+    // tham khảo theo từ khoá cho tab "Khối lượng sơ bộ" — không đụng gì tới bảng
+    // hiển thị đầy đủ ở tab "Đơn giá theo tỉnh".
+    function parseVndNumber(s) {
+      var n = parseFloat(String(s || '').replace(/\./g, '').replace(',', '.'));
+      return isNaN(n) ? 0 : n;
+    }
+    function extractVatTuEntries(rows) {
+      var nameCol = -1, lowCol = -1, highCol = -1, unitCol = -1, inTable = false;
+      var entries = [];
+      rows.forEach(function (row) {
+        var nonEmpty = row.filter(function (c) { return String(c || '').trim() !== ''; });
+        if (nonEmpty.length === 0) return;
+        var isSection = nonEmpty.length <= 2 && String(row[0] || '').trim() !== '';
+        if (isSection) { inTable = false; return; }
+        var hasNameHeader = row.indexOf('Vật tư/thiết bị') !== -1;
+        var hasPriceHeader = row.indexOf('Giá thấp') !== -1;
+        if (hasNameHeader && hasPriceHeader) {
+          nameCol = row.indexOf('Vật tư/thiết bị');
+          lowCol = row.indexOf('Giá thấp');
+          highCol = row.indexOf('Giá cao');
+          unitCol = row.indexOf('ĐVT');
+          inTable = true;
+          return;
+        }
+        if (inTable && nameCol !== -1 && row[nameCol]) {
+          entries.push({
+            name: String(row[nameCol]),
+            unit: unitCol >= 0 ? String(row[unitCol] || '').toLowerCase().trim() : '',
+            low: parseVndNumber(row[lowCol]),
+            high: parseVndNumber(row[highCol >= 0 ? highCol : lowCol])
+          });
+        }
+      });
+      return entries;
+    }
+    // Chỉ khớp khi ĐVT của vật tư trùng luôn với ĐVT của hạng mục — nếu không lọc
+    // theo đơn vị thì từ khoá kiểu "thép" rất dễ vơ nhầm đơn giá của 1 hạng mục
+    // hoàn toàn khác đơn vị (VD giá/m2 hoặc giá/bộ trộn lẫn vào giá/kg), ra con số
+    // sai lệch hàng chục lần — thà không dò ra (để 0, tự nhập tay) còn hơn hiện
+    // số sai trông như đã tính đúng.
+    function unitCompatible(itemUnit, entryUnit) {
+      if (!entryUnit) return false;
+      var a = itemUnit.toLowerCase();
+      return a.indexOf(entryUnit) !== -1 || entryUnit.indexOf(a) !== -1;
+    }
+    function suggestUnitPrice(entries, keywords, itemUnit) {
+      if (!entries || !entries.length) return null;
+      var lows = [], highs = [];
+      entries.forEach(function (e) {
+        if (!unitCompatible(itemUnit, e.unit)) return;
+        var haystack = e.name.toLowerCase();
+        var hit = keywords.some(function (kw) { return haystack.indexOf(kw) !== -1; });
+        if (hit) { lows.push(e.low); highs.push(e.high || e.low); }
+      });
+      if (!lows.length) return null;
+      var avg = function (arr) { return arr.reduce(function (s, v) { return s + v; }, 0) / arr.length; };
+      return { low: avg(lows), high: avg(highs) };
+    }
+
     document.getElementById('prProvinceSelect').addEventListener('change', function () {
       var name = this.value;
-      if (!name) { setProvinceWrapMessage('Chọn tỉnh/thành phía trên để xem bảng đơn giá.'); return; }
-      if (provinceCache[name]) { renderProvinceTable(provinceCache[name]); return; }
+      if (!name) { setProvinceWrapMessage('Chọn tỉnh/thành phía trên để xem bảng đơn giá.'); recalcPrelimQty(); return; }
+      if (provinceCache[name]) { renderProvinceTable(provinceCache[name]); recalcPrelimQty(); return; }
       setProvinceWrapMessage('Đang tải...');
       fetch(GSHEETS_CONFIG.API_URL + '?action=getProvincePricing&province=' + encodeURIComponent(name), { redirect: 'follow' })
         .then(function (r) { return r.json(); })
@@ -394,10 +699,703 @@
           if (data.error) { setProvinceWrapMessage('Lỗi: ' + data.error); return; }
           provinceCache[name] = data.rows;
           renderProvinceTable(data.rows);
+          recalcPrelimQty();
         })
         .catch(function (e) { setProvinceWrapMessage('Không tải được dữ liệu. Kiểm tra kết nối mạng.'); console.error(e); });
     });
     fetchProvinceList();
+
+    // ---------- Dự toán khối lượng chi tiết sơ bộ ----------
+    // Định mức (ĐM thấp/cao trên mỗi m² sàn, hoặc /phòng VS) chép lại từ sheet
+    // "Khối lượng sơ bộ" trong database 34 tỉnh (tham khảo, không đổi theo tỉnh)
+    // — chỉ ĐƠN GIÁ mới lấy theo tỉnh đang chọn. `keywords` dùng để dò khớp
+    // trong cột "Vật tư/thiết bị" của tỉnh (xem suggestUnitPrice) — dò theo từ
+    // khoá thay vì khớp tên chính xác vì 2 bên đặt tên khác hệ thống (VD "Thép
+    // cốt bê tông" ở đây vs "Thép cuộn D6 CB240-T" bên vật tư tỉnh).
+    var PRELIM_QTY_ITEMS = [
+      { group: 'Kết cấu', name: 'Bê tông kết cấu', unit: 'm3', basis: 'area', demLow: 0.25, demHigh: 0.38, keywords: ['bê tông'] },
+      { group: 'Kết cấu', name: 'Thép cốt bê tông', unit: 'kg', basis: 'area', demLow: 35, demHigh: 60, keywords: ['thép'] },
+      { group: 'Kết cấu', name: 'Cốp pha', unit: 'm2', basis: 'area', demLow: 2.2, demHigh: 3.2, keywords: ['cốp pha', 'copha'] },
+      { group: 'Xây trát', name: 'Gạch xây quy đổi', unit: 'viên', basis: 'area', demLow: 120, demHigh: 200, keywords: ['gạch xây', 'gạch'] },
+      { group: 'Xây trát', name: 'Diện tích tường xây', unit: 'm2', basis: 'area', demLow: 2.2, demHigh: 3.2, keywords: ['xây tường', 'gạch xây', 'gạch'] },
+      { group: 'Xây trát', name: 'Diện tích trát hai mặt', unit: 'm2', basis: 'area', demLow: 4.5, demHigh: 6.5, keywords: ['trát'] },
+      { group: 'Xây trát', name: 'Xi măng xây-trát-cán', unit: 'bao 50kg', basis: 'area', demLow: 0.45, demHigh: 0.75, keywords: ['xi măng'] },
+      { group: 'Xây trát', name: 'Cát xây-tô-cán', unit: 'm3', basis: 'area', demLow: 0.06, demHigh: 0.10, keywords: ['cát'] },
+      { group: 'Chống thấm', name: 'Diện tích chống thấm', unit: 'm2', basis: 'area', demLow: 0.08, demHigh: 0.15, keywords: ['chống thấm'] },
+      { group: 'Hoàn thiện', name: 'Gạch lát nền', unit: 'm2', basis: 'area', demLow: 0.75, demHigh: 0.95, keywords: ['gạch lát', 'gạch ốp'] },
+      { group: 'Hoàn thiện', name: 'Diện tích sơn', unit: 'm2', basis: 'area', demLow: 3.5, demHigh: 5.5, keywords: ['sơn'] },
+      { group: 'Hoàn thiện', name: 'Trần thạch cao', unit: 'm2', basis: 'area', demLow: 0.55, demHigh: 0.85, keywords: ['thạch cao', 'trần'] },
+      { group: 'Cửa', name: 'Cửa nhôm kính/vách kính', unit: 'm2', basis: 'area', demLow: 0.15, demHigh: 0.30, keywords: ['kính', 'nhôm'] },
+      { group: 'Cửa', name: 'Bộ cửa đi', unit: 'bộ', basis: 'area', demLow: 0.04, demHigh: 0.06, keywords: ['cửa đi', 'cửa gỗ'] },
+      { group: 'Điện', name: 'Điểm điện', unit: 'điểm', basis: 'area', demLow: 0.30, demHigh: 0.55, keywords: ['điện', 'ổ cắm', 'công tắc', 'đèn'] },
+      { group: 'Nước', name: 'Điểm cấp/thoát nước', unit: 'điểm', basis: 'area', demLow: 0.05, demHigh: 0.09, keywords: ['ống nước', 'cấp nước', 'thoát nước'] },
+      { group: 'Thiết bị VS', name: 'Bồn cầu', unit: 'bộ', basis: 'toilet', demLow: 1, demHigh: 1, keywords: ['bồn cầu'] },
+      { group: 'Thiết bị VS', name: 'Lavabo', unit: 'bộ', basis: 'toilet', demLow: 1, demHigh: 1, keywords: ['lavabo', 'chậu rửa'] },
+      { group: 'Thiết bị VS', name: 'Sen tắm', unit: 'bộ', basis: 'toilet', demLow: 1, demHigh: 1, keywords: ['sen tắm', 'vòi sen'] }
+    ];
+    var prelimPriceOverrides = {}; // { itemName: giá tay do user sửa, ghi đè giá gợi ý }
+    document.getElementById('prelimToiletCount').addEventListener('input', recalcPrelimQty);
+
+    function recalcPrelimQty() {
+      var floorArea = lastEstimateResult ? lastEstimateResult.totalFloorArea : 0;
+      document.getElementById('prelimFloorAreaRef').textContent = fmt(floorArea) + ' m²';
+      var toiletCount = num('prelimToiletCount');
+      var provinceName = document.getElementById('prProvinceSelect').value;
+      var entries = provinceName && provinceCache[provinceName] ? extractVatTuEntries(provinceCache[provinceName]) : null;
+      var notice = document.getElementById('prPrelimQtyNotice');
+      notice.textContent = provinceName
+        ? 'Đơn giá tham khảo tự dò theo tỉnh: ' + provinceName + ' — dò không ra thì để 0, tự nhập tay.'
+        : 'Chưa chọn tỉnh ở tab "Đơn giá theo tỉnh" nên chưa có đơn giá tham khảo — tự nhập tay hoặc quay lại chọn tỉnh trước.';
+
+      var grandLow = 0, grandHigh = 0;
+      document.getElementById('prelimRows').innerHTML = PRELIM_QTY_ITEMS.map(function (item) {
+        var basisValue = item.basis === 'toilet' ? toiletCount : floorArea;
+        var klLow = item.demLow * basisValue;
+        var klHigh = item.demHigh * basisValue;
+        var override = prelimPriceOverrides[item.name];
+        var suggested = entries ? suggestUnitPrice(entries, item.keywords, item.unit) : null;
+        var priceLow = override !== undefined ? override : (suggested ? suggested.low : 0);
+        var priceHigh = override !== undefined ? override : (suggested ? suggested.high : 0);
+        var totalLow = klLow * priceLow;
+        var totalHigh = klHigh * priceHigh;
+        grandLow += totalLow;
+        grandHigh += totalHigh;
+        return '<tr data-prelim-row="' + escapeHtml(item.name) + '">' +
+          '<td>' + escapeHtml(item.group) + '</td>' +
+          '<td>' + escapeHtml(item.name) + '</td>' +
+          '<td class="num">' + fmt(klLow) + '</td>' +
+          '<td class="num">' + fmt(klHigh) + '</td>' +
+          '<td>' + escapeHtml(item.unit) + '</td>' +
+          '<td class="num"><input class="pr-input mono" type="number" min="0" data-prelim-price value="' + Math.round(priceLow) + '"></td>' +
+          '<td class="num pr-amount">' + fmt(totalLow) + '</td>' +
+          '<td class="num pr-amount">' + fmt(totalHigh) + '</td>' +
+        '</tr>';
+      }).join('');
+      document.getElementById('prelimGrandTotal').textContent = fmt(grandLow) + ' – ' + fmt(grandHigh);
+    }
+    document.getElementById('prelimRows').addEventListener('input', function (e) {
+      if (!e.target.matches('[data-prelim-price]')) return;
+      var name = e.target.closest('tr').getAttribute('data-prelim-row');
+      prelimPriceOverrides[name] = parseFloat(e.target.value) || 0;
+      recalcPrelimQty();
+    });
+
+    // ---------- Helpers gọi thẳng Apps Script cho 6 công cụ theo dự án + 2 tab tham khảo ----------
+    // Không đi qua TaskManager/localStorage (khác priceCatalog) vì các sheet này
+    // chỉ dùng trong trang này, không cần đồng bộ real-time với trang khác — gọi
+    // trực tiếp fetch() y hệt cách callGSheetsAPI làm, đỡ phải đụng vào task-data.js
+    // (file dùng chung rất nhiều trang khác).
+    function gsFetchList(action, callback) {
+      if (!provinceApiReady()) { callback([]); return; }
+      fetch(GSHEETS_CONFIG.API_URL + '?action=' + encodeURIComponent(action), { redirect: 'follow' })
+        .then(function (r) { return r.json(); })
+        .then(function (data) { callback(Array.isArray(data) ? data : []); })
+        .catch(function (e) { console.error(action, e); callback([]); });
+    }
+    function gsWrite(action, data, id) {
+      var params = '?action=' + encodeURIComponent(action);
+      if (id) params += '&id=' + encodeURIComponent(id);
+      if (data) params += '&data=' + encodeURIComponent(JSON.stringify(data));
+      return fetch(GSHEETS_CONFIG.API_URL + params, { redirect: 'follow' }).then(function (r) { return r.json(); });
+    }
+
+    // ---------- Chọn dự án chung cho 6 tab công cụ (So sánh nhà thầu, Dòng tiền,
+    // Phát sinh, Tiến độ, Nghiệm thu, Hồ sơ công trình) ----------
+    var TOOL_TABS = ['contractors', 'cashflow', 'changeorders', 'schedule', 'acceptance', 'docs'];
+    var activeToolProjectId = '';
+    function populateToolProjectSelect() {
+      var sel = document.getElementById('prToolProjectSelect');
+      var projects = (typeof TaskManager !== 'undefined' && TaskManager.getProjects) ? TaskManager.getProjects() : [];
+      sel.innerHTML = projects.map(function (p) { return '<option value="' + p.id + '">' + escapeHtml(p.name || p.id) + '</option>'; }).join('');
+      if (projects.length && !activeToolProjectId) activeToolProjectId = projects[0].id;
+      sel.value = activeToolProjectId;
+    }
+    document.getElementById('prToolProjectSelect').addEventListener('change', function () {
+      activeToolProjectId = this.value;
+      reloadActiveTool();
+    });
+    function reloadActiveTool() {
+      var active = document.querySelector('.pr-tab-btn.active');
+      var tab = active ? active.getAttribute('data-tab') : '';
+      if (tab === 'contractors') loadContractors();
+      else if (tab === 'cashflow') loadCashflow();
+      else if (tab === 'changeorders') loadChangeOrders();
+      else if (tab === 'schedule') loadSchedule();
+      else if (tab === 'acceptance') loadAcceptance();
+      else if (tab === 'docs') loadDocs();
+    }
+    // Ghi đè activateTab đã định nghĩa ở trên để show/hide thanh chọn dự án + tự
+    // load dữ liệu công cụ đúng lúc tab đó được mở (không load sẵn hết 6 tab).
+    var baseActivateTab = activateTab;
+    activateTab = function (tab) {
+      baseActivateTab(tab);
+      var showProjectBar = TOOL_TABS.indexOf(tab) !== -1;
+      document.getElementById('prToolProjectBar').style.display = showProjectBar ? 'flex' : 'none';
+      if (showProjectBar) reloadActiveTool();
+    };
+
+    // ---------- So sánh nhà thầu ----------
+    var CONTRACTOR_GROUPS = [
+      'Chuẩn bị/mặt bằng', 'Móng và nền', 'Kết cấu BTCT', 'Xây và trát', 'Chống thấm', 'Cán/láng',
+      'Ốp lát', 'Trần', 'Sơn', 'Cửa/lan can', 'Điện', 'Cấp thoát nước', 'Thiết bị vệ sinh', 'Mái',
+      'Nội thất liền tường', 'Chi phí khác'
+    ];
+    var CONTRACTOR_CRITERIA = [
+      { name: 'Đủ phạm vi và BOQ', weight: 20 },
+      { name: 'Khoá rõ spec/NCC', weight: 20 },
+      { name: 'Năng lực và công trình đã làm', weight: 15 },
+      { name: 'Tiến độ khả thi', weight: 10 },
+      { name: 'Điều kiện thanh toán', weight: 10 },
+      { name: 'Bảo hành', weight: 10 },
+      { name: 'An toàn và bảo hiểm', weight: 5 },
+      { name: 'Giải trình phát sinh', weight: 10 }
+    ];
+    var currentContractorRecord = null;
+    function loadContractors() {
+      if (!activeToolProjectId) return;
+      gsFetchList('getContractorComparisons', function (list) {
+        currentContractorRecord = list.find(function (r) { return r.projectId === activeToolProjectId; }) || null;
+        renderContractors();
+      });
+    }
+    function renderContractors() {
+      var r = currentContractorRecord;
+      var priceData = (r && r.priceData) || {};
+      var scoreData = (r && r.scoreData) || {};
+      document.getElementById('ctrNameA').value = (r && r.contractorAName) || '';
+      document.getElementById('ctrNameB').value = (r && r.contractorBName) || '';
+      document.getElementById('ctrNameC').value = (r && r.contractorCName) || '';
+      var totals = { a: 0, b: 0, c: 0 };
+      document.getElementById('ctrPriceRows').innerHTML = CONTRACTOR_GROUPS.map(function (name, i) {
+        var d = priceData[i] || {};
+        totals.a += Number(d.a) || 0; totals.b += Number(d.b) || 0; totals.c += Number(d.c) || 0;
+        return '<tr data-ctr-price-row="' + i + '">' +
+          '<td>' + escapeHtml(name) + '</td>' +
+          '<td><input class="pr-input" data-ctr-note value="' + escapeHtml(d.note || '') + '"></td>' +
+          '<td class="num"><input class="pr-input mono" type="number" min="0" data-ctr-price="a" value="' + (Number(d.a) || 0) + '"></td>' +
+          '<td class="num"><input class="pr-input mono" type="number" min="0" data-ctr-price="b" value="' + (Number(d.b) || 0) + '"></td>' +
+          '<td class="num"><input class="pr-input mono" type="number" min="0" data-ctr-price="c" value="' + (Number(d.c) || 0) + '"></td>' +
+          '<td><input class="pr-input" data-ctr-exclude value="' + escapeHtml(d.exclude || '') + '"></td>' +
+        '</tr>';
+      }).join('');
+      document.getElementById('ctrPriceTotals').textContent = 'A: ' + fmt(totals.a) + ' · B: ' + fmt(totals.b) + ' · C: ' + fmt(totals.c);
+
+      var scoreTotals = { a: 0, b: 0, c: 0 };
+      document.getElementById('ctrScoreRows').innerHTML = CONTRACTOR_CRITERIA.map(function (c, i) {
+        var d = scoreData[i] || {};
+        var wa = c.weight / 100;
+        scoreTotals.a += (Number(d.a) || 0) * wa; scoreTotals.b += (Number(d.b) || 0) * wa; scoreTotals.c += (Number(d.c) || 0) * wa;
+        return '<tr data-ctr-score-row="' + i + '">' +
+          '<td>' + escapeHtml(c.name) + '</td>' +
+          '<td class="num">' + c.weight + '%</td>' +
+          '<td>Chấm 1-5; 5 là tốt nhất</td>' +
+          '<td class="num"><input class="pr-input mono" type="number" min="0" max="5" step="0.5" data-ctr-score="a" value="' + (Number(d.a) || 0) + '"></td>' +
+          '<td class="num"><input class="pr-input mono" type="number" min="0" max="5" step="0.5" data-ctr-score="b" value="' + (Number(d.b) || 0) + '"></td>' +
+          '<td class="num"><input class="pr-input mono" type="number" min="0" max="5" step="0.5" data-ctr-score="c" value="' + (Number(d.c) || 0) + '"></td>' +
+        '</tr>';
+      }).join('');
+      document.getElementById('ctrScoreTotals').textContent = 'A: ' + scoreTotals.a.toFixed(2).replace('.', ',') + ' · B: ' + scoreTotals.b.toFixed(2).replace('.', ',') + ' · C: ' + scoreTotals.c.toFixed(2).replace('.', ',');
+    }
+    document.getElementById('ctrPriceRows').addEventListener('input', renderContractorsFromInputsDebounced);
+    document.getElementById('ctrScoreRows').addEventListener('input', renderContractorsFromInputsDebounced);
+    function renderContractorsFromInputsDebounced() {
+      // Chỉ tính lại tổng hiển thị, KHÔNG ghi đè currentContractorRecord — dữ liệu
+      // input thật chỉ đọc ra khi bấm Lưu (collectContractorData), tránh việc
+      // render lại làm mất focus/con trỏ đang gõ giữa ô input.
+      var totals = { a: 0, b: 0, c: 0 };
+      document.querySelectorAll('#ctrPriceRows [data-ctr-price]').forEach(function (inp) {
+        totals[inp.getAttribute('data-ctr-price')] += parseFloat(inp.value) || 0;
+      });
+      document.getElementById('ctrPriceTotals').textContent = 'A: ' + fmt(totals.a) + ' · B: ' + fmt(totals.b) + ' · C: ' + fmt(totals.c);
+      var scoreTotals = { a: 0, b: 0, c: 0 };
+      document.querySelectorAll('#ctrScoreRows tr[data-ctr-score-row]').forEach(function (tr) {
+        var i = Number(tr.getAttribute('data-ctr-score-row'));
+        var w = CONTRACTOR_CRITERIA[i].weight / 100;
+        ['a', 'b', 'c'].forEach(function (k) {
+          var inp = tr.querySelector('[data-ctr-score="' + k + '"]');
+          scoreTotals[k] += (parseFloat(inp.value) || 0) * w;
+        });
+      });
+      document.getElementById('ctrScoreTotals').textContent = 'A: ' + scoreTotals.a.toFixed(2).replace('.', ',') + ' · B: ' + scoreTotals.b.toFixed(2).replace('.', ',') + ' · C: ' + scoreTotals.c.toFixed(2).replace('.', ',');
+    }
+    function collectContractorData() {
+      var priceData = {}, scoreData = {};
+      document.querySelectorAll('#ctrPriceRows tr[data-ctr-price-row]').forEach(function (tr) {
+        var i = tr.getAttribute('data-ctr-price-row');
+        priceData[i] = {
+          a: parseFloat(tr.querySelector('[data-ctr-price="a"]').value) || 0,
+          b: parseFloat(tr.querySelector('[data-ctr-price="b"]').value) || 0,
+          c: parseFloat(tr.querySelector('[data-ctr-price="c"]').value) || 0,
+          note: tr.querySelector('[data-ctr-note]').value,
+          exclude: tr.querySelector('[data-ctr-exclude]').value
+        };
+      });
+      document.querySelectorAll('#ctrScoreRows tr[data-ctr-score-row]').forEach(function (tr) {
+        var i = tr.getAttribute('data-ctr-score-row');
+        scoreData[i] = {
+          a: parseFloat(tr.querySelector('[data-ctr-score="a"]').value) || 0,
+          b: parseFloat(tr.querySelector('[data-ctr-score="b"]').value) || 0,
+          c: parseFloat(tr.querySelector('[data-ctr-score="c"]').value) || 0
+        };
+      });
+      return {
+        projectId: activeToolProjectId,
+        contractorAName: document.getElementById('ctrNameA').value,
+        contractorBName: document.getElementById('ctrNameB').value,
+        contractorCName: document.getElementById('ctrNameC').value,
+        priceData: priceData,
+        scoreData: scoreData
+      };
+    }
+    document.getElementById('prContractorsSaveBtn').addEventListener('click', function () {
+      if (!activeToolProjectId) { alert('Chưa có dự án nào để lưu.'); return; }
+      var data = collectContractorData();
+      var promise = currentContractorRecord
+        ? gsWrite('updateContractorComparison', data, currentContractorRecord.id)
+        : gsWrite('addContractorComparison', data);
+      promise.then(function () { loadContractors(); }).catch(function (e) { console.error(e); alert('Lưu thất bại.'); });
+    });
+
+    // ---------- Dòng tiền theo mốc thanh toán ----------
+    var CASHFLOW_MILESTONES = [
+      { name: 'Ký hợp đồng/đặt cọc', pct: 5, condition: 'Hợp đồng và phụ lục đã ký' },
+      { name: 'Tập kết và khởi công', pct: 10, condition: 'Nhân lực, lán trại, định vị' },
+      { name: 'Hoàn thành móng', pct: 15, condition: 'Nghiệm thu móng và hồ sơ ảnh' },
+      { name: 'Hoàn thành kết cấu tầng', pct: 15, condition: 'Nghiệm thu BTCT theo đợt' },
+      { name: 'Hoàn thành mái', pct: 15, condition: 'Nghiệm thu kết cấu mái' },
+      { name: 'Xây-trát-cán', pct: 12, condition: 'Nghiệm thu hình học và bề mặt' },
+      { name: 'MEP âm và chống thấm', pct: 10, condition: 'Test áp/kín/ngâm nước' },
+      { name: 'Hoàn thiện ốp lát-sơn-trần', pct: 10, condition: 'Mẫu duyệt và nghiệm thu' },
+      { name: 'Bàn giao đưa vào sử dụng', pct: 5, condition: 'Hồ sơ hoàn công, hướng dẫn vận hành' },
+      { name: 'Giữ lại bảo hành', pct: 3, condition: 'Thanh toán khi hết thời hạn/đủ điều kiện' }
+    ];
+    var currentCashflowRecord = null;
+    function loadCashflow() {
+      if (!activeToolProjectId) return;
+      gsFetchList('getCashFlowPlans', function (list) {
+        currentCashflowRecord = list.find(function (r) { return r.projectId === activeToolProjectId; }) || null;
+        renderCashflow();
+      });
+    }
+    function renderCashflow() {
+      var r = currentCashflowRecord;
+      var contractValue = r ? Number(r.contractValue) || 0 : 0;
+      var milestoneData = (r && r.milestoneData) || {};
+      document.getElementById('cfContractValue').value = contractValue;
+      var plannedTotal = 0, paidTotal = 0;
+      document.getElementById('cfRows').innerHTML = CASHFLOW_MILESTONES.map(function (m, i) {
+        var d = milestoneData[i] || {};
+        var planned = contractValue * m.pct / 100;
+        var paid = Number(d.paid) || 0;
+        plannedTotal += planned; paidTotal += paid;
+        return '<tr data-cf-row="' + i + '">' +
+          '<td>' + escapeHtml(m.name) + '</td>' +
+          '<td class="num">' + m.pct + '%</td>' +
+          '<td class="num pr-amount">' + fmt(planned) + '</td>' +
+          '<td class="num"><input class="pr-input mono" type="number" min="0" data-cf-paid value="' + paid + '"></td>' +
+          '<td><input type="date" class="pr-input" data-cf-date value="' + escapeHtml(d.date || '') + '"></td>' +
+          '<td><select class="pr-quote-select" data-cf-status>' +
+            ['Chưa đến hạn', 'Đến hạn', 'Đã thanh toán', 'Trễ hạn'].map(function (s) { return '<option' + (d.status === s ? ' selected' : '') + '>' + s + '</option>'; }).join('') +
+          '</select></td>' +
+          '<td>' + escapeHtml(m.condition) + '</td>' +
+        '</tr>';
+      }).join('');
+      document.getElementById('cfPlannedTotal').textContent = fmt(plannedTotal);
+      document.getElementById('cfPaidTotal').textContent = fmt(paidTotal);
+    }
+    function collectCashflowData() {
+      var milestoneData = {};
+      document.querySelectorAll('#cfRows tr[data-cf-row]').forEach(function (tr) {
+        var i = tr.getAttribute('data-cf-row');
+        milestoneData[i] = {
+          paid: parseFloat(tr.querySelector('[data-cf-paid]').value) || 0,
+          date: tr.querySelector('[data-cf-date]').value,
+          status: tr.querySelector('[data-cf-status]').value
+        };
+      });
+      return { projectId: activeToolProjectId, contractValue: parseFloat(document.getElementById('cfContractValue').value) || 0, milestoneData: milestoneData };
+    }
+    document.getElementById('cfContractValue').addEventListener('input', renderCashflowTotalsOnly);
+    document.getElementById('cfRows').addEventListener('input', renderCashflowTotalsOnly);
+    function renderCashflowTotalsOnly() {
+      var contractValue = parseFloat(document.getElementById('cfContractValue').value) || 0;
+      var plannedTotal = 0, paidTotal = 0;
+      document.querySelectorAll('#cfRows tr[data-cf-row]').forEach(function (tr) {
+        var i = Number(tr.getAttribute('data-cf-row'));
+        plannedTotal += contractValue * CASHFLOW_MILESTONES[i].pct / 100;
+        paidTotal += parseFloat(tr.querySelector('[data-cf-paid]').value) || 0;
+        tr.children[2].textContent = fmt(contractValue * CASHFLOW_MILESTONES[i].pct / 100);
+      });
+      document.getElementById('cfPlannedTotal').textContent = fmt(plannedTotal);
+      document.getElementById('cfPaidTotal').textContent = fmt(paidTotal);
+    }
+    document.getElementById('prCashflowSaveBtn').addEventListener('click', function () {
+      if (!activeToolProjectId) { alert('Chưa có dự án nào để lưu.'); return; }
+      var data = collectCashflowData();
+      var promise = currentCashflowRecord
+        ? gsWrite('updateCashFlowPlan', data, currentCashflowRecord.id)
+        : gsWrite('addCashFlowPlan', data);
+      promise.then(function () { loadCashflow(); }).catch(function (e) { console.error(e); alert('Lưu thất bại.'); });
+    });
+
+    // ---------- Phát sinh ----------
+    var changeOrdersList = [];
+    function loadChangeOrders() {
+      if (!activeToolProjectId) return;
+      gsFetchList('getChangeOrders', function (list) {
+        changeOrdersList = list.filter(function (r) { return r.projectId === activeToolProjectId; });
+        renderChangeOrders();
+      });
+    }
+    function renderChangeOrders() {
+      var approvedTotal = 0;
+      document.getElementById('coRows').innerHTML = changeOrdersList.map(function (co) {
+        if (co.status === 'Đã duyệt') approvedTotal += Number(co.amount) || 0;
+        return '<tr data-co-id="' + co.id + '">' +
+          '<td><input type="date" class="pr-input" data-co-f="date" value="' + escapeHtml(co.date || '') + '"></td>' +
+          '<td><input class="pr-input" data-co-f="stage" value="' + escapeHtml(co.stage || '') + '"></td>' +
+          '<td><input class="pr-input" data-co-f="description" value="' + escapeHtml(co.description || '') + '"></td>' +
+          '<td><input class="pr-input" data-co-f="reason" value="' + escapeHtml(co.reason || '') + '"></td>' +
+          '<td><input class="pr-input" data-co-f="unit" value="' + escapeHtml(co.unit || '') + '" style="width:60px;"></td>' +
+          '<td class="num"><input class="pr-input mono" type="number" data-co-f="quantity" value="' + (Number(co.quantity) || 0) + '" style="width:70px;"></td>' +
+          '<td class="num"><input class="pr-input mono" type="number" data-co-f="unitPrice" value="' + (Number(co.unitPrice) || 0) + '"></td>' +
+          '<td class="num pr-amount" data-co-amount>' + fmt(co.amount) + '</td>' +
+          '<td><select class="pr-quote-select" data-co-f="status">' +
+            ['Chờ duyệt', 'Đã duyệt', 'Từ chối'].map(function (s) { return '<option' + (co.status === s ? ' selected' : '') + '>' + s + '</option>'; }).join('') +
+          '</select></td>' +
+          '<td><button class="pr-btn pr-btn-ghost pr-btn-sm" data-co-save>Lưu</button> <button class="pr-btn pr-btn-danger pr-btn-sm" data-co-delete>Xoá</button></td>' +
+        '</tr>';
+      }).join('') || '<tr><td colspan="10" class="pr-empty">Chưa có phát sinh nào cho dự án này.</td></tr>';
+      document.getElementById('coApprovedTotal').textContent = fmt(approvedTotal);
+    }
+    document.getElementById('coRows').addEventListener('input', function (e) {
+      var tr = e.target.closest('tr[data-co-id]');
+      if (!tr) return;
+      var qty = parseFloat(tr.querySelector('[data-co-f="quantity"]').value) || 0;
+      var price = parseFloat(tr.querySelector('[data-co-f="unitPrice"]').value) || 0;
+      tr.querySelector('[data-co-amount]').textContent = fmt(qty * price);
+    });
+    document.getElementById('coRows').addEventListener('click', function (e) {
+      var tr = e.target.closest('tr[data-co-id]');
+      if (!tr) return;
+      var id = tr.getAttribute('data-co-id');
+      if (e.target.matches('[data-co-save]')) {
+        var updates = { projectId: activeToolProjectId };
+        tr.querySelectorAll('[data-co-f]').forEach(function (inp) {
+          var f = inp.getAttribute('data-co-f');
+          updates[f] = (f === 'quantity' || f === 'unitPrice') ? (parseFloat(inp.value) || 0) : inp.value;
+        });
+        updates.amount = (updates.quantity || 0) * (updates.unitPrice || 0);
+        gsWrite('updateChangeOrder', updates, id).then(function () { loadChangeOrders(); }).catch(function (err) { console.error(err); alert('Lưu thất bại.'); });
+      } else if (e.target.matches('[data-co-delete]')) {
+        if (!confirm('Xoá dòng phát sinh này?')) return;
+        gsWrite('deleteChangeOrder', null, id).then(function () { loadChangeOrders(); }).catch(function (err) { console.error(err); alert('Xoá thất bại.'); });
+      }
+    });
+    document.getElementById('prChangeOrderAddBtn').addEventListener('click', function () {
+      if (!activeToolProjectId) { alert('Chưa có dự án nào để thêm.'); return; }
+      gsWrite('addChangeOrder', { projectId: activeToolProjectId, status: 'Chờ duyệt' }).then(function () { loadChangeOrders(); }).catch(function (e) { console.error(e); alert('Thêm thất bại.'); });
+    });
+
+    // ---------- Tiến độ ----------
+    var SCHEDULE_SEED = [
+      { name: 'Chuẩn bị hồ sơ, mặt bằng', durationDays: 10 },
+      { name: 'Định vị, đào đất', durationDays: 5 },
+      { name: 'Móng/cọc', durationDays: 18 },
+      { name: 'Kết cấu tầng 1', durationDays: 15 },
+      { name: 'Kết cấu các tầng tiếp theo', durationDays: 35 },
+      { name: 'Kết cấu mái', durationDays: 12 },
+      { name: 'Xây tường', durationDays: 18 },
+      { name: 'MEP âm', durationDays: 15 },
+      { name: 'Trát trong/ngoài', durationDays: 20 },
+      { name: 'Chống thấm và test', durationDays: 10 },
+      { name: 'Cán nền', durationDays: 7 },
+      { name: 'Ốp lát', durationDays: 20 },
+      { name: 'Trần', durationDays: 10 },
+      { name: 'Sơn bả', durationDays: 20 },
+      { name: 'Cửa/lan can', durationDays: 12 },
+      { name: 'Lắp MEP và thiết bị', durationDays: 15 },
+      { name: 'Nội thất liền tường', durationDays: 18 },
+      { name: 'Vệ sinh, chạy thử, bàn giao', durationDays: 7 }
+    ];
+    var scheduleList = [];
+    function loadSchedule() {
+      if (!activeToolProjectId) return;
+      gsFetchList('getScheduleItems', function (list) {
+        scheduleList = list.filter(function (r) { return r.projectId === activeToolProjectId; }).sort(function (a, b) { return (Number(a.seq) || 0) - (Number(b.seq) || 0); });
+        if (!scheduleList.length) { seedSchedule(); return; }
+        renderSchedule();
+      });
+    }
+    function seedSchedule() {
+      // Dự án lần đầu mở tab này chưa có đầu việc nào — nạp sẵn 18 đầu việc mẫu.
+      // PHẢI ghi bằng 1 lệnh seedScheduleItems (1 lần thực thi Apps Script, ghi
+      // nguyên khối) — KHÔNG gọi addScheduleItem 18 lần song song: đã thử và bị
+      // đua ghi, rớt mất hơn nửa số dòng do nhiều lần thực thi cùng đọc/ghi "dòng
+      // cuối" của sheet đồng thời.
+      var items = SCHEDULE_SEED.map(function (s, i) { return { projectId: activeToolProjectId, seq: i + 1, name: s.name, durationDays: s.durationDays, status: 'Chưa bắt đầu' }; });
+      gsWrite('seedScheduleItems', items).then(function () { loadSchedule(); }).catch(function (e) { console.error(e); });
+    }
+    function renderSchedule() {
+      document.getElementById('schRows').innerHTML = scheduleList.map(function (s) {
+        return '<tr data-sch-id="' + s.id + '">' +
+          '<td><input class="pr-input" data-sch-f="name" value="' + escapeHtml(s.name || '') + '"></td>' +
+          '<td class="num"><input class="pr-input mono" type="number" min="0" data-sch-f="durationDays" value="' + (Number(s.durationDays) || 0) + '" style="width:70px;"></td>' +
+          '<td><input type="date" class="pr-input" data-sch-f="plannedStart" value="' + escapeHtml(s.plannedStart || '') + '"></td>' +
+          '<td><input type="date" class="pr-input" data-sch-f="plannedEnd" value="' + escapeHtml(s.plannedEnd || '') + '"></td>' +
+          '<td><input type="date" class="pr-input" data-sch-f="actualStart" value="' + escapeHtml(s.actualStart || '') + '"></td>' +
+          '<td><input type="date" class="pr-input" data-sch-f="actualEnd" value="' + escapeHtml(s.actualEnd || '') + '"></td>' +
+          '<td><select class="pr-quote-select" data-sch-f="status">' +
+            ['Chưa bắt đầu', 'Đang thi công', 'Hoàn thành', 'Chậm tiến độ'].map(function (s2) { return '<option' + (s.status === s2 ? ' selected' : '') + '>' + s2 + '</option>'; }).join('') +
+          '</select></td>' +
+          '<td><button class="pr-btn pr-btn-ghost pr-btn-sm" data-sch-save>Lưu</button> <button class="pr-btn pr-btn-danger pr-btn-sm" data-sch-delete>Xoá</button></td>' +
+        '</tr>';
+      }).join('');
+    }
+    document.getElementById('schRows').addEventListener('click', function (e) {
+      var tr = e.target.closest('tr[data-sch-id]');
+      if (!tr) return;
+      var id = tr.getAttribute('data-sch-id');
+      if (e.target.matches('[data-sch-save]')) {
+        var updates = {};
+        tr.querySelectorAll('[data-sch-f]').forEach(function (inp) {
+          var f = inp.getAttribute('data-sch-f');
+          updates[f] = f === 'durationDays' ? (parseFloat(inp.value) || 0) : inp.value;
+        });
+        gsWrite('updateScheduleItem', updates, id).then(function () { loadSchedule(); }).catch(function (err) { console.error(err); alert('Lưu thất bại.'); });
+      } else if (e.target.matches('[data-sch-delete]')) {
+        if (!confirm('Xoá đầu việc này?')) return;
+        gsWrite('deleteScheduleItem', null, id).then(function () { loadSchedule(); }).catch(function (err) { console.error(err); alert('Xoá thất bại.'); });
+      }
+    });
+    document.getElementById('prScheduleAddBtn').addEventListener('click', function () {
+      if (!activeToolProjectId) { alert('Chưa có dự án nào để thêm.'); return; }
+      gsWrite('addScheduleItem', { projectId: activeToolProjectId, seq: scheduleList.length + 1, name: 'Đầu việc mới', status: 'Chưa bắt đầu' }).then(function () { loadSchedule(); }).catch(function (e) { console.error(e); alert('Thêm thất bại.'); });
+    });
+
+    // ---------- Nghiệm thu ----------
+    var ACCEPTANCE_TEMPLATE = [
+      ['Chuẩn bị', 'NT-01', 'Tim mốc, ranh đất, cao độ', 'Khớp hồ sơ và được xác nhận trước khi đào'],
+      ['Chuẩn bị', 'NT-02', 'Hiện trạng công trình liền kề', 'Có ảnh/biên bản trước thi công'],
+      ['Đất-móng', 'NT-03', 'Cao độ và kích thước hố móng', 'Đúng bản vẽ, nền không nhão/xáo trộn'],
+      ['Đất-móng', 'NT-04', 'Bê tông lót', 'Đúng mác, chiều dày và phạm vi'],
+      ['Đất-móng', 'NT-05', 'Cốt thép móng', 'Đúng đường kính, khoảng cách, neo, lớp bảo vệ'],
+      ['Đất-móng', 'NT-06', 'Cốp pha móng', 'Đúng kích thước, kín khít và chống đỡ'],
+      ['Đất-móng', 'NT-07', 'Bê tông móng', 'Kiểm tra mác, độ sụt, phiếu giao, mẫu nén'],
+      ['Kết cấu', 'NT-08', 'Cốt thép cột', 'Đúng số lượng, nối, đai, neo và lớp bảo vệ'],
+      ['Kết cấu', 'NT-09', 'Cốt thép dầm', 'Đúng thép trên/dưới, tăng cường, neo và đai'],
+      ['Kết cấu', 'NT-10', 'Cốt thép sàn', 'Đúng phương, khoảng cách, thép mũ và con kê'],
+      ['Kết cấu', 'NT-11', 'Lỗ chờ MEP', 'Đủ vị trí trước khi đổ bê tông'],
+      ['Kết cấu', 'NT-12', 'Cốp pha và chống sàn', 'Đúng cao độ, độ võng, kín khít và ổn định'],
+      ['Kết cấu', 'NT-13', 'Bê tông dầm sàn', 'Đúng mác, đầm, bảo dưỡng, không phân tầng'],
+      ['Kết cấu', 'NT-14', 'Tháo cốp pha', 'Đủ tuổi/cường độ và không gây nứt võng'],
+      ['Xây', 'NT-15', 'Gạch và vữa xây', 'Đúng mẫu duyệt, mác; gạch được xử lý ẩm phù hợp'],
+      ['Xây', 'NT-16', 'Kích thước cửa và ô chờ', 'Khớp bản vẽ cửa/MEP'],
+      ['Xây', 'NT-17', 'Liên kết tường-cột/dầm', 'Có râu thép/lưới chống nứt theo chỉ dẫn'],
+      ['Trát', 'NT-18', 'Mốc trát và độ phẳng', 'Đúng chiều dày, góc vuông, bề mặt không rỗng'],
+      ['Trát', 'NT-19', 'Xử lý vị trí tiếp giáp', 'Có lưới/biện pháp chống nứt'],
+      ['Chống thấm', 'NT-20', 'Chuẩn bị bề mặt', 'Sạch, đủ độ ẩm, xử lý góc/cổ ống'],
+      ['Chống thấm', 'NT-21', 'Đủ lớp và định mức', 'Đúng TDS, phủ liên tục'],
+      ['Chống thấm', 'NT-22', 'Test ngâm nước', 'Đủ thời gian, không thấm xuống dưới'],
+      ['Cấp nước', 'NT-23', 'Chủng loại ống/phụ kiện', 'Đúng brand, đường kính, PN/Class'],
+      ['Cấp nước', 'NT-24', 'Thử áp', 'Giữ áp theo yêu cầu, không rò'],
+      ['Thoát nước', 'NT-25', 'Độ dốc và thông khí', 'Thoát tốt, không đọng/ngược mùi'],
+      ['Thoát nước', 'NT-26', 'Thử kín', 'Không rò tại mối nối và cổ ống'],
+      ['Điện', 'NT-27', 'Ống luồn và hộp âm', 'Đúng tuyến, đủ tiết diện, hộp thẳng'],
+      ['Điện', 'NT-28', 'Dây/cáp', 'Đúng tiết diện, màu pha, không nối âm'],
+      ['Điện', 'NT-29', 'Tủ điện và bảo vệ', 'Đúng MCB/RCCB, nhãn mạch, nối đất'],
+      ['Điện', 'NT-30', 'Đo cách điện và tiếp địa', 'Có kết quả đo/biên bản'],
+      ['Cán nền', 'NT-31', 'Cao độ và độ dốc', 'Đúng cốt hoàn thiện, thoát về phễu'],
+      ['Ốp lát', 'NT-32', 'Mã/lô gạch', 'Đúng mẫu, màu, caliber và loại 1'],
+      ['Ốp lát', 'NT-33', 'Độ phẳng và mạch', 'Mạch đều, không bộp, không vênh'],
+      ['Ốp lát', 'NT-34', 'Độ dốc khu ướt', 'Không đọng nước'],
+      ['Trần', 'NT-35', 'Khung và ty treo', 'Đúng khoảng cách và liên kết'],
+      ['Trần', 'NT-36', 'Tấm, xử lý mối nối', 'Đúng chủng loại; không nứt/võng'],
+      ['Sơn', 'NT-37', 'Độ ẩm bề mặt', 'Đạt yêu cầu trước bả/lót'],
+      ['Sơn', 'NT-38', 'Hệ sơn và số lớp', 'Đúng mã, lót, phủ và định mức'],
+      ['Sơn', 'NT-39', 'Màu và bề mặt', 'Đồng đều, không chảy, không lộ nền'],
+      ['Cửa', 'NT-40', 'Hệ nhôm/kính/phụ kiện', 'Đúng cấu hình, độ dày và mẫu duyệt'],
+      ['Cửa', 'NT-41', 'Vận hành và kín nước', 'Đóng mở êm, khoá tốt, không rò'],
+      ['Thiết bị VS', 'NT-42', 'Model và phụ kiện', 'Đúng mã, đủ bộ, không trầy vỡ'],
+      ['Thiết bị VS', 'NT-43', 'Chạy thử', 'Không rò, xả tốt, thoát nhanh'],
+      ['Nội thất', 'NT-44', 'Mã ván/bề mặt', 'Đúng mẫu, độ dày, cạnh dán'],
+      ['Nội thất', 'NT-45', 'Kích thước và khe hở', 'Khớp shopdrawing, cánh thẳng'],
+      ['Nội thất', 'NT-46', 'Phụ kiện', 'Đúng brand/model, vận hành êm'],
+      ['Bàn giao', 'NT-47', 'Vệ sinh và sửa lỗi', 'Danh sách punch-list đã đóng'],
+      ['Bàn giao', 'NT-48', 'Bản vẽ hoàn công', 'Đủ tuyến MEP và thay đổi thực tế'],
+      ['Bàn giao', 'NT-49', 'Hồ sơ bảo hành', 'Đủ phiếu, thời hạn và đầu mối'],
+      ['Bàn giao', 'NT-50', 'Chỉ số điện nước/chìa khoá', 'Ghi nhận đầy đủ trong biên bản bàn giao']
+    ];
+    var acceptanceRecords = {};
+    function loadAcceptance() {
+      if (!activeToolProjectId) return;
+      gsFetchList('getAcceptanceChecks', function (list) {
+        acceptanceRecords = {};
+        list.filter(function (r) { return r.projectId === activeToolProjectId; }).forEach(function (r) { acceptanceRecords[r.checkCode] = r; });
+        renderAcceptance();
+      });
+    }
+    function renderAcceptance() {
+      document.getElementById('accRows').innerHTML = ACCEPTANCE_TEMPLATE.map(function (row) {
+        var code = row[1];
+        var r = acceptanceRecords[code] || {};
+        return '<tr data-acc-code="' + code + '" data-acc-id="' + (r.id || '') + '">' +
+          '<td>' + escapeHtml(row[0]) + '</td>' +
+          '<td>' + escapeHtml(code) + ' — ' + escapeHtml(row[2]) + '</td>' +
+          '<td>' + escapeHtml(row[3]) + '</td>' +
+          '<td><select class="pr-quote-select" data-acc-f="result">' +
+            ['Chưa kiểm tra', 'Đạt', 'Không đạt'].map(function (s) { return '<option' + (r.result === s ? ' selected' : '') + '>' + s + '</option>'; }).join('') +
+          '</select></td>' +
+          '<td><input type="date" class="pr-input" data-acc-f="checkedAt" value="' + escapeHtml(r.checkedAt || '') + '"></td>' +
+          '<td><input class="pr-input" data-acc-f="issue" value="' + escapeHtml(r.issue || '') + '"></td>' +
+          '<td><input class="pr-input" data-acc-f="confirmedBy" value="' + escapeHtml(r.confirmedBy || '') + '" style="width:100px;"></td>' +
+        '</tr>';
+      }).join('');
+    }
+    document.getElementById('accRows').addEventListener('change', function (e) {
+      var tr = e.target.closest('tr[data-acc-code]');
+      if (!tr || !e.target.matches('[data-acc-f]')) return;
+      saveAcceptanceRow(tr);
+    });
+    document.getElementById('accRows').addEventListener('blur', function (e) {
+      var tr = e.target.closest('tr[data-acc-code]');
+      if (!tr || !e.target.matches('[data-acc-f]')) return;
+      saveAcceptanceRow(tr);
+    }, true);
+    function saveAcceptanceRow(tr) {
+      var code = tr.getAttribute('data-acc-code');
+      var id = tr.getAttribute('data-acc-id');
+      var updates = { projectId: activeToolProjectId, checkCode: code };
+      tr.querySelectorAll('[data-acc-f]').forEach(function (inp) { updates[inp.getAttribute('data-acc-f')] = inp.value; });
+      var promise = id ? gsWrite('updateAcceptanceCheck', updates, id) : gsWrite('addAcceptanceCheck', updates);
+      promise.then(function (res) { if (!id && res && res.id) tr.setAttribute('data-acc-id', res.id); }).catch(function (e) { console.error(e); });
+    }
+
+    // ---------- Hồ sơ công trình ----------
+    var DOC_TEMPLATE = [
+      ['Pháp lý', 'Giấy tờ quyền sử dụng đất'], ['Pháp lý', 'Giấy phép xây dựng/điều chỉnh nếu thuộc diện phải có'],
+      ['Pháp lý', 'Hồ sơ hiện trạng công trình liền kề'], ['Thiết kế', 'Bản vẽ kiến trúc được duyệt'],
+      ['Thiết kế', 'Bản vẽ kết cấu'], ['Thiết kế', 'Bản vẽ điện nước/MEP'],
+      ['Thiết kế', 'Chỉ dẫn kỹ thuật và danh mục vật tư'], ['Hợp đồng', 'Hợp đồng thi công'],
+      ['Hợp đồng', 'BOQ/phạm vi công việc'], ['Hợp đồng', 'Phụ lục vật tư, spec và NCC'],
+      ['Hợp đồng', 'Tiến độ và lịch thanh toán'], ['NCC', 'Ba báo giá so sánh'],
+      ['NCC', 'CO/CQ/phiếu xuất xưởng vật liệu chính'], ['NCC', 'Hóa đơn/chứng từ mua hàng'],
+      ['NCC', 'Mẫu vật tư được duyệt'], ['Thi công', 'Nhật ký thi công'],
+      ['Thi công', 'Ảnh cốt thép/cốp pha trước khi đổ bê tông'], ['Thi công', 'Phiếu giao bê tông và kết quả mẫu nén'],
+      ['Thi công', 'Biên bản thử áp cấp nước'], ['Thi công', 'Biên bản thử kín thoát nước'],
+      ['Thi công', 'Biên bản test ngâm chống thấm'], ['Thi công', 'Kết quả đo điện/tiếp địa'],
+      ['Phát sinh', 'Phiếu đề nghị phát sinh'], ['Phát sinh', 'Phê duyệt giá và khối lượng trước thi công'],
+      ['Phát sinh', 'Ảnh/bản vẽ xác nhận thay đổi'], ['Nghiệm thu', 'Biên bản nghiệm thu công việc'],
+      ['Nghiệm thu', 'Biên bản nghiệm thu giai đoạn'], ['Nghiệm thu', 'Danh sách lỗi và biên bản đóng lỗi'],
+      ['Bàn giao', 'Bản vẽ hoàn công'], ['Bàn giao', 'Biên bản bàn giao đưa vào sử dụng'],
+      ['Bàn giao', 'Quyết toán hợp đồng'], ['Bàn giao', 'Danh sách chìa khoá và hướng dẫn vận hành'],
+      ['Bảo hành', 'Phiếu bảo hành thiết bị/vật liệu'], ['Bảo hành', 'Danh sách đầu mối bảo hành'],
+      ['Bảo hành', 'Biên bản hoàn tất nghĩa vụ bảo hành']
+    ];
+    var docRecords = {};
+    function loadDocs() {
+      if (!activeToolProjectId) return;
+      gsFetchList('getProjectDocuments', function (list) {
+        docRecords = {};
+        list.filter(function (r) { return r.projectId === activeToolProjectId; }).forEach(function (r) { docRecords[r.docCode] = r; });
+        renderDocs();
+      });
+    }
+    function renderDocs() {
+      document.getElementById('docRows').innerHTML = DOC_TEMPLATE.map(function (row, i) {
+        var code = 'DOC-' + (i + 1);
+        var r = docRecords[code] || {};
+        return '<tr data-doc-code="' + code + '" data-doc-id="' + (r.id || '') + '">' +
+          '<td>' + escapeHtml(row[0]) + '</td>' +
+          '<td>' + escapeHtml(row[1]) + '</td>' +
+          '<td><select class="pr-quote-select" data-doc-f="status">' +
+            ['Chưa có', 'Đang làm', 'Đã có'].map(function (s) { return '<option' + (r.status === s ? ' selected' : '') + '>' + s + '</option>'; }).join('') +
+          '</select></td>' +
+          '<td><input class="pr-input" data-doc-f="location" value="' + escapeHtml(r.location || '') + '"></td>' +
+          '<td><input class="pr-input" data-doc-f="note" value="' + escapeHtml(r.note || '') + '"></td>' +
+        '</tr>';
+      }).join('');
+    }
+    document.getElementById('docRows').addEventListener('change', function (e) {
+      var tr = e.target.closest('tr[data-doc-code]');
+      if (!tr || !e.target.matches('[data-doc-f]')) return;
+      saveDocRow(tr);
+    });
+    document.getElementById('docRows').addEventListener('blur', function (e) {
+      var tr = e.target.closest('tr[data-doc-code]');
+      if (!tr || !e.target.matches('[data-doc-f]')) return;
+      saveDocRow(tr);
+    }, true);
+    function saveDocRow(tr) {
+      var code = tr.getAttribute('data-doc-code');
+      var id = tr.getAttribute('data-doc-id');
+      var updates = { projectId: activeToolProjectId, docCode: code };
+      tr.querySelectorAll('[data-doc-f]').forEach(function (inp) { updates[inp.getAttribute('data-doc-f')] = inp.value; });
+      var promise = id ? gsWrite('updateProjectDocument', updates, id) : gsWrite('addProjectDocument', updates);
+      promise.then(function (res) { if (!id && res && res.id) tr.setAttribute('data-doc-id', res.id); }).catch(function (e) { console.error(e); });
+    }
+
+    // ---------- Hướng dẫn / Nguồn (tham khảo tĩnh, đọc trực tiếp từ Google Sheet) ----------
+    var referenceLoaded = { guide: false, sources: false };
+    function renderGenericSheetTable(rows, wrapId, linkColIndex) {
+      var wrap = document.getElementById(wrapId);
+      if (!rows || !rows.length) { wrap.className = 'pr-empty'; wrap.textContent = 'Không có dữ liệu.'; return; }
+      var html = '<div style="overflow-x:auto;"><table class="pr-table pr-prov-table"><tbody>';
+      var afterSection = false;
+      rows.forEach(function (row) {
+        var nonEmpty = row.filter(function (c) { return String(c || '').trim() !== ''; });
+        if (nonEmpty.length === 0) return;
+        var isSection = nonEmpty.length <= 2 && String(row[0] || '').trim() !== '';
+        if (isSection) { html += '<tr class="pr-prov-section"><td colspan="' + Math.max(row.length, 1) + '">' + escapeHtml(row[0]) + '</td></tr>'; afterSection = true; return; }
+        if (afterSection) {
+          html += '<tr class="pr-prov-header">' + row.map(function (c, ci) {
+            if (linkColIndex !== undefined && ci === linkColIndex) return '';
+            return '<th>' + escapeHtml(c) + '</th>';
+          }).join('') + '</tr>';
+          afterSection = false;
+          return;
+        }
+        html += '<tr>' + row.map(function (c, ci) {
+          if (linkColIndex !== undefined && ci === linkColIndex - 1 && row[linkColIndex]) {
+            return '<td><a href="' + escapeHtml(row[linkColIndex - 1]) + '" target="_blank" rel="noopener">' + escapeHtml(row[linkColIndex]) + '</a></td>';
+          }
+          if (linkColIndex !== undefined && ci === linkColIndex) return '';
+          return '<td>' + escapeHtml(c) + '</td>';
+        }).join('') + '</tr>';
+      });
+      html += '</tbody></table></div>';
+      wrap.className = '';
+      wrap.innerHTML = html;
+    }
+    function loadGuideOnce() {
+      if (referenceLoaded.guide) return;
+      referenceLoaded.guide = true;
+      fetch(GSHEETS_CONFIG.API_URL + '?action=getProvincePricing&province=' + encodeURIComponent('Hướng dẫn'), { redirect: 'follow' })
+        .then(function (r) { return r.json(); })
+        .then(function (data) { renderGenericSheetTable(data.rows, 'prGuideWrap'); })
+        .catch(function (e) { document.getElementById('prGuideWrap').textContent = 'Không tải được.'; console.error(e); });
+    }
+    function loadSourcesOnce() {
+      if (referenceLoaded.sources) return;
+      referenceLoaded.sources = true;
+      fetch(GSHEETS_CONFIG.API_URL + '?action=getProvincePricing&province=' + encodeURIComponent('Nguồn'), { redirect: 'follow' })
+        .then(function (r) { return r.json(); })
+        .then(function (data) { renderGenericSheetTable(data.rows, 'prSourcesWrap', 4); })
+        .catch(function (e) { document.getElementById('prSourcesWrap').textContent = 'Không tải được.'; console.error(e); });
+    }
+    var baseActivateTab2 = activateTab;
+    activateTab = function (tab) {
+      baseActivateTab2(tab);
+      if (tab === 'guide') loadGuideOnce();
+      else if (tab === 'sources') loadSourcesOnce();
+    };
+
+    function bootTools() {
+      if (typeof TaskManager === 'undefined' || !TaskManager.getProjects) { setTimeout(bootTools, 150); return; }
+      populateToolProjectSelect();
+      setTimeout(populateToolProjectSelect, 1200); // dự án có thể vẫn đang tải lần đầu từ Sheet
+    }
+    bootTools();
 
     // ---------- Danh mục đơn giá ----------
     function renderCatalog() {
@@ -703,6 +1701,7 @@
       lastEstimateResult = { lines: lines, subtotal: subtotal, contingencyPct: contingencyPct, grandTotal: grandTotal, totalFloorArea: totalFloorArea, groundArea: floorArea, unitPrice: unitPrice, pileTotal: pileTotal, grandTotalWithPile: grandTotalWithPile };
       syncEstimateToQuote(lastEstimateResult);
       recalcDesign();
+      recalcPrelimQty();
       return lastEstimateResult;
     }
 

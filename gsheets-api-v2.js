@@ -19,7 +19,17 @@ const SHEETS = {
   financeEntries: 'Tài chính công ty',
   receivables: 'Công nợ khách hàng',
   bsSnapshots: 'Chỉ số cân đối kế toán',
-  orders: 'Đơn hàng'
+  orders: 'Đơn hàng',
+  // 6 sheet mới (2026-09-09) — công cụ theo dự án đi kèm database đơn giá 34
+  // tỉnh, xem GHI_CHU_DU_AN.md. Tên KHÔNG có tiền tố "Bản sao của " nên không
+  // đụng tới 46 sheet tham khảo read-only đã copy trước đó (VD "Bản sao của
+  // Dòng tiền" khác hẳn "Dòng tiền" ở đây).
+  contractorComparisons: 'So sánh nhà thầu',
+  cashFlowPlans: 'Dòng tiền',
+  changeOrders: 'Phát sinh',
+  scheduleItems: 'Tiến độ',
+  acceptanceChecks: 'Nghiệm thu',
+  projectDocuments: 'Hồ sơ công trình'
 };
 
 // [Vietnamese header on the Sheet, internal English key used by client JS].
@@ -144,6 +154,49 @@ const FIELD_MAP = {
     ['Tiền giảm giá', 'discountAmount'], ['VAT %', 'vatPercent'], ['Tiền VAT', 'vatAmount'],
     ['Tổng cộng', 'totalAmount'], ['Trạng thái', 'status'], ['Phương thức thanh toán', 'paymentMethod'],
     ['Ghi chú', 'note'], ['Mã giao dịch liên kết', 'linkedFinanceEntryId'],
+    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
+  ],
+  // 6 sheet công cụ theo dự án dưới đây (2026-09-09) đi cùng các tab mới trong
+  // pricing.html — mỗi tab lấy TEMPLATE cố định (tên nhóm công việc, tiêu chí
+  // chấm điểm, 50 đầu việc nghiệm thu, 35 đầu hồ sơ...) viết thẳng trong
+  // pricing.html (giống PRELIM_QTY_ITEMS), sheet chỉ lưu phần NGƯỜI DÙNG NHẬP
+  // cho từng dự án — không lưu lại template vì template không đổi theo dự án.
+  contractorComparisons: [
+    ['Mã', 'id'], ['Mã dự án', 'projectId'], ['Tên nhà thầu A', 'contractorAName'],
+    ['Tên nhà thầu B', 'contractorBName'], ['Tên nhà thầu C', 'contractorCName'],
+    ['Dữ liệu giá theo nhóm việc', 'priceData'], ['Dữ liệu điểm theo tiêu chí', 'scoreData'],
+    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
+  ],
+  cashFlowPlans: [
+    ['Mã', 'id'], ['Mã dự án', 'projectId'], ['Giá trị hợp đồng', 'contractValue'],
+    ['Dữ liệu mốc thanh toán', 'milestoneData'],
+    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
+  ],
+  changeOrders: [
+    ['Mã PS', 'id'], ['Mã dự án', 'projectId'], ['Ngày', 'date'], ['Giai đoạn', 'stage'],
+    ['Mô tả phát sinh', 'description'], ['Nguyên nhân', 'reason'], ['ĐVT', 'unit'],
+    ['Khối lượng', 'quantity'], ['Đơn giá', 'unitPrice'], ['Thành tiền', 'amount'],
+    ['Trạng thái', 'status'], ['Người đề xuất', 'proposedBy'], ['Ngày duyệt', 'approvedAt'],
+    ['Bằng chứng/ảnh', 'evidenceUrl'],
+    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
+  ],
+  scheduleItems: [
+    ['Mã CV', 'id'], ['Mã dự án', 'projectId'], ['STT', 'seq'], ['Công việc', 'name'],
+    ['Thời lượng (ngày)', 'durationDays'], ['Bắt đầu KH', 'plannedStart'], ['Kết thúc KH', 'plannedEnd'],
+    ['Bắt đầu TT', 'actualStart'], ['Kết thúc TT', 'actualEnd'], ['Trạng thái', 'status'], ['Ghi chú', 'note'],
+    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
+  ],
+  // checkCode = mã cố định NT-01..NT-50 khớp với template trong pricing.html —
+  // mỗi (projectId, checkCode) chỉ có tối đa 1 dòng, client tự upsert.
+  acceptanceChecks: [
+    ['Mã', 'id'], ['Mã dự án', 'projectId'], ['Mã kiểm tra', 'checkCode'], ['Hồ sơ/ảnh', 'evidenceUrl'],
+    ['Kết quả', 'result'], ['Ngày kiểm tra', 'checkedAt'], ['Lỗi/cách xử lý', 'issue'], ['Xác nhận', 'confirmedBy'],
+    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
+  ],
+  // docCode = mã cố định khớp index template (0..34) trong pricing.html.
+  projectDocuments: [
+    ['Mã', 'id'], ['Mã dự án', 'projectId'], ['Mã hồ sơ', 'docCode'], ['Trạng thái', 'status'],
+    ['Nơi lưu/link', 'location'], ['Người phụ trách', 'ownerId'], ['Ghi chú', 'note'],
     ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
   ]
 };
@@ -392,6 +445,56 @@ function handleRequest(e) {
       result = getProvinceList(ss);
     } else if (action === 'getProvincePricing') {
       result = getProvincePricing(ss, params.province);
+    } else if (action === 'getContractorComparisons') {
+      result = getAllData(ss, SHEETS.contractorComparisons);
+    } else if (action === 'addContractorComparison') {
+      result = addData(ss, SHEETS.contractorComparisons, JSON.parse(params.data));
+    } else if (action === 'updateContractorComparison') {
+      result = updateData(ss, SHEETS.contractorComparisons, params.id, JSON.parse(params.data));
+    } else if (action === 'deleteContractorComparison') {
+      result = deleteData(ss, SHEETS.contractorComparisons, params.id);
+    } else if (action === 'getCashFlowPlans') {
+      result = getAllData(ss, SHEETS.cashFlowPlans);
+    } else if (action === 'addCashFlowPlan') {
+      result = addData(ss, SHEETS.cashFlowPlans, JSON.parse(params.data));
+    } else if (action === 'updateCashFlowPlan') {
+      result = updateData(ss, SHEETS.cashFlowPlans, params.id, JSON.parse(params.data));
+    } else if (action === 'deleteCashFlowPlan') {
+      result = deleteData(ss, SHEETS.cashFlowPlans, params.id);
+    } else if (action === 'getChangeOrders') {
+      result = getAllData(ss, SHEETS.changeOrders);
+    } else if (action === 'addChangeOrder') {
+      result = addData(ss, SHEETS.changeOrders, JSON.parse(params.data));
+    } else if (action === 'updateChangeOrder') {
+      result = updateData(ss, SHEETS.changeOrders, params.id, JSON.parse(params.data));
+    } else if (action === 'deleteChangeOrder') {
+      result = deleteData(ss, SHEETS.changeOrders, params.id);
+    } else if (action === 'getScheduleItems') {
+      result = getAllData(ss, SHEETS.scheduleItems);
+    } else if (action === 'seedScheduleItems') {
+      result = addDataBatch(ss, SHEETS.scheduleItems, JSON.parse(params.data));
+    } else if (action === 'addScheduleItem') {
+      result = addData(ss, SHEETS.scheduleItems, JSON.parse(params.data));
+    } else if (action === 'updateScheduleItem') {
+      result = updateData(ss, SHEETS.scheduleItems, params.id, JSON.parse(params.data));
+    } else if (action === 'deleteScheduleItem') {
+      result = deleteData(ss, SHEETS.scheduleItems, params.id);
+    } else if (action === 'getAcceptanceChecks') {
+      result = getAllData(ss, SHEETS.acceptanceChecks);
+    } else if (action === 'addAcceptanceCheck') {
+      result = addData(ss, SHEETS.acceptanceChecks, JSON.parse(params.data));
+    } else if (action === 'updateAcceptanceCheck') {
+      result = updateData(ss, SHEETS.acceptanceChecks, params.id, JSON.parse(params.data));
+    } else if (action === 'deleteAcceptanceCheck') {
+      result = deleteData(ss, SHEETS.acceptanceChecks, params.id);
+    } else if (action === 'getProjectDocuments') {
+      result = getAllData(ss, SHEETS.projectDocuments);
+    } else if (action === 'addProjectDocument') {
+      result = addData(ss, SHEETS.projectDocuments, JSON.parse(params.data));
+    } else if (action === 'updateProjectDocument') {
+      result = updateData(ss, SHEETS.projectDocuments, params.id, JSON.parse(params.data));
+    } else if (action === 'deleteProjectDocument') {
+      result = deleteData(ss, SHEETS.projectDocuments, params.id);
     } else {
       result = { error: 'Unknown action: ' + action };
     }
@@ -505,6 +608,43 @@ function forceTextIfDateLike(val, enKey) {
   if (typeof val === 'string' && /^\d{4}-\d{1,2}$/.test(val)) return "'" + val;
   if (enKey && FORCE_TEXT_FIELDS[enKey] && typeof val === 'string' && /^\d+$/.test(val)) return "'" + val;
   return val;
+}
+
+// Ghi nhiều dòng trong 1 lần thực thi (1 lệnh appendRows) — dùng khi cần tạo
+// sẵn nhiều dòng mẫu cùng lúc (VD: seed 18 đầu việc Tiến độ cho 1 dự án mới
+// mở tab lần đầu). KHÔNG gọi addData() nhiều lần song song từ client cho việc
+// này: mỗi lần gọi API là 1 lần thực thi Apps Script riêng, chạy đồng thời
+// đọc/ghi cùng sheet dễ đua nhau đọc sai "dòng cuối" và ghi đè lên nhau, rớt
+// mất dữ liệu — đã xảy ra thật khi test seed Tiến độ (18 dòng gửi song song,
+// chỉ còn lại 6-7 dòng).
+function addDataBatch(ss, sheetName, dataList) {
+  const sheet = getOrCreateSheet(ss, sheetName);
+  let headers = getHeaders(sheet);
+  if (headers.length === 0) {
+    const schemaKey = sheetKeyFor(sheetName);
+    const pairs = schemaKey && FIELD_MAP[schemaKey];
+    headers = pairs ? pairs.map(function (p) { return p[0]; }) : Object.keys(dataList[0] || {});
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  }
+  const now = new Date().toISOString().split('T')[0];
+  const rows = dataList.map(function (data) {
+    if (!data.id) {
+      const prefix = (sheetKeyFor(sheetName) || sheetName).toLowerCase().replace(/s$/, '');
+      data.id = makeId(prefix);
+    }
+    data.createdAt = data.createdAt || now;
+    return headers.map(function (h) {
+      const enKey = viToEnHeader(sheetName, h);
+      let val = data[enKey];
+      if (Array.isArray(val)) return JSON.stringify(val);
+      if (typeof val === 'string') val = enToViValue(sheetName, enKey, val);
+      return forceTextIfDateLike(val !== undefined && val !== null ? val : '', enKey);
+    });
+  });
+  if (rows.length) {
+    sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, headers.length).setValues(rows);
+  }
+  return dataList;
 }
 
 function addData(ss, sheetName, data) {
