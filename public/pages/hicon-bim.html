@@ -10,230 +10,123 @@
   <link rel="stylesheet" href="/css/portal.css">
   <link rel="stylesheet" href="/css/subpage.css">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <script src="/js/auth.js" defer></script>
+  <script src="/js/gsheets-config.js"></script>
+  <script src="/js/task-data.js"></script>
+  <script src="/js/auth.js"></script>
   <style>
-    body { background: var(--color-bg); color: var(--color-text); }
-
-    /* ---------- shared section chrome ---------- */
-    .hb-section { margin-top: var(--space-3xl); }
-    .hb-section-head { max-width: 640px; margin-bottom: var(--space-xl); }
-    .hb-eyebrow { font-size: var(--text-eyebrow); letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-bronze); font-weight: 600; margin-bottom: var(--space-sm); }
-    .hb-section-title { font-family: var(--font-sans); font-size: 1.75rem; font-weight: 700; letter-spacing: -0.01em; margin-bottom: var(--space-sm); }
-    .hb-section-desc { color: var(--color-text-muted); font-size: 0.9375rem; line-height: 1.65; }
-
-    /* ---------- hero ---------- */
-    .hb-hero-badge { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px 5px 8px; border-radius: 20px; border: 1px solid var(--color-border-strong); background: var(--color-surface); font-size: 0.75rem; color: var(--color-text-muted); margin-bottom: var(--space-lg); }
-    .hb-hero-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-success) 25%, transparent); }
-    .hb-hero-badge b { color: var(--color-bronze); font-weight: 600; }
-
-    .hb-pillars { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-md); margin-top: var(--space-2xl); }
-    .hb-pillar { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-lg); }
-    .hb-pillar-icon { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: color-mix(in srgb, var(--color-bronze) 14%, transparent); color: var(--color-bronze); margin-bottom: var(--space-md); }
-    .hb-pillar-icon svg { width: 19px; height: 19px; }
-    .hb-pillar h3 { font-size: 1rem; font-weight: 600; margin-bottom: 6px; }
-    .hb-pillar p { font-size: 0.84375rem; color: var(--color-text-muted); line-height: 1.6; }
-
-    /* ---------- narrative two-col ---------- */
-    .hb-narrative { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2xl); align-items: start; }
-    .hb-narrative-col h4 { display: flex; align-items: center; gap: 10px; font-size: 0.95rem; font-weight: 600; color: var(--color-bronze); margin-bottom: 10px; }
-    .hb-narrative-col h4 svg { width: 17px; height: 17px; }
-    .hb-narrative-col p { font-size: 0.875rem; color: var(--color-text-muted); line-height: 1.7; }
-    .hb-value-strip { margin-top: var(--space-2xl); padding: var(--space-lg); border: 1px solid var(--color-border); border-left: 2px solid var(--color-bronze); border-radius: var(--radius-md); background: var(--color-surface); display: flex; gap: var(--space-xl); align-items: center; flex-wrap: wrap; }
-    .hb-value-strip p { flex: 1; min-width: 260px; font-size: 0.875rem; color: var(--color-text-muted); line-height: 1.7; }
-    .hb-value-stat { text-align: center; flex-shrink: 0; }
-    .hb-value-stat .num { font-family: var(--font-serif); font-size: 2.75rem; font-weight: 500; color: var(--color-bronze); line-height: 1; }
-    .hb-value-stat .lbl { display: block; margin-top: 4px; font-size: 0.6875rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-text-faint); }
-
-    /* ---------- architecture diagram ---------- */
-    .hb-diagram { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-2xl) var(--space-lg); }
-    .hb-diagram-row { display: flex; align-items: center; justify-content: center; gap: 0; flex-wrap: wrap; }
-    .hb-diagram-col { display: flex; flex-direction: column; gap: var(--space-lg); }
-    .hb-node { width: 190px; padding: 14px 16px; border-radius: 10px; border: 1px solid var(--color-border-strong); background: var(--color-bg); text-align: center; }
-    .hb-node .t { font-size: 0.8125rem; font-weight: 700; margin-bottom: 3px; }
-    .hb-node .s { font-size: 0.6875rem; color: var(--color-text-faint); }
-    .hb-node.core { background: color-mix(in srgb, var(--color-navy) 55%, var(--color-bg)); border-color: var(--color-blue); box-shadow: var(--shadow-glow-blue); }
-    .hb-node.core .t { color: #EAF1F7; }
-    .hb-node.core .s { color: #A9C2D4; }
-    .hb-node.data { border-color: var(--color-terracotta); background: color-mix(in srgb, var(--color-terracotta) 10%, var(--color-bg)); }
-    .hb-node.data .t { color: var(--color-terracotta-soft); }
-    .hb-arrow-h { width: 46px; height: 2px; background: var(--color-border-strong); position: relative; flex-shrink: 0; }
-    .hb-arrow-h::after { content: ''; position: absolute; right: -1px; top: -4px; border: 5px solid transparent; border-left-color: var(--color-border-strong); }
-    .hb-arrow-v { width: 2px; height: 22px; background: var(--color-border-strong); margin: 0 auto; }
-    .hb-diagram-legend { display: flex; gap: var(--space-lg); justify-content: center; margin-top: var(--space-xl); flex-wrap: wrap; font-size: 0.75rem; color: var(--color-text-faint); }
-    .hb-diagram-legend span { display: inline-flex; align-items: center; gap: 6px; }
-    .hb-diagram-legend i { width: 8px; height: 8px; border-radius: 2px; }
-
-    /* ---------- device frame (SketchUp plugin) ---------- */
-    .hb-showcase-row { display: grid; grid-template-columns: 400px 1fr; gap: var(--space-2xl); align-items: start; }
-    .hb-copy-list { display: flex; flex-direction: column; gap: var(--space-lg); margin-top: var(--space-lg); }
-    .hb-copy-item { display: flex; gap: 12px; }
-    .hb-copy-item .n { flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--color-bronze); color: var(--color-bronze); font-family: var(--font-mono); font-size: 0.75rem; display: grid; place-items: center; font-weight: 600; }
-    .hb-copy-item h5 { font-size: 0.875rem; font-weight: 600; margin-bottom: 3px; }
-    .hb-copy-item p { font-size: 0.8125rem; color: var(--color-text-muted); line-height: 1.6; }
-
-    .hb-device { width: 100%; max-width: 380px; margin: 0 auto; background: #FFFFFF; border-radius: 16px; overflow: hidden; box-shadow: var(--shadow-lg); border: 1px solid #E3E6EA; font-family: 'Inter', sans-serif; color: #14181D; }
-    .hb-device-bar { background: #0F1115; padding: 9px 14px; display: flex; align-items: center; justify-content: space-between; }
-    .hb-device-bar .dots { display: flex; gap: 6px; }
-    .hb-device-bar .dots i { width: 8px; height: 8px; border-radius: 50%; background: #3A3F47; }
-    .hb-device-bar .name { color: #C9CCD1; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.02em; }
-    .hb-device-head { padding: 14px 16px 12px; border-bottom: 1px solid #EDEFF2; display: flex; align-items: center; justify-content: space-between; }
-    .hb-device-head-title { display: flex; align-items: center; gap: 10px; }
-    .hb-device-head-title .ic { width: 32px; height: 32px; border-radius: 8px; background: #14181D; color: #fff; display: grid; place-items: center; flex-shrink: 0; }
-    .hb-device-head-title .ic svg { width: 16px; height: 16px; }
-    .hb-device-head-title b { display: block; font-size: 0.875rem; font-weight: 700; }
-    .hb-device-head-title span { display: block; font-size: 0.6875rem; color: #8A9099; }
-    .hb-device-status { display: flex; align-items: center; gap: 5px; font-size: 0.625rem; font-weight: 600; color: #3D8B5F; background: #E6F4EC; padding: 4px 9px; border-radius: 20px; }
-    .hb-device-status i { width: 6px; height: 6px; border-radius: 50%; background: #3D8B5F; }
-    .hb-device-file { margin: 14px 16px; padding: 12px 13px; border: 1px solid #EDEFF2; border-radius: 10px; background: #FAFBFC; }
-    .hb-device-file .lbl { font-size: 0.5625rem; text-transform: uppercase; letter-spacing: 0.06em; color: #9AA0A8; font-weight: 700; }
-    .hb-device-file .fn { font-size: 0.8125rem; font-weight: 700; margin: 3px 0 8px; }
-    .hb-device-file .meta { display: flex; justify-content: space-between; font-size: 0.6875rem; color: #8A9099; border-top: 1px solid #EDEFF2; padding-top: 8px; }
-    .hb-device-file .meta b { display: block; color: #14181D; font-weight: 600; font-size: 0.6875rem; margin-top: 1px; }
-    .hb-device-tabs { display: flex; border-bottom: 1px solid #EDEFF2; padding: 0 10px; overflow-x: auto; }
-    .hb-device-tab { flex: 1; min-width: 52px; padding: 9px 4px 8px; display: flex; flex-direction: column; align-items: center; gap: 4px; border: none; background: none; cursor: pointer; color: #9AA0A8; font-family: inherit; border-bottom: 2px solid transparent; }
-    .hb-device-tab svg { width: 16px; height: 16px; }
-    .hb-device-tab span { font-size: 0.5625rem; font-weight: 600; }
-    .hb-device-tab.active { color: #14181D; border-bottom-color: #14181D; }
-    .hb-device-body { padding: 14px 16px 18px; min-height: 300px; }
-    .hb-device-body .lbl-eyebrow { font-size: 0.5625rem; text-transform: uppercase; letter-spacing: 0.07em; color: #9AA0A8; font-weight: 700; margin-bottom: 3px; }
-    .hb-device-body h6 { font-size: 1.0625rem; font-weight: 700; margin-bottom: 5px; }
-    .hb-device-body .desc { font-size: 0.75rem; color: #6C737C; line-height: 1.5; margin-bottom: 14px; }
-    .hb-btn-dark { width: 100%; padding: 11px; border-radius: 10px; background: #14181D; color: #fff; font-size: 0.8125rem; font-weight: 600; border: none; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: default; font-family: inherit; }
-    .hb-btn-dark svg { width: 14px; height: 14px; }
-    .hb-btn-ghost-lt { width: 100%; padding: 10px; border-radius: 10px; background: #fff; color: #14181D; font-size: 0.8125rem; font-weight: 600; border: 1px solid #E3E6EA; margin-top: 8px; cursor: default; font-family: inherit; }
-    .hb-stat-trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0; }
-    .hb-stat-trio div { text-align: center; padding: 10px 4px; background: #FAFBFC; border-radius: 9px; border: 1px solid #EDEFF2; }
-    .hb-stat-trio .v { font-size: 1.0625rem; font-weight: 700; }
-    .hb-stat-trio .l { font-size: 0.5625rem; color: #8A9099; margin-top: 2px; }
-    .hb-alert-ok { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 9px; background: #E6F4EC; color: #2F6B48; font-size: 0.75rem; font-weight: 600; margin-bottom: 12px; }
-    .hb-alert-ok svg { width: 14px; height: 14px; flex-shrink: 0; }
-    .hb-row-item { display: flex; align-items: center; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid #F1F2F4; }
-    .hb-row-item:last-child { border-bottom: none; }
-    .hb-row-item .rt { font-size: 0.78125rem; font-weight: 600; }
-    .hb-row-item .rs { font-size: 0.6875rem; color: #8A9099; }
-    .hb-badge-lt { font-size: 0.625rem; font-weight: 700; padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
-    .hb-badge-lt.ok { background: #E6F4EC; color: #2F6B48; }
-    .hb-badge-lt.warn { background: #FBEFDD; color: #9A6A18; }
-    .hb-progress-lt { height: 5px; border-radius: 4px; background: #EDEFF2; overflow: hidden; margin-top: 8px; }
-    .hb-progress-lt span { display: block; height: 100%; background: #14181D; border-radius: 4px; }
-    .hb-field-lt { margin-bottom: 10px; }
-    .hb-field-lt label { display: block; font-size: 0.625rem; text-transform: uppercase; letter-spacing: 0.05em; color: #9AA0A8; font-weight: 700; margin-bottom: 5px; }
-    .hb-field-lt .box { padding: 9px 11px; border: 1px solid #E3E6EA; border-radius: 8px; background: #fff; font-size: 0.78125rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between; }
-    .hb-field-lt .box svg { width: 13px; height: 13px; color: #9AA0A8; }
-    .hb-boq-total { border-top: 2px solid #EDEFF2; margin-top: 10px; padding-top: 10px; display: flex; justify-content: space-between; font-size: 0.875rem; font-weight: 700; }
-
-    /* ---------- workspace browser frame ---------- */
-    .hb-browser { background: #F7F8FA; border-radius: 16px; overflow: hidden; box-shadow: var(--shadow-lg); border: 1px solid #E3E6EA; color: #14181D; font-family: 'Inter', sans-serif; }
-    .hb-browser-chrome { background: #E7E9EC; padding: 9px 14px; display: flex; align-items: center; gap: 10px; }
-    .hb-browser-chrome .dots { display: flex; gap: 6px; }
-    .hb-browser-chrome .dots i { width: 9px; height: 9px; border-radius: 50%; }
-    .hb-browser-chrome .dots i:nth-child(1) { background: #EC6A5E; }
-    .hb-browser-chrome .dots i:nth-child(2) { background: #F4BF4F; }
-    .hb-browser-chrome .dots i:nth-child(3) { background: #61C554; }
-    .hb-browser-chrome .url { flex: 1; background: #fff; border-radius: 7px; padding: 5px 12px; font-size: 0.6875rem; color: #8A9099; font-family: var(--font-mono); }
-    .hb-ws-shell { display: flex; min-height: 560px; }
-    .hb-ws-sidebar { width: 208px; flex-shrink: 0; background: #fff; border-right: 1px solid #EDEFF2; padding: 16px 12px; display: flex; flex-direction: column; }
-    .hb-ws-brand { display: flex; align-items: center; gap: 8px; padding: 0 6px 16px; margin-bottom: 12px; border-bottom: 1px solid #EDEFF2; }
-    .hb-ws-brand .ic { width: 26px; height: 26px; border-radius: 7px; background: #14181D; color: #fff; display: grid; place-items: center; }
-    .hb-ws-brand .ic svg { width: 14px; height: 14px; }
-    .hb-ws-brand b { font-size: 0.8125rem; font-weight: 800; letter-spacing: -0.01em; }
-    .hb-ws-brand span { display: block; font-size: 0.5rem; letter-spacing: 0.1em; color: #9AA0A8; font-weight: 700; }
-    .hb-ws-org { display: flex; align-items: center; gap: 8px; padding: 8px 6px; margin-bottom: 12px; }
-    .hb-ws-org .sq { width: 24px; height: 24px; border-radius: 6px; background: #14181D; color: #fff; font-size: 0.6875rem; font-weight: 700; display: grid; place-items: center; flex-shrink: 0; }
-    .hb-ws-org div b { display: block; font-size: 0.6875rem; font-weight: 700; }
-    .hb-ws-org div span { font-size: 0.5625rem; color: #9AA0A8; }
-    .hb-ws-navlabel { font-size: 0.5625rem; text-transform: uppercase; letter-spacing: 0.08em; color: #B0B5BC; font-weight: 700; padding: 0 6px; margin-bottom: 6px; }
-    .hb-ws-nav { display: flex; flex-direction: column; gap: 1px; margin-bottom: 14px; }
-    .hb-ws-navitem { display: flex; align-items: center; gap: 9px; padding: 8px 8px; border-radius: 8px; border: none; background: none; font-family: inherit; font-size: 0.78125rem; font-weight: 600; color: #4A505A; cursor: pointer; text-align: left; width: 100%; }
-    .hb-ws-navitem svg { width: 15px; height: 15px; flex-shrink: 0; color: #9AA0A8; }
-    .hb-ws-navitem .cnt { margin-left: auto; font-size: 0.6875rem; color: #B0B5BC; font-weight: 600; }
-    .hb-ws-navitem:hover { background: #F7F8FA; }
-    .hb-ws-navitem.active { background: #14181D; color: #fff; }
-    .hb-ws-navitem.active svg { color: #fff; }
-    .hb-ws-navitem.active .cnt { color: #C9CCD1; }
-    .hb-ws-main { flex: 1; min-width: 0; padding: 20px 24px; overflow-x: auto; }
-    .hb-ws-crumb { font-size: 0.6875rem; color: #9AA0A8; margin-bottom: 10px; }
-    .hb-ws-h1 { font-size: 1.375rem; font-weight: 800; margin-bottom: 4px; letter-spacing: -0.01em; }
-    .hb-ws-sub { font-size: 0.78125rem; color: #8A9099; margin-bottom: 18px; }
-    .hb-ws-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
-    .hb-ws-stat { background: #fff; border: 1px solid #EDEFF2; border-radius: 12px; padding: 14px 16px; }
-    .hb-ws-stat .top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
-    .hb-ws-stat .top svg { width: 15px; height: 15px; color: #9AA0A8; }
-    .hb-ws-stat .lbl { font-size: 0.625rem; text-transform: uppercase; color: #9AA0A8; font-weight: 700; letter-spacing: 0.04em; }
-    .hb-ws-stat .val { font-size: 1.375rem; font-weight: 800; font-family: var(--font-mono); margin: 4px 0 2px; }
-    .hb-ws-stat .sub { font-size: 0.65625rem; color: #B0B5BC; }
-    .hb-ws-panel { background: #fff; border: 1px solid #EDEFF2; border-radius: 12px; overflow: hidden; }
-    .hb-ws-panel-head { display: flex; align-items: center; justify-content: space-between; padding: 13px 16px; border-bottom: 1px solid #EDEFF2; }
-    .hb-ws-panel-head b { font-size: 0.8125rem; font-weight: 700; }
-    .hb-ws-panel-head a { font-size: 0.6875rem; color: #9AA0A8; font-weight: 600; }
-    .hb-ws-table { width: 100%; font-size: 0.75rem; }
-    .hb-ws-table th { text-align: left; padding: 8px 16px; background: #FAFBFC; font-size: 0.625rem; text-transform: uppercase; color: #9AA0A8; font-weight: 700; border-bottom: 1px solid #EDEFF2; letter-spacing: 0.03em; }
-    .hb-ws-table td { padding: 10px 16px; border-bottom: 1px solid #F1F2F4; vertical-align: middle; }
-    .hb-ws-table tr:last-child td { border-bottom: none; }
-    .hb-ws-table .prod-name { font-weight: 700; }
-    .hb-ws-table .prod-code { display: block; font-size: 0.625rem; color: #B0B5BC; font-weight: 400; }
-    .hb-tag-lt { font-size: 0.625rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; background: #F1F2F4; color: #6C737C; }
-    .hb-dot-status { display: inline-flex; align-items: center; gap: 5px; font-size: 0.6875rem; font-weight: 600; color: #2F6B48; }
-    .hb-dot-status i { width: 6px; height: 6px; border-radius: 50%; background: #3D8B5F; }
-    .hb-ws-2col { display: grid; grid-template-columns: 1.5fr 1fr; gap: 14px; margin-bottom: 14px; }
-    .hb-proj-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #F1F2F4; }
-    .hb-proj-row:last-child { border-bottom: none; }
-    .hb-proj-row .sq { width: 34px; height: 34px; border-radius: 8px; background: #14181D; color: #fff; font-size: 0.625rem; font-weight: 700; display: grid; place-items: center; flex-shrink: 0; }
-    .hb-proj-row .info { flex: 1; min-width: 0; }
-    .hb-proj-row .info b { display: block; font-size: 0.78125rem; font-weight: 700; }
-    .hb-proj-row .info span { font-size: 0.65625rem; color: #B0B5BC; }
-    .hb-proj-row .pct { width: 120px; text-align: right; font-size: 0.78125rem; font-weight: 700; flex-shrink: 0; }
-    .hb-attn-row { display: flex; align-items: center; gap: 10px; padding: 11px 16px; border-bottom: 1px solid #F1F2F4; }
-    .hb-attn-row:last-child { border-bottom: none; }
-    .hb-attn-row .ic { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; flex-shrink: 0; }
-    .hb-attn-row .ic svg { width: 13px; height: 13px; }
-    .hb-attn-row .body { flex: 1; min-width: 0; }
-    .hb-attn-row .body b { display: block; font-size: 0.75rem; font-weight: 700; }
-    .hb-attn-row .body span { font-size: 0.65625rem; color: #B0B5BC; }
-    .hb-attn-row .cnt { font-family: var(--font-mono); font-weight: 700; font-size: 0.875rem; }
-    .hb-ws-demo-flag { position: sticky; bottom: 0; text-align: right; padding: 8px 0 0; font-size: 0.5625rem; color: #C7CBD1; letter-spacing: 0.03em; }
-    .hb-subtabs { display: flex; gap: 4px; margin-bottom: 14px; border-bottom: 1px solid #EDEFF2; }
-    .hb-subtab { padding: 8px 14px; font-size: 0.75rem; font-weight: 600; color: #9AA0A8; border: none; background: none; border-bottom: 2px solid transparent; cursor: pointer; font-family: inherit; }
-    .hb-subtab.active { color: #14181D; border-bottom-color: #14181D; }
-    .hb-kanban { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-    .hb-kanban-col { background: #FAFBFC; border: 1px solid #EDEFF2; border-radius: 10px; padding: 8px; }
-    .hb-kanban-col .h { display: flex; align-items: center; gap: 6px; font-size: 0.6875rem; font-weight: 700; padding: 4px 4px 8px; }
-    .hb-kanban-col .h i { width: 6px; height: 6px; border-radius: 50%; }
-    .hb-kanban-card { background: #fff; border: 1px solid #EDEFF2; border-radius: 8px; padding: 9px 10px; font-size: 0.6875rem; }
-    .hb-kanban-card .id { color: #B0B5BC; font-family: var(--font-mono); font-size: 0.625rem; margin-bottom: 3px; }
-    .hb-kanban-card .t { font-weight: 700; margin-bottom: 6px; line-height: 1.3; }
-    .hb-kanban-card .pri { font-size: 0.5625rem; font-weight: 700; padding: 2px 6px; border-radius: 20px; }
-    .hb-kanban-card .pri.high { background: #FCE4E1; color: #B0463B; }
-    .hb-kanban-card .pri.med { background: #FBEFDD; color: #9A6A18; }
-    .hb-kanban-card .pri.low { background: #F1F2F4; color: #6C737C; }
-
-    /* ---------- rbz cta ---------- */
-    .hb-rbz-card { display: flex; align-items: center; gap: var(--space-lg); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-lg) var(--space-xl); flex-wrap: wrap; }
-    .hb-rbz-icon { width: 48px; height: 48px; border-radius: 12px; background: color-mix(in srgb, var(--color-warning) 16%, transparent); color: var(--color-warning); display: grid; place-items: center; flex-shrink: 0; }
-    .hb-rbz-icon svg { width: 22px; height: 22px; }
-    .hb-rbz-body { flex: 1; min-width: 240px; }
-    .hb-rbz-body b { display: block; font-size: 0.9375rem; margin-bottom: 3px; }
-    .hb-rbz-body p { font-size: 0.8125rem; color: var(--color-text-muted); line-height: 1.6; }
-    .hb-rbz-tag { font-size: 0.6875rem; font-weight: 700; padding: 5px 12px; border-radius: 20px; background: color-mix(in srgb, var(--color-warning) 16%, transparent); color: var(--color-warning); white-space: nowrap; }
-
-    @media (max-width: 1000px) {
-      .hb-pillars, .hb-narrative { grid-template-columns: 1fr; }
-      .hb-showcase-row { grid-template-columns: 1fr; }
-      .hb-ws-stats { grid-template-columns: repeat(2, 1fr); }
-      .hb-kanban { grid-template-columns: repeat(2, 1fr); }
-      .hb-diagram-row { flex-direction: column; }
-      .hb-arrow-h { width: 2px; height: 26px; }
-      .hb-arrow-h::after { right: -4px; top: auto; bottom: -1px; border-left-color: transparent; border-top-color: var(--color-border-strong); }
+    :root {
+      --bm-bg: var(--color-bg); --bm-surface: var(--color-surface); --bm-border: var(--color-border);
+      --bm-text: var(--color-text); --bm-muted: var(--color-text-muted); --bm-bronze: var(--color-bronze);
+      --bm-green: #4F6F52; --bm-red: #A04848;
     }
-    @media (max-width: 640px) {
-      .hb-ws-shell { flex-direction: column; }
-      .hb-ws-sidebar { width: 100%; flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1px solid #EDEFF2; }
-      .hb-ws-brand, .hb-ws-org, .hb-ws-navlabel { display: none; }
-      .hb-ws-nav { flex-direction: row; }
-      .hb-ws-navitem span:not(.cnt) { display: none; }
-      .hb-ws-stats { grid-template-columns: 1fr 1fr; }
-      .hb-ws-2col { grid-template-columns: 1fr; }
-      .hb-kanban { grid-template-columns: 1fr; }
+    body { background: var(--bm-bg); color: var(--bm-text); font-family: 'Inter', -apple-system, sans-serif; }
+    .bm-container { max-width: 1320px; }
+
+    .bm-hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 22px; flex-wrap: wrap; }
+    .bm-hero p.guide-link { font-size: 0.8125rem; color: var(--bm-muted); }
+    .bm-hero p.guide-link a { color: var(--bm-bronze); }
+
+    .bm-layout { display: flex; gap: 22px; align-items: flex-start; }
+    .bm-sidebar { width: 216px; flex-shrink: 0; position: sticky; top: 16px; background: var(--bm-surface); border: 1px solid var(--bm-border); border-radius: 16px; padding: 14px 10px; }
+    .bm-nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 9px; font-size: 0.8125rem; color: var(--bm-text); cursor: pointer; margin-bottom: 2px; border: none; background: transparent; width: 100%; text-align: left; font-family: inherit; }
+    .bm-nav-item svg { width: 15px; height: 15px; flex-shrink: 0; opacity: 0.8; }
+    .bm-nav-item:hover { background: var(--bm-bg); }
+    .bm-nav-item.active { background: color-mix(in srgb, var(--bm-bronze) 16%, transparent); color: var(--bm-bronze); font-weight: 600; }
+    .bm-nav-item.active svg { opacity: 1; }
+    .bm-nav-item .cnt { margin-left: auto; font-family: var(--font-mono); font-size: 0.6875rem; color: var(--bm-muted); }
+    .bm-content { flex: 1; min-width: 0; }
+    .bm-section { display: none; }
+    .bm-section.active { display: block; }
+
+    .bm-summary-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 22px; }
+    .bm-summary-card { background: var(--bm-surface); border: 1px solid var(--bm-border); border-radius: 14px; padding: 16px 18px; }
+    .bm-summary-label { font-size: 0.6875rem; color: var(--bm-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+    .bm-summary-value { font-size: 1.5rem; font-weight: 700; font-family: var(--font-mono); color: var(--bm-bronze); }
+
+    .bm-card { background: var(--bm-surface); border: 1px solid var(--bm-border); border-radius: 18px; overflow: hidden; margin-bottom: 22px; }
+    .bm-card-head { padding: 16px 22px; border-bottom: 1px solid var(--bm-border); background: var(--bm-bg); display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .bm-card-title { font-size: 1rem; font-weight: 600; }
+    .bm-card-desc { font-size: 0.8125rem; color: var(--bm-muted); margin-top: 4px; }
+    .bm-section-head { margin-bottom: 16px; }
+    .bm-section-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 4px; }
+    .bm-section-desc { font-size: 0.8125rem; color: var(--bm-muted); }
+
+    .bm-form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 18px 22px; align-items: end; }
+    .bm-form-grid.cols5 { grid-template-columns: repeat(5, 1fr); }
+    .bm-form-grid.cols6 { grid-template-columns: repeat(6, 1fr); }
+    .bm-field-label { display: block; font-size: 0.6875rem; color: var(--bm-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+    .bm-input, .bm-select, .bm-textarea { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--bm-border); background: var(--bm-bg); color: var(--bm-text); font-family: inherit; font-size: 0.8125rem; }
+    .bm-textarea { resize: vertical; min-height: 36px; }
+    .bm-btn { padding: 9px 16px; border-radius: 9px; border: none; font-family: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+    .bm-btn-primary { background: var(--bm-bronze); color: #0B0D10; }
+    .bm-btn-primary:hover { background: #C7A464; }
+    .bm-btn-ghost { background: transparent; border: 1px solid var(--bm-border); color: var(--bm-text); }
+    .bm-btn-ghost:hover { border-color: var(--bm-bronze); color: var(--bm-bronze); }
+    .bm-btn-sm { padding: 5px 11px; font-size: 0.71875rem; border-radius: 7px; }
+    .bm-btn-danger { color: var(--bm-red); }
+    .bm-btn-danger:hover { border-color: var(--bm-red); }
+
+    .bm-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+    .bm-table th { text-align: left; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--bm-muted); font-weight: 600; padding: 10px 22px; background: var(--bm-bg); border-bottom: 1px solid var(--bm-border); white-space: nowrap; }
+    .bm-table td { padding: 10px 22px; border-bottom: 1px solid var(--bm-border); vertical-align: middle; }
+    .bm-table tr:last-child td { border-bottom: none; }
+    .bm-table .num { font-family: var(--font-mono); text-align: right; white-space: nowrap; }
+    .bm-row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+    .bm-empty { padding: 32px 22px; text-align: center; color: var(--bm-muted); font-size: 0.875rem; }
+    .bm-tag { font-size: 0.6875rem; font-weight: 600; padding: 3px 9px; border-radius: 20px; white-space: nowrap; border: 1px solid; }
+    .bm-tag.active-st { color: var(--bm-green); border-color: color-mix(in srgb, var(--bm-green) 40%, transparent); background: color-mix(in srgb, var(--bm-green) 10%, transparent); }
+    .bm-tag.inactive-st { color: var(--bm-muted); border-color: var(--bm-border); background: var(--bm-bg); }
+    .bm-tag.pri-cao { color: var(--bm-red); border-color: color-mix(in srgb, var(--bm-red) 40%, transparent); background: color-mix(in srgb, var(--bm-red) 10%, transparent); }
+    .bm-tag.pri-trung-binh { color: var(--bm-bronze); border-color: color-mix(in srgb, var(--bm-bronze) 40%, transparent); background: color-mix(in srgb, var(--bm-bronze) 10%, transparent); }
+    .bm-tag.pri-thap { color: var(--bm-muted); border-color: var(--bm-border); background: var(--bm-bg); }
+    .bm-tag.st-moi { color: #3B6B8C; border-color: color-mix(in srgb, #3B6B8C 40%, transparent); background: color-mix(in srgb, #3B6B8C 12%, transparent); }
+    .bm-tag.st-dang-xu-ly { color: var(--bm-bronze); border-color: color-mix(in srgb, var(--bm-bronze) 40%, transparent); background: color-mix(in srgb, var(--bm-bronze) 10%, transparent); }
+    .bm-tag.st-cho-phan-hoi { color: var(--bm-red); border-color: color-mix(in srgb, var(--bm-red) 40%, transparent); background: color-mix(in srgb, var(--bm-red) 10%, transparent); }
+    .bm-tag.st-da-giai-quyet { color: var(--bm-green); border-color: color-mix(in srgb, var(--bm-green) 40%, transparent); background: color-mix(in srgb, var(--bm-green) 10%, transparent); }
+
+    .bm-project-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .bm-project-card { background: var(--bm-surface); border: 1px solid var(--bm-border); border-radius: 14px; padding: 16px 18px; cursor: pointer; transition: border-color 0.15s; }
+    .bm-project-card:hover { border-color: var(--bm-bronze); }
+    .bm-project-card b { display: block; font-size: 0.9375rem; margin-bottom: 4px; }
+    .bm-project-card span { font-size: 0.75rem; color: var(--bm-muted); }
+    .bm-project-card .stats { display: flex; gap: 14px; margin-top: 12px; font-size: 0.75rem; color: var(--bm-muted); }
+    .bm-project-card .stats b { display: inline; font-size: 0.8125rem; color: var(--bm-bronze); }
+
+    .bm-back-link { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8125rem; color: var(--bm-muted); cursor: pointer; margin-bottom: 14px; background: none; border: none; font-family: inherit; padding: 0; }
+    .bm-back-link:hover { color: var(--bm-bronze); }
+    .bm-back-link svg { width: 14px; height: 14px; }
+
+    .bm-subtabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--bm-border); }
+    .bm-subtab { padding: 9px 16px; font-size: 0.8125rem; font-weight: 600; color: var(--bm-muted); border: none; background: none; border-bottom: 2px solid transparent; cursor: pointer; font-family: inherit; }
+    .bm-subtab.active { color: var(--bm-bronze); border-bottom-color: var(--bm-bronze); }
+
+    .bm-kanban { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .bm-kanban-col { background: var(--bm-bg); border: 1px solid var(--bm-border); border-radius: 12px; padding: 10px; min-height: 60px; }
+    .bm-kanban-col .h { font-size: 0.75rem; font-weight: 700; padding: 4px 6px 10px; color: var(--bm-muted); }
+    .bm-kanban-card { background: var(--bm-surface); border: 1px solid var(--bm-border); border-radius: 9px; padding: 10px 12px; font-size: 0.78125rem; margin-bottom: 8px; }
+    .bm-kanban-card:last-child { margin-bottom: 0; }
+    .bm-kanban-card .t { font-weight: 600; margin-bottom: 6px; line-height: 1.35; }
+    .bm-kanban-card .meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .bm-kanban-card .loc { font-size: 0.6875rem; color: var(--bm-muted); }
+
+    .bm-boq-total { display: flex; justify-content: flex-end; gap: 26px; padding: 16px 22px; border-top: 2px solid var(--bm-border); font-size: 0.875rem; }
+    .bm-boq-total b { font-family: var(--font-mono); color: var(--bm-bronze); margin-left: 8px; }
+
+    @media (max-width: 1100px) {
+      .bm-layout { flex-direction: column; }
+      .bm-sidebar { width: 100%; position: static; display: flex; overflow-x: auto; gap: 4px; padding: 8px; }
+      .bm-nav-item { white-space: nowrap; }
+      .bm-summary-grid { grid-template-columns: repeat(2, 1fr); }
+      .bm-project-grid { grid-template-columns: 1fr; }
+      .bm-kanban { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 700px) {
+      .bm-form-grid, .bm-form-grid.cols5, .bm-form-grid.cols6 { grid-template-columns: 1fr 1fr; }
+      .bm-table thead { display: none; }
+      .bm-table tr { display: grid; grid-template-columns: 1fr; row-gap: 4px; padding: 10px 0; }
+      .bm-table td { border-bottom: none; padding: 2px 22px; }
+      .bm-table tr:not(:last-child) { border-bottom: 1px solid var(--bm-border); }
+      .bm-kanban { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -265,163 +158,171 @@
   </header>
 
   <main class="subpage">
-  <div class="subpage-inner" style="max-width: 1280px;">
-
-    <span class="hb-hero-badge"><i class="dot"></i>HICON-BIM · <b>SketchUp</b> × <b>Mobim Workspace</b> · giai đoạn xây dựng</span>
-    <p class="eyebrow">— Từ mô hình đến quản lý dự án</p>
-    <h1 class="subpage-title">Kiểm soát <span class="subpage-title-italic">Issue &amp; BOQ</span><br>ngay từ file SketchUp</h1>
-    <p class="subpage-lede" style="max-width: 640px;">Theo sát chi phí ngay từ lúc đặt bút vẽ. Đối tượng dựng trong SketchUp được gắn với sản phẩm, vật liệu, thông số, vị trí và thông tin giá — từ đó hỗ trợ bóc tách khối lượng, lập bảng khối lượng và theo dõi vấn đề ngay trên mô hình.</p>
-
-    <div class="hb-pillars">
-      <div class="hb-pillar">
-        <div class="hb-pillar-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
-        <h3>Làm việc ngay trong SketchUp</h3>
-        <p>Kết nối đối tượng thiết kế với dữ liệu BIM — gán sản phẩm, vật liệu, Level, Room/Space trực tiếp trên model, không rời khỏi phần mềm vẽ.</p>
-      </div>
-      <div class="hb-pillar">
-        <div class="hb-pillar-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
-        <h3>Phối hợp công việc rõ ràng</h3>
-        <p>Theo dõi Issue cùng ngữ cảnh mô hình — viewpoint, đối tượng liên quan, người phụ trách và lịch sử trao đổi, đồng bộ hai chiều SketchUp ↔ Workspace.</p>
-      </div>
-      <div class="hb-pillar">
-        <div class="hb-pillar-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.59 3.24H4a1 1 0 0 0-1 1v5.59a2 2 0 0 0 .59 1.41l9.58 9.58a2 2 0 0 0 2.82 0l4.6-4.6a2 2 0 0 0 0-2.82Z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg></div>
-        <h3>Kiểm soát khối lượng &amp; chi phí</h3>
-        <p>Lập BOQ dựa trên thiết kế và dữ liệu dùng chung — khối lượng bóc từ model, làm giàu bằng catalog, offer và pricing policy đã xuất bản.</p>
+  <div class="subpage-inner bm-container" id="bmRoot">
+    <div class="bm-hero">
+      <div>
+        <p class="eyebrow">— Quản lý dữ liệu BIM</p>
+        <h1 class="subpage-title" style="margin-bottom: 8px;">HICON-BIM</h1>
+        <p class="guide-link">Danh mục Sản phẩm/Vật liệu/Nhà cung cấp dùng chung + Issue/BOQ theo dự án — dữ liệu thật, lưu trực tiếp lên Google Sheet. <a href="/pages/hicon-bim-huongdan.html">Xem hướng dẫn sử dụng / giao diện dự kiến với plugin SketchUp →</a></p>
       </div>
     </div>
 
-    <div class="hb-narrative hb-section">
-      <div class="hb-narrative-col">
-        <h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 3v18M3 8h18"/></svg>MoBim — trong SketchUp</h4>
-        <p>Dựng trong SketchUp có thể được gắn với sản phẩm, vật liệu, thông số, vị trí và thông tin giá, từ đó hỗ trợ bóc tách khối lượng, lập bảng khối lượng và theo dõi các vấn đề ngay trên mô hình.</p>
+    <div class="bm-layout">
+      <div class="bm-sidebar">
+        <button class="bm-nav-item active" data-view="overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Tổng quan</button>
+        <button class="bm-nav-item" data-view="products"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.59 3.24H4a1 1 0 0 0-1 1v5.59a2 2 0 0 0 .59 1.41l9.58 9.58a2 2 0 0 0 2.82 0l4.6-4.6a2 2 0 0 0 0-2.82Z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>Sản phẩm<span class="cnt" id="bmCntProducts"></span></button>
+        <button class="bm-nav-item" data-view="materials"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 17l9 5 9-5"/></svg>Vật liệu<span class="cnt" id="bmCntMaterials"></span></button>
+        <button class="bm-nav-item" data-view="suppliers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 3h15v13H1zM16 8h4l3 3v5h-7"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Nhà cung cấp<span class="cnt" id="bmCntSuppliers"></span></button>
+        <button class="bm-nav-item" data-view="projects"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9.5 12 3l9 6.5V21H3z"/></svg>Dự án</button>
       </div>
-      <div class="hb-narrative-col">
-        <h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 4h16v12H4z"/><path d="M2 20h20"/></svg>Mobim Workspace — trên trình duyệt</h4>
-        <p>Workspace giúp tổ chức, quản lý và cùng khai thác những dữ liệu liên quan trên trình duyệt — danh mục sản phẩm, vật liệu, nhà cung cấp, dự án, Issue và BOQ dùng chung cho cả đội.</p>
-      </div>
-    </div>
 
-    <div class="hb-value-strip">
-      <p>Giá trị cốt lõi là kết nối mô hình, dữ liệu và công việc thực tế: thông tin đã khai báo đúng thì dùng lại được, các phần việc liên quan cùng sử dụng một nguồn dữ liệu, bớt nhập lại và bớt dò tìm. Người làm nghề nhờ đó có thêm thời gian cho chuyên môn.</p>
-      <div class="hb-value-stat"><span class="num">80%+</span><span class="lbl">thao tác lặp<br>được tự động hóa</span></div>
-    </div>
+      <div class="bm-content">
 
-    <!-- ============ ARCHITECTURE ============ -->
-    <section class="hb-section">
-      <div class="hb-section-head">
-        <p class="hb-eyebrow">Mô hình hoạt động</p>
-        <h2 class="hb-section-title">SketchUp → MoBim → Workspace → Data</h2>
-        <p class="hb-section-desc">Đội ngũ thiết kế thao tác trong SketchUp; QLDA / Chủ đầu tư theo dõi qua Workspace trên trình duyệt. Cả hai cùng đọc/ghi một vùng dữ liệu được bảo vệ, phân tách theo tổ chức.</p>
-      </div>
-      <div class="hb-diagram">
-        <div class="hb-diagram-row">
-          <div class="hb-diagram-col">
-            <div class="hb-node"><div class="t">Đội ngũ thiết kế</div><div class="s">Kiến trúc · Kết cấu · Nội thất</div></div>
-            <div class="hb-node"><div class="t">SketchUp / .skp</div><div class="s">Hình học, vị trí, GUID object</div></div>
+        <!-- ===== TỔNG QUAN ===== -->
+        <section class="bm-section active" data-section="overview">
+          <div class="bm-section-head">
+            <p class="bm-section-title">Tổng quan</p>
+            <p class="bm-section-desc">Số liệu thật từ Google Sheet — Sản phẩm BIM, Vật liệu BIM, Nhà cung cấp BIM, Issue BIM, BOQ BIM.</p>
           </div>
-          <div class="hb-arrow-h"></div>
-          <div class="hb-node core"><div class="t">Hệ thống Mobim</div><div class="s">Liên kết object · Issue · BOQ</div></div>
-          <div class="hb-arrow-h"></div>
-          <div class="hb-diagram-col">
-            <div class="hb-node"><div class="t">QLDA / Chủ đầu tư</div><div class="s">Theo dõi công việc &amp; ngân sách</div></div>
-            <div class="hb-node data"><div class="t">Data</div><div class="s">Danh mục · Đơn giá · Issue · Tệp</div></div>
+          <div class="bm-summary-grid">
+            <div class="bm-summary-card"><div class="bm-summary-label">Sản phẩm</div><div class="bm-summary-value" id="ovProducts">–</div></div>
+            <div class="bm-summary-card"><div class="bm-summary-label">Vật liệu</div><div class="bm-summary-value" id="ovMaterials">–</div></div>
+            <div class="bm-summary-card"><div class="bm-summary-label">Nhà cung cấp</div><div class="bm-summary-value" id="ovSuppliers">–</div></div>
+            <div class="bm-summary-card"><div class="bm-summary-label">Issue đang mở</div><div class="bm-summary-value" id="ovIssuesOpen">–</div></div>
+            <div class="bm-summary-card"><div class="bm-summary-label">Dự án</div><div class="bm-summary-value" id="ovProjects">–</div></div>
           </div>
-        </div>
-        <div class="hb-diagram-legend">
-          <span><i style="background:var(--color-blue)"></i>Trong phạm vi hệ thống</span>
-          <span><i style="background:var(--color-terracotta)"></i>Vùng dữ liệu được bảo vệ</span>
-          <span><i style="background:var(--color-text-faint)"></i>Người dùng / ngoài phạm vi</span>
-        </div>
-      </div>
-    </section>
+          <div class="bm-card">
+            <div class="bm-card-head"><div><div class="bm-card-title">Bắt đầu từ đâu?</div><div class="bm-card-desc">Thứ tự gợi ý khi mới dùng HICON-BIM</div></div></div>
+            <div style="padding: 18px 22px; font-size: 0.8125rem; color: var(--bm-muted); line-height: 1.8;">
+              1. Khai báo <b style="color:var(--bm-text)">Vật liệu</b> và <b style="color:var(--bm-text)">Sản phẩm</b> dùng chung cho công ty (đơn giá tham khảo).<br>
+              2. Khai báo <b style="color:var(--bm-text)">Nhà cung cấp</b> nếu cần theo dõi nguồn hàng.<br>
+              3. Vào <b style="color:var(--bm-text)">Dự án</b>, chọn 1 dự án thật → mở <b style="color:var(--bm-text)">Issue</b> để ghi vấn đề cần xử lý, và <b style="color:var(--bm-text)">BOQ</b> để lập bảng khối lượng (đơn giá tự điền từ Sản phẩm, có thể sửa tay).<br>
+              4. Khi có plugin SketchUp (.rbz), Issue/BOQ sẽ đồng bộ trực tiếp từ model — hiện tại nhập tay tại đây.
+            </div>
+          </div>
+        </section>
 
-    <!-- ============ SKETCHUP PLUGIN MOCKUP ============ -->
-    <section class="hb-section" id="hbDeviceSection">
-      <div class="hb-section-head">
-        <p class="hb-eyebrow">Bên trong SketchUp</p>
-        <h2 class="hb-section-title">Plugin MoBim — gắn dữ liệu ngay trên object</h2>
-        <p class="hb-section-desc">Bảng điều khiển nổi trong SketchUp: quét đối tượng, gán Level/Room-Space/Material, lọc theo điều kiện và xuất bảng khối lượng — không cần rời khỏi màn hình vẽ.</p>
-      </div>
-      <div class="hb-showcase-row">
-        <div>
-          <div class="hb-device">
-            <div class="hb-device-bar"><span class="dots"><i></i><i></i><i></i></span><span class="name">MoBim</span><span></span></div>
-            <div class="hb-device-head">
-              <div class="hb-device-head-title">
-                <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.27 6.96 12 12l8.73-5.04M12 22.08V12"/></svg></span>
-                <div><b>MoBim</b><span>Không gian dữ liệu BIM</span></div>
+        <!-- ===== SẢN PHẨM ===== -->
+        <section class="bm-section" data-section="products">
+          <div class="bm-section-head"><p class="bm-section-title">Sản phẩm</p><p class="bm-section-desc">Danh mục sản phẩm dùng chung — đơn giá tham khảo dùng để tự điền khi lập BOQ.</p></div>
+          <div class="bm-card">
+            <div class="bm-card-head"><div class="bm-card-title" id="productsFormTitle">Thêm sản phẩm</div></div>
+            <form class="bm-form-grid cols6" id="productForm">
+              <input type="hidden" id="productId">
+              <div><label class="bm-field-label">Tên sản phẩm *</label><input class="bm-input" id="productName" required></div>
+              <div><label class="bm-field-label">Nhóm</label><input class="bm-input" id="productGroup" placeholder="Cửa đi, Tường..."></div>
+              <div><label class="bm-field-label">Vật liệu liên kết</label><select class="bm-select" id="productMaterialId"><option value="">—</option></select></div>
+              <div><label class="bm-field-label">Đơn vị *</label><input class="bm-input" id="productUnit" required placeholder="m², bộ, cái..."></div>
+              <div><label class="bm-field-label">Đơn giá tham khảo</label><input class="bm-input" id="productRefPrice" type="number" min="0" placeholder="VNĐ"></div>
+              <div style="display:flex; gap:8px;"><button type="submit" class="bm-btn bm-btn-primary" style="flex:1">Lưu</button><button type="button" class="bm-btn bm-btn-ghost" id="productCancel" style="display:none">Huỷ</button></div>
+            </form>
+          </div>
+          <div class="bm-card">
+            <div class="bm-card-head"><div class="bm-card-title">Danh sách sản phẩm</div></div>
+            <div id="productsTableWrap"></div>
+          </div>
+        </section>
+
+        <!-- ===== VẬT LIỆU ===== -->
+        <section class="bm-section" data-section="materials">
+          <div class="bm-section-head"><p class="bm-section-title">Vật liệu</p><p class="bm-section-desc">Danh mục vật liệu dùng chung — liên kết với Sản phẩm.</p></div>
+          <div class="bm-card">
+            <div class="bm-card-head"><div class="bm-card-title" id="materialsFormTitle">Thêm vật liệu</div></div>
+            <form class="bm-form-grid cols5" id="materialForm">
+              <input type="hidden" id="materialId">
+              <div><label class="bm-field-label">Tên vật liệu *</label><input class="bm-input" id="materialName" required></div>
+              <div><label class="bm-field-label">Phân loại</label><input class="bm-input" id="materialCategory" placeholder="Gỗ, kính, đá..."></div>
+              <div><label class="bm-field-label">Chiều dày</label><input class="bm-input" id="materialThickness" placeholder="10 mm"></div>
+              <div><label class="bm-field-label">Đơn vị *</label><input class="bm-input" id="materialUnit" required placeholder="m²"></div>
+              <div style="display:flex; gap:8px;"><button type="submit" class="bm-btn bm-btn-primary" style="flex:1">Lưu</button><button type="button" class="bm-btn bm-btn-ghost" id="materialCancel" style="display:none">Huỷ</button></div>
+            </form>
+          </div>
+          <div class="bm-card">
+            <div class="bm-card-head"><div class="bm-card-title">Danh sách vật liệu</div></div>
+            <div id="materialsTableWrap"></div>
+          </div>
+        </section>
+
+        <!-- ===== NHÀ CUNG CẤP ===== -->
+        <section class="bm-section" data-section="suppliers">
+          <div class="bm-section-head"><p class="bm-section-title">Nhà cung cấp</p><p class="bm-section-desc">Thông tin đối tác, liên hệ và phạm vi hợp tác.</p></div>
+          <div class="bm-card">
+            <div class="bm-card-head"><div class="bm-card-title" id="suppliersFormTitle">Thêm nhà cung cấp</div></div>
+            <form class="bm-form-grid cols5" id="supplierForm">
+              <input type="hidden" id="supplierId">
+              <div><label class="bm-field-label">Tên NCC *</label><input class="bm-input" id="supplierName" required></div>
+              <div><label class="bm-field-label">Loại</label><input class="bm-input" id="supplierType" placeholder="Vật liệu, thi công..."></div>
+              <div><label class="bm-field-label">Địa chỉ</label><input class="bm-input" id="supplierAddress"></div>
+              <div><label class="bm-field-label">SĐT / Người liên hệ</label><input class="bm-input" id="supplierPhone"></div>
+              <div style="display:flex; gap:8px;"><button type="submit" class="bm-btn bm-btn-primary" style="flex:1">Lưu</button><button type="button" class="bm-btn bm-btn-ghost" id="supplierCancel" style="display:none">Huỷ</button></div>
+            </form>
+          </div>
+          <div class="bm-card">
+            <div class="bm-card-head"><div class="bm-card-title">Danh sách nhà cung cấp</div></div>
+            <div id="suppliersTableWrap"></div>
+          </div>
+        </section>
+
+        <!-- ===== DỰ ÁN ===== -->
+        <section class="bm-section" data-section="projects">
+          <div id="bmProjectsList">
+            <div class="bm-section-head"><p class="bm-section-title">Dự án</p><p class="bm-section-desc">Chọn 1 dự án để mở Issue &amp; BOQ (dữ liệu dự án lấy từ hệ thống Quản lý dự án chung).</p></div>
+            <div class="bm-project-grid" id="bmProjectGrid"></div>
+          </div>
+          <div id="bmProjectDetail" style="display:none">
+            <button class="bm-back-link" id="bmProjBack"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>Danh sách dự án</button>
+            <div class="bm-section-head">
+              <p class="bm-section-title" id="bmProjName">—</p>
+              <p class="bm-section-desc" id="bmProjMeta">—</p>
+            </div>
+            <div class="bm-subtabs">
+              <button class="bm-subtab active" data-ptab="issues">Issue</button>
+              <button class="bm-subtab" data-ptab="boq">BOQ</button>
+            </div>
+
+            <div class="bm-ptab-panel" data-ptab-panel="issues">
+              <div class="bm-card">
+                <div class="bm-card-head"><div class="bm-card-title" id="issueFormTitle">Thêm Issue</div></div>
+                <form class="bm-form-grid" id="issueForm">
+                  <input type="hidden" id="issueId">
+                  <div style="grid-column: span 2"><label class="bm-field-label">Tiêu đề *</label><input class="bm-input" id="issueTitle" required></div>
+                  <div><label class="bm-field-label">Vị trí</label><input class="bm-input" id="issueLocation" placeholder="Tầng 01, phòng khách..."></div>
+                  <div><label class="bm-field-label">Mức độ ưu tiên</label><select class="bm-select" id="issuePriority"><option value="cao">Cao</option><option value="trung-binh" selected>Trung bình</option><option value="thap">Thấp</option></select></div>
+                  <div style="grid-column: span 3"><label class="bm-field-label">Mô tả</label><textarea class="bm-textarea" id="issueDescription"></textarea></div>
+                  <div><label class="bm-field-label">Trạng thái</label><select class="bm-select" id="issueStatus"><option value="moi">Mới</option><option value="dang-xu-ly">Đang xử lý</option><option value="cho-phan-hoi">Chờ phản hồi</option><option value="da-giai-quyet">Đã giải quyết</option></select></div>
+                  <div style="display:flex; gap:8px; grid-column: span 1"><button type="submit" class="bm-btn bm-btn-primary" style="flex:1">Lưu</button><button type="button" class="bm-btn bm-btn-ghost" id="issueCancel" style="display:none">Huỷ</button></div>
+                </form>
               </div>
-              <span class="hb-device-status"><i></i>Đã kết nối</span>
+              <div class="bm-kanban" id="issueKanban"></div>
             </div>
-            <div class="hb-device-file">
-              <div class="lbl">FILE SKETCHUP</div>
-              <div class="fn">test level room space.skp</div>
-              <div class="meta"><span>Model GUID<b>1c53e9d0…ce92</b></span><span style="text-align:right">Đồng bộ gần nhất<b>Hôm nay, 10:42</b></span></div>
-            </div>
-            <div class="hb-device-tabs" id="hbDeviceTabs">
-              <button class="hb-device-tab active" data-tab="objects"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/></svg><span>Objects</span></button>
-              <button class="hb-device-tab" data-tab="level"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg><span>Level</span></button>
-              <button class="hb-device-tab" data-tab="room"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21V8l9-6 9 6v13"/><path d="M9 21V12h6v9"/></svg><span>Room</span></button>
-              <button class="hb-device-tab" data-tab="material"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 21V9"/></svg><span>Material</span></button>
-              <button class="hb-device-tab" data-tab="filter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 3H2l8 9.46V19l4 2v-8.54z"/></svg><span>Filter</span></button>
-              <button class="hb-device-tab" data-tab="boq"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg><span>BOQ</span></button>
-            </div>
-            <div class="hb-device-body" id="hbDeviceBody"><!-- filled by JS --></div>
-          </div>
-        </div>
-        <div>
-          <div class="hb-copy-list">
-            <div class="hb-copy-item"><span class="n">1</span><div><h5>Scan / Đồng bộ</h5><p>Đối chiếu Group/Component đang tồn tại và giữ nguyên dữ liệu BIM của object còn sống — không mất dữ liệu khi model được sửa.</p></div></div>
-            <div class="hb-copy-item"><span class="n">2</span><div><h5>Level &amp; Room/Space</h5><p>Dò Level từ mặt phẳng, quản lý cao độ theo quy tắc nửa mở; Space lưu đúng occurrence của face, boundary polygon và chiều cao.</p></div></div>
-            <div class="hb-copy-item"><span class="n">3</span><div><h5>Material dùng chung</h5><p>Scan diện tích phủ thực tế và liên kết vật liệu SketchUp đang dùng với danh mục Materials của tổ chức — khoá liên kết thủ công khi cần.</p></div></div>
-            <div class="hb-copy-item"><span class="n">4</span><div><h5>Filter — một Query DSL</h5><p>Cùng một bộ điều kiện dùng cho Preview, Highlight, Safe Isolate và báo cáo — theo Level, Product group, thuộc tính…</p></div></div>
-            <div class="hb-copy-item"><span class="n">5</span><div><h5>BOQ ngay trên model</h5><p>Chỉ liệt kê object đã gán Product và vật liệu đã liên kết danh mục; áp pricing policy đã xuất bản để ra bảng khối lượng tức thời.</p></div></div>
-          </div>
-        </div>
-      </div>
-    </section>
 
-    <!-- ============ WORKSPACE MOCKUP ============ -->
-    <section class="hb-section" id="hbWsSection">
-      <div class="hb-section-head">
-        <p class="hb-eyebrow">Trên trình duyệt</p>
-        <h2 class="hb-section-title">Mobim Workspace — quản lý dữ liệu tổ chức</h2>
-        <p class="hb-section-desc">Danh mục sản phẩm, vật liệu, nhà cung cấp và thành viên dùng chung cho toàn tổ chức; theo từng dự án là Model &amp; Objects, BCF Issues, Khối lượng &amp; BOQ. Bấm vào menu bên trái để xem từng màn hình.</p>
-      </div>
-      <div class="hb-browser">
-        <div class="hb-browser-chrome"><span class="dots"><i></i><i></i><i></i></span><span class="url">workspace.hiconique.vn/quan-ly-du-lieu</span></div>
-        <div class="hb-ws-shell">
-          <div class="hb-ws-sidebar">
-            <div class="hb-ws-brand"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/></svg></span><div><b>MOBIM</b><span>WORKSPACE</span></div></div>
-            <div class="hb-ws-org"><span class="sq">HI</span><div><b>HICONIQUE</b><span>Đơn vị thiết kế</span></div></div>
-            <div class="hb-ws-navlabel">Không gian làm việc</div>
-            <div class="hb-ws-nav" id="hbWsNav">
-              <button class="hb-ws-navitem active" data-view="overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg><span>QLDA</span><span class="cnt">3</span></button>
-              <button class="hb-ws-navitem" data-view="org"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h18"/></svg><span>Thông tin tổ chức</span><span class="cnt">1</span></button>
-              <button class="hb-ws-navitem" data-view="members"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Thành viên</span><span class="cnt">22</span></button>
-              <button class="hb-ws-navitem" data-view="products"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.59 3.24H4a1 1 0 0 0-1 1v5.59a2 2 0 0 0 .59 1.41l9.58 9.58a2 2 0 0 0 2.82 0l4.6-4.6a2 2 0 0 0 0-2.82Z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg><span>Sản phẩm</span><span class="cnt">81</span></button>
-              <button class="hb-ws-navitem" data-view="materials"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 17l9 5 9-5"/></svg><span>Vật liệu</span><span class="cnt">52</span></button>
-              <button class="hb-ws-navitem" data-view="suppliers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 3h15v13H1zM16 8h4l3 3v5h-7"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg><span>Nhà cung cấp</span><span class="cnt">71</span></button>
-              <button class="hb-ws-navitem" data-view="project"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9.5 12 3l9 6.5V21H3z"/></svg><span>Dự án · Nhà ở Thảo Điền</span><span class="cnt">↗</span></button>
+            <div class="bm-ptab-panel" data-ptab-panel="boq" style="display:none">
+              <div class="bm-card">
+                <div class="bm-card-head"><div class="bm-card-title" id="boqFormTitle">Thêm dòng BOQ</div></div>
+                <form class="bm-form-grid cols6" id="boqForm">
+                  <input type="hidden" id="boqId">
+                  <div><label class="bm-field-label">Mã hạng mục</label><input class="bm-input" id="boqCode" placeholder="A.01"></div>
+                  <div style="grid-column: span 2"><label class="bm-field-label">Sản phẩm *</label><select class="bm-select" id="boqProductId" required><option value="">— Chọn sản phẩm —</option></select></div>
+                  <div><label class="bm-field-label">Đơn vị</label><input class="bm-input" id="boqUnit"></div>
+                  <div><label class="bm-field-label">Khối lượng *</label><input class="bm-input" id="boqQuantity" type="number" min="0" step="any" required></div>
+                  <div><label class="bm-field-label">Đơn giá</label><input class="bm-input" id="boqUnitPrice" type="number" min="0"></div>
+                  <div style="display:flex; gap:8px; grid-column: span 6"><button type="submit" class="bm-btn bm-btn-primary">Lưu dòng BOQ</button><button type="button" class="bm-btn bm-btn-ghost" id="boqCancel" style="display:none">Huỷ</button></div>
+                </form>
+              </div>
+              <div class="bm-card">
+                <div class="bm-card-head"><div class="bm-card-title">Bảng khối lượng</div></div>
+                <div id="boqTableWrap"></div>
+                <div class="bm-boq-total">
+                  <span>Trước VAT: <b id="boqSubtotal">0</b></span>
+                  <span>Sau VAT (8%): <b id="boqTotal">0</b></span>
+                </div>
+              </div>
             </div>
           </div>
-          <div class="hb-ws-main" id="hbWsMain"><!-- filled by JS --></div>
-        </div>
-      </div>
-    </section>
+        </section>
 
-    <!-- ============ RBZ CTA ============ -->
-    <section class="hb-section">
-      <div class="hb-rbz-card">
-        <div class="hb-rbz-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg></div>
-        <div class="hb-rbz-body">
-          <b>Plugin MoBim cho SketchUp (.rbz)</b>
-          <p>Trang này mới dựng phần giao diện &amp; luồng dữ liệu mong muốn. Bước tiếp theo: đóng gói plugin Ruby thành file <code>.rbz</code>, đồng bộ hai chiều với Google Sheet/API hiện có của HICONIQUE để dữ liệu ở đây là dữ liệu thật từ model.</p>
-        </div>
-        <span class="hb-rbz-tag">Đang phát triển</span>
       </div>
-    </section>
-
+    </div>
   </div>
   </main>
 
@@ -430,268 +331,420 @@
   (function () {
     'use strict';
 
-    /* ============ SketchUp device panel ============ */
-    var DEVICE_PANES = {
-      objects: '\
-        <div class="lbl-eyebrow">OBJECTS</div><h6>Đối tượng trong model</h6>\
-        <p class="desc">Scan đối chiếu Group/Component đang tồn tại và giữ nguyên BIM data của object còn sống.</p>\
-        <button class="hb-btn-dark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>Scan / Đồng bộ</button>\
-        <div class="hb-stat-trio"><div><div class="v">12</div><div class="l">objects đã ghi</div></div><div><div class="v">2</div><div class="l">đang bị gộp</div></div><div><div class="v">3</div><div class="l">containers</div></div></div>\
-        <div class="hb-alert-ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>Scan hoàn tất · không có object bị xoá</div>\
-        <div class="hb-row-item"><div><div class="rt">Cửa đi phòng khách D03</div><div class="rs">Door_D03_900x2400 · IfcDoor</div></div><span class="hb-badge-lt ok">Đã gán</span></div>',
-      level: '\
-        <div class="lbl-eyebrow">LEVEL</div><h6>Tầng trong model</h6>\
-        <p class="desc">Nhận diện Level từ mặt phẳng và quản lý khoảng cao độ theo quy tắc nửa mở.</p>\
-        <button class="hb-btn-dark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>Dò Level</button>\
-        <div class="hb-row-item"><div><div class="rt">L01 · Tầng 01</div><div class="rs">Cao độ 0,000 m · Cao 3,600 m</div></div><span class="hb-badge-lt ok">Đã ghi</span></div>\
-        <div class="hb-row-item"><div><div class="rt">L02 · Tầng 02</div><div class="rs">Cao độ 3,600 m · Cao 3,600 m</div></div><span class="hb-badge-lt ok">Đã ghi</span></div>\
-        <div class="hb-row-item"><div><div class="rt">L03 · Mái</div><div class="rs">Cao độ 7,200 m · Cao 2,100 m</div></div><span class="hb-badge-lt ok">Đã ghi</span></div>\
-        <div class="hb-progress-lt"><span style="width:98.6%"></span></div><p class="desc" style="margin-top:6px">98,6% objects đã xác định tầng</p>',
-      room: '\
-        <div class="lbl-eyebrow">ROOM / SPACE</div><h6>Không gian dự án</h6>\
-        <p class="desc">Space lưu đúng occurrence của face, boundary polygon, cao độ mặt phẳng và chiều cao.</p>\
-        <div class="hb-row-item"><div><div class="rt">Phòng khách · P.101</div><div class="rs">Tầng 01</div></div><span class="rt">34,82 m²</span></div>\
-        <div class="hb-row-item"><div><div class="rt">Bếp + Ăn · P.102</div><div class="rs">Tầng 01</div></div><span class="rt">27,45 m²</span></div>\
-        <div class="hb-row-item"><div><div class="rt">Phòng ngủ 01 · P.201</div><div class="rs">Tầng 02</div></div><span class="rt">18,20 m²</span></div>\
-        <div class="hb-stat-trio" style="margin-top:14px"><div><div class="v">18</div><div class="l">spaces đã ghi</div></div><div><div class="v">94,2%</div><div class="l">objects có phòng</div></div></div>',
-      material: '\
-        <div class="lbl-eyebrow">MATERIAL</div><h6>Vật liệu SketchUp</h6>\
-        <p class="desc">Scan diện tích phủ thực tế và liên kết vật liệu đang dùng với danh mục Materials của tổ chức.</p>\
-        <div class="hb-row-item"><div><div class="rt">Tường trắng mờ</div><div class="rs">MAT-005 · 684,26 m²</div></div><span class="hb-badge-lt ok">Đã liên kết</span></div>\
-        <div class="hb-row-item"><div><div class="rt">Gỗ veneer sồi</div><div class="rs">MAT-001 · 126,40 m²</div></div><span class="hb-badge-lt ok">Đã liên kết</span></div>\
-        <div class="hb-row-item"><div><div class="rt">MDF lõi xanh</div><div class="rs">Chưa liên kết · 42,18 m²</div></div><span class="hb-badge-lt warn">Cần gán</span></div>\
-        <div class="hb-field-lt" style="margin-top:12px"><label>Liên kết danh mục</label><div class="box">Sơn nội thất trắng mờ<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div></div>\
-        <button class="hb-btn-dark">Gán cho 1 vật liệu</button>',
-      filter: '\
-        <div class="lbl-eyebrow">FILTER</div><h6>Bộ lọc model</h6>\
-        <p class="desc">Cùng một Query DSL dùng cho Preview, Highlight, Safe Isolate và báo cáo.</p>\
-        <div class="hb-field-lt"><label>Điều kiện 1</label><div class="box">Level bằng "Tầng 02"</div></div>\
-        <div class="hb-field-lt"><label>Điều kiện 2</label><div class="box">Product group bằng "Cửa đi"</div></div>\
-        <div class="hb-field-lt"><label>Điều kiện 3</label><div class="box">Thuộc tính chứa "Chống cháy"</div></div>\
-        <div class="hb-stat-trio" style="grid-template-columns:1fr"><div><div class="v">18</div><div class="l">objects phù hợp — chỉ isolate trong phạm vi model hiện tại</div></div></div>\
-        <button class="hb-btn-dark">Safe Isolate</button>\
-        <button class="hb-btn-ghost-lt">Preview</button>',
-      boq: '\
-        <div class="lbl-eyebrow">BOQ</div><h6>Thiết lập báo cáo</h6>\
-        <p class="desc">Chỉ liệt kê object đã gán Product và vật liệu đã liên kết danh mục.</p>\
-        <div class="hb-field-lt"><label>Loại BOQ</label><div class="box">Object Product BOQ<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div></div>\
-        <div class="hb-field-lt"><label>Pricing policy</label><div class="box">Giá dự toán Q3/2026 · Rev 04<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div></div>\
-        <div class="hb-row-item"><div class="rt">Objects đủ dữ liệu</div><span class="rt">12.682 / 12.846</span></div>\
-        <div class="hb-row-item"><div class="rt">Product có đơn giá</div><span class="rt">74 / 81</span></div>\
-        <button class="hb-btn-dark" style="margin-top:10px">Tạo / Cập nhật bảng</button>\
-        <div class="hb-boq-total"><span>Sau VAT</span><span>18,09 tỷ</span></div>'
-    };
-
-    var deviceTabsEl = document.getElementById('hbDeviceTabs');
-    var deviceBodyEl = document.getElementById('hbDeviceBody');
-    function renderDeviceTab(tab) {
-      deviceBodyEl.innerHTML = DEVICE_PANES[tab] || '';
-    }
-    deviceTabsEl.addEventListener('click', function (e) {
-      var btn = e.target.closest('.hb-device-tab');
-      if (!btn) return;
-      deviceTabsEl.querySelectorAll('.hb-device-tab').forEach(function (b) { b.classList.remove('active'); });
-      btn.classList.add('active');
-      renderDeviceTab(btn.getAttribute('data-tab'));
-    });
-    renderDeviceTab('objects');
-
-    /* ============ Workspace main views ============ */
-    var ICON = {
-      obj: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/></svg>',
-      issue: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
-      money: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.59 3.24H4a1 1 0 0 0-1 1v5.59a2 2 0 0 0 .59 1.41l9.58 9.58a2 2 0 0 0 2.82 0l4.6-4.6a2 2 0 0 0 0-2.82Z"/></svg>',
-      trend: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>',
-      warn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
-      clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
-      link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>'
-    };
-
-    function wsOverview() {
-      return '\
-        <div class="hb-ws-crumb">Quản lý dữ liệu &nbsp;›&nbsp; Tổng quan</div>\
-        <div class="hb-ws-h1">Chào buổi sáng, HICONIQUE</div>\
-        <div class="hb-ws-sub">Theo dõi tiến độ dữ liệu BIM và công việc cần ưu tiên hôm nay.</div>\
-        <div class="hb-ws-stats">\
-          <div class="hb-ws-stat"><div class="top"><span class="lbl">Dự án đang hoạt động</span>' + ICON.obj + '</div><div class="val">03</div><div class="sub">3 dự án bạn có quyền xem</div></div>\
-          <div class="hb-ws-stat"><div class="top"><span class="lbl">Objects đã quản lý</span>' + ICON.obj + '</div><div class="val">57.258</div><div class="sub">trên 17 model SketchUp</div></div>\
-          <div class="hb-ws-stat"><div class="top"><span class="lbl">Issues đang mở</span>' + ICON.warn + '</div><div class="val">38</div><div class="sub">9 việc ưu tiên cao</div></div>\
-          <div class="hb-ws-stat"><div class="top"><span class="lbl">Giá trị BOQ tạm tính</span>' + ICON.money + '</div><div class="val">18,09 tỷ</div><div class="sub">đã áp dụng VAT 8%</div></div>\
-        </div>\
-        <div class="hb-ws-2col">\
-          <div class="hb-ws-panel"><div class="hb-ws-panel-head"><b>Tiến độ dự án</b><a>Xem tất cả ↗</a></div>\
-            <div class="hb-proj-row"><span class="sq">THD</span><div class="info"><b>Nhà ở Thảo Điền</b><span>MOA-26-THD · Thiết kế kỹ thuật</span></div><span class="pct">68%</span></div>\
-            <div class="hb-proj-row"><span class="sq">VPA</span><div class="info"><b>Văn phòng An Phú</b><span>MOA-26-VPA · Thiết kế cơ sở</span></div><span class="pct">42%</span></div>\
-            <div class="hb-proj-row"><span class="sq">HBR</span><div class="info"><b>Hạ Long Boutique Resort</b><span>MOA-25-HBR · Phối hợp bộ môn</span></div><span class="pct">84%</span></div>\
-            <div class="hb-proj-row"><span class="sq">LBK</span><div class="info"><b>Lavie Bakery Flagship</b><span>MOA-25-LBK · Hoàn tất hồ sơ</span></div><span class="pct">96%</span></div>\
-          </div>\
-          <div class="hb-ws-panel"><div class="hb-ws-panel-head"><b>Cần chú ý</b><span style="font-size:0.65rem;color:#B0B5BC">48 giờ tới</span></div>\
-            <div class="hb-attn-row"><span class="ic" style="background:#FCE4E1;color:#B0463B">' + ICON.warn + '</span><div class="body"><b>3 issues quá hạn</b><span>Nhà ở Thảo Điền</span></div><span class="cnt">03</span></div>\
-            <div class="hb-attn-row"><span class="ic" style="background:#FBEFDD;color:#9A6A18">' + ICON.clock + '</span><div class="body"><b>2 models chưa đồng bộ</b><span>Lần cuối hơn 7 ngày</span></div><span class="cnt">02</span></div>\
-            <div class="hb-attn-row"><span class="ic" style="background:#E9EAFB;color:#4A4FC7">' + ICON.link + '</span><div class="body"><b>164 objects chưa gán</b><span>Cần chọn Product phù hợp</span></div><span class="cnt">164</span></div>\
-          </div>\
-        </div>\
-        <div class="hb-ws-demo-flag">Dữ liệu minh họa · không dùng cho thi công</div>';
-    }
-
-    function wsOrg() {
-      return '\
-        <div class="hb-ws-crumb">Quản lý dữ liệu &nbsp;›&nbsp; Thông tin tổ chức</div>\
-        <div class="hb-ws-h1">Thông tin tổ chức</div>\
-        <div class="hb-ws-sub">Hồ sơ tổ chức dùng chung cho dự án và BOQ.</div>\
-        <div class="hb-ws-panel" style="padding:18px 20px">\
-          <div style="display:flex;gap:14px;align-items:center;margin-bottom:16px">\
-            <span class="sq" style="width:48px;height:48px;font-size:0.9rem;border-radius:10px">HI</span>\
-            <div><b style="font-size:1.05rem;display:block">HICONIQUE</b><span class="hb-tag-lt">Đơn vị thiết kế (ĐVTK)</span></div>\
-          </div>\
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;font-size:0.78rem">\
-            <div><span style="color:#9AA0A8;display:block;margin-bottom:3px">Mã tổ chức</span><b>hiconique</b></div>\
-            <div><span style="color:#9AA0A8;display:block;margin-bottom:3px">Người đại diện</span><b>BGĐ HICONIQUE</b></div>\
-            <div><span style="color:#9AA0A8;display:block;margin-bottom:3px">Nguồn dữ liệu</span><b>Mobim Workspace</b></div>\
-          </div>\
-        </div>\
-        <div class="hb-ws-stats" style="margin-top:14px">\
-          <div class="hb-ws-stat"><div class="lbl">Dự án</div><div class="val">03</div></div>\
-          <div class="hb-ws-stat"><div class="lbl">Thành viên</div><div class="val">22</div></div>\
-          <div class="hb-ws-stat"><div class="lbl">Sản phẩm</div><div class="val">81</div></div>\
-          <div class="hb-ws-stat"><div class="lbl">Nhà cung cấp</div><div class="val">71</div></div>\
-        </div>\
-        <div class="hb-ws-demo-flag">Dữ liệu minh họa · không dùng cho thi công</div>';
-    }
-
-    function wsTable(title, count, head, rows) {
-      var trs = rows.map(function (r) { return '<tr>' + r.map(function (c) { return '<td>' + c + '</td>'; }).join('') + '</tr>'; }).join('');
-      var ths = head.map(function (h) { return '<th>' + h + '</th>'; }).join('');
-      return '\
-        <div class="hb-ws-crumb">Quản lý dữ liệu &nbsp;›&nbsp; ' + title + '</div>\
-        <div class="hb-ws-h1">' + title + '</div>\
-        <div class="hb-ws-sub">Tổng ' + count + ' bản ghi · dữ liệu dùng chung cho toàn tổ chức.</div>\
-        <div class="hb-ws-panel"><table class="hb-ws-table"><thead><tr>' + ths + '</tr></thead><tbody>' + trs + '</tbody></table></div>\
-        <div class="hb-ws-demo-flag">Dữ liệu minh họa · không dùng cho thi công</div>';
-    }
-
-    function wsProducts() {
-      return wsTable('Sản phẩm', 81, ['Sản phẩm', 'Phân loại', 'Vật liệu', 'Đơn vị', 'Trạng thái'], [
-        ['<span class="prod-name">Cửa gỗ veneer sồi 900×2400<span class="prod-code">PRD-DR-001 · IfcDoor</span></span>', 'Cửa đi', 'Gỗ veneer sồi', 'bộ', '<span class="hb-dot-status"><i></i>Đang sử dụng</span>'],
-        ['<span class="prod-name">Tường gạch 200 hoàn thiện sơn<span class="prod-code">PRD-WL-014 · IfcWall</span></span>', 'Tường', 'Gạch đất sét nung', 'm²', '<span class="hb-dot-status"><i></i>Đang sử dụng</span>'],
-        ['<span class="prod-name">Vách kính cường lực 10mm<span class="prod-code">PRD-GL-006 · IfcPlate</span></span>', 'Vách', 'Kính cường lực', 'm²', '<span class="hb-dot-status"><i></i>Đang sử dụng</span>'],
-        ['<span class="prod-name">Tủ bếp dưới phủ laminate<span class="prod-code">PRD-FR-022 · IfcFurniture</span></span>', 'Tủ', 'MDF chống ẩm', 'm', '<span class="hb-dot-status"><i></i>Đang sử dụng</span>'],
-        ['<span class="prod-name">Đèn downlight âm trần 9W<span class="prod-code">PRD-LT-009 · IfcLightFixture</span></span>', 'Chiếu sáng', 'Nhôm sơn tĩnh điện', 'cái', '<span class="hb-dot-status"><i></i>Đang sử dụng</span>']
-      ]);
-    }
-    function wsMaterials() {
-      return wsTable('Vật liệu', 52, ['Vật liệu', 'Phân loại', 'Chiều dày', 'Cơ sở đo bóc', 'Trạng thái'], [
-        ['<span class="prod-name">Gỗ veneer sồi<span class="prod-code">MAT-001</span></span>', 'Bề mặt hoàn thiện nội thất', '3 mm', 'Theo diện tích', '<span class="hb-dot-status"><i></i>Đang sử dụng</span>'],
-        ['<span class="prod-name">Gỗ MDF chống ẩm<span class="prod-code">MAT-002</span></span>', 'Cốt xanh dùng cho nội thất', '18 mm', 'Theo diện tích', '<span class="hb-dot-status"><i></i>Đang sử dụng</span>'],
-        ['<span class="prod-name">Kính cường lực<span class="prod-code">MAT-003</span></span>', 'Kính trong, mài cạnh an toàn', '10 mm', 'Theo diện tích', '<span class="hb-dot-status"><i></i>Đang sử dụng</span>'],
-        ['<span class="prod-name">Đá terrazzo trắng<span class="prod-code">MAT-004</span></span>', 'Hạt đá tự nhiên, bề mặt honed', '20 mm', 'Theo diện tích', '<span class="hb-dot-status"><i></i>Đang sử dụng</span>'],
-        ['<span class="prod-name">Sơn nội thất trắng mờ<span class="prod-code">MAT-005</span></span>', 'Sơn nước hoàn thiện tường/trần', 'Không áp dụng', 'Theo diện tích', '<span class="hb-dot-status"><i></i>Đang sử dụng</span>']
-      ]);
-    }
-    function wsSuppliers() {
-      return wsTable('Nhà cung cấp', 71, ['Nhà cung cấp', 'Loại', 'Địa chỉ', 'Phạm vi', 'Trạng thái'], [
-        ['<span class="prod-name">NCC vật liệu 01<span class="prod-code">NCC-001</span></span>', 'Vật liệu', 'TP. Thủ Đức, TP.HCM', 'Nội bộ', '<span class="hb-dot-status"><i></i>Đang sử dụng</span>'],
-        ['<span class="prod-name">NCC nội thất 02<span class="prod-code">NCC-002</span></span>', 'Nội thất', 'Bình Thạnh, TP.HCM', 'Nội bộ', '<span class="hb-dot-status"><i></i>Đang sử dụng</span>'],
-        ['<span class="prod-name">NCC thi công 03<span class="prod-code">NCC-003</span></span>', 'Thi công', 'Dĩ An, Bình Dương', 'Nội bộ', '<span class="hb-dot-status"><i></i>Đang sử dụng</span>'],
-        ['<span class="prod-name">NCC thiết bị 04<span class="prod-code">NCC-004</span></span>', 'Thiết bị', 'Quận 7, TP.HCM', 'Nội bộ', '<span class="hb-dot-status"><i></i>Đang sử dụng</span>']
-      ]);
-    }
-    function wsMembers() {
-      return wsTable('Thành viên', 22, ['Thành viên', 'Phòng ban', 'Vai trò Workspace', 'Dự án', 'Trạng thái'], [
-        ['<span class="prod-name">hanhtran<span class="prod-code">BGĐ · Team Leader</span></span>', 'BGĐ', 'Quản trị viên', '3 dự án', '<span class="hb-dot-status"><i></i>Đang làm</span>'],
-        ['<span class="prod-name">huynhtran<span class="prod-code">Thiết kế · Nhân viên</span></span>', 'Thiết kế', 'Thành viên', '2 dự án', '<span class="hb-dot-status"><i></i>Đang làm</span>'],
-        ['<span class="prod-name">tanpham<span class="prod-code">Thiết kế · Team Leader</span></span>', 'Thiết kế', 'Thành viên', '2 dự án', '<span class="hb-dot-status"><i></i>Đang làm</span>'],
-        ['<span class="prod-name">vanpham<span class="prod-code">QLDA · Team Leader</span></span>', 'QLDA', 'Thành viên', '3 dự án', '<span class="hb-dot-status"><i></i>Đang làm</span>']
-      ]);
-    }
-
-    function wsProject() {
-      return '\
-        <div class="hb-ws-crumb">Quản lý dữ liệu &nbsp;›&nbsp; Dự án &nbsp;›&nbsp; Nhà ở Thảo Điền</div>\
-        <div class="hb-ws-h1">Nhà ở Thảo Điền</div>\
-        <div class="hb-ws-sub">MOA-26-THD · Nhà ở riêng lẻ 3 tầng, phối hợp kiến trúc, kết cấu và MEP trên dữ liệu SketchUp tập trung.</div>\
-        <div class="hb-subtabs" id="hbProjSubtabs">\
-          <button class="hb-subtab active" data-sub="overview">Tổng quan</button>\
-          <button class="hb-subtab" data-sub="models">Models &amp; Objects</button>\
-          <button class="hb-subtab" data-sub="issues">BCF Issues</button>\
-          <button class="hb-subtab" data-sub="boq">Khối lượng &amp; BOQ</button>\
-        </div>\
-        <div id="hbProjBody"></div>';
-    }
-
-    var PROJECT_SUB = {
-      overview: '\
-        <div class="hb-ws-stats">\
-          <div class="hb-ws-stat"><div class="lbl">Models liên kết</div><div class="val">04</div><div class="sub">3 đã đồng bộ hôm nay</div></div>\
-          <div class="hb-ws-stat"><div class="lbl">Objects hiện diện</div><div class="val">12.846</div><div class="sub">98,7% đã gán Product</div></div>\
-          <div class="hb-ws-stat"><div class="lbl">Issues đang mở</div><div class="val">07</div><div class="sub">2 quá hạn</div></div>\
-          <div class="hb-ws-stat"><div class="lbl">Tiến độ dữ liệu</div><div class="val">68%</div><div class="sub">+6% trong tuần</div></div>\
-        </div>\
-        <div class="hb-ws-panel"><div class="hb-ws-panel-head"><b>Model trong dự án</b><a>Quản lý models ↗</a></div>\
-          <div class="hb-proj-row"><span class="sq">A</span><div class="info"><b>Kiến trúc.skp</b><span>6.284 objects</span></div><span class="hb-badge-lt ok">Đã đồng bộ</span></div>\
-          <div class="hb-proj-row"><span class="sq">K</span><div class="info"><b>Kết cấu.skp</b><span>3.106 objects</span></div><span class="hb-badge-lt ok">Đã đồng bộ</span></div>\
-          <div class="hb-proj-row"><span class="sq">N</span><div class="info"><b>Nội thất.skp</b><span>2.418 objects</span></div><span class="hb-badge-lt warn">Cần cập nhật</span></div>\
-        </div>',
-      models: '\
-        <div class="hb-ws-panel"><div class="hb-ws-panel-head"><b>Kiến trúc.skp — 6.284 objects</b><a>Làm mới</a></div>\
-          <table class="hb-ws-table"><thead><tr><th>Object</th><th>Definition / IFC</th><th>Vị trí</th><th>Product được gán</th><th>Trạng thái</th></tr></thead><tbody>\
-          <tr><td><span class="prod-name">Cửa đi phòng khách D03<span class="prod-code">ELM-8A42</span></span></td><td>Door_D03_900x2400<br>IfcDoor</td><td>Tầng 01</td><td>Cửa gỗ veneer sồi 900×2400</td><td><span class="hb-dot-status"><i></i>Đã gán</span></td></tr>\
-          <tr><td><span class="prod-name">Tường ngoài trục A-1/5<span class="prod-code">ELM-7C19</span></span></td><td>WALL_EXT_BRICK_200<br>IfcWall</td><td>Tầng 01</td><td>Tường gạch 200 hoàn thiện sơn</td><td><span class="hb-dot-status"><i></i>Đã gán</span></td></tr>\
-          <tr><td><span class="prod-name">Lan can ban công LC-02<span class="prod-code">ELM-9E13</span></span></td><td>RAILING_GLASS_STD<br>IfcRailing</td><td>Tầng 02</td><td>—</td><td><span class="hb-badge-lt warn">Chưa gán</span></td></tr>\
-          </tbody></table>\
-        </div>',
-      issues: '\
-        <div class="hb-kanban">\
-          <div class="hb-kanban-col"><div class="h"><i style="background:#4A4FC7"></i>Mới · 1</div><div class="hb-kanban-card"><div class="id">ISS-035</div><div class="t">Bổ sung khoảng bảo trì cho FCU-02</div><span class="pri high">Cao</span></div></div>\
-          <div class="hb-kanban-col"><div class="h"><i style="background:#9A6A18"></i>Đang xử lý · 1</div><div class="hb-kanban-card"><div class="id">ISS-042</div><div class="t">Xung đột cao độ cửa D03 và trần thạch cao</div><span class="pri high">Cao</span></div></div>\
-          <div class="hb-kanban-col"><div class="h"><i style="background:#B0463B"></i>Chờ phản hồi · 1</div><div class="hb-kanban-card"><div class="id">ISS-039</div><div class="t">Xác nhận vật liệu ốp tường phòng khách</div><span class="pri med">Trung bình</span></div></div>\
-          <div class="hb-kanban-col"><div class="h"><i style="background:#2F6B48"></i>Đã giải quyết · 1</div><div class="hb-kanban-card"><div class="id">ISS-031</div><div class="t">Điều chỉnh kích thước hộc tủ bếp</div><span class="pri low">Thấp</span></div></div>\
-        </div>',
-      boq: '\
-        <div class="hb-ws-panel"><div class="hb-ws-panel-head"><b>BOQ thiết kế kỹ thuật · Rev 03</b><span class="hb-badge-lt ok">Dữ liệu mới</span></div>\
-          <table class="hb-ws-table"><thead><tr><th>Mã</th><th>Sản phẩm / Công tác</th><th>ĐVT</th><th>Khối lượng</th><th>Đơn giá</th><th>Thành tiền</th></tr></thead><tbody>\
-          <tr><td>A.01</td><td>Tường gạch 200 hoàn thiện sơn</td><td>m²</td><td>482,60</td><td>342.000</td><td>165.049.200</td></tr>\
-          <tr><td>A.02</td><td>Cửa gỗ veneer sồi 900×2400</td><td>bộ</td><td>18</td><td>8.450.000</td><td>152.100.000</td></tr>\
-          <tr><td>A.03</td><td>Vách kính cường lực 10mm</td><td>m²</td><td>86,40</td><td>1.680.000</td><td>145.152.000</td></tr>\
-          <tr><td>ID.01</td><td>Tủ bếp dưới phủ laminate</td><td>m</td><td>14,80</td><td>6.250.000</td><td>92.500.000</td></tr>\
-          </tbody></table>\
-          <div style="padding:12px 16px;border-top:1px solid #EDEFF2;display:flex;justify-content:space-between;font-weight:700;font-size:0.8125rem"><span>Sau VAT (8%)</span><span>18,09 tỷ</span></div>\
-        </div>'
-    };
-
-    var wsMainEl = document.getElementById('hbWsMain');
-    var VIEWS = { overview: wsOverview, org: wsOrg, members: wsMembers, products: wsProducts, materials: wsMaterials, suppliers: wsSuppliers, project: wsProject };
-
-    function renderProjectSub(sub) {
-      var body = document.getElementById('hbProjBody');
-      if (body) body.innerHTML = PROJECT_SUB[sub] || '';
-    }
-    function bindProjectSubtabs() {
-      var wrap = document.getElementById('hbProjSubtabs');
-      if (!wrap) return;
-      wrap.addEventListener('click', function (e) {
-        var btn = e.target.closest('.hb-subtab');
-        if (!btn) return;
-        wrap.querySelectorAll('.hb-subtab').forEach(function (b) { b.classList.remove('active'); });
-        btn.classList.add('active');
-        renderProjectSub(btn.getAttribute('data-sub'));
+    function fmt(n) { return Math.round(Number(n) || 0).toLocaleString('vi-VN'); }
+    function escapeHtml(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
       });
-      renderProjectSub('overview');
+    }
+    function getUser() {
+      var session = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
+      return session ? (session.id || session.name || '') : '';
     }
 
-    function renderWsView(view) {
-      wsMainEl.innerHTML = (VIEWS[view] || wsOverview)();
-      if (view === 'project') bindProjectSubtabs();
+    // ---------- Gọi thẳng Apps Script (giống pricing.html) — 5 sheet HICON-BIM
+    // không đi qua TaskManager/localStorage vì chỉ dùng trong trang này. ----------
+    function apiReady() { return typeof GSHEETS_CONFIG !== 'undefined' && GSHEETS_CONFIG.USE_GSHEETS && GSHEETS_CONFIG.API_URL; }
+    function gsFetchList(action, callback) {
+      if (!apiReady()) { callback([]); return; }
+      fetch(GSHEETS_CONFIG.API_URL + '?action=' + encodeURIComponent(action), { redirect: 'follow' })
+        .then(function (r) { return r.json(); })
+        .then(function (data) { callback(Array.isArray(data) ? data : []); })
+        .catch(function (e) { console.error(action, e); callback([]); });
+    }
+    function gsWrite(action, data, id) {
+      var params = '?action=' + encodeURIComponent(action);
+      if (id) params += '&id=' + encodeURIComponent(id);
+      if (data) params += '&data=' + encodeURIComponent(JSON.stringify(data));
+      return fetch(GSHEETS_CONFIG.API_URL + params, { redirect: 'follow' }).then(function (r) { return r.json(); });
     }
 
-    document.getElementById('hbWsNav').addEventListener('click', function (e) {
-      var btn = e.target.closest('.hb-ws-navitem');
-      if (!btn) return;
-      document.querySelectorAll('#hbWsNav .hb-ws-navitem').forEach(function (b) { b.classList.remove('active'); });
-      btn.classList.add('active');
-      renderWsView(btn.getAttribute('data-view'));
+    var STORE = { products: [], materials: [], suppliers: [], issues: [], boqItems: [] };
+
+    function reloadAll(cb) {
+      var pending = 3, done = function () { if (--pending === 0 && cb) cb(); };
+      gsFetchList('getBimProducts', function (rows) { STORE.products = rows; renderOverview(); populateMaterialSelects(); if (currentView === 'products') renderProducts(); done(); });
+      gsFetchList('getBimMaterials', function (rows) { STORE.materials = rows; renderOverview(); populateMaterialSelects(); if (currentView === 'materials') renderMaterials(); done(); });
+      gsFetchList('getBimSuppliers', function (rows) { STORE.suppliers = rows; renderOverview(); if (currentView === 'suppliers') renderSuppliers(); done(); });
+    }
+    function reloadProjectData(projectId, cb) {
+      var pending = 2, done = function () { if (--pending === 0 && cb) cb(); };
+      gsFetchList('getBimIssues', function (rows) { STORE.issues = rows.filter(function (r) { return r.projectId === projectId; }); renderIssues(); done(); });
+      gsFetchList('getBimBoqItems', function (rows) { STORE.boqItems = rows.filter(function (r) { return r.projectId === projectId; }); renderBoq(); done(); });
+    }
+
+    // ---------- Sidebar nav ----------
+    var currentView = 'overview';
+    var VIEWS = ['overview', 'products', 'materials', 'suppliers', 'projects'];
+    document.querySelectorAll('.bm-nav-item').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        currentView = btn.getAttribute('data-view');
+        document.querySelectorAll('.bm-nav-item').forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        document.querySelectorAll('.bm-section').forEach(function (s) { s.classList.remove('active'); });
+        document.querySelector('.bm-section[data-section="' + currentView + '"]').classList.add('active');
+        if (currentView === 'products') renderProducts();
+        if (currentView === 'materials') renderMaterials();
+        if (currentView === 'suppliers') renderSuppliers();
+        if (currentView === 'projects') renderProjectsList();
+      });
     });
-    renderWsView('overview');
+
+    // ---------- Tổng quan ----------
+    function renderOverview() {
+      document.getElementById('ovProducts').textContent = STORE.products.length;
+      document.getElementById('ovMaterials').textContent = STORE.materials.length;
+      document.getElementById('ovSuppliers').textContent = STORE.suppliers.length;
+      document.getElementById('bmCntProducts').textContent = STORE.products.length || '';
+      document.getElementById('bmCntMaterials').textContent = STORE.materials.length || '';
+      document.getElementById('bmCntSuppliers').textContent = STORE.suppliers.length || '';
+      var projects = (typeof TaskManager !== 'undefined' && TaskManager.getProjects) ? TaskManager.getProjects() : [];
+      document.getElementById('ovProjects').textContent = projects.length;
+      gsFetchList('getBimIssues', function (rows) {
+        var open = rows.filter(function (r) { return r.status !== 'da-giai-quyet'; }).length;
+        document.getElementById('ovIssuesOpen').textContent = open;
+      });
+    }
+
+    function populateMaterialSelects() {
+      var sel = document.getElementById('productMaterialId');
+      var current = sel.value;
+      sel.innerHTML = '<option value="">—</option>' + STORE.materials.map(function (m) {
+        return '<option value="' + m.id + '">' + escapeHtml(m.name) + '</option>';
+      }).join('');
+      sel.value = current;
+    }
+
+    // ---------- Sản phẩm CRUD ----------
+    function renderProducts() {
+      var wrap = document.getElementById('productsTableWrap');
+      if (!STORE.products.length) { wrap.innerHTML = '<div class="bm-empty">Chưa có sản phẩm nào — thêm ở form phía trên.</div>'; return; }
+      var materialName = function (id) { var m = STORE.materials.filter(function (x) { return x.id === id; })[0]; return m ? m.name : ''; };
+      wrap.innerHTML = '<table class="bm-table"><thead><tr><th>Tên sản phẩm</th><th>Nhóm</th><th>Vật liệu</th><th>Đơn vị</th><th>Đơn giá tham khảo</th><th></th></tr></thead><tbody>' +
+        STORE.products.map(function (p) {
+          return '<tr><td><b>' + escapeHtml(p.name) + '</b></td><td>' + escapeHtml(p.group || '—') + '</td><td>' + escapeHtml(materialName(p.materialId) || '—') + '</td><td>' + escapeHtml(p.unit) + '</td><td class="num">' + (p.refPrice ? fmt(p.refPrice) : '—') + '</td>' +
+            '<td><div class="bm-row-actions"><button class="bm-btn bm-btn-ghost bm-btn-sm" data-edit-product="' + p.id + '">Sửa</button><button class="bm-btn bm-btn-ghost bm-btn-sm bm-btn-danger" data-del-product="' + p.id + '">Xoá</button></div></td></tr>';
+        }).join('') + '</tbody></table>';
+      wrap.querySelectorAll('[data-edit-product]').forEach(function (b) { b.addEventListener('click', function () { editProduct(b.getAttribute('data-edit-product')); }); });
+      wrap.querySelectorAll('[data-del-product]').forEach(function (b) { b.addEventListener('click', function () { delProduct(b.getAttribute('data-del-product')); }); });
+    }
+    function editProduct(id) {
+      var p = STORE.products.filter(function (x) { return x.id === id; })[0];
+      if (!p) return;
+      document.getElementById('productId').value = p.id;
+      document.getElementById('productName').value = p.name || '';
+      document.getElementById('productGroup').value = p.group || '';
+      document.getElementById('productMaterialId').value = p.materialId || '';
+      document.getElementById('productUnit').value = p.unit || '';
+      document.getElementById('productRefPrice').value = p.refPrice || '';
+      document.getElementById('productsFormTitle').textContent = 'Sửa sản phẩm';
+      document.getElementById('productCancel').style.display = '';
+      document.getElementById('productForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    function resetProductForm() {
+      document.getElementById('productForm').reset();
+      document.getElementById('productId').value = '';
+      document.getElementById('productsFormTitle').textContent = 'Thêm sản phẩm';
+      document.getElementById('productCancel').style.display = 'none';
+    }
+    function delProduct(id) {
+      if (!confirm('Xoá sản phẩm này?')) return;
+      gsWrite('deleteBimProduct', null, id).then(function () { reloadAll(function () { renderProducts(); }); });
+    }
+    document.getElementById('productForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var id = document.getElementById('productId').value;
+      var data = {
+        name: document.getElementById('productName').value.trim(),
+        group: document.getElementById('productGroup').value.trim(),
+        materialId: document.getElementById('productMaterialId').value,
+        unit: document.getElementById('productUnit').value.trim(),
+        refPrice: Number(document.getElementById('productRefPrice').value) || 0,
+        status: 'active', updatedAt: new Date().toISOString().split('T')[0]
+      };
+      if (!data.name || !data.unit) return;
+      var req = id ? gsWrite('updateBimProduct', data, id) : gsWrite('addBimProduct', Object.assign({ createdBy: getUser(), createdAt: data.updatedAt }, data));
+      req.then(function () { resetProductForm(); reloadAll(function () { renderProducts(); }); });
+    });
+    document.getElementById('productCancel').addEventListener('click', resetProductForm);
+
+    // ---------- Vật liệu CRUD ----------
+    function renderMaterials() {
+      var wrap = document.getElementById('materialsTableWrap');
+      if (!STORE.materials.length) { wrap.innerHTML = '<div class="bm-empty">Chưa có vật liệu nào — thêm ở form phía trên.</div>'; return; }
+      wrap.innerHTML = '<table class="bm-table"><thead><tr><th>Tên vật liệu</th><th>Phân loại</th><th>Chiều dày</th><th>Đơn vị</th><th></th></tr></thead><tbody>' +
+        STORE.materials.map(function (m) {
+          return '<tr><td><b>' + escapeHtml(m.name) + '</b></td><td>' + escapeHtml(m.category || '—') + '</td><td>' + escapeHtml(m.thickness || '—') + '</td><td>' + escapeHtml(m.unit) + '</td>' +
+            '<td><div class="bm-row-actions"><button class="bm-btn bm-btn-ghost bm-btn-sm" data-edit-material="' + m.id + '">Sửa</button><button class="bm-btn bm-btn-ghost bm-btn-sm bm-btn-danger" data-del-material="' + m.id + '">Xoá</button></div></td></tr>';
+        }).join('') + '</tbody></table>';
+      wrap.querySelectorAll('[data-edit-material]').forEach(function (b) { b.addEventListener('click', function () { editMaterial(b.getAttribute('data-edit-material')); }); });
+      wrap.querySelectorAll('[data-del-material]').forEach(function (b) { b.addEventListener('click', function () { delMaterial(b.getAttribute('data-del-material')); }); });
+    }
+    function editMaterial(id) {
+      var m = STORE.materials.filter(function (x) { return x.id === id; })[0];
+      if (!m) return;
+      document.getElementById('materialId').value = m.id;
+      document.getElementById('materialName').value = m.name || '';
+      document.getElementById('materialCategory').value = m.category || '';
+      document.getElementById('materialThickness').value = m.thickness || '';
+      document.getElementById('materialUnit').value = m.unit || '';
+      document.getElementById('materialsFormTitle').textContent = 'Sửa vật liệu';
+      document.getElementById('materialCancel').style.display = '';
+      document.getElementById('materialForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    function resetMaterialForm() {
+      document.getElementById('materialForm').reset();
+      document.getElementById('materialId').value = '';
+      document.getElementById('materialsFormTitle').textContent = 'Thêm vật liệu';
+      document.getElementById('materialCancel').style.display = 'none';
+    }
+    function delMaterial(id) {
+      if (!confirm('Xoá vật liệu này?')) return;
+      gsWrite('deleteBimMaterial', null, id).then(function () { reloadAll(function () { renderMaterials(); }); });
+    }
+    document.getElementById('materialForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var id = document.getElementById('materialId').value;
+      var data = {
+        name: document.getElementById('materialName').value.trim(),
+        category: document.getElementById('materialCategory').value.trim(),
+        thickness: document.getElementById('materialThickness').value.trim(),
+        unit: document.getElementById('materialUnit').value.trim(),
+        status: 'active', updatedAt: new Date().toISOString().split('T')[0]
+      };
+      if (!data.name || !data.unit) return;
+      var req = id ? gsWrite('updateBimMaterial', data, id) : gsWrite('addBimMaterial', Object.assign({ createdBy: getUser(), createdAt: data.updatedAt }, data));
+      req.then(function () { resetMaterialForm(); reloadAll(function () { renderMaterials(); }); });
+    });
+    document.getElementById('materialCancel').addEventListener('click', resetMaterialForm);
+
+    // ---------- Nhà cung cấp CRUD ----------
+    function renderSuppliers() {
+      var wrap = document.getElementById('suppliersTableWrap');
+      if (!STORE.suppliers.length) { wrap.innerHTML = '<div class="bm-empty">Chưa có nhà cung cấp nào — thêm ở form phía trên.</div>'; return; }
+      wrap.innerHTML = '<table class="bm-table"><thead><tr><th>Tên NCC</th><th>Loại</th><th>Địa chỉ</th><th>Liên hệ</th><th></th></tr></thead><tbody>' +
+        STORE.suppliers.map(function (s) {
+          return '<tr><td><b>' + escapeHtml(s.name) + '</b></td><td>' + escapeHtml(s.type || '—') + '</td><td>' + escapeHtml(s.address || '—') + '</td><td>' + escapeHtml(s.phone || '—') + '</td>' +
+            '<td><div class="bm-row-actions"><button class="bm-btn bm-btn-ghost bm-btn-sm" data-edit-supplier="' + s.id + '">Sửa</button><button class="bm-btn bm-btn-ghost bm-btn-sm bm-btn-danger" data-del-supplier="' + s.id + '">Xoá</button></div></td></tr>';
+        }).join('') + '</tbody></table>';
+      wrap.querySelectorAll('[data-edit-supplier]').forEach(function (b) { b.addEventListener('click', function () { editSupplier(b.getAttribute('data-edit-supplier')); }); });
+      wrap.querySelectorAll('[data-del-supplier]').forEach(function (b) { b.addEventListener('click', function () { delSupplier(b.getAttribute('data-del-supplier')); }); });
+    }
+    function editSupplier(id) {
+      var s = STORE.suppliers.filter(function (x) { return x.id === id; })[0];
+      if (!s) return;
+      document.getElementById('supplierId').value = s.id;
+      document.getElementById('supplierName').value = s.name || '';
+      document.getElementById('supplierType').value = s.type || '';
+      document.getElementById('supplierAddress').value = s.address || '';
+      document.getElementById('supplierPhone').value = s.phone || '';
+      document.getElementById('suppliersFormTitle').textContent = 'Sửa nhà cung cấp';
+      document.getElementById('supplierCancel').style.display = '';
+      document.getElementById('supplierForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    function resetSupplierForm() {
+      document.getElementById('supplierForm').reset();
+      document.getElementById('supplierId').value = '';
+      document.getElementById('suppliersFormTitle').textContent = 'Thêm nhà cung cấp';
+      document.getElementById('supplierCancel').style.display = 'none';
+    }
+    function delSupplier(id) {
+      if (!confirm('Xoá nhà cung cấp này?')) return;
+      gsWrite('deleteBimSupplier', null, id).then(function () { reloadAll(function () { renderSuppliers(); }); });
+    }
+    document.getElementById('supplierForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var id = document.getElementById('supplierId').value;
+      var data = {
+        name: document.getElementById('supplierName').value.trim(),
+        type: document.getElementById('supplierType').value.trim(),
+        address: document.getElementById('supplierAddress').value.trim(),
+        phone: document.getElementById('supplierPhone').value.trim(),
+        status: 'active', updatedAt: new Date().toISOString().split('T')[0]
+      };
+      if (!data.name) return;
+      var req = id ? gsWrite('updateBimSupplier', data, id) : gsWrite('addBimSupplier', Object.assign({ createdBy: getUser(), createdAt: data.updatedAt }, data));
+      req.then(function () { resetSupplierForm(); reloadAll(function () { renderSuppliers(); }); });
+    });
+    document.getElementById('supplierCancel').addEventListener('click', resetSupplierForm);
+
+    // ---------- Dự án: danh sách + chi tiết (Issue/BOQ) ----------
+    var activeProjectId = '', activeProjectTab = 'issues';
+    function renderProjectsList() {
+      document.getElementById('bmProjectsList').style.display = '';
+      document.getElementById('bmProjectDetail').style.display = 'none';
+      var projects = (typeof TaskManager !== 'undefined' && TaskManager.getProjects) ? TaskManager.getProjects() : [];
+      var grid = document.getElementById('bmProjectGrid');
+      if (!projects.length) { grid.innerHTML = '<div class="bm-empty">Chưa có dự án nào trong hệ thống Quản lý dự án.</div>'; return; }
+      grid.innerHTML = projects.map(function (p) {
+        return '<div class="bm-project-card" data-open-project="' + p.id + '"><b>' + escapeHtml(p.name || p.id) + '</b><span>' + escapeHtml(p.type || '') + ' · ' + escapeHtml(p.status || '') + '</span>' +
+          '<div class="stats">Tiến độ <b>' + (p.progress != null ? p.progress + '%' : '—') + '</b></div></div>';
+      }).join('');
+      grid.querySelectorAll('[data-open-project]').forEach(function (c) {
+        c.addEventListener('click', function () { openProject(c.getAttribute('data-open-project'), projects); });
+      });
+    }
+    function openProject(id, projects) {
+      projects = projects || ((typeof TaskManager !== 'undefined' && TaskManager.getProjects) ? TaskManager.getProjects() : []);
+      var p = projects.filter(function (x) { return x.id === id; })[0];
+      if (!p) return;
+      activeProjectId = id;
+      document.getElementById('bmProjectsList').style.display = 'none';
+      document.getElementById('bmProjectDetail').style.display = '';
+      document.getElementById('bmProjName').textContent = p.name || p.id;
+      document.getElementById('bmProjMeta').textContent = (p.type || '') + ' · ' + (p.status || '') + (p.client ? ' · Khách hàng: ' + p.client : '');
+      populateBoqProductSelect();
+      reloadProjectData(id);
+    }
+    document.getElementById('bmProjBack').addEventListener('click', renderProjectsList);
+    document.querySelectorAll('.bm-subtab').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        activeProjectTab = btn.getAttribute('data-ptab');
+        document.querySelectorAll('.bm-subtab').forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        document.querySelectorAll('[data-ptab-panel]').forEach(function (p) { p.style.display = p.getAttribute('data-ptab-panel') === activeProjectTab ? '' : 'none'; });
+      });
+    });
+
+    // ---------- Issue CRUD (theo dự án) ----------
+    var ISSUE_STATUS_LABEL = { moi: 'Mới', 'dang-xu-ly': 'Đang xử lý', 'cho-phan-hoi': 'Chờ phản hồi', 'da-giai-quyet': 'Đã giải quyết' };
+    var ISSUE_STATUS_ORDER = ['moi', 'dang-xu-ly', 'cho-phan-hoi', 'da-giai-quyet'];
+    var PRIORITY_LABEL = { cao: 'Cao', 'trung-binh': 'Trung bình', thap: 'Thấp' };
+    function renderIssues() {
+      var kanban = document.getElementById('issueKanban');
+      kanban.innerHTML = ISSUE_STATUS_ORDER.map(function (st) {
+        var items = STORE.issues.filter(function (i) { return (i.status || 'moi') === st; });
+        return '<div class="bm-kanban-col"><div class="h">' + ISSUE_STATUS_LABEL[st] + ' · ' + items.length + '</div>' +
+          items.map(function (i) {
+            return '<div class="bm-kanban-card"><div class="t">' + escapeHtml(i.title) + '</div>' +
+              '<div class="loc">' + escapeHtml(i.location || '') + '</div>' +
+              '<div class="meta" style="margin-top:6px"><span class="bm-tag pri-' + (i.priority || 'trung-binh') + '">' + (PRIORITY_LABEL[i.priority] || 'Trung bình') + '</span>' +
+              '<div class="bm-row-actions"><button class="bm-btn bm-btn-ghost bm-btn-sm" data-edit-issue="' + i.id + '">Sửa</button><button class="bm-btn bm-btn-ghost bm-btn-sm bm-btn-danger" data-del-issue="' + i.id + '">Xoá</button></div></div></div>';
+          }).join('') + '</div>';
+      }).join('');
+      kanban.querySelectorAll('[data-edit-issue]').forEach(function (b) { b.addEventListener('click', function () { editIssue(b.getAttribute('data-edit-issue')); }); });
+      kanban.querySelectorAll('[data-del-issue]').forEach(function (b) { b.addEventListener('click', function () { delIssue(b.getAttribute('data-del-issue')); }); });
+    }
+    function editIssue(id) {
+      var i = STORE.issues.filter(function (x) { return x.id === id; })[0];
+      if (!i) return;
+      document.getElementById('issueId').value = i.id;
+      document.getElementById('issueTitle').value = i.title || '';
+      document.getElementById('issueLocation').value = i.location || '';
+      document.getElementById('issuePriority').value = i.priority || 'trung-binh';
+      document.getElementById('issueDescription').value = i.description || '';
+      document.getElementById('issueStatus').value = i.status || 'moi';
+      document.getElementById('issueFormTitle').textContent = 'Sửa Issue';
+      document.getElementById('issueCancel').style.display = '';
+      document.getElementById('issueForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    function resetIssueForm() {
+      document.getElementById('issueForm').reset();
+      document.getElementById('issueId').value = '';
+      document.getElementById('issuePriority').value = 'trung-binh';
+      document.getElementById('issueStatus').value = 'moi';
+      document.getElementById('issueFormTitle').textContent = 'Thêm Issue';
+      document.getElementById('issueCancel').style.display = 'none';
+    }
+    function delIssue(id) {
+      if (!confirm('Xoá Issue này?')) return;
+      gsWrite('deleteBimIssue', null, id).then(function () { reloadProjectData(activeProjectId); });
+    }
+    document.getElementById('issueForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var id = document.getElementById('issueId').value;
+      var data = {
+        projectId: activeProjectId,
+        title: document.getElementById('issueTitle').value.trim(),
+        location: document.getElementById('issueLocation').value.trim(),
+        priority: document.getElementById('issuePriority').value,
+        description: document.getElementById('issueDescription').value.trim(),
+        status: document.getElementById('issueStatus').value,
+        updatedAt: new Date().toISOString().split('T')[0]
+      };
+      if (!data.title) return;
+      var req = id ? gsWrite('updateBimIssue', data, id) : gsWrite('addBimIssue', Object.assign({ createdBy: getUser(), createdAt: data.updatedAt }, data));
+      req.then(function () { resetIssueForm(); reloadProjectData(activeProjectId); });
+    });
+    document.getElementById('issueCancel').addEventListener('click', resetIssueForm);
+
+    // ---------- BOQ CRUD (theo dự án) ----------
+    function populateBoqProductSelect() {
+      var sel = document.getElementById('boqProductId');
+      sel.innerHTML = '<option value="">— Chọn sản phẩm —</option>' + STORE.products.map(function (p) {
+        return '<option value="' + p.id + '" data-unit="' + escapeHtml(p.unit || '') + '" data-price="' + (p.refPrice || 0) + '">' + escapeHtml(p.name) + '</option>';
+      }).join('');
+    }
+    document.getElementById('boqProductId').addEventListener('change', function () {
+      var opt = this.options[this.selectedIndex];
+      if (!opt || !opt.value) return;
+      document.getElementById('boqUnit').value = opt.getAttribute('data-unit') || '';
+      var priceField = document.getElementById('boqUnitPrice');
+      if (!priceField.value) priceField.value = opt.getAttribute('data-price') || '';
+    });
+    function renderBoq() {
+      var wrap = document.getElementById('boqTableWrap');
+      var productName = function (id) { var p = STORE.products.filter(function (x) { return x.id === id; })[0]; return p ? p.name : '—'; };
+      if (!STORE.boqItems.length) { wrap.innerHTML = '<div class="bm-empty">Chưa có dòng BOQ nào — thêm ở form phía trên.</div>'; }
+      else {
+        wrap.innerHTML = '<table class="bm-table"><thead><tr><th>Mã</th><th>Sản phẩm</th><th>ĐVT</th><th>Khối lượng</th><th>Đơn giá</th><th>Thành tiền</th><th></th></tr></thead><tbody>' +
+          STORE.boqItems.map(function (b) {
+            var amount = (Number(b.quantity) || 0) * (Number(b.unitPrice) || 0);
+            return '<tr><td>' + escapeHtml(b.code || '—') + '</td><td><b>' + escapeHtml(productName(b.productId)) + '</b></td><td>' + escapeHtml(b.unit || '') + '</td><td class="num">' + (Number(b.quantity) || 0).toLocaleString('vi-VN') + '</td><td class="num">' + fmt(b.unitPrice) + '</td><td class="num">' + fmt(amount) + '</td>' +
+              '<td><div class="bm-row-actions"><button class="bm-btn bm-btn-ghost bm-btn-sm" data-edit-boq="' + b.id + '">Sửa</button><button class="bm-btn bm-btn-ghost bm-btn-sm bm-btn-danger" data-del-boq="' + b.id + '">Xoá</button></div></td></tr>';
+          }).join('') + '</tbody></table>';
+        wrap.querySelectorAll('[data-edit-boq]').forEach(function (b) { b.addEventListener('click', function () { editBoq(b.getAttribute('data-edit-boq')); }); });
+        wrap.querySelectorAll('[data-del-boq]').forEach(function (b) { b.addEventListener('click', function () { delBoq(b.getAttribute('data-del-boq')); }); });
+      }
+      var subtotal = STORE.boqItems.reduce(function (sum, b) { return sum + (Number(b.quantity) || 0) * (Number(b.unitPrice) || 0); }, 0);
+      document.getElementById('boqSubtotal').textContent = fmt(subtotal) + ' đ';
+      document.getElementById('boqTotal').textContent = fmt(subtotal * 1.08) + ' đ';
+    }
+    function editBoq(id) {
+      var b = STORE.boqItems.filter(function (x) { return x.id === id; })[0];
+      if (!b) return;
+      document.getElementById('boqId').value = b.id;
+      document.getElementById('boqCode').value = b.code || '';
+      document.getElementById('boqProductId').value = b.productId || '';
+      document.getElementById('boqUnit').value = b.unit || '';
+      document.getElementById('boqQuantity').value = b.quantity || '';
+      document.getElementById('boqUnitPrice').value = b.unitPrice || '';
+      document.getElementById('boqFormTitle').textContent = 'Sửa dòng BOQ';
+      document.getElementById('boqCancel').style.display = '';
+      document.getElementById('boqForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    function resetBoqForm() {
+      document.getElementById('boqForm').reset();
+      document.getElementById('boqId').value = '';
+      document.getElementById('boqFormTitle').textContent = 'Thêm dòng BOQ';
+      document.getElementById('boqCancel').style.display = 'none';
+    }
+    function delBoq(id) {
+      if (!confirm('Xoá dòng BOQ này?')) return;
+      gsWrite('deleteBimBoqItem', null, id).then(function () { reloadProjectData(activeProjectId); });
+    }
+    document.getElementById('boqForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var id = document.getElementById('boqId').value;
+      var productSel = document.getElementById('boqProductId');
+      var data = {
+        projectId: activeProjectId,
+        code: document.getElementById('boqCode').value.trim(),
+        productId: productSel.value,
+        name: productSel.options[productSel.selectedIndex] ? productSel.options[productSel.selectedIndex].text : '',
+        unit: document.getElementById('boqUnit').value.trim(),
+        quantity: Number(document.getElementById('boqQuantity').value) || 0,
+        unitPrice: Number(document.getElementById('boqUnitPrice').value) || 0,
+        updatedAt: new Date().toISOString().split('T')[0]
+      };
+      if (!data.productId || !data.quantity) return;
+      var req = id ? gsWrite('updateBimBoqItem', data, id) : gsWrite('addBimBoqItem', Object.assign({ createdBy: getUser(), createdAt: data.updatedAt }, data));
+      req.then(function () { resetBoqForm(); reloadProjectData(activeProjectId); });
+    });
+    document.getElementById('boqCancel').addEventListener('click', resetBoqForm);
+
+    // ---------- Boot ----------
+    reloadAll();
   })();
   </script>
 </body>
