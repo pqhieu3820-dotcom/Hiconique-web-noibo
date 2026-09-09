@@ -574,7 +574,11 @@ function handleRequest(e) {
     } else if (action === 'deleteBimBoqItem') {
       result = deleteData(ss, SHEETS.bimBoqItems, params.id);
     } else {
-      result = { error: 'Unknown action: ' + action };
+      // Đồng bộ Model/Object từ plugin SketchUp (.rbz) — toàn bộ logic sống
+      // riêng trong file bim-model-sync.gs (thêm làm 1 file .gs riêng trong
+      // cùng project Apps Script này), đây chỉ là 1 dòng chuyển tiếp.
+      var bimSyncResult = (typeof handleBimSyncAction === 'function') ? handleBimSyncAction(ss, action, params) : null;
+      result = bimSyncResult || { error: 'Unknown action: ' + action };
     }
 
     return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
