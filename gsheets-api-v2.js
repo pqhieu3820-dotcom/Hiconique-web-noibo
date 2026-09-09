@@ -270,6 +270,29 @@ const VALUE_MAP = {
   // loses every admin-only feature.
   'members.roleLevel': [
     ['CEO', 'admin']
+  ],
+  // 2026-09-10: Việt hoá các cột enum tiếng Anh (priority/status) trên Sheet để
+  // CEO chọn dropdown bằng tiếng Việt — client vẫn dùng key tiếng Anh như cũ.
+  // Nhãn khớp đúng chữ đã dùng sẵn trong UI (xem task-manager-app.js/projects.js)
+  // để không tạo ra 2 cách gọi khác nhau cho cùng 1 trạng thái.
+  'tasks.priority': [
+    ['Thấp', 'low'], ['Trung bình', 'medium'], ['Cao', 'high']
+  ],
+  'tasks.status': [
+    ['Chờ xử lý', 'pending'], ['Đang làm', 'in-progress'], ['Chờ duyệt', 'review'], ['Hoàn thành', 'completed']
+  ],
+  'projects.priority': [
+    ['Thấp', 'low'], ['Trung bình', 'medium'], ['Cao', 'high']
+  ],
+  'projects.status': [
+    ['Đang lên kế hoạch', 'planning'], ['Đang chạy', 'on-track'], ['Có rủi ro', 'at-risk'],
+    ['Tạm dừng', 'on-hold'], ['Hoàn thành', 'completed']
+  ],
+  'proposals.status': [
+    ['Chờ duyệt', 'pending'], ['Đã duyệt', 'approved'], ['Từ chối', 'rejected']
+  ],
+  'proposals.type': [
+    ['Mua sắm', 'mua-sam'], ['Đào tạo', 'dao-tao'], ['Sửa chữa', 'sua-chua'], ['Khác', 'khac']
   ]
 };
 
