@@ -310,7 +310,7 @@
       ] },
       { label: 'Phân tích', items: [
         { id: 'health', label: 'Sức khỏe tài chính', icon: ICONS.health },
-        { id: 'cfo', label: 'Sổ tay CFO', icon: ICONS.cfo },
+        { id: 'cfo', label: 'Báo cáo tài chính', icon: ICONS.cfo },
         { id: 'risk', label: 'Rủi ro', icon: ICONS.risk }
       ] }
     ];
@@ -452,7 +452,7 @@
             '</div>' +
 
             '<div class="fn-section" id="sec-cfo">' +
-              '<div class="fn-section-head"><div class="fn-section-title">Sổ tay CFO</div><div class="fn-section-desc">Chẩn đoán tài chính toàn diện theo chuẩn CFO: thanh khoản, đòn bẩy, hiệu quả, sinh lời, Altman Z-Score và 3 dòng tiền — nhập bổ sung số liệu bảng cân đối kế toán theo năm để tính đủ.</div></div>' +
+              '<div class="fn-section-head"><div class="fn-section-title">Báo cáo tài chính</div><div class="fn-section-desc">Chẩn đoán tài chính toàn diện theo chuẩn CFO: thanh khoản, đòn bẩy, hiệu quả, sinh lời, Altman Z-Score và 3 dòng tiền — nhập bổ sung số liệu bảng cân đối kế toán theo năm để tính đủ.</div></div>' +
 
               '<div class="fn-card">' +
                 '<div class="fn-card-head"><div><div class="fn-card-title">Số liệu bảng cân đối kế toán</div><div class="fn-card-desc">Nhập 1 lần cho mỗi năm — sổ giao dịch chỉ có dòng tiền, không có các khoản mục này.</div></div>' +
@@ -473,6 +473,11 @@
                   '<div><span class="fn-field-label">LNST lũy kế (chưa phân phối)</span><input type="number" class="fn-input mono" id="fnBsRetainedEarnings" value="0"></div>' +
                   '<div style="grid-column:span 4;"><button class="fn-btn fn-btn-primary" id="fnBsSaveBtn">Lưu số liệu năm này</button></div>' +
                 '</div>' +
+              '</div>' +
+
+              '<div class="fn-card">' +
+                '<div class="fn-card-head"><div><div class="fn-card-title">Số liệu tự động liên kết từ Sổ giao dịch</div><div class="fn-card-desc">Không cần nhập tay — tự tính lại mỗi khi có giao dịch mới, dùng làm đầu vào cho các công thức bên dưới.</div></div></div>' +
+                '<table class="fn-table"><thead><tr><th>Chỉ tiêu</th><th>Nguồn dữ liệu</th><th>Giá trị (năm đang chọn)</th></tr></thead><tbody id="fnCfoAutoRows"></tbody></table>' +
               '</div>' +
 
               '<h3 style="font-size:1rem;font-weight:700;margin:4px 0 12px;">1. Bức tranh tài chính tổng quan</h3>' +
@@ -1132,6 +1137,24 @@
       var receivablesOutstanding = (TaskManager.getReceivables() || [])
         .filter(function (r) { return r.status !== 'paid'; })
         .reduce(function (s, r) { return s + (Number(r.amount) || 0); }, 0);
+
+      // ---- Bảng số liệu tự động liên kết từ Sổ giao dịch ----
+      var autoRows = [
+        { label: 'Doanh thu thuần', source: 'Tổng giao dịch loại "Doanh thu" trong năm ' + year, value: revenue },
+        { label: 'Giá vốn hàng bán (ước tính)', source: 'Tổng giao dịch loại "Chi phí" trong năm ' + year, value: cogs },
+        { label: 'Lợi nhuận gộp', source: 'Doanh thu thuần − Giá vốn hàng bán', value: grossProfit },
+        { label: 'Thưởng nhân viên', source: 'Tổng giao dịch loại "Thưởng nhân viên"', value: bonus },
+        { label: 'Phạt nhân viên (thu về)', source: 'Tổng giao dịch loại "Phạt nhân viên"', value: penalty },
+        { label: 'EBIT (trước lãi vay & thuế)', source: 'Lợi nhuận gộp − Thưởng + Phạt', value: ebit },
+        { label: 'LNST (sau lãi vay đã nhập)', source: 'EBIT − Chi phí lãi vay đã nhập ở bảng trên', value: netProfit },
+        { label: 'Tiền & tương đương tiền hiện có', source: 'Luỹ kế toàn bộ sổ giao dịch tới hiện tại', value: cashNow },
+        { label: 'Phải thu ngắn hạn (công nợ chưa thu)', source: 'Tổng "Công nợ khách hàng" chưa đánh dấu Đã thu', value: receivablesOutstanding },
+        { label: 'Vay nhận trong năm', source: 'Tổng giao dịch loại "Vay nợ (nhận)" trong năm ' + year, value: loanY },
+        { label: 'Trả nợ gốc trong năm', source: 'Tổng giao dịch loại "Trả nợ" trong năm ' + year, value: repaymentY }
+      ];
+      document.getElementById('fnCfoAutoRows').innerHTML = autoRows.map(function (r) {
+        return '<tr><td>' + r.label + '</td><td class="fn-formula-cell">' + r.source + '</td><td class="fn-amount ' + (r.value >= 0 ? 'pos' : 'neg') + '">' + fmt(r.value) + '</td></tr>';
+      }).join('');
 
       // ---- 1. Bức tranh tổng quan ----
       document.getElementById('fnCfoOverviewGrid').innerHTML =
