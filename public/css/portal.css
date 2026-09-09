@@ -1875,15 +1875,19 @@ main { flex: 1; }
   margin-top: 10px;
   padding-top: 10px;
   border-top: 1px dashed var(--color-border);
+  width: 100%;
 }
 .team-tenure {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  justify-content: center;
   gap: 6px;
+  max-width: 100%;
   font-size: 0.75rem;
   color: var(--color-text-muted);
   letter-spacing: 0.01em;
 }
-.team-tenure svg { width: 13px; height: 13px; flex-shrink: 0; color: var(--color-bronze); }
+.team-tenure svg { width: 13px; height: 13px; flex-shrink: 0; margin-top: 1px; color: var(--color-bronze); }
+.team-tenure span { white-space: normal; word-break: break-word; text-align: center; }
 
 [data-theme="light"] .team-tenure { color: #475569; }

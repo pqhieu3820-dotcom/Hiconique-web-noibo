@@ -221,7 +221,18 @@
           const taskId = row.dataset.taskId;
           if (taskId) {
             TaskManager.toggleTaskStatus(taskId);
-            renderDashboard();
+            // Re-render whatever view is currently active, not always Dashboard —
+            // checking a task inside "Tasks của tôi" (hoặc bất kỳ view nào khác)
+            // phải giữ nguyên view đó, không bị nhảy về Dashboard.
+            var activeNav = document.querySelector('.tm-nav-item.active');
+            var view = activeNav ? activeNav.dataset.view : 'dashboard';
+            if (view === 'dashboard') renderDashboard();
+            else if (view === 'projects') renderProjectsView();
+            else if (view === 'my-tasks') renderMyTasks();
+            else if (view === 'team') renderTeam();
+            else if (view === 'calendar') renderCalendar();
+            else if (view === 'proposals') renderProposals();
+            else renderDashboard();
           }
         }
       }

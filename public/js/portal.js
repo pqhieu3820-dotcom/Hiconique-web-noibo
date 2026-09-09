@@ -277,6 +277,18 @@
     return Math.floor(diffMs / (1000 * 60 * 60 * 24));
   }
 
+  // Ngày "Làm việc từ" trên sheet Members có thể bị sửa tay thành 1 giá trị
+  // không parse được (VD gõ nhầm định dạng) — new Date(...) khi đó trả về
+  // "Invalid Date", nếu hiện thẳng ra thẻ team sẽ vừa sai vừa tràn khung
+  // (chuỗi "Invalid Date · NaN ngày" dài hơn text bình thường). Trả về ''
+  // để phần UI ẩn hẳn dòng ngày làm việc thay vì hiện rác.
+  function formatJoinDate(createdAt) {
+    if (!createdAt) return '';
+    var d = new Date(createdAt);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+
   function renderTeamGrid(members) {
     var grid = document.getElementById('team-grid');
     var countEl = document.querySelector('.eyebrow-count');
@@ -297,7 +309,7 @@
       var role = m.role || m.position || '';
       var status = m.roleLevel ? m.roleLevel.charAt(0).toUpperCase() + m.roleLevel.slice(1) : '—';
       var days = daysAtCompany(m.createdAt);
-      var joinDate = m.createdAt ? new Date(m.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+      var joinDate = formatJoinDate(m.createdAt);
       var statusBadge = m.status === 'pending' ? '<span class="team-status-badge pending">Chờ duyệt</span>'
         : m.status === 'inactive' ? '<span class="team-status-badge inactive">Ngưng công tác</span>'
         : m.status === 'rejected' ? '<span class="team-status-badge rejected">Đã từ chối</span>'
@@ -352,7 +364,7 @@
     var color = m.color || '#6B7280';
     var roleLevelLabel = m.roleLevel === 'admin' ? 'Quản trị viên' : m.roleLevel === 'manager' ? 'Quản lý' : 'Nhân viên';
     var days = daysAtCompany(m.createdAt);
-    var joinDate = m.createdAt ? new Date(m.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+    var joinDate = formatJoinDate(m.createdAt);
     var dobDate = m.dob ? new Date(m.dob).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
     var statusLabel = m.status === 'pending' ? 'Đang chờ duyệt'
       : m.status === 'inactive' ? 'Đã ngưng công tác'
