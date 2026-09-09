@@ -127,9 +127,9 @@
     <div class="pr-tabs" id="prTabs" role="tablist">
       <button class="pr-tab-btn" data-tab="catalog">Danh mục đơn giá</button>
       <button class="pr-tab-btn" data-tab="province">Đơn giá theo tỉnh</button>
-      <button class="pr-tab-btn" data-tab="prelim">Khối lượng sơ bộ</button>
       <button class="pr-tab-btn" data-tab="estimate">Dự toán xây dựng</button>
       <button class="pr-tab-btn" data-tab="design">Dự toán thiết kế</button>
+      <button class="pr-tab-btn" data-tab="prelim">Khối lượng sơ bộ</button>
       <button class="pr-tab-btn" data-tab="contractors">So sánh nhà thầu</button>
       <button class="pr-tab-btn" data-tab="cashflow">Dòng tiền</button>
       <button class="pr-tab-btn" data-tab="changeorders">Phát sinh</button>
@@ -144,6 +144,33 @@
     <div class="pr-toolbar" id="prToolProjectBar" style="display:none;margin-bottom:20px;align-items:center;gap:10px;">
       <span class="pr-field-label" style="margin:0;white-space:nowrap;">Áp dụng cho dự án</span>
       <select class="pr-quote-select" id="prToolProjectSelect" style="min-width:260px;"></select>
+      <button type="button" class="pr-btn pr-btn-ghost pr-btn-sm" id="prNewProjectToggle" hidden>+ Tạo dự án</button>
+    </div>
+
+    <div class="pr-card" id="prNewProjectCard" hidden style="margin-bottom:20px;">
+      <div class="pr-card-head"><span class="pr-card-title">Tạo dự án mới</span></div>
+      <div class="pr-client-grid" style="grid-template-columns: repeat(3, 1fr);">
+        <div><span class="pr-field-label">Tên dự án *</span><input class="pr-input" id="npName" placeholder="VD: Biệt thự Thảo Điền"></div>
+        <div><span class="pr-field-label">Loại dự án</span><select class="pr-quote-select" id="npType">
+          <option value="Thiết kế nội thất">Thiết kế nội thất</option>
+          <option value="Thiết kế &amp; thi công">Thiết kế &amp; thi công</option>
+          <option value="Thi công xây dựng">Thi công xây dựng</option>
+          <option value="Thiết kế kiến trúc">Thiết kế kiến trúc</option>
+        </select></div>
+        <div><span class="pr-field-label">Mức độ ưu tiên</span><select class="pr-quote-select" id="npPriority">
+          <option value="low">Thấp</option><option value="medium" selected>Trung bình</option><option value="high">Cao</option>
+        </select></div>
+        <div><span class="pr-field-label">Khách hàng</span><input class="pr-input" id="npClient" placeholder="Anh/Chị..."></div>
+        <div><span class="pr-field-label">Chủ đầu tư</span><input class="pr-input" id="npInvestor"></div>
+        <div><span class="pr-field-label">Địa điểm</span><input class="pr-input" id="npLocation"></div>
+        <div><span class="pr-field-label">Ngân sách (đ)</span><input type="number" min="0" class="pr-input mono" id="npBudget" value="0"></div>
+        <div><span class="pr-field-label">Ngày bắt đầu</span><input type="date" class="pr-input" id="npStart"></div>
+        <div><span class="pr-field-label">Ngày kết thúc</span><input type="date" class="pr-input" id="npEnd"></div>
+      </div>
+      <div class="pr-totals" style="display:flex;gap:10px;">
+        <button type="button" class="pr-btn pr-btn-primary" id="npSaveBtn">Tạo dự án</button>
+        <button type="button" class="pr-btn pr-btn-ghost" id="npCancelBtn">Huỷ</button>
+      </div>
     </div>
 
     <div class="pr-tab-panel" data-tab-panel="catalog">
@@ -809,6 +836,7 @@
       sel.innerHTML = projects.map(function (p) { return '<option value="' + p.id + '">' + escapeHtml(p.name || p.id) + '</option>'; }).join('');
       if (projects.length && !activeToolProjectId) activeToolProjectId = projects[0].id;
       sel.value = activeToolProjectId;
+      document.getElementById('prNewProjectToggle').hidden = !isManager(getUser());
     }
     document.getElementById('prToolProjectSelect').addEventListener('change', function () {
       activeToolProjectId = this.value;
@@ -824,6 +852,44 @@
       else if (tab === 'acceptance') loadAcceptance();
       else if (tab === 'docs') loadDocs();
     }
+
+    // ---------- Tạo dự án mới ngay tại đây (khi dự án cần dùng chưa có trong
+    // danh sách) — dùng đúng TaskManager.createProject() thật, không phải form
+    // giả; chỉ các trường thiết yếu, sửa/bổ sung chi tiết hơn ở trang Dự án. ----------
+    document.getElementById('prNewProjectToggle').addEventListener('click', function () {
+      document.getElementById('prNewProjectCard').hidden = !document.getElementById('prNewProjectCard').hidden;
+    });
+    document.getElementById('npCancelBtn').addEventListener('click', function () {
+      document.getElementById('prNewProjectCard').hidden = true;
+    });
+    document.getElementById('npSaveBtn').addEventListener('click', function () {
+      var name = document.getElementById('npName').value.trim();
+      if (!name) { alert('Nhập tên dự án.'); return; }
+      var user = getUser();
+      var data = {
+        name: name,
+        type: document.getElementById('npType').value,
+        priority: document.getElementById('npPriority').value,
+        client: document.getElementById('npClient').value.trim(),
+        investor: document.getElementById('npInvestor').value.trim(),
+        location: document.getElementById('npLocation').value.trim(),
+        budget: parseInt(document.getElementById('npBudget').value, 10) || 0,
+        startDate: document.getElementById('npStart').value || '',
+        endDate: document.getElementById('npEnd').value || '',
+        members: user ? [user.id] : []
+      };
+      var saved = (typeof TaskManager !== 'undefined' && TaskManager.createProject) ? TaskManager.createProject(data, user) : null;
+      if (!saved) { alert('Bạn không có quyền tạo dự án.'); return; }
+      ['npName', 'npClient', 'npInvestor', 'npLocation'].forEach(function (id) { document.getElementById(id).value = ''; });
+      document.getElementById('npBudget').value = '0';
+      document.getElementById('npStart').value = '';
+      document.getElementById('npEnd').value = '';
+      document.getElementById('prNewProjectCard').hidden = true;
+      populateToolProjectSelect();
+      activeToolProjectId = saved.id;
+      document.getElementById('prToolProjectSelect').value = saved.id;
+      reloadActiveTool();
+    });
     // Ghi đè activateTab đã định nghĩa ở trên để show/hide thanh chọn dự án + tự
     // load dữ liệu công cụ đúng lúc tab đó được mở (không load sẵn hết 6 tab).
     var baseActivateTab = activateTab;
