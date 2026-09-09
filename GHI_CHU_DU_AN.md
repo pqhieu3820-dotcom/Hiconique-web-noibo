@@ -641,6 +641,7 @@ của Member đang đăng nhập, kiểm tra phía client (không có bảo mậ
 | **Google Apps Script — editor** (sửa code `gsheets-api-v2.js` tại đây) | **https://script.google.com/u/1/home/projects/13qWJLAwWHzeH7nyfcVHlMrxwOOWAUi4X2gD7CgB2EfwQseFX30RJo_RJ/edit** |
 | **Apps Script Web App — URL đang chạy thật** (client gọi `API_URL` này để ghi dữ liệu) | **https://script.google.com/macros/s/AKfycbzgg0dfNgDTFgcTGlNvF2IHLUusK6YuBk1pot9SrbYi5B9al-H2nmmMlKLz5CpDlLY/exec** |
 | **Google Drive — thư mục file thiết kế/hồ sơ kỹ thuật** | **https://drive.google.com/drive/folders/1Abs32vARD3f486LWBfgIWXjKIUV-LK6L** |
+| **Database đơn giá chi phí xây dựng nhà 34 tỉnh T9/2026** (tham khảo ngoài — 34 tỉnh × 432 vật tư × 219 công tác, mốc giá 01/09/2026; có cả bản PDF `DEMO_Cam_nang_don_gia_T9_2026.pdf` cùng nội dung, thêm ma trận NCC + checklist hỏi giá) | **https://docs.google.com/spreadsheets/d/1INkLZfjbfS7G9otbV4uGgQKhog0ADh8L2fnS3GTT2dM/edit?usp=drivesdk** |
 | Netlify — hosting production | Chưa có URL cố định ghi trong repo (auto-deploy mỗi lần push `master`, xem Netlify dashboard của tài khoản để lấy link site + biến `SITE_PASSWORD` cho cổng đăng nhập chung (cookie-auth) — chi tiết ở [README.md](README.md)) |
 
 **Lưu ý khi thay đổi các link trên:** nếu redeploy Apps Script ra **deployment mới** (không phải
