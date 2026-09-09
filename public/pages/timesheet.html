@@ -221,6 +221,11 @@
       border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer; font-family: inherit;
     }
     .ts-device-remove:hover { border-color: var(--ts-danger); }
+    .ts-device-add {
+      border: 1px solid var(--ts-bronze); background: transparent; color: var(--ts-bronze);
+      border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer; font-family: inherit; font-style: normal;
+    }
+    .ts-device-add:hover { background: var(--ts-bronze); color: #0B0D10; }
 
     .ts-checkin-btn {
       width: 100%;
@@ -438,18 +443,61 @@
       margin-bottom: 12px;
     }
 
+    .ts-detail-note-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
     .ts-detail-note-label {
       font-size: 0.6875rem;
       color: var(--ts-muted);
-      margin-bottom: 4px;
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
+
+    .ts-detail-note-edit {
+      border: none;
+      background: transparent;
+      color: var(--ts-bronze);
+      font-size: 0.75rem;
+      cursor: pointer;
+      font-family: inherit;
+      padding: 0;
+    }
+    .ts-detail-note-edit:hover { text-decoration: underline; }
+    .ts-detail-note-edit[hidden] { display: none; }
 
     .ts-detail-note-value {
       font-size: 0.8125rem;
       color: var(--ts-text);
       line-height: 1.5;
+    }
+    .ts-detail-note-value[hidden] { display: none; }
+
+    .ts-detail-note-form { display: flex; flex-direction: column; gap: 8px; }
+    .ts-detail-note-form[hidden] { display: none; }
+    .ts-detail-note-textarea {
+      width: 100%;
+      border: 1px solid var(--ts-border);
+      border-radius: 6px;
+      background: var(--ts-surface);
+      color: var(--ts-text);
+      font-family: inherit;
+      font-size: 0.8125rem;
+      padding: 8px 10px;
+      resize: vertical;
+    }
+    .ts-detail-note-actions { display: flex; gap: 8px; }
+    .ts-detail-note-save {
+      border: none; background: var(--ts-bronze); color: #0B0D10;
+      border-radius: 6px; padding: 5px 12px; font-size: 0.75rem; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+    }
+    .ts-detail-note-discard {
+      border: 1px solid var(--ts-border); background: transparent; color: var(--ts-text);
+      border-radius: 6px; padding: 5px 12px; font-size: 0.75rem; cursor: pointer; font-family: inherit;
     }
 
     /* Responsive */
@@ -628,8 +676,18 @@
             </div>
           </div>
           <div class="ts-detail-note" id="tsDetailNoteBox">
-            <div class="ts-detail-note-label">Ghi chú</div>
+            <div class="ts-detail-note-head">
+              <div class="ts-detail-note-label">Ghi chú</div>
+              <button type="button" class="ts-detail-note-edit" id="tsDetailNoteEditBtn" hidden>Sửa</button>
+            </div>
             <div class="ts-detail-note-value" id="tsDetailNote">--</div>
+            <div class="ts-detail-note-form" id="tsDetailNoteForm" hidden>
+              <textarea class="ts-detail-note-textarea" id="tsDetailNoteInput" rows="2" placeholder="Ví dụ: đi công trình, xin về sớm…"></textarea>
+              <div class="ts-detail-note-actions">
+                <button type="button" class="ts-detail-note-save" id="tsDetailNoteSaveBtn">Lưu</button>
+                <button type="button" class="ts-detail-note-discard" id="tsDetailNoteCancelBtn">Huỷ</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -853,6 +911,7 @@
       var userId = getUserId();
       var myDeviceId = getOrCreateDeviceId();
       var ids = TaskManager.getMemberDeviceIds(userId);
+      var alreadyRegistered = ids.indexOf(myDeviceId) !== -1;
       var rows = ids.map(function (id) {
         var isThis = id === myDeviceId;
         return '<div class="ts-device-row">' +
@@ -860,8 +919,19 @@
           '<button type="button" class="ts-device-remove" data-device-id="' + id + '">Gỡ</button>' +
         '</div>';
       }).join('');
-      for (var i = ids.length; i < MAX_MEMBER_DEVICES_UI; i++) {
-        rows += '<div class="ts-device-row ts-device-empty"><span class="ts-device-id">Còn trống</span></div>';
+      // Ô trống đầu tiên (nếu còn) cho phép đăng ký ngay THIẾT BỊ ĐANG DÙNG —
+      // các ô trống còn lại vẫn chỉ chờ tự đăng ký khi check-in từ máy khác,
+      // vì web không có cách nào biết trước ID của 1 thiết bị chưa từng ghé.
+      var emptySlots = MAX_MEMBER_DEVICES_UI - ids.length;
+      for (var i = 0; i < emptySlots; i++) {
+        if (i === 0 && !alreadyRegistered) {
+          rows += '<div class="ts-device-row ts-device-empty">' +
+            '<span class="ts-device-id">Còn trống</span>' +
+            '<button type="button" class="ts-device-add" id="tsDeviceAddBtn">+ Thêm thiết bị này</button>' +
+          '</div>';
+        } else {
+          rows += '<div class="ts-device-row ts-device-empty"><span class="ts-device-id">Còn trống</span></div>';
+        }
       }
       wrap.innerHTML =
         '<div class="ts-device-title">Thiết bị chấm công đã đăng ký (tối đa ' + MAX_MEMBER_DEVICES_UI + ')</div>' +
@@ -874,6 +944,14 @@
           renderDeviceTable();
         });
       });
+      var addBtn = document.getElementById('tsDeviceAddBtn');
+      if (addBtn) {
+        addBtn.addEventListener('click', function () {
+          var user = TaskManager.getCurrentUser ? TaskManager.getCurrentUser() : null;
+          TaskManager.registerMemberDevice(userId, myDeviceId, user);
+          renderDeviceTable();
+        });
+      }
     }
 
     // helpers
@@ -943,7 +1021,7 @@
         btn.className = 'ts-checkin-btn out';
         btn.disabled = false;
         status.className = 'ts-checkin-status working';
-        status.textContent = 'Đang làm việc từ ' + record.checkinTime;
+        status.textContent = 'Đang làm việc từ ' + record.checkinTime + ' · ' + (TaskManager.formatShortDate ? TaskManager.formatShortDate(record.date) : record.date);
       } else {
         btn.textContent = 'Check In';
         btn.className = 'ts-checkin-btn in';
@@ -1125,6 +1203,7 @@
       var detailTotal = document.getElementById('tsDetailTotal');
       var detailOT = document.getElementById('tsDetailOT');
       var detailNote = document.getElementById('tsDetailNote');
+      var noteEditBtn = document.getElementById('tsDetailNoteEditBtn');
 
       if (record && record.checkoutTime) {
         badge.className = 'ts-detail-badge full';
@@ -1152,9 +1231,50 @@
         detailNote.textContent = '—';
       }
 
+      // Chỉ cho sửa ghi chú khi ngày đó đã có bản ghi chấm công thật (có id để
+      // update) — chưa chấm công thì chưa có gì để gắn ghi chú vào.
+      closeNoteEditor();
+      currentDetailRecord = record;
+      noteEditBtn.hidden = !record;
+
       detail.style.display = 'block';
       detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
+
+    // ---- Sửa ghi chú của 1 ngày đã chấm công (từ Day detail) ----
+    var currentDetailRecord = null;
+
+    function closeNoteEditor() {
+      var form = document.getElementById('tsDetailNoteForm');
+      var value = document.getElementById('tsDetailNote');
+      var editBtn = document.getElementById('tsDetailNoteEditBtn');
+      form.hidden = true;
+      value.hidden = false;
+      if (currentDetailRecord) editBtn.hidden = false;
+    }
+
+    document.getElementById('tsDetailNoteEditBtn').addEventListener('click', function () {
+      if (!currentDetailRecord) return;
+      var form = document.getElementById('tsDetailNoteForm');
+      var value = document.getElementById('tsDetailNote');
+      var input = document.getElementById('tsDetailNoteInput');
+      input.value = currentDetailRecord.note || '';
+      value.hidden = true;
+      form.hidden = false;
+      this.hidden = true;
+      input.focus();
+    });
+
+    document.getElementById('tsDetailNoteCancelBtn').addEventListener('click', closeNoteEditor);
+
+    document.getElementById('tsDetailNoteSaveBtn').addEventListener('click', function () {
+      if (!currentDetailRecord || !currentDetailRecord.id) return;
+      var newNote = document.getElementById('tsDetailNoteInput').value.trim();
+      var updated = TaskManager.updateTimesheetEntry(currentDetailRecord.id, { note: newNote });
+      currentDetailRecord = updated || Object.assign({}, currentDetailRecord, { note: newNote });
+      document.getElementById('tsDetailNote').textContent = currentDetailRecord.note || '—';
+      closeNoteEditor();
+    });
 
     // Init
     document.getElementById('tsCheckinBtn').addEventListener('click', function() {

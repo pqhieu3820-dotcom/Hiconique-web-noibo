@@ -274,6 +274,13 @@ var TaskManager = (function() {
 
   // Get data from Google Sheets (all via the Apps Script Web App — see note
   // inside about why the old CSV publish path was removed).
+  // "YYYY-MM-DD" -> "D/M/YYYY" (no leading zeros, e.g. "2026-09-09" -> "9/9/2026").
+  function formatShortDate(dateStr) {
+    var parts = String(dateStr || '').split('-');
+    if (parts.length !== 3) return dateStr;
+    return Number(parts[2]) + '/' + Number(parts[1]) + '/' + parts[0];
+  }
+
   function getFromGSheets(type, callback) {
     var now = Date.now();
     // Cache for 30 seconds
@@ -950,7 +957,7 @@ var TaskManager = (function() {
     }).forEach(function(e) {
       if (e.memberId !== user.id && !canSeeTeam) return;
       var m = members.filter(function(mm) { return mm.id === e.memberId; })[0];
-      alerts.push({ id: 'alert_late_' + e.id, title: 'Chấm công trễ', message: (m ? m.name : e.memberId) + ' check-in lúc ' + e.checkinTime, type: 'checkin', level: 'warning', createdAt: today });
+      alerts.push({ id: 'alert_late_' + e.id, title: 'Chấm công trễ', message: (m ? m.name : e.memberId) + ' check-in lúc ' + e.checkinTime + ' · ' + formatShortDate(e.date), type: 'checkin', level: 'warning', createdAt: today });
     });
 
     // Active recurring rules (e.g. payroll reminder days 1-5)
@@ -1541,6 +1548,7 @@ var TaskManager = (function() {
 
     // Timesheet
     getTimesheetEntries: getTimesheetEntries,
+    formatShortDate: formatShortDate,
     addTimesheetEntry: addTimesheetEntry,
     updateTimesheetEntry: updateTimesheetEntry,
 

@@ -638,8 +638,17 @@ function getAllData(ss, sheetName) {
       // calendar day (e.g. dob "2000-08-03" became "2000-08-02T17:00:00Z").
       // Format it to a plain "yyyy-MM-dd" string here, in the same timezone
       // the sheet/cell actually means, before that UTC shift can happen.
+      //
+      // "Giờ checkin"/"Giờ checkout" are TIME-only cells (e.g. "17:12") — a
+      // time-only value Sheets stores with its date portion pinned to
+      // 1899-12-30 (Sheets' own epoch day). Formatting those with 'yyyy-MM-dd'
+      // like every other date field threw away the actual time and displayed
+      // the literal epoch date to the user ("check-in lúc 1899-12-30", bug
+      // reported 2026-09-09) — format checkinTime/checkoutTime as 'HH:mm'
+      // instead so the time-of-day survives.
       if (Object.prototype.toString.call(val) === '[object Date]') {
-        val = Utilities.formatDate(val, Session.getScriptTimeZone() || 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd');
+        const pattern = (key === 'checkinTime' || key === 'checkoutTime') ? 'HH:mm' : 'yyyy-MM-dd';
+        val = Utilities.formatDate(val, Session.getScriptTimeZone() || 'Asia/Ho_Chi_Minh', pattern);
       }
       if (typeof val === 'string' && val.startsWith('[')) {
         try { val = JSON.parse(val); } catch (e) { /* keep raw string */ }
