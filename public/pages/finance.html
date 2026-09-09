@@ -49,17 +49,37 @@
     .fn-summary-value.neg { color: var(--fn-red); }
     .fn-summary-value.neutral { color: var(--fn-bronze); }
 
-    .fn-dash-row { display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px; margin-bottom: 28px; align-items: stretch; }
-    .fn-chart-wrap { display: flex; align-items: flex-end; gap: 10px; height: 140px; padding: 20px 24px 12px; }
-    .fn-chart-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
-    .fn-chart-bars { display: flex; gap: 3px; align-items: flex-end; height: 100%; }
-    .fn-chart-bar { width: 9px; border-radius: 3px 3px 0 0; }
-    .fn-chart-bar.revenue { background: var(--fn-green); }
-    .fn-chart-bar.expense { background: var(--fn-red); opacity: 0.85; }
-    .fn-chart-label { font-size: 0.6875rem; color: var(--fn-muted); }
-    .fn-legend { display: flex; gap: 16px; padding: 0 24px 16px; font-size: 0.75rem; color: var(--fn-muted); }
+    .fn-dash-row { display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px; margin-bottom: 20px; align-items: stretch; }
+    .fn-dash-row.split { grid-template-columns: 1fr 1.3fr; }
+
+    .fn-chart-wrap { display: flex; align-items: flex-end; gap: 14px; height: 220px; padding: 28px 24px 12px; }
+    .fn-chart-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; justify-content: flex-end; }
+    .fn-chart-bars { position: relative; display: flex; gap: 4px; align-items: flex-end; height: 100%; }
+    .fn-chart-bar { width: 14px; border-radius: 4px 4px 0 0; position: relative; transition: opacity 0.15s; }
+    .fn-chart-bar:hover { opacity: 0.75; }
+    .fn-chart-bar.revenue { background: linear-gradient(180deg, var(--fn-green), color-mix(in srgb, var(--fn-green) 70%, black)); }
+    .fn-chart-bar.expense { background: linear-gradient(180deg, var(--fn-red), color-mix(in srgb, var(--fn-red) 70%, black)); }
+    .fn-chart-bar-value { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); font-size: 0.625rem; font-family: 'JetBrains Mono', monospace; color: var(--fn-muted); white-space: nowrap; }
+    .fn-chart-label { font-size: 0.75rem; color: var(--fn-muted); font-weight: 600; }
+    .fn-legend { display: flex; gap: 16px; padding: 0 24px 18px; font-size: 0.75rem; color: var(--fn-muted); }
     .fn-legend span { display: inline-flex; align-items: center; gap: 6px; }
     .fn-legend i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+
+    .fn-donut-wrap { display: flex; align-items: center; gap: 24px; padding: 24px; flex-wrap: wrap; }
+    .fn-donut-wrap svg { width: 150px; height: 150px; flex-shrink: 0; }
+    .fn-donut-center { font-family: 'JetBrains Mono', monospace; }
+    .fn-donut-legend { flex: 1; min-width: 160px; display: flex; flex-direction: column; gap: 10px; }
+    .fn-donut-legend-row { display: flex; align-items: center; gap: 10px; font-size: 0.8125rem; }
+    .fn-donut-dot { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
+    .fn-donut-legend-name { flex: 1; color: var(--fn-text); }
+    .fn-donut-legend-pct { font-family: 'JetBrains Mono', monospace; color: var(--fn-muted); font-size: 0.75rem; }
+
+    .fn-rank-list { padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
+    .fn-rank-row-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; font-size: 0.8125rem; }
+    .fn-rank-name { font-weight: 600; }
+    .fn-rank-amount { font-family: 'JetBrains Mono', monospace; color: var(--fn-muted); font-size: 0.75rem; }
+    .fn-rank-track { height: 8px; border-radius: 6px; background: var(--fn-bg); overflow: hidden; }
+    .fn-rank-fill { height: 100%; border-radius: 6px; }
 
     .fn-attention-list { padding: 8px 0; }
     .fn-attention-row { display: flex; align-items: center; gap: 12px; padding: 12px 24px; border-bottom: 1px solid var(--fn-border); }
@@ -230,6 +250,16 @@
               '<div class="fn-attention-list" id="fnAttentionList"></div>' +
             '</div>' +
           '</div>' +
+          '<div class="fn-dash-row split">' +
+            '<div class="fn-card" style="margin-bottom:0;">' +
+              '<div class="fn-card-head"><div><div class="fn-card-title">Cơ cấu chi phí</div><div class="fn-card-desc">Theo danh mục, tháng đang chọn</div></div></div>' +
+              '<div class="fn-donut-wrap" id="fnDonutWrap"></div>' +
+            '</div>' +
+            '<div class="fn-card" style="margin-bottom:0;">' +
+              '<div class="fn-card-head"><div><div class="fn-card-title">Top danh mục chi phí</div><div class="fn-card-desc">Tháng đang chọn</div></div></div>' +
+              '<div class="fn-rank-list" id="fnRankList"></div>' +
+            '</div>' +
+          '</div>' +
           '<div class="fn-card">' +
             '<div class="fn-card-head"><div><div class="fn-card-title">Thêm giao dịch</div><div class="fn-card-desc">Mọi khoản tiền ra/vào của công ty ghi vào đây.</div></div></div>' +
             '<div class="fn-form-grid">' +
@@ -317,6 +347,8 @@
 
       renderChart(all);
       renderAttention({ pnlMonth: pnlMonth, month: month, debtOutstanding: debtOutstanding, idlePool: idlePool, cashFlowAllTime: cashFlowAllTime });
+      renderDonut(monthEntries);
+      renderRankList(monthEntries);
     }
 
     function summaryCard(label, value, cls, icon, iconCls, tag) {
@@ -343,15 +375,101 @@
         return { month: m, revenue: sumByType(entries, 'revenue'), expense: sumByType(entries, 'expense') };
       });
       var max = Math.max.apply(null, data.map(function (d) { return Math.max(d.revenue, d.expense); }).concat([1]));
+      var maxBarPx = 160;
       document.getElementById('fnChartWrap').innerHTML = data.map(function (d) {
-        var rH = Math.max(2, Math.round((d.revenue / max) * 100));
-        var eH = Math.max(2, Math.round((d.expense / max) * 100));
+        var rH = Math.max(3, Math.round((d.revenue / max) * maxBarPx));
+        var eH = Math.max(3, Math.round((d.expense / max) * maxBarPx));
         return '<div class="fn-chart-col">' +
           '<div class="fn-chart-bars">' +
-            '<div class="fn-chart-bar revenue" style="height:' + rH + 'px;" title="Thu: ' + fmt(d.revenue) + '"></div>' +
-            '<div class="fn-chart-bar expense" style="height:' + eH + 'px;" title="Chi: ' + fmt(d.expense) + '"></div>' +
+            '<div class="fn-chart-bar revenue" style="height:' + rH + 'px;" title="Thu: ' + fmt(d.revenue) + '">' +
+              (d.revenue > 0 ? '<span class="fn-chart-bar-value">' + fmtShort(d.revenue) + '</span>' : '') +
+            '</div>' +
+            '<div class="fn-chart-bar expense" style="height:' + eH + 'px;" title="Chi: ' + fmt(d.expense) + '">' +
+              (d.expense > 0 ? '<span class="fn-chart-bar-value">' + fmtShort(d.expense) + '</span>' : '') +
+            '</div>' +
           '</div>' +
-          '<span class="fn-chart-label">' + d.month.slice(5) + '</span>' +
+          '<span class="fn-chart-label">Th.' + Number(d.month.slice(5)) + '</span>' +
+        '</div>';
+      }).join('');
+    }
+
+    // Rút gọn số tiền lớn cho gọn nhãn trên biểu đồ (1.500.000 -> 1.5tr).
+    function fmtShort(n) {
+      n = Number(n) || 0;
+      if (n >= 1e9) return (n / 1e9).toFixed(1).replace(/\.0$/, '') + ' tỷ';
+      if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, '') + ' tr';
+      if (n >= 1e3) return Math.round(n / 1e3) + 'k';
+      return fmt(n);
+    }
+
+    var DONUT_PALETTE = ['#B08D57', '#A04848', '#3B6B8C', '#4F6F52', '#8E7CC3', '#C7A464'];
+
+    function categoryBreakdown(entries) {
+      var byCat = {};
+      entries.filter(function (e) { return e.type === 'expense'; }).forEach(function (e) {
+        var c = (e.category || '').trim() || 'Khác';
+        byCat[c] = (byCat[c] || 0) + (Number(e.amount) || 0);
+      });
+      var list = Object.keys(byCat).map(function (k) { return { name: k, value: byCat[k] }; })
+        .sort(function (a, b) { return b.value - a.value; });
+      // Gộp phần đuôi nhỏ vào "Khác" nếu có quá nhiều danh mục, giữ biểu đồ dễ đọc.
+      if (list.length > 6) {
+        var top = list.slice(0, 5);
+        var restTotal = list.slice(5).reduce(function (s, e) { return s + e.value; }, 0);
+        top.push({ name: 'Khác', value: restTotal });
+        list = top;
+      }
+      return list;
+    }
+
+    function renderDonut(monthEntries) {
+      var wrap = document.getElementById('fnDonutWrap');
+      var list = categoryBreakdown(monthEntries);
+      var total = list.reduce(function (s, e) { return s + e.value; }, 0);
+      if (total === 0) {
+        wrap.innerHTML = '<div class="fn-empty" style="padding:12px 0;">Chưa có chi phí nào trong tháng này.</div>';
+        return;
+      }
+      var r = 58, c = 70, circ = 2 * Math.PI * r;
+      var offset = 0;
+      var segments = list.map(function (e, i) {
+        var dash = (e.value / total) * circ;
+        var seg = '<circle cx="' + c + '" cy="' + c + '" r="' + r + '" fill="none" stroke="' + DONUT_PALETTE[i % DONUT_PALETTE.length] + '" stroke-width="20" ' +
+          'stroke-dasharray="' + dash + ' ' + (circ - dash) + '" stroke-dashoffset="' + (-offset) + '" transform="rotate(-90 ' + c + ' ' + c + ')"></circle>';
+        offset += dash;
+        return seg;
+      }).join('');
+      wrap.innerHTML =
+        '<div style="position:relative;width:150px;height:150px;flex-shrink:0;">' +
+          '<svg viewBox="0 0 140 140">' + segments + '<circle cx="70" cy="70" r="46" fill="var(--fn-surface)"></circle></svg>' +
+          '<div style="position:absolute;inset:0;display:grid;place-items:center;text-align:center;">' +
+            '<div><div class="fn-donut-center" style="font-size:1.0625rem;font-weight:700;">' + fmtShort(total) + '</div>' +
+            '<div style="font-size:0.625rem;color:var(--fn-muted);text-transform:uppercase;letter-spacing:0.05em;">Tổng chi</div></div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="fn-donut-legend">' + list.map(function (e, i) {
+          var pct = Math.round((e.value / total) * 100);
+          return '<div class="fn-donut-legend-row">' +
+            '<span class="fn-donut-dot" style="background:' + DONUT_PALETTE[i % DONUT_PALETTE.length] + '"></span>' +
+            '<span class="fn-donut-legend-name">' + escapeHtml(e.name) + '</span>' +
+            '<span class="fn-donut-legend-pct">' + pct + '%</span>' +
+          '</div>';
+        }).join('') + '</div>';
+    }
+
+    function renderRankList(monthEntries) {
+      var el = document.getElementById('fnRankList');
+      var list = categoryBreakdown(monthEntries);
+      if (list.length === 0) {
+        el.innerHTML = '<div class="fn-empty" style="padding:12px 0;">Chưa có chi phí nào trong tháng này.</div>';
+        return;
+      }
+      var max = list[0].value || 1;
+      el.innerHTML = list.slice(0, 6).map(function (e, i) {
+        var pct = Math.max(3, Math.round((e.value / max) * 100));
+        return '<div>' +
+          '<div class="fn-rank-row-top"><span class="fn-rank-name">' + escapeHtml(e.name) + '</span><span class="fn-rank-amount">' + fmt(e.value) + '</span></div>' +
+          '<div class="fn-rank-track"><div class="fn-rank-fill" style="width:' + pct + '%;background:' + DONUT_PALETTE[i % DONUT_PALETTE.length] + ';"></div></div>' +
         '</div>';
       }).join('');
     }
