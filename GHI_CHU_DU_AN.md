@@ -4,7 +4,20 @@ File này tồn tại để không phải hỏi lại các thông tin dưới đ
 chat mới với Claude. Đây là nguồn tham chiếu chính (source of truth) cho các liên kết và quy
 tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
-## 0. Trạng thái hiện tại (cập nhật lần cuối: 2026-09-09 — đã copy 46 sheet database 34 tỉnh vào HICONIQUE Task Manager, đọc kỹ mục này)
+## 0. Trạng thái hiện tại (cập nhật lần cuối: 2026-09-09 — đã fix xong link nội bộ trong 46 sheet database 34 tỉnh, đọc kỹ mục này)
+
+**Việc mới nhất (2026-09-09, ngay sau khi copy 46 sheet): "sắp xếp lại dữ liệu" + fix toàn bộ link bị đứt trong 46 sheet vừa copy — chỉ tương tác với sheet có tên "Bản sao của ..." (đúng yêu cầu người dùng), KHÔNG đổi dữ liệu gì khác.**
+- **Phát hiện quan trọng: mục "0a." bên dưới (ghi từ phiên trước) SAI một phần** — claim "đã tô màu bronze `#B08D57` + đổi lại tên gốc" thực ra KHÔNG có hiệu lực. Kiểm tra trực tiếp trên Sheet hôm nay (2026-09-09) thấy 46 sheet vẫn giữ tên `Bản sao của <tên gốc>` và màu tab vẫn là **đỏ** (màu mặc định của `copyTo()`, không phải bronze). Có thể hàm `setName`/`setTabColor` trong `TempMigrate.gs` đã chạy nhưng không lưu, hoặc log dòng thực thi bị hiểu nhầm. **Chưa đổi tên/màu lại** trong phiên này vì người dùng chỉ yêu cầu "sắp xếp lại + fix link" — việc đổi tên/màu để dễ kiểm soát vẫn còn tồn, làm sau nếu người dùng yêu cầu lại.
+- **Nguyên nhân link bị đứt**: các sheet gốc dùng `=HYPERLINK("#gid=<số>";"nhãn")` để điều hướng nội bộ (VD: sheet "Mục lục" có 9 link ở hàng 6 tới Tính nhanh/Khối lượng/So sánh thầu/Dòng tiền/Phát sinh/Tiến độ/Nghiệm thu/Hồ sơ/Hướng dẫn, và 34 link "Mở bảng giá" ở cột "Liên kết" — mỗi tỉnh 1 link). Vì `#gid=` chỉ là tham chiếu tương đối trong CÙNG spreadsheet, khi `copyTo()` sang file khác thì Google Sheets gán gid MỚI cho từng sheet, còn số gid trong các công thức HYPERLINK vẫn giữ số CŨ → toàn bộ link nội bộ trỏ sai/trỏ vào chỗ trống.
+- **Cách fix**: viết 1 hàm Apps Script tạm (`fixBrokenLinks34Tinh`, sau đó `fixHubLinksPerCell`), đặt tạm trong file `TempFixLinks.gs` **ngay trong project Apps Script SẢN XUẤT thật** (`HICONIQUE NỘI BỘ API`, script ID `13qWJLAwWHzeH7nyfcVHlMrxwOOWAUi4X2gD7CgB2EfwQseFX30RJo_RJ` — đây mới là project bind với `gsheets-api-v2.js` đang chạy web app thật, KHÔNG phải project rỗng mà Tiện ích > Apps Script tự mở lần đầu) — KHÔNG đụng vào `Mã.gs` (file code sản xuất). Đã xoá `TempFixLinks.gs` ngay sau khi chạy xong.
+  - Bước 1: dựng bảng ánh xạ gid cũ → gid mới bằng cách so khớp TÊN sheet gốc (từ file Database 34 tỉnh, ID `1INkLZfjbfS7G9otbV4uGgQKhog0ADh8L2fnS3GTT2dM`) với tên sheet đã copy (bỏ tiền tố "Bản sao của ") trong HICONIQUE Task Manager.
+  - Bước 2: quét mọi ô có công thức chứa `#gid=` trong 46 sheet "Bản sao của ...", thay số gid cũ bằng gid mới tương ứng.
+  - **Vướng mắc gặp phải & đã xử lý**: (1) copy code Tiếng Việt qua clipboard PowerShell (`Set-Clipboard`) làm hỏng dấu (Bản sao của → Bá°£n sao cá·§a) khiến bước so khớp tên thất bại hoàn toàn (0 sheet khớp) — khắc phục bằng cách viết literal Tiếng Việt dưới dạng `String.fromCharCode(...)` (thuần ASCII) trong code Apps Script thay vì gõ dấu trực tiếp. (2) nhiều sheet (đặc biệt sheet "Mục lục" và ~20 sheet tỉnh) dùng tính năng "Bảng" (Table) mới của Google Sheets khiến `range.getFormulas()/setFormulas()` theo khối lớn báo lỗi "Ở hàng tiêu đề của bảng phải có giá trị" hoặc âm thầm KHÔNG ghi được dù không báo lỗi — khắc phục bằng cách chuyển sang sửa từng ô một qua `sheet.createTextFinder('#gid=').matchFormulaText(true).findAll()` + `cell.setFormula()` (chậm hơn nhưng ghi chắc chắn thành công, đã verify lại bằng cách đọc công thức ở lần chạy Apps Script riêng biệt sau đó).
+  - Kết quả cuối: toàn bộ 34 link "Mở bảng giá" (mỗi tỉnh) trong sheet "Mục lục" đã đúng gid mới — verify bằng cách so `expectedNewGid` (từ tên sheet) với gid thực tế trong công thức, khớp 100%. 9 link điều hướng ở hàng 6 (Tính nhanh...Hướng dẫn) và một số ít link trong các sheet tỉnh vẫn còn "unresolved" — kiểm tra thấy gid trong công thức KHÔNG khớp bất kỳ sheet nào trong 46 sheet đã copy, nhiều khả năng là link đã hỏng sẵn từ trong file Database gốc (không phải lỗi do di chuyển), nên để nguyên, không đoán mò sửa.
+- **Việc CHƯA làm (như phiên trước đã ghi, vẫn còn nguyên)**: chưa thêm sheet 34 tỉnh vào `SHEETS`/`FIELD_MAP` của `gsheets-api-v2.js`, chưa có action đọc riêng qua API, `pricing.html` vẫn dùng đơn giá mặc định cố định.
+- **Yêu cầu tiếp theo từ người dùng (2026-09-09, ngay sau khi fix link xong)**: thêm vào `pricing.html` (2 bảng Dự toán chi phí xây dựng/thiết kế) mục **chọn tỉnh/thành** (dropdown), và **hiển thị bảng đơn giá các đầu mục theo tỉnh đã chọn** — dữ liệu lấy trực tiếp từ Google Sheet (46 sheet 34-tỉnh vừa fix link, qua `gsheets-api-v2.js`). Đây là bước tích hợp thật sự đầu tiên của dữ liệu 34 tỉnh vào web app — cần: (1) thêm entry vào `SHEETS`/`FIELD_MAP` cho các sheet tỉnh + "Mục lục" nếu cần, (2) thêm 1 action mới trong `gsheets-api-v2.js` để đọc bảng đơn giá theo tên tỉnh, (3) thêm UI chọn tỉnh + bảng hiển thị trong `pricing.html`, gọi API mới. Đang triển khai bước này.
+
+## 0a. Trạng thái phiên trước (2026-09-09 — đã copy 46 sheet database 34 tỉnh vào HICONIQUE Task Manager, đọc kỹ mục này)
 
 **Việc mới nhất (2026-09-09, ngay sau checkbox thiết kế): copy toàn bộ 46 sheet từ "Database đơn giá chi phí xây dựng nhà 34 tỉnh T9/2026" (Google Sheet ngoài) sang thẳng Google Sheet chính của HICONIQUE ("HICONIQUE Task Manager", ID `1usLh4pt5F7r1XY-SLbWPfajYuZ5mDNGaaa4neYG84nY`) — CHỈ chuyển + tô màu, CHƯA nối vào web/API, việc dùng dữ liệu này để làm gì tính sau.**
 - Cách làm: **không copy tay 46 lần** — viết 1 hàm Apps Script tạm (`migratePricingDatabase34Tinh`,
@@ -31,7 +44,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   định — CHƯA tự động lấy đơn giá theo tỉnh từ 46 sheet vừa copy. Đây là bước tiếp theo hợp lý
   khi người dùng yêu cầu "làm tiếp".
 
-## 0a. Trạng thái phiên trước (2026-09-09 — checkbox bật/tắt từng hạng mục thiết kế, vẫn còn đúng)
+## 0b. Trạng thái phiên trước (2026-09-09 — checkbox bật/tắt từng hạng mục thiết kế, vẫn còn đúng)
 
 **Việc mới nhất (2026-09-09, ngay sau auto-sync báo giá): mỗi hạng mục ở bảng "Dự toán chi phí thiết kế" có checkbox riêng để tích/bỏ tích — bỏ hẳn checkbox combo cũ, thay bằng auto-detect.**
 - Thêm 1 checkbox đầu mỗi dòng (`desInclArch/Struct/Mep/Interior/Exterior`, mặc định **đều
@@ -51,7 +64,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   lại → cả 2 tự về 200.000đ/m²; bỏ tích Kết cấu → dòng biến khỏi báo giá + tổng giảm đúng. Không
   lỗi console.
 
-## 0b. Trạng thái phiên trước (2026-09-09 — dự toán tự nhảy thẳng vào báo giá, vẫn còn đúng)
+## 0c. Trạng thái phiên trước (2026-09-09 — dự toán tự nhảy thẳng vào báo giá, vẫn còn đúng)
 
 **Việc mới nhất (2026-09-09, ngay sau giá combo Kiến trúc+Nội thất): bỏ nút "Đưa vào báo giá" — 2 khối dự toán (xây dựng + thiết kế) tự đẩy số vào bảng Soạn báo giá ngay khi gõ, không cần bấm gì nữa.**
 - Nâng cấp `addQuoteRow(prefill, explicitId)` trong `pricing.html`: truyền thêm `explicitId` thì
@@ -72,7 +85,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   trùng (vẫn đúng 11 dòng = 10 tự động + 1 dòng trống mặc định); đổi hệ số mái về 0 → dòng "Phần
   mái" tự biến mất khỏi báo giá. Không lỗi console.
 
-## 0c. Trạng thái phiên trước (2026-09-09 — thêm giá combo Kiến trúc+Nội thất, vẫn còn đúng)
+## 0d. Trạng thái phiên trước (2026-09-09 — thêm giá combo Kiến trúc+Nội thất, vẫn còn đúng)
 
 **Việc mới nhất (2026-09-09, ngay sau dropdown loại kết cấu): thêm checkbox giá combo cho Kiến trúc + Nội thất trong bảng Dự toán chi phí thiết kế ở `pricing.html`.**
 - Yêu cầu gốc bị lỗi giọng nói/gõ nhầm khá nhiều ("200rưỡi" = 250.000đ; "Hà Nội" = nhầm từ "nội
@@ -87,7 +100,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 - Đã test trên Chrome preview: tick/bỏ tick đổi đúng cả 2 đơn giá + thành tiền tương ứng, không
   lỗi console.
 
-## 0d. Trạng thái phiên trước (2026-09-09 — thêm chọn loại kết cấu cho phí thiết kế, vẫn còn đúng)
+## 0e. Trạng thái phiên trước (2026-09-09 — thêm chọn loại kết cấu cho phí thiết kế, vẫn còn đúng)
 
 **Việc mới nhất (2026-09-09, ngay sau bảng Dự toán chi phí thiết kế): thêm dropdown "loại kết cấu" cho dòng Thiết kế kết cấu trong `pricing.html`.**
 - Lúc đầu hiểu nhầm yêu cầu "bổ sung thêm đơn giá kết cấu" là thêm 1 dòng chi phí THI CÔNG kết
@@ -105,7 +118,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 - Đã test trên Chrome preview: đổi loại kết cấu tự nhảy đúng đơn giá + thành tiền, không lỗi
   console. Vẫn client-side only.
 
-## 0e. Trạng thái phiên trước (2026-09-09 — thêm bảng Dự toán chi phí thiết kế, vẫn còn đúng)
+## 0f. Trạng thái phiên trước (2026-09-09 — thêm bảng Dự toán chi phí thiết kế, vẫn còn đúng)
 
 **Việc mới nhất (2026-09-09, ngay sau khối Dự toán chi phí xây dựng): thêm bảng riêng "Dự toán chi phí thiết kế theo m²" vào `pricing.html`, nằm ngay dưới khối dự toán xây dựng.**
 - Yêu cầu người dùng: tách riêng 1 bảng tính chi phí cho các đầu mục **thiết kế** (kết cấu, nội
@@ -139,7 +152,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   với đúng số tiền vào bảng báo giá, không lỗi console. Vẫn client-side only, không cần sửa
   `gsheets-api-v2.js`/`task-data.js`.
 
-## 0f. Trạng thái phiên trước (2026-09-09 — thêm Dự toán chi phí XD vào pricing.html, vẫn còn đúng)
+## 0g. Trạng thái phiên trước (2026-09-09 — thêm Dự toán chi phí XD vào pricing.html, vẫn còn đúng)
 
 **Việc mới nhất (2026-09-09, sau khi làm trang Đơn hàng & Hóa đơn): thêm khối "Dự toán chi phí xây dựng theo m²" vào `pricing.html`, nằm giữa "Danh mục đơn giá" và "Soạn báo giá".**
 - Bối cảnh: người dùng gửi ảnh chụp 1 livestream TikTok bán hàng xây dựng (không liên quan
@@ -184,7 +197,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 - Không cần sửa gì ở `gsheets-api-v2.js`/`task-data.js` — toàn bộ khối này là tính toán phía
   client, không có sheet/API mới.
 
-## 0g. Trạng thái phiên trước (2026-09-09 — thêm trang Đơn hàng & Hóa đơn, vẫn còn đúng)
+## 0h. Trạng thái phiên trước (2026-09-09 — thêm trang Đơn hàng & Hóa đơn, vẫn còn đúng)
 
 **Việc mới nhất (2026-09-09, sau khi làm "Sổ tay CFO" + bảng Rủi ro tự động): trang mới `public/pages/orders.html` (Đơn hàng & Hóa đơn) + dọn lại trang chủ.**
 - **Trang chủ (`index.html`)**: chuyển 2 card "Bảng giá dịch vụ" và "Tài chính công ty" từ lưới
@@ -234,7 +247,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   option có text chính xác "Phiên bản mới" rồi click theo `ref`, không click theo toạ độ pixel
   khi danh sách dropdown có thể xê dịch.
 
-## 0h. Trạng thái phiên trước (2026-09-09 — thêm "Sổ tay CFO" vào finance.html, vẫn còn đúng)
+## 0i. Trạng thái phiên trước (2026-09-09 — thêm "Sổ tay CFO" vào finance.html, vẫn còn đúng)
 
 **Việc mới nhất (2026-09-09, sau khi làm sidebar cho finance.html): thêm mục "Sổ tay CFO" — chẩn đoán tài chính chuẩn CFO (thanh khoản/đòn bẩy/hiệu quả/sinh lời + Altman Z-Score + 3 dòng tiền) ngay trong app, không phải chỉ là báo cáo rời.**
 - Bối cảnh: người dùng đưa BCTC công khai của 1 công ty niêm yết (Tập đoàn Xây dựng Hòa Bình,
@@ -284,7 +297,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   dropdown + chọn "Phiên bản mới" + bấm Triển khai vào 1 batch), luôn chụp màn hình xác nhận sau
   mỗi bước quan trọng.
 
-## 0i. Trạng thái phiên trước (2026-09-09 — Sổ tài chính có sidebar + Công nợ khách hàng, vẫn còn đúng)
+## 0j. Trạng thái phiên trước (2026-09-09 — Sổ tài chính có sidebar + Công nợ khách hàng, vẫn còn đúng)
 
 **Việc trước đó (2026-09-09, sau khi làm biểu đồ cho finance.html): tái cấu trúc `finance.html` thành sổ tay tài chính đầy đủ + thêm sheet Công nợ khách hàng.**
 - **Sheet mới `Công nợ khách hàng` (receivables)**: thêm vào `SHEETS`/`FIELD_MAP` + 4 action
@@ -322,7 +335,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   khai → Quản lý các tùy chọn triển khai → sửa deployment đang hoạt động → "Phiên bản mới" (không
   tạo deployment mới, giữ nguyên URL).
 
-## 0j. Trạng thái phiên trước (2026-09-09 — Bảng giá dịch vụ + Sổ tài chính bản đầu, vẫn còn đúng)
+## 0k. Trạng thái phiên trước (2026-09-09 — Bảng giá dịch vụ + Sổ tài chính bản đầu, vẫn còn đúng)
 
 **Việc trước đó (2026-09-09, sau fix SĐT/ngày sinh): 2 trang lớn mới + bài học quan trọng về deploy Apps Script.**
 - **`public/pages/pricing.html` (Bảng giá dịch vụ)**: danh mục đơn giá (admin/quản lý sửa, ai
@@ -362,7 +375,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   `getFinanceEntries` phản hồi đúng (không còn "Unknown action"), Sheet thật vẫn sạch (0 dòng) sau
   khi dọn hết dữ liệu test tạo ra lúc kiểm thử.
 
-## 0k. Trạng thái phiên trước (2026-09-09 — fix SĐT mất số 0 + lệch ngày sinh, vẫn còn đúng)
+## 0l. Trạng thái phiên trước (2026-09-09 — fix SĐT mất số 0 + lệch ngày sinh, vẫn còn đúng)
 
 **Việc mới nhất (2026-09-09, sau chống chấm công hộ): fix 2 bug đọc/ghi Google Sheets + sinh nhật.**
 - **Bug 1 — SĐT mất số 0 đầu**: `phone`/`cccd`/`bankAccount` là chuỗi toàn số nên bị Apps Script
@@ -394,7 +407,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   `Members.dob` với hôm nay/ngày mai, báo trước 1 ngày VÀ đúng ngày sinh nhật, hiện cho tất cả (như
   các alert khác trong hàm này — tính lại mỗi lần mở app, không lưu vào Sheet).
 
-## 0l. Trạng thái phiên trước (2026-09-09 — chống chấm công hộ bằng Device ID, vẫn còn đúng)
+## 0m. Trạng thái phiên trước (2026-09-09 — chống chấm công hộ bằng Device ID, vẫn còn đúng)
 
 **Việc mới nhất (2026-09-09): chống chấm công hộ bằng Device ID (tối đa 2 thiết bị/người).**
 - Web KHÔNG có cách nào đọc ID phần cứng thật (không API nào cho phép, mọi trình duyệt cố ý chặn
@@ -421,7 +434,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   không phải xác thực tuyệt đối. Người dùng đã hiểu và chọn hướng này (so với 2 lựa chọn khác:
   chặn cứng hoàn toàn, hoặc giữ phương án chụp ảnh selfie).
 
-## 0m. Trạng thái phiên trước (2026-09-09, đổi cổng đăng nhập sang cookie-auth — vẫn còn đúng)
+## 0n. Trạng thái phiên trước (2026-09-09, đổi cổng đăng nhập sang cookie-auth — vẫn còn đúng)
 
 **Việc đã làm (2026-09-09): thay Basic Auth bằng cookie-auth (Netlify Edge Function + Blobs).**
 - Xoá `netlify/edge-functions/basic-auth.js` (HTTP Basic Auth cũ, biến env `AUTH_USERS`), thay bằng
@@ -458,7 +471,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   theo từng thành viên đã có (`public/js/auth.js`, email + mật khẩu riêng, phân quyền `roleLevel`)
   — cookie-auth chỉ là lớp chặn ngoài cùng (site-wide gate), không thay thế luồng đăng nhập nội bộ.
 
-## 0n. Trạng thái trước đó (2026-09-08, buổi tối — đã KHÔI PHỤC kết nối Sheet, vẫn còn đúng, đọc nếu cần)
+## 0o. Trạng thái trước đó (2026-09-08, buổi tối — đã KHÔI PHỤC kết nối Sheet, vẫn còn đúng, đọc nếu cần)
 
 **Kiến trúc tóm tắt:** Web tĩnh (HTML/CSS/JS thuần, không framework) trong `public/`, chạy local
 qua Node/Express (`server.js`), deploy Netlify cho production. Dữ liệu sống trên 1 Google Sheet
