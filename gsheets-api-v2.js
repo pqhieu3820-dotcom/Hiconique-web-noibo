@@ -55,8 +55,13 @@ const FIELD_MAP = {
     ['Ngân hàng thụ hưởng', 'bank'], ['Màu sắc đại diện', 'color'], ['Tên viết tắt đại diện', 'avatar'],
     ['Làm việc từ', 'createdAt'], ['Lương cơ bản', 'baseSalary'], ['Trạng thái', 'status']
   ],
+  // 2026-09-09: "Loại dự án" đổi nghĩa thành LOẠI CÔNG TRÌNH thật (Nhà phố,
+  // Biệt thự, Căn hộ chung cư...), giá trị cũ (Thiết kế/Thi công/Nội thất...)
+  // dời sang cột mới "Hạng mục" — field key bên trong ĐỔI CHỖ theo đúng nghĩa
+  // mới (type = loại công trình, category = hạng mục công việc) để code chỗ
+  // khác (vd projectType() lọc theo hạng mục) chỉ cần đọc field mới category.
   projects: [
-    ['Mã DA', 'id'], ['Tên dự án', 'name'], ['Loại dự án', 'type'], ['Tiến độ', 'progress'],
+    ['Mã DA', 'id'], ['Tên dự án', 'name'], ['Loại dự án', 'type'], ['Hạng mục', 'category'], ['Tiến độ', 'progress'],
     ['Trạng thái', 'status'], ['Thành viên tham gia', 'members'], ['Màu sắc đại diện', 'color'],
     ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt'], ['Ngân sách', 'budget'],
     ['Khách hàng', 'client'], ['Nhà đầu tư', 'investor'], ['Địa điểm', 'location'],

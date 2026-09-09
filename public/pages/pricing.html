@@ -157,7 +157,25 @@
           </div>
 
           <div class="form-group">
-            <label>Loại dự án</label>
+            <label for="project-building-type">Loại dự án</label>
+            <select id="project-building-type">
+              <option value="">— Chọn loại công trình —</option>
+              <option value="Nhà phố / Nhà ở riêng lẻ">Nhà phố / Nhà ở riêng lẻ</option>
+              <option value="Biệt thự">Biệt thự</option>
+              <option value="Căn hộ chung cư">Căn hộ chung cư</option>
+              <option value="Văn phòng">Văn phòng</option>
+              <option value="Nhà hàng / Quán cà phê">Nhà hàng / Quán cà phê</option>
+              <option value="Khách sạn / Nghỉ dưỡng">Khách sạn / Nghỉ dưỡng</option>
+              <option value="Showroom / Cửa hàng bán lẻ">Showroom / Cửa hàng bán lẻ</option>
+              <option value="Trường học / Y tế">Trường học / Y tế</option>
+              <option value="Nhà xưởng / Công nghiệp">Nhà xưởng / Công nghiệp</option>
+              <option value="Cảnh quan / Sân vườn">Cảnh quan / Sân vườn</option>
+              <option value="Khác">Khác</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Hạng mục</label>
             <div class="type-grid">
               <label class="type-card" data-type="design">
                 <input type="radio" name="project-type" value="design" checked>
@@ -1059,11 +1077,12 @@
         e.preventDefault();
         var name = document.getElementById('project-name').value.trim();
         if (!name) return;
-        var typeInput = form.querySelector('input[name="project-type"]:checked');
+        var catInput = form.querySelector('input[name="project-type"]:checked');
         var typeLabelEl = form.querySelector('.type-card.active .type-label');
         var data = {
           name: name,
-          type: typeLabelEl ? typeLabelEl.textContent.trim() : (typeInput ? typeInput.value : 'design'),
+          type: document.getElementById('project-building-type').value,
+          category: typeLabelEl ? typeLabelEl.textContent.trim() : (catInput ? catInput.value : 'design'),
           color: document.getElementById('project-color').value,
           client: document.getElementById('project-client').value.trim(),
           investor: document.getElementById('project-investor').value.trim(),

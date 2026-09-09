@@ -29,9 +29,14 @@
   function getProjectById(id) { return (typeof TaskManager !== 'undefined' && TaskManager.getProject) ? TaskManager.getProject(id) : null; }
   function getMemberById(id) { return (typeof TaskManager !== 'undefined' && TaskManager.getMember) ? TaskManager.getMember(id) : null; }
 
+  // Phân loại theo HẠNG MỤC (category) — trước 2026-09-09 hạng mục từng được
+  // lưu trong field `type`; giờ `type` = loại công trình thật (Nhà phố, Biệt
+  // thự...) và hạng mục nằm ở field `category` mới. Fallback về `type` để
+  // dự án cũ (tạo trước khi có field `category`) vẫn phân loại đúng như cũ.
   function projectType(p) {
-    if (!p || !p.type) return 'admin';
-    var t = p.type.toLowerCase();
+    var raw = p && (p.category || p.type);
+    if (!raw) return 'admin';
+    var t = raw.toLowerCase();
     if (t.indexOf('thiết kế') !== -1 || t.indexOf('thiet ke') !== -1 || t.indexOf('design') !== -1) return 'design';
     if (t.indexOf('thi công') !== -1 || t.indexOf('thi cong') !== -1 || t.indexOf('construction') !== -1) return 'construction';
     return 'admin';
@@ -839,7 +844,7 @@
     if (openBtn) openBtn.addEventListener('click', function () {
       form.reset();
       delete form.dataset.editingId;
-      delete form.dataset.originalType;
+      delete form.dataset.originalCategory;
       var eyebrow = modal.querySelector('.modal-eyebrow');
       if (eyebrow) eyebrow.textContent = 'DỰ ÁN MỚI';
       var title = document.getElementById('projectModalTitle');
@@ -874,12 +879,12 @@
       var name = document.getElementById('project-name').value.trim();
       if (!name) return;
 
-      var typeInput = form.querySelector('input[name="project-type"]:checked');
-      var typeVal = typeInput ? typeInput.value : 'design';
+      var catInput = form.querySelector('input[name="project-type"]:checked');
+      var catVal = catInput ? catInput.value : 'design';
 
       var data = {
         name: name,
-        type: typeVal,
+        type: document.getElementById('project-building-type').value,
         color: document.getElementById('project-color').value,
         client: document.getElementById('project-client').value.trim(),
         investor: document.getElementById('project-investor').value.trim(),
@@ -901,15 +906,15 @@
         data.progress = 0;
         data.createdAt = new Date().toISOString().split('T')[0];
       }
-      // Preserve the project's original `type` string when the category
+      // Preserve the project's original `category` string when the hạng mục
       // wasn't changed (older/seed projects store a full Vietnamese label
       // like "Thiết kế nội thất" — this page's radios only know the short
       // codes, so re-saving unchanged would otherwise downgrade that label).
-      if (editingId && form.dataset.originalType && projectType({ type: form.dataset.originalType }) === typeVal) {
-        data.type = form.dataset.originalType;
+      if (editingId && form.dataset.originalCategory && projectType({ category: form.dataset.originalCategory }) === catVal) {
+        data.category = form.dataset.originalCategory;
       } else {
         var typeLabelEl = form.querySelector('.type-card.active .type-label');
-        data.type = typeLabelEl ? typeLabelEl.textContent.trim() : typeVal;
+        data.category = typeLabelEl ? typeLabelEl.textContent.trim() : catVal;
       }
 
       var ok = false;
@@ -941,9 +946,10 @@
 
     form.reset();
     form.dataset.editingId = project.id;
-    form.dataset.originalType = project.type || '';
+    form.dataset.originalCategory = project.category || project.type || '';
 
     document.getElementById('project-name').value = project.name || '';
+    document.getElementById('project-building-type').value = project.type || '';
     document.getElementById('project-client').value = project.client || '';
     document.getElementById('project-investor').value = project.investor || '';
     document.getElementById('project-location').value = project.location || '';
@@ -1000,7 +1006,7 @@
       return '<div class="project-list-row" data-project-id="' + escapeHtml(p.id) + '">'
         + '<div class="project-list-avatar" style="background:' + (p.color || '#B08D57') + '">' + escapeHtml((p.name || '?').charAt(0)) + '</div>'
         + '<div class="project-list-info">'
-        +   '<div class="project-list-name">' + escapeHtml(p.name || '') + ' <span style="color:var(--color-text-muted);font-weight:400;">· ' + escapeHtml(p.type || '') + '</span></div>'
+        +   '<div class="project-list-name">' + escapeHtml(p.name || '') + ' <span style="color:var(--color-text-muted);font-weight:400;">· ' + escapeHtml([p.type, p.category].filter(Boolean).join(' · ')) + '</span></div>'
         +   '<div class="project-list-meta">' + meta.map(function (m) { return '<span>' + m + '</span>'; }).join('<span>·</span>') + '</div>'
         + '</div>'
         + '<div class="project-list-actions">'
