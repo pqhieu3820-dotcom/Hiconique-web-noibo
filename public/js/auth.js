@@ -16,10 +16,6 @@ const Auth = (function() {
   const SESSION_KEY = 'hiconique_auth_session';
   const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
-  function sessionStorageSkip() {
-    try { return localStorage.getItem('skip_auto_login') === '1'; } catch(e) { return false; }
-  }
-
   // Domain whitelist - chấp nhận mọi email hợp lệ
   const ALLOWED_DOMAINS = []; // rỗng = chấp nhận mọi email hợp lệ
 
@@ -66,6 +62,17 @@ const Auth = (function() {
   // Current session
   let currentUser = null;
 
+  // Mốc 1h sáng gần nhất đã qua (hôm nay nếu đã sang 1h, còn chưa tới thì lấy
+  // mốc 1h của hôm trước) — dùng để buộc đăng xuất toàn bộ mỗi ngày lúc 1h
+  // sáng cho an toàn, thay vì chỉ dựa vào SESSION_DURATION 24h (không cố định
+  // giờ hết hạn theo giờ đăng nhập của từng người).
+  function lastDailyResetBoundary() {
+    var now = new Date();
+    var boundary = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 1, 0, 0, 0);
+    if (now.getTime() < boundary.getTime()) boundary.setDate(boundary.getDate() - 1);
+    return boundary.getTime();
+  }
+
   // Get current session from localStorage
   function getSession() {
     try {
@@ -77,11 +84,35 @@ const Auth = (function() {
         localStorage.removeItem(SESSION_KEY);
         return null;
       }
+      // Check mốc reset 1h sáng
+      if (session.loggedInAt && session.loggedInAt < lastDailyResetBoundary()) {
+        localStorage.removeItem(SESSION_KEY);
+        return null;
+      }
       return session;
     } catch (e) {
       return null;
     }
   }
+
+  // Kiểm tra định kỳ trong khi tab đang mở (không chỉ lúc load trang) — để
+  // ai đang mở web xuyên qua mốc 1h sáng cũng bị đưa về màn hình đăng nhập
+  // ngay, không phải đợi tự đóng/mở lại tab.
+  function watchDailyReset() {
+    setInterval(function() {
+      var raw;
+      try { raw = localStorage.getItem(SESSION_KEY); } catch (e) { return; }
+      if (!raw) return;
+      var session;
+      try { session = JSON.parse(raw); } catch (e) { return; }
+      if (session.loggedInAt && session.loggedInAt < lastDailyResetBoundary()) {
+        localStorage.removeItem(SESSION_KEY);
+        currentUser = null;
+        window.location.reload();
+      }
+    }, 60 * 1000);
+  }
+  watchDailyReset();
 
   // Save session
   function saveSession(user) {
@@ -151,8 +182,6 @@ const Auth = (function() {
   function logout() {
     localStorage.removeItem(SESSION_KEY);
     currentUser = null;
-    // Flag to prevent auto-login after explicit logout, survives reload/navigation
-    try { localStorage.setItem('skip_auto_login', '1'); } catch(e) {}
     return true;
   }
 
@@ -227,20 +256,20 @@ const Auth = (function() {
           <form id="authLoginForm" style="display: flex; flex-direction: column; gap: 16px;">
             <div>
               <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Email công ty</label>
-              <input type="email" id="authEmailInput" required placeholder="ten@gmail.com" value="pqhieu3820@gmail.com"
+              <input type="email" id="authEmailInput" required placeholder="ten@gmail.com"
                 style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none; transition: border 0.2s;"
                 onfocus="this.style.borderColor='var(--color-bronze)'"
                 onblur="this.style.borderColor='var(--color-border)'"
-                autocomplete="email">
+                autocomplete="off">
             </div>
 
             <div>
               <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Mật khẩu</label>
-              <input type="password" id="authPasswordInput" required placeholder="Nhập mật khẩu" value="123456"
+              <input type="password" id="authPasswordInput" required placeholder="Nhập mật khẩu"
                 style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none; transition: border 0.2s;"
                 onfocus="this.style.borderColor='var(--color-bronze)'"
                 onblur="this.style.borderColor='var(--color-border)'"
-                autocomplete="current-password">
+                autocomplete="off">
             </div>
 
             <div id="authError" style="display: none; padding: 10px 12px; background: rgba(160,72,72,0.1); border: 1px solid rgba(160,72,72,0.3); border-radius: 6px; color: #A04848; font-size: 0.8125rem;"></div>
@@ -272,25 +301,6 @@ const Auth = (function() {
     var registerBtn = document.getElementById('showRegisterBtn');
 
     emailInput.focus();
-
-    // Auto-login với tài khoản CEO mặc định
-    setTimeout(function() {
-      var savedSession = localStorage.getItem(SESSION_KEY);
-      if (!savedSession && !sessionStorageSkip() && typeof window.Auth !== 'undefined') {
-        // Chưa có session, auto-login với tài khoản CEO
-        emailInput.value = 'pqhieu3820@gmail.com';
-        passwordInput.value = '123456';
-        // Tự động đăng nhập
-        window.Auth.loginWithPassword('pqhieu3820@gmail.com', '123456', function(result) {
-          if (result.success) {
-            try { localStorage.removeItem('skip_auto_login'); } catch(e) {}
-            document.getElementById('authLoginModal').remove();
-            if (window.onAuthSuccess) window.onAuthSuccess(result.user);
-            else window.location.reload();
-          }
-        });
-      }
-    }, 500);
 
     // Login handler
     form.addEventListener('submit', function(e) {
