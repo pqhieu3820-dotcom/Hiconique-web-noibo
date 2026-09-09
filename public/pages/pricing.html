@@ -60,6 +60,12 @@
 
     .pr-toolbar { display: flex; gap: 10px; flex-wrap: wrap; }
 
+    .pr-prov-table { font-size: 0.75rem; min-width: 720px; }
+    .pr-prov-table td, .pr-prov-table th { padding: 7px 12px; white-space: nowrap; }
+    .pr-prov-table td { white-space: normal; }
+    .pr-prov-section td { background: var(--pr-bg); color: var(--pr-bronze); font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; font-size: 0.6875rem; border-bottom: 1px solid var(--pr-border); }
+    .pr-prov-header th { position: sticky; top: 0; background: var(--pr-surface); font-size: 0.6875rem; text-transform: uppercase; color: var(--pr-muted); border-bottom: 1px solid var(--pr-border); }
+
     @media (max-width: 900px) {
       .pr-client-grid { grid-template-columns: 1fr; }
       .pr-table thead { display: none; }
@@ -122,6 +128,19 @@
         <thead><tr><th>Danh mục</th><th>Tên dịch vụ</th><th>Đơn vị</th><th class="num">Đơn giá</th><th>Ghi chú</th><th></th></tr></thead>
         <tbody id="prCatalogRows"></tbody>
       </table>
+    </div>
+
+    <div class="pr-card" id="prProvinceCard">
+      <div class="pr-card-head">
+        <div>
+          <div class="pr-card-title">Tra cứu đơn giá theo tỉnh/thành</div>
+          <div class="pr-card-desc">Dữ liệu lấy trực tiếp từ Google Sheet — database đơn giá xây dựng 34 tỉnh/thành, mốc giá 01/09/2026. Chọn tỉnh để xem đơn giá nhân công, phần thô/hoàn thiện, vật tư/thiết bị tại địa phương đó.</div>
+        </div>
+        <div class="pr-toolbar">
+          <select class="pr-quote-select" id="prProvinceSelect" style="min-width:220px;"><option value="">— Chọn tỉnh/thành —</option></select>
+        </div>
+      </div>
+      <div id="prProvinceTableWrap" class="pr-empty">Chọn tỉnh/thành phía trên để xem bảng đơn giá.</div>
     </div>
 
     <div class="pr-card" id="prEstimateCard">
@@ -309,6 +328,76 @@
     }
 
     document.getElementById('prQuoteDate').value = new Date().toISOString().split('T')[0];
+
+    // ---------- Tra cứu đơn giá theo tỉnh/thành (đọc trực tiếp Google Sheet) ----------
+    // Không qua TaskManager/localStorage vì đây là dữ liệu tham khảo nhiều bảng xếp
+    // chồng trong 1 sheet (xem getProvincePricing trong gsheets-api-v2.js) — gọi
+    // thẳng Apps Script Web App qua GSHEETS_CONFIG, y hệt cách callGSheetsAPI làm.
+    var provinceCache = {};
+    function provinceApiReady() {
+      return typeof GSHEETS_CONFIG !== 'undefined' && GSHEETS_CONFIG.USE_GSHEETS && GSHEETS_CONFIG.API_URL;
+    }
+    function setProvinceWrapMessage(msg) {
+      var wrap = document.getElementById('prProvinceTableWrap');
+      wrap.className = 'pr-empty';
+      wrap.textContent = msg;
+    }
+    function fetchProvinceList() {
+      if (!provinceApiReady()) { setProvinceWrapMessage('Chưa bật kết nối Google Sheets.'); return; }
+      fetch(GSHEETS_CONFIG.API_URL + '?action=getProvinceList', { redirect: 'follow' })
+        .then(function (r) { return r.json(); })
+        .then(function (list) {
+          var sel = document.getElementById('prProvinceSelect');
+          (Array.isArray(list) ? list : []).forEach(function (name) {
+            var opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name;
+            sel.appendChild(opt);
+          });
+        })
+        .catch(function (e) { console.error('Không tải được danh sách tỉnh:', e); });
+    }
+    // Cấu trúc mỗi sheet tỉnh: nhiều bảng xếp chồng, mỗi bảng có 1 dòng tiêu đề mục
+    // (chỉ cột A có chữ, các cột còn lại trống) rồi ngay tới dòng header cột — dựng
+    // lại đúng cấu trúc đó thành bảng HTML thay vì hiển thị 1 bảng phẳng gây hiểu nhầm.
+    function renderProvinceTable(rows) {
+      var wrap = document.getElementById('prProvinceTableWrap');
+      if (!rows || !rows.length) { setProvinceWrapMessage('Không có dữ liệu cho tỉnh này.'); return; }
+      var html = '<div style="overflow-x:auto;"><table class="pr-table pr-prov-table"><tbody>';
+      var afterSection = false;
+      rows.forEach(function (row) {
+        var nonEmpty = row.filter(function (c) { return String(c || '').trim() !== ''; });
+        if (nonEmpty.length === 0) return; // bỏ dòng trắng hoàn toàn
+        var isSection = nonEmpty.length <= 2 && String(row[0] || '').trim() !== '';
+        if (isSection) {
+          html += '<tr class="pr-prov-section"><td colspan="' + Math.max(row.length, 1) + '">' + escapeHtml(row[0]) + '</td></tr>';
+          afterSection = true;
+        } else if (afterSection) {
+          html += '<tr class="pr-prov-header">' + row.map(function (c) { return '<th>' + escapeHtml(c) + '</th>'; }).join('') + '</tr>';
+          afterSection = false;
+        } else {
+          html += '<tr>' + row.map(function (c) { return '<td>' + escapeHtml(c) + '</td>'; }).join('') + '</tr>';
+        }
+      });
+      html += '</tbody></table></div>';
+      wrap.className = '';
+      wrap.innerHTML = html;
+    }
+    document.getElementById('prProvinceSelect').addEventListener('change', function () {
+      var name = this.value;
+      if (!name) { setProvinceWrapMessage('Chọn tỉnh/thành phía trên để xem bảng đơn giá.'); return; }
+      if (provinceCache[name]) { renderProvinceTable(provinceCache[name]); return; }
+      setProvinceWrapMessage('Đang tải...');
+      fetch(GSHEETS_CONFIG.API_URL + '?action=getProvincePricing&province=' + encodeURIComponent(name), { redirect: 'follow' })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data.error) { setProvinceWrapMessage('Lỗi: ' + data.error); return; }
+          provinceCache[name] = data.rows;
+          renderProvinceTable(data.rows);
+        })
+        .catch(function (e) { setProvinceWrapMessage('Không tải được dữ liệu. Kiểm tra kết nối mạng.'); console.error(e); });
+    });
+    fetchProvinceList();
 
     // ---------- Danh mục đơn giá ----------
     function renderCatalog() {

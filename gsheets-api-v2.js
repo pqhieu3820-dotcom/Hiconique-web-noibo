@@ -168,6 +168,39 @@ const VALUE_MAP = {
   ]
 };
 
+// Đơn giá 34 tỉnh — đọc trực tiếp từ 46 sheet "Bản sao của <tên gốc>" migrate
+// sang ngày 2026-09-09 (xem GHI_CHU_DU_AN.md). Đây là dữ liệu tham khảo nhiều
+// bảng xếp chồng trong 1 sheet (nhân công, phần thô/hoàn thiện, vật tư/thiết
+// bị theo tỉnh...), không phải 1 bảng đơn giản như các SHEETS khác nên KHÔNG
+// đi qua FIELD_MAP — trả thẳng lưới giá trị thô (displayValues, giữ nguyên
+// định dạng số như trên Sheet), pricing.html tự dựng bảng hiển thị theo cấu
+// trúc "dòng chỉ có cột A = tiêu đề mục, dòng ngay sau = header cột".
+var PROVINCE_SHEET_PREFIX = 'B' + String.fromCharCode(7843) + 'n sao c' + String.fromCharCode(7911) + 'a ';
+var HUB_SHEET_NAME = PROVINCE_SHEET_PREFIX + 'M' + String.fromCharCode(7909) + 'c l' + String.fromCharCode(7909) + 'c';
+
+// Danh sách 34 tỉnh lấy từ đúng cột "Tỉnh/thành" của sheet "Mục lục" (hàng 10
+// trở đi) thay vì hardcode — tự động đúng nếu sau này database 34 tỉnh có sáp
+// nhập/đổi tên tỉnh và được copy lại.
+function getProvinceList(ss) {
+  var hub = findSheet(ss, HUB_SHEET_NAME);
+  if (!hub) return [];
+  var lastRow = hub.getLastRow();
+  if (lastRow < 10) return [];
+  var values = hub.getRange(10, 2, lastRow - 9, 1).getValues();
+  return values.map(function (r) { return r[0]; }).filter(function (v) { return v && String(v).trim(); });
+}
+
+function getProvincePricing(ss, provinceName) {
+  if (!provinceName) return { error: 'Missing province' };
+  var sheet = findSheet(ss, PROVINCE_SHEET_PREFIX + provinceName);
+  if (!sheet) return { error: 'Province sheet not found: ' + provinceName };
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  if (lastRow === 0 || lastCol === 0) return { province: provinceName, rows: [] };
+  var values = sheet.getRange(1, 1, lastRow, lastCol).getDisplayValues();
+  return { province: provinceName, rows: values };
+}
+
 function sheetKeyFor(sheetName) {
   return Object.keys(SHEETS).filter(function (k) { return SHEETS[k] === sheetName; })[0];
 }
@@ -355,6 +388,10 @@ function handleRequest(e) {
       result = updateData(ss, SHEETS.orders, params.id, JSON.parse(params.data));
     } else if (action === 'deleteOrder') {
       result = deleteData(ss, SHEETS.orders, params.id);
+    } else if (action === 'getProvinceList') {
+      result = getProvinceList(ss);
+    } else if (action === 'getProvincePricing') {
+      result = getProvincePricing(ss, params.province);
     } else {
       result = { error: 'Unknown action: ' + action };
     }
