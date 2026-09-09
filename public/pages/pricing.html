@@ -124,6 +124,70 @@
       </table>
     </div>
 
+    <div class="pr-card" id="prEstimateCard">
+      <div class="pr-card-head">
+        <div>
+          <div class="pr-card-title">Dự toán chi phí xây dựng theo m²</div>
+          <div class="pr-card-desc">Nhập diện tích, số tầng, kiểu móng, kiểu mái — diện tích quy đổi và chi phí từng hạng mục tự nhảy theo đúng hệ số, có thể chỉnh hệ số/đơn giá theo từng công trình.</div>
+        </div>
+        <button class="pr-btn pr-btn-primary pr-btn-sm" id="prFillQuoteBtn">Đưa vào báo giá ↓</button>
+      </div>
+
+      <div class="pr-client-grid" style="grid-template-columns:repeat(4,1fr);">
+        <div><span class="pr-field-label">Chiều dài (m)</span><input type="number" min="0" step="0.1" class="pr-input mono" id="estLength" value="16"></div>
+        <div><span class="pr-field-label">Chiều rộng (m)</span><input type="number" min="0" step="0.1" class="pr-input mono" id="estWidth" value="5"></div>
+        <div><span class="pr-field-label">Số tầng</span><input type="number" min="0" step="0.5" class="pr-input mono" id="estFloors" value="2"></div>
+        <div><span class="pr-field-label">Diện tích tum (m², nếu có)</span><input type="number" min="0" class="pr-input mono" id="estTum" value="0"></div>
+      </div>
+
+      <div class="pr-client-grid" style="grid-template-columns:repeat(4,1fr);border-top:none;">
+        <div><span class="pr-field-label">Kiểu móng</span><select class="pr-quote-select" id="estFoundationType"></select></div>
+        <div><span class="pr-field-label">Hệ số móng</span><input type="number" min="0" max="3" step="0.05" class="pr-input mono" id="estFoundationCoef"></div>
+        <div><span class="pr-field-label">Đơn giá móng (đ/m²)</span><input type="number" min="0" class="pr-input mono" id="estFoundationPrice"></div>
+        <div><span class="pr-field-label">Diện tích móng quy đổi</span><div class="pr-amount" id="estFoundationArea" style="padding-top:8px;">0</div></div>
+      </div>
+
+      <div class="pr-client-grid" style="grid-template-columns:repeat(4,1fr);border-top:none;">
+        <div><span class="pr-field-label">Kiểu mái</span><select class="pr-quote-select" id="estRoofType"></select></div>
+        <div><span class="pr-field-label">Hệ số mái</span><input type="number" min="0" max="2" step="0.05" class="pr-input mono" id="estRoofCoef"></div>
+        <div><span class="pr-field-label">Đơn giá mái (đ/m²)</span><input type="number" min="0" class="pr-input mono" id="estRoofPrice"></div>
+        <div><span class="pr-field-label">Diện tích mái quy đổi</span><div class="pr-amount" id="estRoofArea" style="padding-top:8px;">0</div></div>
+      </div>
+
+      <div class="pr-client-grid" style="grid-template-columns:repeat(3,1fr);border-top:none;">
+        <div><span class="pr-field-label">Đơn giá phần thô (đ/m²)</span><input type="number" min="0" class="pr-input mono" id="estRoughPrice" value="2800000"></div>
+        <div><span class="pr-field-label">Đơn giá hoàn thiện (đ/m²)</span><input type="number" min="0" class="pr-input mono" id="estFinishPrice" value="2500000"></div>
+        <div><span class="pr-field-label">Đơn giá điện nước (đ/m²)</span><input type="number" min="0" class="pr-input mono" id="estMepPrice" value="700000"></div>
+      </div>
+
+      <table class="pr-table">
+        <thead><tr><th>Hạng mục</th><th class="num">Diện tích quy đổi (m²)</th><th class="num">Đơn giá (đ/m²)</th><th class="num">Thành tiền</th></tr></thead>
+        <tbody id="estRows"></tbody>
+      </table>
+
+      <div class="pr-totals">
+        <div class="pr-totals-row"><span>Tổng chi phí hạng mục</span><span class="pr-amount" id="estSubtotal">0</span></div>
+        <div class="pr-totals-row"><span>Dự phòng phát sinh</span><span><input type="number" min="0" max="50" step="1" id="estContingencyPercent" value="0"> %</span></div>
+        <div class="pr-totals-row grand"><span>CHI PHÍ TỔNG THỂ</span><span class="pr-amount" id="estGrandTotal">0</span></div>
+        <div class="pr-totals-row"><span>Tổng diện tích tầng (Dài×Rộng×Số tầng + Tum)</span><span class="pr-amount" id="estFloorArea">0</span></div>
+        <div class="pr-totals-row grand"><span>ĐƠN GIÁ XÂY DỰNG BÌNH QUÂN / m²</span><span class="pr-amount" id="estUnitPrice">0</span></div>
+      </div>
+
+      <div class="pr-card-head" style="border-top:1px solid var(--pr-border);">
+        <div>
+          <div class="pr-card-title" style="font-size:0.875rem;">Ép cọc bê tông (tuỳ chọn)</div>
+          <div class="pr-card-desc">Công trình cần ép cọc thì nhập số đầu cọc theo từng độ sâu — tự cộng thêm vào tổng chi phí.</div>
+        </div>
+      </div>
+      <table class="pr-table">
+        <thead><tr><th>Độ sâu / loại cọc</th><th class="num">Số đầu cọc</th><th class="num">Đơn giá / cọc</th><th class="num">Thành tiền</th></tr></thead>
+        <tbody id="estPileRows"></tbody>
+      </table>
+      <div class="pr-totals">
+        <div class="pr-totals-row grand"><span>CHI PHÍ TỔNG THỂ + ÉP CỌC</span><span class="pr-amount" id="estGrandTotalWithPile">0</span></div>
+      </div>
+    </div>
+
     <div class="pr-card">
       <div class="pr-card-head">
         <div>
@@ -320,6 +384,133 @@
 
     document.getElementById('prAddRowBtn').addEventListener('click', function () { addQuoteRow(); });
     document.getElementById('prAddRowBtn2').addEventListener('click', function () { addQuoteRow(); });
+
+    // ---------- Dự toán chi phí xây dựng theo m² ----------
+    // Công thức quy đổi diện tích theo đúng cách tính phổ biến của ngành xây dựng dân dụng VN
+    // (diện tích móng/mái không tính 100% như sàn mà quy đổi qua hệ số %) — hệ số và đơn giá mặc
+    // định dưới đây chỉ là gợi ý ban đầu theo mặt bằng chung, ĐỀU CHỈNH SỬA ĐƯỢC trực tiếp trên
+    // form để khớp với từng công trình thực tế.
+    var FOUNDATION_TYPES = [
+      { id: 'don', name: 'Móng đơn (móng cốc)', coef: 0.2, price: 3200000 },
+      { id: 'bang', name: 'Móng băng', coef: 0.5, price: 4200000 },
+      { id: 'coc-ep', name: 'Móng cọc ép bê tông', coef: 0.6, price: 4800000 },
+      { id: 'be', name: 'Móng bè / cọc khoan nhồi', coef: 0.9, price: 5500000 }
+    ];
+    var ROOF_TYPES = [
+      { id: 'btct', name: 'Mái bằng BTCT (đổ bê tông)', coef: 0.5, price: 800000 },
+      { id: 'ton', name: 'Mái tôn (khung kèo thép)', coef: 0.3, price: 450000 },
+      { id: 'ngoi-sat', name: 'Mái ngói kèo sắt', coef: 0.7, price: 900000 },
+      { id: 'ngoi-btct', name: 'Mái Thái/Nhật (đổ BTCT + lợp ngói)', coef: 1.0, price: 1300000 }
+    ];
+    var PILE_DEPTHS = [
+      { id: 'p10', label: 'Sâu 10m, cọc 200x200', price: 3300000 },
+      { id: 'p15', label: 'Sâu 15m, cọc 200x200', price: 4000000 },
+      { id: 'p20', label: 'Sâu 20m, cọc 200x200', price: 4800000 }
+    ];
+
+    function fillSelectOptions(selectEl, list) {
+      selectEl.innerHTML = list.map(function (t) { return '<option value="' + t.id + '">' + escapeHtml(t.name) + '</option>'; }).join('');
+    }
+    fillSelectOptions(document.getElementById('estFoundationType'), FOUNDATION_TYPES);
+    fillSelectOptions(document.getElementById('estRoofType'), ROOF_TYPES);
+
+    function applyFoundationDefaults() {
+      var t = FOUNDATION_TYPES.find(function (x) { return x.id === document.getElementById('estFoundationType').value; });
+      if (!t) return;
+      document.getElementById('estFoundationCoef').value = t.coef;
+      document.getElementById('estFoundationPrice').value = t.price;
+    }
+    function applyRoofDefaults() {
+      var t = ROOF_TYPES.find(function (x) { return x.id === document.getElementById('estRoofType').value; });
+      if (!t) return;
+      document.getElementById('estRoofCoef').value = t.coef;
+      document.getElementById('estRoofPrice').value = t.price;
+    }
+    document.getElementById('estFoundationType').addEventListener('change', function () { applyFoundationDefaults(); recalcEstimate(); });
+    document.getElementById('estRoofType').addEventListener('change', function () { applyRoofDefaults(); recalcEstimate(); });
+    applyFoundationDefaults();
+    applyRoofDefaults();
+
+    var pileRowsEl = document.getElementById('estPileRows');
+    pileRowsEl.innerHTML = PILE_DEPTHS.map(function (p) {
+      return '<tr data-pile-row="' + p.id + '">' +
+        '<td>' + escapeHtml(p.label) + '</td>' +
+        '<td class="num"><input class="pr-input mono" data-pile="count" type="number" min="0" step="1" value="0"></td>' +
+        '<td class="num"><input class="pr-input mono" data-pile="price" type="number" min="0" value="' + p.price + '"></td>' +
+        '<td class="num pr-amount" data-pile="lineTotal">0</td>' +
+      '</tr>';
+    }).join('');
+
+    var lastEstimateResult = null;
+
+    function num(id) { return parseFloat(document.getElementById(id).value) || 0; }
+
+    function recalcEstimate() {
+      var length = num('estLength'), width = num('estWidth'), floors = num('estFloors'), tum = num('estTum');
+      var floorArea = length * width;
+      var totalFloorArea = floorArea * floors + tum;
+
+      var foundationCoef = num('estFoundationCoef'), foundationPrice = num('estFoundationPrice');
+      var roofCoef = num('estRoofCoef'), roofPrice = num('estRoofPrice');
+      var roughPrice = num('estRoughPrice'), finishPrice = num('estFinishPrice'), mepPrice = num('estMepPrice');
+
+      var foundationArea = floorArea * foundationCoef;
+      var roofArea = floorArea * roofCoef;
+      document.getElementById('estFoundationArea').textContent = fmt(foundationArea) + ' m²';
+      document.getElementById('estRoofArea').textContent = fmt(roofArea) + ' m²';
+
+      var lines = [
+        { name: 'Phần móng', area: foundationArea, price: foundationPrice },
+        { name: 'Phần thô', area: totalFloorArea, price: roughPrice },
+        { name: 'Phần hoàn thiện', area: totalFloorArea, price: finishPrice },
+        { name: 'Phần điện nước', area: totalFloorArea, price: mepPrice },
+        { name: 'Phần mái', area: roofArea, price: roofPrice }
+      ];
+      lines.forEach(function (l) { l.total = l.area * l.price; });
+      var subtotal = lines.reduce(function (s, l) { return s + l.total; }, 0);
+
+      document.getElementById('estRows').innerHTML = lines.map(function (l) {
+        return '<tr><td>' + l.name + '</td><td class="num">' + fmt(l.area) + '</td><td class="num">' + fmt(l.price) + '</td><td class="num pr-amount">' + fmt(l.total) + '</td></tr>';
+      }).join('');
+
+      var contingencyPct = num('estContingencyPercent');
+      var grandTotal = subtotal * (1 + contingencyPct / 100);
+      var unitPrice = totalFloorArea > 0 ? grandTotal / totalFloorArea : 0;
+
+      document.getElementById('estSubtotal').textContent = fmt(subtotal);
+      document.getElementById('estGrandTotal').textContent = fmt(grandTotal);
+      document.getElementById('estFloorArea').textContent = fmt(totalFloorArea) + ' m²';
+      document.getElementById('estUnitPrice').textContent = fmt(unitPrice) + ' đ/m²';
+
+      var pileTotal = 0;
+      pileRowsEl.querySelectorAll('tr[data-pile-row]').forEach(function (tr) {
+        var count = parseFloat(tr.querySelector('[data-pile="count"]').value) || 0;
+        var price = parseFloat(tr.querySelector('[data-pile="price"]').value) || 0;
+        var lineTotal = count * price;
+        tr.querySelector('[data-pile="lineTotal"]').textContent = fmt(lineTotal);
+        pileTotal += lineTotal;
+      });
+      var grandTotalWithPile = grandTotal + pileTotal;
+      document.getElementById('estGrandTotalWithPile').textContent = fmt(grandTotalWithPile);
+
+      lastEstimateResult = { lines: lines, subtotal: subtotal, contingencyPct: contingencyPct, grandTotal: grandTotal, totalFloorArea: totalFloorArea, unitPrice: unitPrice, pileTotal: pileTotal, grandTotalWithPile: grandTotalWithPile };
+      return lastEstimateResult;
+    }
+
+    document.getElementById('prEstimateCard').addEventListener('input', function (e) {
+      if (e.target.closest('#prEstimateCard')) recalcEstimate();
+    });
+    recalcEstimate();
+
+    document.getElementById('prFillQuoteBtn').addEventListener('click', function () {
+      var r = recalcEstimate();
+      r.lines.filter(function (l) { return l.total > 0; }).forEach(function (l) {
+        addQuoteRow({ name: l.name + ' (dự toán ' + fmt(l.area) + ' m²)', unit: 'trọn gói', qty: 1, price: l.total });
+      });
+      if (r.pileTotal > 0) addQuoteRow({ name: 'Ép cọc bê tông', unit: 'trọn gói', qty: 1, price: r.pileTotal });
+      recalcQuote();
+      document.getElementById('prEstimateCard').nextElementSibling.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
 
     // ---------- Xuất file ----------
     document.getElementById('prExportPdfBtn').addEventListener('click', function () { window.print(); });
