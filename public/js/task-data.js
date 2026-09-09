@@ -333,34 +333,24 @@ var TaskManager = (function() {
       localStorage.setItem(STORAGE_KEYS.docCategories, JSON.stringify(DEFAULT_DOC_CATEGORIES));
     }
     if (isUsingGSheets()) {
-      // Try to fetch from Google Sheets
+      // Chỉ ghi vào localStorage khi thật sự lấy được dữ liệu từ Google Sheet.
+      // KHÔNG BAO GIỜ tự động chèn dữ liệu mẫu (DEFAULT_*) đè lên cache khi
+      // sheet trống hoặc lần fetch bị lỗi/timeout — giữ nguyên cache thật cũ
+      // (nếu có) và để UI tự hiển thị trạng thái trống thật, tránh hiện lại
+      // dữ liệu giả "Dự án A/B/C", "MGR1/MEM1"... (lỗi người dùng phát hiện
+      // 2026-09-09: 1 lần fetch chậm/lỗi đã khiến toàn bộ cache bị đè bằng
+      // dữ liệu mẫu này).
       getFromGSheets('projects', function(projects) {
-        if (projects.length > 0) {
-          localStorage.setItem(STORAGE_KEYS.projects, JSON.stringify(projects));
-        } else {
-          localStorage.setItem(STORAGE_KEYS.projects, JSON.stringify(DEFAULT_PROJECTS));
-        }
+        if (projects.length > 0) localStorage.setItem(STORAGE_KEYS.projects, JSON.stringify(projects));
       });
       getFromGSheets('tasks', function(tasks) {
-        if (tasks.length > 0) {
-          localStorage.setItem(STORAGE_KEYS.tasks, JSON.stringify(tasks));
-        } else {
-          localStorage.setItem(STORAGE_KEYS.tasks, JSON.stringify(DEFAULT_TASKS));
-        }
+        if (tasks.length > 0) localStorage.setItem(STORAGE_KEYS.tasks, JSON.stringify(tasks));
       });
       getFromGSheets('members', function(members) {
-        if (members.length > 0) {
-          localStorage.setItem(STORAGE_KEYS.members, JSON.stringify(members));
-        } else {
-          localStorage.setItem(STORAGE_KEYS.members, JSON.stringify(DEFAULT_MEMBERS));
-        }
+        if (members.length > 0) localStorage.setItem(STORAGE_KEYS.members, JSON.stringify(members));
       });
       getFromGSheets('proposals', function(proposals) {
-        if (proposals.length > 0) {
-          localStorage.setItem(STORAGE_KEYS.proposals, JSON.stringify(proposals));
-        } else {
-          localStorage.setItem(STORAGE_KEYS.proposals, JSON.stringify(DEFAULT_PROPOSALS));
-        }
+        if (proposals.length > 0) localStorage.setItem(STORAGE_KEYS.proposals, JSON.stringify(proposals));
       });
       getFromGSheets('timesheet', function(timesheet) {
         if (timesheet.length > 0) {
@@ -368,25 +358,13 @@ var TaskManager = (function() {
         }
       });
       getFromGSheets('notifications', function(notifications) {
-        if (notifications.length > 0) {
-          localStorage.setItem(STORAGE_KEYS.notifications, JSON.stringify(notifications));
-        } else if (!localStorage.getItem(STORAGE_KEYS.notifications)) {
-          localStorage.setItem(STORAGE_KEYS.notifications, JSON.stringify(DEFAULT_NOTIFICATIONS));
-        }
+        if (notifications.length > 0) localStorage.setItem(STORAGE_KEYS.notifications, JSON.stringify(notifications));
       });
       getFromGSheets('notices', function(notices) {
-        if (notices.length > 0) {
-          localStorage.setItem(STORAGE_KEYS.notices, JSON.stringify(notices));
-        } else if (!localStorage.getItem(STORAGE_KEYS.notices)) {
-          localStorage.setItem(STORAGE_KEYS.notices, JSON.stringify(DEFAULT_NOTICES));
-        }
+        if (notices.length > 0) localStorage.setItem(STORAGE_KEYS.notices, JSON.stringify(notices));
       });
       getFromGSheets('documents', function(documents) {
-        if (documents.length > 0) {
-          localStorage.setItem(STORAGE_KEYS.documents, JSON.stringify(documents));
-        } else if (!localStorage.getItem(STORAGE_KEYS.documents)) {
-          localStorage.setItem(STORAGE_KEYS.documents, JSON.stringify(DEFAULT_DOCUMENTS));
-        }
+        if (documents.length > 0) localStorage.setItem(STORAGE_KEYS.documents, JSON.stringify(documents));
       });
       getFromGSheets('payslips', function(payslips) {
         localStorage.setItem(STORAGE_KEYS.payslips, JSON.stringify(payslips));
@@ -395,7 +373,7 @@ var TaskManager = (function() {
         localStorage.setItem(STORAGE_KEYS.commissions, JSON.stringify(commissions));
       });
       getFromGSheets('commissionRates', function(rates) {
-        localStorage.setItem(STORAGE_KEYS.commissionRates, JSON.stringify(rates.length > 0 ? rates : DEFAULT_COMMISSION_RATES));
+        if (rates.length > 0) localStorage.setItem(STORAGE_KEYS.commissionRates, JSON.stringify(rates));
       });
       getFromGSheets('priceCatalog', function(items) {
         localStorage.setItem(STORAGE_KEYS.priceCatalog, JSON.stringify(items));

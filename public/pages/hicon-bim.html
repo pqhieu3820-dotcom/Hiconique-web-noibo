@@ -243,6 +243,18 @@
     .w-kanban-card .loc { font-size: 0.6875rem; color: var(--w-faint); }
     .w-boq-total { display: flex; justify-content: flex-end; gap: 26px; padding: 14px 16px; border-top: 1px solid var(--w-border); font-size: 0.875rem; background: #FAFBFC; }
     .w-boq-total b { font-family: 'JetBrains Mono', monospace; color: var(--w-accent); margin-left: 8px; }
+    .w-report-card { display: flex; align-items: center; gap: 14px; background: #fff; border: 1px solid var(--w-border); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; flex-wrap: wrap; }
+    .w-report-card .ic { width: 38px; height: 38px; border-radius: 9px; background: var(--w-bg); border: 1px solid var(--w-border); color: var(--w-muted-2); display: grid; place-items: center; flex-shrink: 0; }
+    .w-report-card .ic svg { width: 17px; height: 17px; }
+    .w-report-card .body { flex: 1; min-width: 200px; }
+    .w-report-card .body .eyebrow { font-size: 0.625rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--w-faint); font-weight: 700; margin-bottom: 2px; }
+    .w-report-card .body b { display: block; font-size: 0.84375rem; font-weight: 700; }
+    .w-report-card .body span.meta { font-size: 0.71875rem; color: var(--w-faint); }
+    .w-report-card .right { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+    .w-boq-infobar { display: flex; background: #fff; border: 1px solid var(--w-border); border-radius: 12px; padding: 13px 18px; margin-bottom: 14px; gap: 24px; flex-wrap: wrap; }
+    .w-boq-infobar .f { flex: 1; min-width: 150px; }
+    .w-boq-infobar .f span { display: block; font-size: 0.625rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--w-faint); font-weight: 700; margin-bottom: 4px; }
+    .w-boq-infobar .f b { font-size: 0.8125rem; font-weight: 700; }
 
     @media (max-width: 1200px) {
       .w-org-grid, .w-2col { grid-template-columns: 1fr; }
@@ -565,7 +577,42 @@
               </div>
 
               <div class="w-ptab-panel" data-ptab-panel="boq" style="display:none">
-                <div class="w-form-card">
+                <div class="w-page-head">
+                  <p class="w-page-eyebrow">BÁO CÁO KHỐI LƯỢNG</p>
+                  <div class="w-page-title-row">
+                    <div><h2>BOQ dự án</h2><p class="w-page-desc">Khối lượng lấy từ các dòng đã nhập, đơn giá tra theo danh mục Sản phẩm HICON-BIM.</p></div>
+                    <div style="display:flex; gap:8px">
+                      <button class="w-btn w-btn-ghost" id="boqExportCsv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 17v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>Tải CSV</button>
+                      <button class="w-btn w-btn-dark" id="boqAddToggle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Thêm dòng BOQ</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="w-report-card">
+                  <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></div>
+                  <div class="body">
+                    <p class="eyebrow">Báo cáo đang xem</p>
+                    <b>BOQ toàn bộ dự án</b>
+                    <span class="meta" id="boqReportMeta">Chưa có dòng BOQ nào</span>
+                  </div>
+                  <div class="right"><span class="w-dot-status"><i></i>Dữ liệu thật từ HICON-BIM</span></div>
+                </div>
+
+                <div class="w-stats-row">
+                  <div class="w-stat"><div class="top"><span class="lbl">Giá trị trước VAT</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><div class="val" id="boqStatSubtotal">0</div><div class="sub">VND</div></div>
+                  <div class="w-stat"><div class="top"><span class="lbl">Giá trị sau VAT</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M16 3H8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2Z"/></svg></div><div class="val" id="boqStatTotal">0</div><div class="sub">VAT 8%</div></div>
+                  <div class="w-stat"><div class="top"><span class="lbl">Dòng công tác</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div><div class="val" id="boqStatRows">0</div><div class="sub" id="boqStatRowsSub">0 hạng mục</div></div>
+                  <div class="w-stat"><div class="top"><span class="lbl">Độ phủ báo giá</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="m9 12 2 2 4-4"/></svg></div><div class="val" id="boqStatCoverage">0%</div><div class="sub" id="boqStatCoverageSub">0 dòng có giá</div></div>
+                </div>
+
+                <div class="w-boq-infobar">
+                  <div class="f"><span>Dự án</span><b id="boqInfoProject">—</b></div>
+                  <div class="f"><span>Phạm vi model</span><b id="boqInfoScope">Chưa đồng bộ model</b></div>
+                  <div class="f"><span>Nguồn đơn giá</span><b>Danh mục Sản phẩm HICON-BIM</b></div>
+                  <div class="f"><span>Đơn vị tiền</span><b>VND</b></div>
+                </div>
+
+                <div class="w-form-card" id="boqFormCard" hidden>
                   <div class="w-form-card-head" id="boqFormTitle">Thêm dòng BOQ</div>
                   <form class="w-form-grid cols6" id="boqForm">
                     <input type="hidden" id="boqId">
@@ -580,8 +627,7 @@
                 <div class="w-table-wrap">
                   <div id="boqTableWrap"></div>
                   <div class="w-boq-total">
-                    <span>Trước VAT: <b id="boqSubtotal">0</b></span>
-                    <span>Sau VAT (8%): <b id="boqTotal">0</b></span>
+                    <span>Cộng trước VAT: <b id="boqSubtotal">0</b></span>
                   </div>
                 </div>
               </div>
@@ -1219,24 +1265,62 @@
       var priceField = document.getElementById('boqUnitPrice');
       if (!priceField.value) priceField.value = opt.getAttribute('data-price') || '';
     });
+    function boqProduct(id) { return STORE.products.filter(function (x) { return x.id === id; })[0]; }
     function renderBoq() {
       var wrap = document.getElementById('boqTableWrap');
-      var productName = function (id) { var p = STORE.products.filter(function (x) { return x.id === id; })[0]; return p ? p.name : '—'; };
       if (!STORE.boqItems.length) { wrap.innerHTML = '<div class="w-empty">Chưa có dòng BOQ nào — thêm ở form phía trên.</div>'; }
       else {
-        wrap.innerHTML = '<table class="w-table"><thead><tr><th>Mã</th><th>Sản phẩm</th><th>ĐVT</th><th>Khối lượng</th><th>Đơn giá</th><th>Thành tiền</th><th></th></tr></thead><tbody>' +
+        wrap.innerHTML = '<table class="w-table"><thead><tr><th>Mã</th><th>Hạng mục</th><th>Sản phẩm / Công tác</th><th>ĐVT</th><th>Khối lượng</th><th>Đơn giá</th><th>Thành tiền</th><th>Nguồn</th><th></th></tr></thead><tbody>' +
           STORE.boqItems.map(function (b) {
+            var prod = boqProduct(b.productId);
             var amount = (Number(b.quantity) || 0) * (Number(b.unitPrice) || 0);
-            return '<tr><td>' + escapeHtml(b.code || '—') + '</td><td><b>' + escapeHtml(productName(b.productId)) + '</b></td><td>' + escapeHtml(b.unit || '') + '</td><td class="num">' + (Number(b.quantity) || 0).toLocaleString('vi-VN') + '</td><td class="num">' + fmt(b.unitPrice) + '</td><td class="num">' + fmt(amount) + '</td>' +
+            var name = (prod && prod.name) || b.name || '—';
+            var group = (prod && prod.group) || '—';
+            var source = prod ? 'Catalog' : 'Nhập tay';
+            return '<tr><td>' + escapeHtml(b.code || '—') + '</td><td>' + escapeHtml(group) + '</td><td><b>' + escapeHtml(name) + '</b></td><td>' + escapeHtml(b.unit || '') + '</td><td class="num">' + (Number(b.quantity) || 0).toLocaleString('vi-VN') + '</td><td class="num">' + fmt(b.unitPrice) + '</td><td class="num">' + fmt(amount) + '</td><td><span class="w-tag-lt' + (prod ? ' blue' : '') + '">' + source + '</span></td>' +
               '<td><div class="w-row-actions"><button class="w-btn w-btn-ghost w-btn-sm" data-edit-boq="' + b.id + '">Sửa</button><button class="w-btn w-btn-ghost w-btn-sm w-btn-danger" data-del-boq="' + b.id + '">Xoá</button></div></td></tr>';
           }).join('') + '</tbody></table>';
         wrap.querySelectorAll('[data-edit-boq]').forEach(function (b) { b.addEventListener('click', function () { editBoq(b.getAttribute('data-edit-boq')); }); });
         wrap.querySelectorAll('[data-del-boq]').forEach(function (b) { b.addEventListener('click', function () { delBoq(b.getAttribute('data-del-boq')); }); });
       }
       var subtotal = STORE.boqItems.reduce(function (sum, b) { return sum + (Number(b.quantity) || 0) * (Number(b.unitPrice) || 0); }, 0);
+      var priced = STORE.boqItems.filter(function (b) { return Number(b.unitPrice) > 0; }).length;
+      var groups = {};
+      STORE.boqItems.forEach(function (b) { var p = boqProduct(b.productId); if (p && p.group) groups[p.group] = true; });
+      var groupCount = Object.keys(groups).length;
+      var coverage = STORE.boqItems.length ? Math.round((priced / STORE.boqItems.length) * 1000) / 10 : 0;
       document.getElementById('boqSubtotal').textContent = fmt(subtotal) + ' đ';
-      document.getElementById('boqTotal').textContent = fmt(subtotal * 1.08) + ' đ';
+      document.getElementById('boqStatSubtotal').textContent = fmtCompact(subtotal);
+      document.getElementById('boqStatTotal').textContent = fmtCompact(subtotal * 1.08);
+      document.getElementById('boqStatRows').textContent = STORE.boqItems.length;
+      document.getElementById('boqStatRowsSub').textContent = groupCount + ' hạng mục';
+      document.getElementById('boqStatCoverage').textContent = coverage + '%';
+      document.getElementById('boqStatCoverageSub').textContent = priced + '/' + STORE.boqItems.length + ' dòng có đơn giá';
+      var proj = (typeof TaskManager !== 'undefined' && TaskManager.getProjects) ? TaskManager.getProjects().filter(function (p) { return p.id === activeProjectId; })[0] : null;
+      document.getElementById('boqInfoProject').textContent = proj ? (proj.id + ' · ' + proj.name) : '—';
+      document.getElementById('boqReportMeta').textContent = STORE.boqItems.length ? (STORE.boqItems.length + ' dòng · cập nhật ' + timeAgo(STORE.boqItems.reduce(function (latest, b) { var t = b.updatedAt || b.createdAt || ''; return t > latest ? t : latest; }, ''))) : 'Chưa có dòng BOQ nào';
     }
+    function exportBoqCsv() {
+      var rows = [['Mã', 'Hạng mục', 'Sản phẩm/Công tác', 'ĐVT', 'Khối lượng', 'Đơn giá', 'Thành tiền', 'Nguồn']];
+      STORE.boqItems.forEach(function (b) {
+        var prod = boqProduct(b.productId);
+        var amount = (Number(b.quantity) || 0) * (Number(b.unitPrice) || 0);
+        rows.push([b.code || '', (prod && prod.group) || '', (prod && prod.name) || b.name || '', b.unit || '', b.quantity || 0, b.unitPrice || 0, amount, prod ? 'Catalog' : 'Nhập tay']);
+      });
+      var csv = rows.map(function (r) { return r.map(function (c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(','); }).join('\r\n');
+      var blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = 'BOQ_' + (activeProjectId || 'du-an') + '.csv';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+    document.getElementById('boqExportCsv').addEventListener('click', exportBoqCsv);
+    document.getElementById('boqAddToggle').addEventListener('click', function () {
+      var card = document.getElementById('boqFormCard');
+      card.hidden = !card.hidden;
+      if (!card.hidden) document.getElementById('boqForm').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
     function editBoq(id) {
       var b = STORE.boqItems.filter(function (x) { return x.id === id; })[0];
       if (!b) return;
@@ -1248,6 +1332,7 @@
       document.getElementById('boqUnitPrice').value = b.unitPrice || '';
       document.getElementById('boqFormTitle').textContent = 'Sửa dòng BOQ';
       document.getElementById('boqCancel').hidden = false;
+      document.getElementById('boqFormCard').hidden = false;
       document.getElementById('boqForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
     function resetBoqForm() {
@@ -1255,6 +1340,7 @@
       document.getElementById('boqId').value = '';
       document.getElementById('boqFormTitle').textContent = 'Thêm dòng BOQ';
       document.getElementById('boqCancel').hidden = true;
+      document.getElementById('boqFormCard').hidden = true;
     }
     function delBoq(id) {
       if (!confirm('Xoá dòng BOQ này?')) return;
