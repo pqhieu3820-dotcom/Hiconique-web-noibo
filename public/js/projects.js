@@ -830,6 +830,23 @@
       });
     }
 
+    // Tỉnh/Thành — cùng danh sách 34 tỉnh thật dùng ở tab "Đơn giá theo tỉnh"
+    // (pricing.html), gọi thẳng action có sẵn getProvinceList, load 1 lần.
+    var provinceSel = document.getElementById('project-province');
+    if (provinceSel && typeof GSHEETS_CONFIG !== 'undefined' && GSHEETS_CONFIG.USE_GSHEETS && GSHEETS_CONFIG.API_URL) {
+      fetch(GSHEETS_CONFIG.API_URL + '?action=getProvinceList', { redirect: 'follow' })
+        .then(function (r) { return r.json(); })
+        .then(function (list) {
+          (Array.isArray(list) ? list : []).forEach(function (name) {
+            var opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name;
+            provinceSel.appendChild(opt);
+          });
+        })
+        .catch(function (e) { console.error('Không tải được danh sách tỉnh:', e); });
+    }
+
     // Type cards behavior
     var typeCards = form.querySelectorAll('.type-card');
     typeCards.forEach(function (card) {
@@ -889,6 +906,7 @@
         client: document.getElementById('project-client').value.trim(),
         investor: document.getElementById('project-investor').value.trim(),
         location: document.getElementById('project-location').value.trim(),
+        province: document.getElementById('project-province').value,
         startDate: document.getElementById('project-start').value || '',
         endDate: document.getElementById('project-end').value || '',
         budget: parseInt(document.getElementById('project-budget').value, 10) || 0,
@@ -953,6 +971,7 @@
     document.getElementById('project-client').value = project.client || '';
     document.getElementById('project-investor').value = project.investor || '';
     document.getElementById('project-location').value = project.location || '';
+    document.getElementById('project-province').value = project.province || '';
     document.getElementById('project-start').value = project.startDate ? String(project.startDate).substring(0, 10) : '';
     document.getElementById('project-end').value = project.endDate ? String(project.endDate).substring(0, 10) : '';
     document.getElementById('project-budget').value = project.budget || '';

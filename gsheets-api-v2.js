@@ -61,12 +61,15 @@ const FIELD_MAP = {
   // mới (type = loại công trình, category = hạng mục công việc) để code chỗ
   // khác (vd projectType() lọc theo hạng mục) chỉ cần đọc field mới category.
   projects: [
-    ['Mã DA', 'id'], ['Tên dự án', 'name'], ['Loại dự án', 'type'], ['Hạng mục', 'category'], ['Tiến độ', 'progress'],
+    ['Mã DA', 'id'], ['Tên dự án', 'name'], ['Hạng mục', 'category'], ['Tiến độ', 'progress'],
     ['Trạng thái', 'status'], ['Thành viên tham gia', 'members'], ['Màu sắc đại diện', 'color'],
     ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt'], ['Ngân sách', 'budget'],
     ['Khách hàng', 'client'], ['Nhà đầu tư', 'investor'], ['Địa điểm', 'location'],
     ['Ngày bắt đầu', 'startDate'], ['Ngày kết thúc', 'endDate'], ['Mức độ ưu tiên', 'priority'],
-    ['Mô tả', 'description']
+    ['Mô tả', 'description'], ['Loại dự án', 'type'],
+    // 2026-09-09: thêm Tỉnh/Thành để tab "Đơn giá theo tỉnh" bên pricing.html
+    // lọc nhanh theo dự án thay vì phải tự chọn lại tỉnh mỗi lần.
+    ['Tỉnh/Thành', 'province']
   ],
   tasks: [
     ['Mã CV', 'id'], ['Tên công việc', 'title'], ['Mô tả', 'description'], ['Mã dự án', 'projectId'],

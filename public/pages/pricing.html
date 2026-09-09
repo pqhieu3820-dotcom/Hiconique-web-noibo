@@ -233,6 +233,13 @@
               <input type="text" id="project-location" placeholder="VD: Quận 2, TP.HCM">
             </div>
             <div class="form-group">
+              <label for="project-province">Tỉnh/Thành</label>
+              <select id="project-province"><option value="">— Chọn tỉnh/thành —</option></select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
               <label for="project-budget">Tổng số tiền (VNĐ)</label>
               <input type="number" id="project-budget" placeholder="0" min="0" step="1000000">
             </div>
@@ -767,11 +774,13 @@
         .then(function (r) { return r.json(); })
         .then(function (list) {
           var sel = document.getElementById('prProvinceSelect');
+          var projectSel = document.getElementById('project-province');
           (Array.isArray(list) ? list : []).forEach(function (name) {
             var opt = document.createElement('option');
             opt.value = name;
             opt.textContent = name;
             sel.appendChild(opt);
+            if (projectSel) projectSel.appendChild(opt.cloneNode(true));
           });
         })
         .catch(function (e) { console.error('Không tải được danh sách tỉnh:', e); });
@@ -1087,6 +1096,7 @@
           client: document.getElementById('project-client').value.trim(),
           investor: document.getElementById('project-investor').value.trim(),
           location: document.getElementById('project-location').value.trim(),
+          province: document.getElementById('project-province').value,
           startDate: document.getElementById('project-start').value || '',
           endDate: document.getElementById('project-end').value || '',
           budget: parseInt(document.getElementById('project-budget').value, 10) || 0,
@@ -1114,7 +1124,22 @@
       var showProjectBar = TOOL_TABS.indexOf(tab) !== -1;
       document.getElementById('prToolProjectBar').style.display = showProjectBar ? 'flex' : 'none';
       if (showProjectBar) reloadActiveTool();
+      if (tab === 'province') autoApplyProjectProvince();
     };
+    // Tự chọn sẵn tỉnh/thành ở tab "Đơn giá theo tỉnh" theo tỉnh đã lưu của dự án
+    // đang chọn (nếu có) — đỡ phải tự chọn lại tỉnh mỗi lần vào tab này. Chỉ áp
+    // dụng khi ô tỉnh còn trống, để không đè lựa chọn tay của người dùng.
+    function autoApplyProjectProvince() {
+      var provinceSel = document.getElementById('prProvinceSelect');
+      if (!provinceSel || provinceSel.value) return;
+      var projects = (typeof TaskManager !== 'undefined' && TaskManager.getProjects) ? TaskManager.getProjects() : [];
+      var proj = projects.find(function (p) { return p.id === activeToolProjectId; });
+      if (!proj || !proj.province) return;
+      var hasOption = Array.prototype.some.call(provinceSel.options, function (o) { return o.value === proj.province; });
+      if (!hasOption) return;
+      provinceSel.value = proj.province;
+      provinceSel.dispatchEvent(new Event('change'));
+    }
 
     // ---------- So sánh nhà thầu ----------
     var CONTRACTOR_GROUPS = [
