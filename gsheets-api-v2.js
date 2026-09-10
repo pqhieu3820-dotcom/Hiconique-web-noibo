@@ -300,6 +300,10 @@ const VALUE_MAP = {
     ['Doanh thu', 'revenue'], ['Chi phí', 'expense'], ['Vay nợ (nhận)', 'loan'],
     ['Trả nợ', 'repayment'], ['Thưởng nhân viên', 'bonus'], ['Phạt nhân viên (thu về)', 'penalty'],
     ['Tiền ứ đọng', 'idle'], ['Chưa giải ngân', 'undisbursed']
+  ],
+  // Nhãn khớp đúng STATUS_LABEL trong orders.html.
+  'orders.status': [
+    ['Nháp', 'draft'], ['Đã xác nhận', 'confirmed'], ['Đã thanh toán', 'paid'], ['Đã huỷ', 'cancelled']
   ]
 };
 
