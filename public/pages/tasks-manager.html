@@ -24,7 +24,7 @@
 
         // Đếm task của user đang đăng nhập
         var allTasks = (window.TaskManager && window.TaskManager.getTasks) ? window.TaskManager.getTasks() : [];
-        var myTasks = allTasks.filter(function(t) { return t.assigneeId === user.id; });
+        var myTasks = allTasks.filter(function(t) { return Array.isArray(t.assigneeIds) && t.assigneeIds.indexOf(user.id) !== -1; });
         var activeTasks = myTasks.filter(function(t) { return t.status !== 'completed'; });
         var countEl = document.getElementById('welcomeTaskCount');
         if (countEl) countEl.textContent = activeTasks.length;

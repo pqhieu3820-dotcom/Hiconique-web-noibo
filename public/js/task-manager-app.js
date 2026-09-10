@@ -9,6 +9,21 @@
   let modalOverlay = null;
   let currentModal = null;
 
+  // Normalize task.assigneeIds (mảng nhiều người phụ trách) — tolerate ô cũ
+  // dạng chuỗi đơn (chưa migrate) hoặc thiếu hẳn field.
+  function getTaskAssigneeIds(task) {
+    if (!task || !task.assigneeIds) return [];
+    if (Array.isArray(task.assigneeIds)) return task.assigneeIds;
+    if (typeof task.assigneeIds === 'string') {
+      try { var arr = JSON.parse(task.assigneeIds); if (Array.isArray(arr)) return arr; } catch (e) {}
+      if (task.assigneeIds.trim()) return [task.assigneeIds.trim()];
+    }
+    return [];
+  }
+  function taskHasAssignee(task, memberId) {
+    return getTaskAssigneeIds(task).indexOf(memberId) !== -1;
+  }
+
   // Normalize project.members from Google Sheets string to array
   function getProjectMembers(project) {
     if (!project || !project.members) return [];
@@ -112,7 +127,7 @@
 
     var myBadge = document.getElementById('myTasksBadge');
     if (myBadge) {
-      var myTasks = tasks.filter(t => t.assigneeId === currentUser.id);
+      var myTasks = tasks.filter(t => taskHasAssignee(t, currentUser.id));
       myBadge.textContent = myTasks.length;
     }
 
@@ -377,9 +392,16 @@
     const projects = TaskManager.getProjects();
     const currentUser = TaskManager.getCurrentUser();
 
-    const memberOptions = members.map(m =>
-      `<option value="${m.id}" ${task && task.assigneeId === m.id ? 'selected' : ''}>${m.name}</option>`
-    ).join('');
+    const taskAssigneeIds = (task && Array.isArray(task.assigneeIds)) ? task.assigneeIds : [];
+    const assigneeItemsHtml = members.map(m => {
+      const checked = taskAssigneeIds.includes(m.id);
+      return `<div class="assignee-dd-item${checked ? ' selected' : ''}" data-member-id="${m.id}" data-member-name="${m.name}">`
+        + `<svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`
+        + `<span class="avatar-xs-tm" style="background:${m.color || '#6B7280'}">${m.avatar || (m.name || '?').substring(0, 2).toUpperCase()}</span>`
+        + `<span>${m.name}</span>`
+        + `</div>`;
+    }).join('');
+    const assigneeTriggerLabel = members.filter(m => taskAssigneeIds.includes(m.id)).map(m => m.name).join(', ') || 'Chọn người...';
 
     const projectOptions = projects.map(p =>
       `<option value="${p.id}" ${task && task.projectId === p.id ? 'selected' : ''}>${p.name}</option>`
@@ -410,10 +432,12 @@
           </div>
           <div class="form-group">
             <label class="form-label">Người được giao</label>
-            <select class="form-select" name="assigneeId">
-              <option value="">-- Chọn người --</option>
-              ${memberOptions}
-            </select>
+            <div id="taskAssigneeDd" class="assignee-dd">
+              <button type="button" class="form-select assignee-dd-trigger">
+                <span class="assignee-dd-trigger-text${taskAssigneeIds.length ? '' : ' placeholder'}">${assigneeTriggerLabel}</span>
+              </button>
+              <div class="assignee-dd-panel" hidden>${assigneeItemsHtml}</div>
+            </div>
           </div>
         </div>
 
@@ -459,6 +483,49 @@
     `;
 
     openModal(isEdit ? 'Chỉnh sửa Task' : 'Tạo Task Mới', body, footer);
+    bindTaskAssigneeDropdown(taskAssigneeIds.slice());
+  }
+
+  // Dropdown tuỳ chỉnh (không phải <select multiple> — người dùng thấy xấu) cho
+  // phép chọn nhiều người phụ trách, trông giống hệt các dropdown 1-lựa-chọn
+  // khác trong form (dùng chung class .form-select cho ô đóng).
+  var taskModalAssigneeIds = [];
+  function bindTaskAssigneeDropdown(initialIds) {
+    taskModalAssigneeIds = initialIds || [];
+    var dd = document.getElementById('taskAssigneeDd');
+    if (!dd) return;
+    var trigger = dd.querySelector('.assignee-dd-trigger');
+    var triggerText = dd.querySelector('.assignee-dd-trigger-text');
+    var panel = dd.querySelector('.assignee-dd-panel');
+
+    panel.querySelectorAll('.assignee-dd-item').forEach(function (item) {
+      item.addEventListener('click', function () {
+        var id = item.dataset.memberId;
+        var idx = taskModalAssigneeIds.indexOf(id);
+        if (idx === -1) taskModalAssigneeIds.push(id); else taskModalAssigneeIds.splice(idx, 1);
+        item.classList.toggle('selected', idx === -1);
+        var names = Array.from(panel.querySelectorAll('.assignee-dd-item.selected')).map(function (el) { return el.dataset.memberName; });
+        if (names.length) {
+          triggerText.textContent = names.join(', ');
+          triggerText.classList.remove('placeholder');
+        } else {
+          triggerText.textContent = 'Chọn người...';
+          triggerText.classList.add('placeholder');
+        }
+      });
+    });
+
+    trigger.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var isOpen = dd.classList.toggle('open');
+      panel.hidden = !isOpen;
+    });
+    document.addEventListener('click', function (e) {
+      if (!dd.contains(e.target)) {
+        dd.classList.remove('open');
+        panel.hidden = true;
+      }
+    });
   }
 
   // Save task from modal
@@ -469,11 +536,13 @@
       return;
     }
 
+    const assigneeIds = taskModalAssigneeIds.slice();
+
     const taskData = {
       title: form.title.value.trim(),
       description: form.description.value.trim(),
       projectId: form.projectId.value,
-      assigneeId: form.assigneeId.value,
+      assigneeIds: assigneeIds,
       startDate: form.startDate.value,
       deadline: form.deadline.value,
       status: form.status.value,
@@ -497,7 +566,7 @@
     if (!task) return;
 
     const project = task.projectId ? TaskManager.getProject(task.projectId) : null;
-    const assignee = task.assigneeId ? TaskManager.getMember(task.assigneeId) : null;
+    const assignees = TaskManager.getTaskAssignees(task);
     const creator = task.createdBy ? TaskManager.getMember(task.createdBy) : null;
 
     const priorityClass = task.priority === 'high' ? 'priority-high' : task.priority === 'medium' ? 'priority-medium' : 'priority-low';
@@ -531,7 +600,7 @@
         </div>
         <div>
           <label style="font-size: 0.75rem; color: var(--color-text-muted);">Người được giao</label>
-          <p style="font-size: 0.875rem; color: var(--color-text);">${assignee ? assignee.name : 'Chưa giao'}</p>
+          <p style="font-size: 0.875rem; color: var(--color-text);">${assignees.length ? assignees.map(a => a.name).join(', ') : 'Chưa giao'}</p>
         </div>
         <div>
           <label style="font-size: 0.75rem; color: var(--color-text-muted);">Ngày bắt đầu</label>
@@ -891,14 +960,14 @@
       ${tasks.length > 0 ? `
         <div style="display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto;">
           ${tasks.map(t => {
-            const assignee = TaskManager.getMember(t.assigneeId);
+            const taskAssignees = TaskManager.getTaskAssignees(t);
             return `
               <div class="task-row" data-task-id="${t.id}" style="padding: 10px; background: var(--color-bg); border-radius: 6px; cursor: pointer;">
                 <div style="display: flex; align-items: center; gap: 10px;">
                   <div style="width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid ${t.status === 'completed' ? 'var(--color-bronze)' : 'var(--color-border-strong)'}; ${t.status === 'completed' ? 'background: var(--color-bronze)' : ''};"></div>
                   <div style="flex: 1;">
                     <span style="font-size: 0.875rem; color: ${t.status === 'completed' ? 'var(--color-text-faint)' : 'var(--color-text)'}; ${t.status === 'completed' ? 'text-decoration: line-through' : ''};">${t.title}</span>
-                    <span style="font-size: 0.75rem; color: var(--color-text-muted); margin-left: 8px;">${assignee ? assignee.name : 'Chưa giao'}</span>
+                    <span style="font-size: 0.75rem; color: var(--color-text-muted); margin-left: 8px;">${taskAssignees.length ? taskAssignees.map(a => a.name).join(', ') : 'Chưa giao'}</span>
                   </div>
                 </div>
               </div>
@@ -954,7 +1023,7 @@
     }
 
     taskListEl.innerHTML = tasks.slice(0, 8).map(task => {
-      var assignee = TaskManager.getMember(task.assigneeId);
+      var taskAssignees = TaskManager.getTaskAssignees(task);
       var project = task.projectId ? TaskManager.getProject(task.projectId) : null;
       var priorityClass = task.priority === 'high' ? 'priority-high' :
                          task.priority === 'medium' ? 'priority-medium' : 'priority-low';
@@ -976,7 +1045,7 @@
             <p>${project ? project.name + ' · ' : ''}${deadline}</p>
           </div>
           <span class="task-priority-badge ${priorityClass}">${priorityLabel}</span>
-          ${assignee ? `<span class="avatar-xs-tm" style="background:${assignee.color}">${assignee.avatar}</span>` : ''}
+          ${taskAssignees.map(a => `<span class="avatar-xs-tm" style="background:${a.color}" title="${a.name}">${a.avatar}</span>`).join('')}
         </li>
       `;
     }).join('');
@@ -1201,7 +1270,7 @@
   }
 
   function buildKanbanCard(task) {
-    const assignee = TaskManager.getMember(task.assigneeId);
+    const taskAssignees = TaskManager.getTaskAssignees(task);
     const project = task.projectId ? TaskManager.getProject(task.projectId) : null;
     const priorityClass = task.priority === 'high' ? 'priority-high' :
                          task.priority === 'medium' ? 'priority-medium' : 'priority-low';
@@ -1216,7 +1285,7 @@
       <div class="kanban-card" data-task-id="${task.id}" draggable="true">
         <div class="kanban-card-header">
           <span class="task-priority-badge ${priorityClass}">${priorityLabel}</span>
-          ${assignee ? `<span class="avatar-xs-tm" style="background:${assignee.color}" title="${assignee.name}">${assignee.avatar}</span>` : ''}
+          ${taskAssignees.map(a => `<span class="avatar-xs-tm" style="background:${a.color}" title="${a.name}">${a.avatar}</span>`).join('')}
         </div>
         <div class="kanban-card-title">${task.title}</div>
         ${project ? `<div class="kanban-card-project">📁 ${project.name}</div>` : ''}
@@ -1293,7 +1362,7 @@
     }
 
     taskListEl.innerHTML = tasks.map(task => {
-      const assignee = TaskManager.getMember(task.assigneeId);
+      const taskAssignees = TaskManager.getTaskAssignees(task);
       const project = task.projectId ? TaskManager.getProject(task.projectId) : null;
 
       const priorityClass = task.priority === 'high' ? 'priority-high' :
@@ -1317,7 +1386,7 @@
             <p>${project ? project.name + ' · ' : ''}${deadline}</p>
           </div>
           <span class="task-priority-badge ${priorityClass}">${priorityLabel}</span>
-          ${assignee ? `<span class="avatar-xs-tm" style="background:${assignee.color}">${assignee.avatar}</span>` : ''}
+          ${taskAssignees.map(a => `<span class="avatar-xs-tm" style="background:${a.color}" title="${a.name}">${a.avatar}</span>`).join('')}
         </li>
       `;
     }).join('');
@@ -1427,8 +1496,8 @@
 
     const currentUser = TaskManager.getCurrentUser();
     const allTasks = TaskManager.getTasks();
-    const myTasks = allTasks.filter(t => t.assigneeId === currentUser.id);
-    const allMyTasks = allTasks.filter(t => t.assigneeId === currentUser.id || t.createdBy === currentUser.id);
+    const myTasks = allTasks.filter(t => taskHasAssignee(t, currentUser.id));
+    const allMyTasks = allTasks.filter(t => taskHasAssignee(t, currentUser.id) || t.createdBy === currentUser.id);
 
     const pending = allMyTasks.filter(t => t.status === 'pending').length;
     const inProgress = allMyTasks.filter(t => t.status === 'in-progress').length;

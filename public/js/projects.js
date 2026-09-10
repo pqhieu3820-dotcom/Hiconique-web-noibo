@@ -28,6 +28,14 @@
   function getTasks() { return (typeof TaskManager !== 'undefined' && TaskManager.getTasks) ? TaskManager.getTasks() : []; }
   function getProjectById(id) { return (typeof TaskManager !== 'undefined' && TaskManager.getProject) ? TaskManager.getProject(id) : null; }
   function getMemberById(id) { return (typeof TaskManager !== 'undefined' && TaskManager.getMember) ? TaskManager.getMember(id) : null; }
+  function getAssigneesForTask(task) { return (typeof TaskManager !== 'undefined' && TaskManager.getTaskAssignees) ? TaskManager.getTaskAssignees(task) : []; }
+  // Chuỗi avatar chip cho N người phụ trách — dùng chung Kanban/List/Timeline.
+  function assigneeChipsHtml(assignees, avatarClass) {
+    if (!assignees.length) return '';
+    return assignees.map(function (a) {
+      return '<span class="' + avatarClass + '" style="background:' + (a.color || '#6B7280') + '" title="' + escapeHtml(a.name || '') + '">' + escapeHtml(a.avatar || (a.name || '?').substring(0, 2).toUpperCase()) + '</span>';
+    }).join('');
+  }
 
   // Phân loại theo HẠNG MỤC (category) — trước 2026-09-09 hạng mục từng được
   // lưu trong field `type`; giờ `type` = loại công trình thật (Nhà phố, Biệt
@@ -159,10 +167,10 @@
 
     var f = state.quickFilters;
     if (f.mine && currentUser) {
-      tasks = tasks.filter(function (t) { return t.assigneeId === currentUser.id; });
+      tasks = tasks.filter(function (t) { return Array.isArray(t.assigneeIds) && t.assigneeIds.indexOf(currentUser.id) !== -1; });
     }
     if (state.memberFilter) {
-      tasks = tasks.filter(function (t) { return t.assigneeId === state.memberFilter; });
+      tasks = tasks.filter(function (t) { return Array.isArray(t.assigneeIds) && t.assigneeIds.indexOf(state.memberFilter) !== -1; });
     }
     if (f.dueToday) tasks = tasks.filter(isDueToday);
     if (f.overdue) tasks = tasks.filter(isOverdue);
@@ -222,7 +230,7 @@
         '<span>Tất cả</span>' +
       '</div>' +
       members.map(function (m) {
-        var myTaskCount = tasks.filter(function (t) { return t.assigneeId === m.id && t.status !== 'completed'; }).length;
+        var myTaskCount = tasks.filter(function (t) { return Array.isArray(t.assigneeIds) && t.assigneeIds.indexOf(m.id) !== -1 && t.status !== 'completed'; }).length;
         var isActive = state.memberFilter === m.id;
         return '<div class="member-chip' + (isActive ? ' active' : '') + '" data-member-filter="' + escapeHtml(m.id) + '" title="' + escapeHtml(m.email || '') + '">' +
           '<span class="avatar-sm" style="background:' + (m.color || '#6B7280') + '">' +
@@ -265,7 +273,7 @@
       counts[task.status] = (counts[task.status] || 0) + 1;
 
       var project = getProjectById(task.projectId);
-      var assignee = getMemberById(task.assigneeId);
+      var assignees = getAssigneesForTask(task);
       var priorityClass = 'priority-' + (task.priority || 'medium');
       var priorityText = priorityLabel(task.priority);
 
@@ -299,7 +307,7 @@
         +   (progress > 0 ? '<div class="task-progress-bar"><div class="progress-track"><span style="width:' + progress + '%"></span></div><span class="progress-percent">' + progress + '%</span></div>' : '')
         +   tagsHtml
         +   '<div class="task-meta">'
-        +     (assignee ? '<span class="task-assignee"><span class="avatar-xs" style="background:' + (assignee.color || '#6B7280') + '">' + escapeHtml(assignee.avatar || (assignee.name || '?').substring(0, 2).toUpperCase()) + '</span><span class="assignee-name">' + escapeHtml(assignee.name || '') + '</span></span>' : '')
+        +     (assignees.length ? '<span class="task-assignee task-assignee-stack">' + assigneeChipsHtml(assignees, 'avatar-xs') + (assignees.length === 1 ? '<span class="assignee-name">' + escapeHtml(assignees[0].name || '') + '</span>' : '') + '</span>' : '')
         +     '<span class="task-date ' + dueClass + '">' + dueText + '</span>'
         +   '</div>'
         + '</div>';
@@ -327,7 +335,7 @@
 
     body.innerHTML = tasks.map(function (task) {
       var project = getProjectById(task.projectId);
-      var assignee = getMemberById(task.assigneeId);
+      var assignees = getAssigneesForTask(task);
       var checked = task.status === 'completed' ? 'checked' : '';
       var titleStyle = task.status === 'completed' ? 'text-decoration:line-through' : '';
       var dueClass = isOverdue(task) ? 'due-soon' : '';
@@ -341,7 +349,7 @@
         +     '</label>'
         +   '</td>'
         +   '<td>' + (project ? '<span class="project-tag" style="--project-color:' + (project.color || '#B08D57') + '">' + escapeHtml(project.name) + '</span>' : '—') + '</td>'
-        +   '<td>' + (assignee ? '<span class="avatar-xs" style="background:' + assignee.color + '">' + escapeHtml(assignee.avatar) + '</span> ' + escapeHtml(assignee.name) : '—') + '</td>'
+        +   '<td>' + (assignees.length ? assigneeChipsHtml(assignees, 'avatar-xs') + (assignees.length === 1 ? ' ' + escapeHtml(assignees[0].name) : '') : '—') + '</td>'
         +   '<td class="' + dueClass + '">' + fmtDate(task.deadline) + '</td>'
         +   '<td><span class="status-badge ' + statusBadgeClass(task.status) + '">' + statusLabel(task.status) + '</span></td>'
         +   '<td><span class="priority-badge priority-' + (task.priority || 'medium') + '">' + priorityLabel(task.priority) + '</span></td>'
@@ -404,7 +412,7 @@
 
         groups[dateStr].forEach(function (task) {
           var project = getProjectById(task.projectId);
-          var assignee = getMemberById(task.assigneeId);
+          var assignees = getAssigneesForTask(task);
           var color = '#B08D57';
           if (task.priority === 'high') color = '#DC2626';
           else if (task.priority === 'low') color = '#059669';
@@ -415,7 +423,7 @@
           html += '<span class="event-title">' + escapeHtml(task.title) + '</span>';
           html += '<div class="event-meta">';
           if (project) html += '<span class="event-project">' + escapeHtml(project.name) + '</span>';
-          if (assignee) html += '<span class="avatar-xxs" style="background:' + assignee.color + '">' + escapeHtml(assignee.avatar) + '</span>';
+          html += assigneeChipsHtml(assignees, 'avatar-xxs');
           html += '</div>';
           html += '</div>';
         });
@@ -634,6 +642,7 @@
     if (titleEl) titleEl.textContent = 'Tạo việc mới';
     if (taskForm) taskForm.reset();
     delete taskForm.dataset.editingId;
+    taskAssigneeSelectedIds = [];
     populateTaskFormOptions();
     if (status) {
       var statusSel = document.getElementById('task-status');
@@ -651,7 +660,7 @@
 
     document.getElementById('task-name').value = task.title || '';
     document.getElementById('task-project').value = task.projectId || '';
-    document.getElementById('task-assignee').value = task.assigneeId || '';
+    setSelectedAssignees(Array.isArray(task.assigneeIds) ? task.assigneeIds : []);
     document.getElementById('task-priority').value = task.priority || 'medium';
     document.getElementById('task-status').value = task.status || 'pending';
     document.getElementById('task-start').value = task.startDate ? task.startDate.substring(0, 10) : '';
@@ -662,9 +671,10 @@
     if (taskModal) taskModal.hidden = false;
   }
 
+  var taskAssigneeSelectedIds = [];
+
   function populateTaskFormOptions() {
     var projectSel = document.getElementById('task-project');
-    var assigneeSel = document.getElementById('task-assignee');
 
     if (projectSel) {
       var projects = getProjects();
@@ -673,13 +683,71 @@
           return '<option value="' + escapeHtml(p.id) + '">' + escapeHtml(p.name) + '</option>';
         }).join('');
     }
-    if (assigneeSel) {
-      var members = getMembers();
-      assigneeSel.innerHTML = '<option value="">Chọn người...</option>' +
-        members.map(function (m) {
-          return '<option value="' + escapeHtml(m.id) + '">' + escapeHtml(m.name) + '</option>';
-        }).join('');
+    renderTaskAssigneeDropdown();
+  }
+
+  function renderTaskAssigneeDropdown() {
+    var dd = document.getElementById('task-assignee-dd');
+    if (!dd) return;
+    var panel = dd.querySelector('.assignee-dd-panel');
+    var trigger = dd.querySelector('.assignee-dd-trigger');
+    var triggerText = dd.querySelector('.assignee-dd-trigger-text');
+    var members = getMembers();
+
+    panel.innerHTML = members.map(function (m) {
+      var checked = taskAssigneeSelectedIds.indexOf(m.id) !== -1;
+      return '<div class="assignee-dd-item' + (checked ? ' selected' : '') + '" data-member-id="' + escapeHtml(m.id) + '">'
+        + '<svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>'
+        + '<span class="avatar-xs" style="background:' + (m.color || '#6B7280') + '">' + escapeHtml(m.avatar || (m.name || '?').substring(0, 2).toUpperCase()) + '</span>'
+        + '<span>' + escapeHtml(m.name || '') + '</span>'
+        + '</div>';
+    }).join('');
+
+    function updateTriggerText() {
+      var names = members.filter(function (m) { return taskAssigneeSelectedIds.indexOf(m.id) !== -1; }).map(function (m) { return m.name; });
+      if (names.length) {
+        triggerText.textContent = names.join(', ');
+        triggerText.classList.remove('placeholder');
+      } else {
+        triggerText.textContent = 'Chọn người...';
+        triggerText.classList.add('placeholder');
+      }
     }
+    updateTriggerText();
+
+    panel.querySelectorAll('.assignee-dd-item').forEach(function (item) {
+      item.addEventListener('click', function () {
+        var id = item.dataset.memberId;
+        var idx = taskAssigneeSelectedIds.indexOf(id);
+        if (idx === -1) taskAssigneeSelectedIds.push(id); else taskAssigneeSelectedIds.splice(idx, 1);
+        item.classList.toggle('selected', idx === -1);
+        updateTriggerText();
+      });
+    });
+
+    if (!trigger.dataset.bound) {
+      trigger.dataset.bound = '1';
+      trigger.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var isOpen = dd.classList.toggle('open');
+        panel.hidden = !isOpen;
+      });
+      document.addEventListener('click', function (e) {
+        if (!dd.contains(e.target)) {
+          dd.classList.remove('open');
+          panel.hidden = true;
+        }
+      });
+    }
+  }
+
+  function setSelectedAssignees(ids) {
+    taskAssigneeSelectedIds = ids.slice();
+    renderTaskAssigneeDropdown();
+  }
+
+  function getSelectedAssignees() {
+    return taskAssigneeSelectedIds.slice();
   }
 
   function bindTaskModal() {
@@ -706,7 +774,7 @@
         var data = {
           title: name,
           projectId: document.getElementById('task-project').value,
-          assigneeId: document.getElementById('task-assignee').value,
+          assigneeIds: getSelectedAssignees(),
           priority: document.getElementById('task-priority').value,
           status: document.getElementById('task-status').value,
           startDate: document.getElementById('task-start').value || '',
@@ -751,7 +819,7 @@
     currentDetailTaskId = taskId;
 
     var project = getProjectById(task.projectId);
-    var assignee = getMemberById(task.assigneeId);
+    var assignees = getAssigneesForTask(task);
     var todayProgress = (typeof TaskManager !== 'undefined' && TaskManager.getTodayProgress) ? TaskManager.getTodayProgress(taskId) : null;
     if (!todayProgress) todayProgress = { progress: task.progress || 0, note: '', done: false };
     var dailyTasks = task.dailyTasks || [];
@@ -773,7 +841,7 @@
     var bodyHtml = ''
       + '<div class="detail-grid">'
       +   '<div class="detail-field"><label>Dự án</label><p>' + (project ? escapeHtml(project.name) : 'Chưa có') + '</p></div>'
-      +   '<div class="detail-field"><label>Người phụ trách</label><p>' + (assignee ? escapeHtml(assignee.name) : 'Chưa giao') + '</p></div>'
+      +   '<div class="detail-field"><label>Người phụ trách</label><p>' + (assignees.length ? escapeHtml(assignees.map(function (a) { return a.name; }).join(', ')) : 'Chưa giao') + '</p></div>'
       +   '<div class="detail-field"><label>Ngày bắt đầu</label><p>' + (task.startDate ? fmtDate(task.startDate) : '—') + '</p></div>'
       +   '<div class="detail-field"><label>Deadline</label><p>' + (task.deadline ? fmtDate(task.deadline) : '—') + '</p></div>'
       + '</div>'

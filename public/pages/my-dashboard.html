@@ -210,7 +210,7 @@
       document.getElementById('dashTitle').innerHTML = 'Dashboard <span class="subpage-title-italic">· ' + user.name + '</span>';
 
       var allTasks = TaskManager.getTasks();
-      var myTasks = allTasks.filter(function(t) { return t.assigneeId === user.id; });
+      var myTasks = allTasks.filter(function(t) { return Array.isArray(t.assigneeIds) && t.assigneeIds.indexOf(user.id) !== -1; });
       var myProjects = TaskManager.getProjects().filter(function(p) {
         return p.members && p.members.indexOf(user.id) !== -1;
       });

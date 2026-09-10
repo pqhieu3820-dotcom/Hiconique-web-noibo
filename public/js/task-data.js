@@ -94,13 +94,13 @@ var TaskManager = (function() {
 
   // Default tasks
   var DEFAULT_TASKS = [
-    { id: 'task_001', title: 'Thiết kế phòng khách Dự án A', description: 'Hoàn thiện bản vẽ thiết kế nội thất phòng khách', projectId: 'prj_A', assigneeId: 'MGR1', priority: 'high', status: 'in-progress', deadline: '2026-08-25T17:00', createdBy: 'CEO', createdAt: '2026-08-20', progress: 50, dailyTasks: [
+    { id: 'task_001', title: 'Thiết kế phòng khách Dự án A', description: 'Hoàn thiện bản vẽ thiết kế nội thất phòng khách', projectId: 'prj_A', assigneeIds: ['MGR1'], priority: 'high', status: 'in-progress', deadline: '2026-08-25T17:00', createdBy: 'CEO', createdAt: '2026-08-20', progress: 50, dailyTasks: [
       { date: '2026-08-21', progress: 30, note: 'Đã hoàn thành bản vẽ 3D', done: true },
       { date: '2026-08-22', progress: 20, note: 'Đang chỉnh sửa theo yêu cầu', done: false }
     ]},
-    { id: 'task_002', title: 'Giám sát thi công Dự án B', description: 'Theo dõi tiến độ thi công tại công trường', projectId: 'prj_B', assigneeId: 'MGR2', priority: 'high', status: 'pending', deadline: '2026-08-30T08:00', createdBy: 'CEO', createdAt: '2026-08-15', progress: 0, dailyTasks: [] },
-    { id: 'task_003', title: 'Thiết kế kiến trúc Dự án C', description: 'Lập phương án thiết kế kiến trúc sơ bộ', projectId: 'prj_C', assigneeId: 'MEM1', priority: 'medium', status: 'pending', deadline: '2026-09-01T17:00', createdBy: 'MGR1', createdAt: '2026-08-18', progress: 0, dailyTasks: [] },
-    { id: 'task_004', title: 'Lập dự toán công trình', description: 'Tính toán chi phí vật liệu và nhân công', projectId: 'prj_B', assigneeId: 'MEM2', priority: 'medium', status: 'pending', deadline: '2026-08-28T17:00', createdBy: 'MGR2', createdAt: '2026-08-19', progress: 0, dailyTasks: [] }
+    { id: 'task_002', title: 'Giám sát thi công Dự án B', description: 'Theo dõi tiến độ thi công tại công trường', projectId: 'prj_B', assigneeIds: ['MGR2'], priority: 'high', status: 'pending', deadline: '2026-08-30T08:00', createdBy: 'CEO', createdAt: '2026-08-15', progress: 0, dailyTasks: [] },
+    { id: 'task_003', title: 'Thiết kế kiến trúc Dự án C', description: 'Lập phương án thiết kế kiến trúc sơ bộ', projectId: 'prj_C', assigneeIds: ['MEM1'], priority: 'medium', status: 'pending', deadline: '2026-09-01T17:00', createdBy: 'MGR1', createdAt: '2026-08-18', progress: 0, dailyTasks: [] },
+    { id: 'task_004', title: 'Lập dự toán công trình', description: 'Tính toán chi phí vật liệu và nhân công', projectId: 'prj_B', assigneeIds: ['MEM2'], priority: 'medium', status: 'pending', deadline: '2026-08-28T17:00', createdBy: 'MGR2', createdAt: '2026-08-19', progress: 0, dailyTasks: [] }
   ];
 
   // Default proposals
@@ -546,7 +546,7 @@ var TaskManager = (function() {
       tasks = tasks.filter(function(t) { return t.priority === filters.priority; });
     }
     if (filters.assigneeId) {
-      tasks = tasks.filter(function(t) { return t.assigneeId === filters.assigneeId; });
+      tasks = tasks.filter(function(t) { return Array.isArray(t.assigneeIds) && t.assigneeIds.indexOf(filters.assigneeId) !== -1; });
     }
     if (filters.projectId) {
       tasks = tasks.filter(function(t) { return t.projectId === filters.projectId; });
@@ -675,6 +675,13 @@ var TaskManager = (function() {
 
   function getMember(id) {
     return getById(STORAGE_KEYS.members, id);
+  }
+
+  // Trả về danh sách member object cho 1 task có nhiều người phụ trách
+  // (task.assigneeIds là mảng id — tolerate task cũ/hỏng chưa có mảng).
+  function getTaskAssignees(task) {
+    var ids = (task && Array.isArray(task.assigneeIds)) ? task.assigneeIds : [];
+    return ids.map(getMember).filter(Boolean);
   }
 
   // Self-service profile edit (trang Thông tin cá nhân) — chỉ cho phép sửa
@@ -916,7 +923,7 @@ var TaskManager = (function() {
 
     // Task deadlines assigned to this user
     getAll(STORAGE_KEYS.tasks).filter(function(t) {
-      return t.assigneeId === user.id && t.status !== 'completed' && t.deadline;
+      return Array.isArray(t.assigneeIds) && t.assigneeIds.indexOf(user.id) !== -1 && t.status !== 'completed' && t.deadline;
     }).forEach(function(t) {
       var overdue = new Date(t.deadline) < new Date();
       var dueToday = (t.deadline.split('T')[0] === today);
@@ -1505,6 +1512,7 @@ var TaskManager = (function() {
     // Members
     getMembers: getMembers,
     getMember: getMember,
+    getTaskAssignees: getTaskAssignees,
     updateMember: updateMember,
     getMemberDeviceIds: getMemberDeviceIds,
     registerMemberDevice: registerMemberDevice,

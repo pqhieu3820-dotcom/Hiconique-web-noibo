@@ -152,7 +152,10 @@ var HiconiqueGantt = (function () {
 
       section.tasks.forEach(function (task) {
         var range = getTaskRange(task);
-        var member = members.filter(function (m) { return m.id === task.assigneeId; })[0];
+        var assigneeIds = Array.isArray(task.assigneeIds) ? task.assigneeIds : [];
+        var taskMembers = assigneeIds.map(function (id) { return members.filter(function (m) { return m.id === id; })[0]; }).filter(Boolean);
+        var member = taskMembers[0];
+        var assigneeNames = taskMembers.length ? taskMembers.map(function (m) { return m.name; }).join(', ') : '—';
         var status = getStatusInfo(task);
         var progress = task.progress || 0;
         var left = pct(axis, range.start);
@@ -164,7 +167,7 @@ var HiconiqueGantt = (function () {
         html += '<tr class="gantt-task-row">' +
           '<td><div class="gantt-task-info">' +
             '<div class="gantt-task-top">' +
-              '<div class="gantt-task-avatar" style="background:' + (member ? member.color : color) + '">' + escapeHtml(member ? member.avatar : '?') + '</div>' +
+              '<div class="gantt-task-avatar" style="background:' + (member ? member.color : color) + '" title="' + escapeHtml(assigneeNames) + '">' + escapeHtml(member ? member.avatar : '?') + (taskMembers.length > 1 ? '<span class="gantt-task-avatar-more">+' + (taskMembers.length - 1) + '</span>' : '') + '</div>' +
               '<div class="gantt-task-title">' + escapeHtml(task.title || '') + '</div>' +
             '</div>' +
             '<div class="gantt-task-sub">' +
@@ -183,7 +186,7 @@ var HiconiqueGantt = (function () {
               }).join('') +
               (todayPct !== null ? '<div class="gantt-today-line" style="left:' + todayPct + '%"></div>' : '') +
               '<div class="gantt-bar-item" style="left:' + left + '%;width:' + width + '%;background:linear-gradient(135deg,' + color + ',' + darken(color, 40) + ')" ' +
-                'data-title="' + escapeHtml(task.title || '') + '" data-assignee="' + escapeHtml(member ? member.name : '—') + '" ' +
+                'data-title="' + escapeHtml(task.title || '') + '" data-assignee="' + escapeHtml(assigneeNames) + '" ' +
                 'data-progress="' + progress + '" data-start="' + fmtDateShort(range.start) + '" data-end="' + fmtDateShort(range.end) + '" data-project="' + escapeHtml(section.project.name || '') + '">' +
                 (width > 8 ? progress + '%' : '') +
               '</div>' +
@@ -371,7 +374,8 @@ var HiconiqueGantt = (function () {
       section.tasks.forEach(function (task) {
         var range = getTaskRange(task);
         var members = (typeof TaskManager !== 'undefined' ? TaskManager.getMembers() : []) || [];
-        var member = members.filter(function (m) { return m.id === task.assigneeId; })[0];
+        var xlsAssigneeIds = Array.isArray(task.assigneeIds) ? task.assigneeIds : [];
+        var xlsTaskMembers = xlsAssigneeIds.map(function (id) { return members.filter(function (m) { return m.id === id; })[0]; }).filter(Boolean);
         var status = getStatusInfo(task);
         // Số ngày = khoảng cách ngày (không +1) để công thức Kết thúc = Bắt đầu + Số ngày cho đúng ngày kết thúc thật
         var days = Math.max(0, Math.round((range.end - range.start) / MS_PER_DAY));
@@ -384,7 +388,7 @@ var HiconiqueGantt = (function () {
         cName.value = task.title || '';
         // Phụ trách
         var cAssignee = ws.getCell(r, 3);
-        cAssignee.value = member ? member.name : '—';
+        cAssignee.value = xlsTaskMembers.length ? xlsTaskMembers.map(function (m) { return m.name; }).join(', ') : '—';
         // Bắt đầu — ngày thật (nguồn của công thức Kết thúc)
         var cStart = ws.getCell(r, 4);
         cStart.value = range.start;

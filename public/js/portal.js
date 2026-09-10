@@ -77,8 +77,8 @@
     // Active = có task đang in-progress HOẶC trong giờ làm việc ngày thường
     var activeIds = {};
     tasks.forEach(function (t) {
-      if (t.status === 'in-progress' && t.assigneeId) {
-        activeIds[t.assigneeId] = true;
+      if (t.status === 'in-progress' && Array.isArray(t.assigneeIds)) {
+        t.assigneeIds.forEach(function (id) { activeIds[id] = true; });
       }
     });
     if (isWorkHour && isWeekday) {
@@ -514,7 +514,7 @@
     var user = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
 
     // Show user's tasks, fall back to all tasks if none assigned
-    var mine = user ? tasks.filter(function (t) { return t.assigneeId === user.id; }) : tasks;
+    var mine = user ? tasks.filter(function (t) { return Array.isArray(t.assigneeIds) && t.assigneeIds.indexOf(user.id) !== -1; }) : tasks;
     var displayTasks = mine.length > 0 ? mine : tasks;
 
     var inProgress = displayTasks.filter(function (t) { return t.status === 'in-progress'; }).length;
@@ -578,7 +578,8 @@
     list.innerHTML = filtered.map(function (task) {
       var isDone = task.status === 'completed';
       var project = (typeof TaskManager !== 'undefined' && TaskManager.getProject) ? TaskManager.getProject(task.projectId) : null;
-      var assignee = (typeof TaskManager !== 'undefined' && TaskManager.getMember) ? TaskManager.getMember(task.assigneeId) : null;
+      var taskAssignees = (typeof TaskManager !== 'undefined' && TaskManager.getTaskAssignees) ? TaskManager.getTaskAssignees(task) : [];
+      var assignee = taskAssignees[0] || null;
       var dueClass = '';
       var dueIcon = '📅';
       var dueText = '';
@@ -589,7 +590,7 @@
       }
       var assigneeInitials = assignee ? escapeHtml(assignee.avatar || (assignee.name || '?').substring(0, 2).toUpperCase()) : '';
       var assigneeColor = assignee ? (assignee.color || '#6B7280') : '#6B7280';
-      var assigneeName = assignee ? escapeHtml(assignee.name || '') : '';
+      var assigneeName = taskAssignees.length ? escapeHtml(taskAssignees.map(function (a) { return a.name; }).join(', ')) : '';
 
       return ''
         + '<li class="priority-' + (task.priority || 'medium') + ' ' + (isDone ? 'is-done' : '') + '">'

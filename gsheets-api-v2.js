@@ -78,7 +78,7 @@ const FIELD_MAP = {
   ],
   tasks: [
     ['Mã CV', 'id'], ['Tên công việc', 'title'], ['Mô tả', 'description'], ['Mã dự án', 'projectId'],
-    ['Mã người phụ trách', 'assigneeId'], ['Mức độ ưu tiên', 'priority'], ['Trạng thái', 'status'],
+    ['Mã người phụ trách', 'assigneeIds'], ['Mức độ ưu tiên', 'priority'], ['Trạng thái', 'status'],
     ['Ngày bắt đầu', 'startDate'], ['Ngày tới hạn deadline', 'deadline'], ['Người tạo', 'createdBy'],
     ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt'], ['Tiến độ', 'progress'],
     ['Update tiến độ việc hàng ngày', 'dailyTasks']
@@ -712,6 +712,21 @@ function getAllData(ss, sheetName) {
       if (typeof val === 'string' && val.startsWith('[')) {
         try { val = JSON.parse(val); } catch (e) { /* keep raw string */ }
       }
+      // "Mã người phụ trách" (Công việc) dùng dropdown "Cho phép có nhiều lựa
+      // chọn" gốc của Sheets — tính năng này lưu các giá trị đã chọn thành
+      // CHUỖI phân tách bởi dấu phẩy trong ô (KHÔNG phải mảng JSON như các cột
+      // multi-value khác), vì đây là hành vi Sheets tự viết khi CEO/manager
+      // chọn trực tiếp trên Sheet UI (đã kiểm chứng thực tế 2026-09-10).
+      // Luôn trả về mảng cho client dù ô đang trống/có 1/có nhiều người.
+      if (key === 'assigneeIds') {
+        if (Array.isArray(val)) {
+          // đã được JSON.parse ở trên (ô cũ trước khi đổi sang multi-select)
+        } else if (typeof val === 'string' && val.trim()) {
+          val = val.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+        } else {
+          val = [];
+        }
+      }
       if (key === 'phone' && typeof val === 'number') {
         // Legacy rows written before forceTextIfDateLike covered "phone":
         // Sheets already stored it as a Number, so the leading "0" of a VN
@@ -788,7 +803,7 @@ function addDataBatch(ss, sheetName, dataList) {
     return headers.map(function (h) {
       const enKey = viToEnHeader(sheetName, h);
       let val = data[enKey];
-      if (Array.isArray(val)) return JSON.stringify(val);
+      if (Array.isArray(val)) return stringifyArrayForCell(enKey, val);
       if (typeof val === 'string') val = enToViValue(sheetName, enKey, val);
       return forceTextIfDateLike(val !== undefined && val !== null ? val : '', enKey);
     });
@@ -797,6 +812,16 @@ function addDataBatch(ss, sheetName, dataList) {
     sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, headers.length).setValues(rows);
   }
   return dataList;
+}
+
+// Cột "Mã người phụ trách" (assigneeIds) dùng dropdown "Cho phép có nhiều lựa
+// chọn" gốc của Sheets, tính năng này tự lưu dạng CHUỖI phân tách bởi dấu
+// phẩy — ghi khớp đúng định dạng đó để CEO/manager vẫn sửa được trực tiếp
+// trên Sheet UI mà không phá dropdown. Các cột mảng khác (dailyTasks, items...)
+// vẫn dùng JSON như cũ.
+function stringifyArrayForCell(enKey, val) {
+  if (enKey === 'assigneeIds') return val.join(', ');
+  return JSON.stringify(val);
 }
 
 function addData(ss, sheetName, data) {
@@ -817,7 +842,7 @@ function addData(ss, sheetName, data) {
   const row = headers.map(function (h) {
     const enKey = viToEnHeader(sheetName, h);
     let val = data[enKey];
-    if (Array.isArray(val)) return JSON.stringify(val);
+    if (Array.isArray(val)) return stringifyArrayForCell(enKey, val);
     if (typeof val === 'string') val = enToViValue(sheetName, enKey, val);
     return forceTextIfDateLike(val !== undefined && val !== null ? val : '', enKey);
   });
@@ -839,7 +864,7 @@ function updateData(ss, sheetName, id, updates) {
     const enKey = viToEnHeader(sheetName, h);
     if (updates[enKey] !== undefined) {
       let val = updates[enKey];
-      if (Array.isArray(val)) val = JSON.stringify(val);
+      if (Array.isArray(val)) val = stringifyArrayForCell(enKey, val);
       else if (typeof val === 'string') val = enToViValue(sheetName, enKey, val);
       sheet.getRange(rowNum, i + 1).setValue(forceTextIfDateLike(val, enKey) || '');
     }
@@ -883,7 +908,7 @@ function onEdit(e) {
 
 function cascadeMemberIdChange(oldId, newId) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  replaceIdInColumn(ss, SHEETS.tasks, 'assigneeId', oldId, newId);
+  replaceIdInListColumn(ss, SHEETS.tasks, 'assigneeIds', oldId, newId);
   replaceIdInColumn(ss, SHEETS.tasks, 'createdBy', oldId, newId);
   replaceIdInColumn(ss, SHEETS.proposals, 'requesterId', oldId, newId);
   replaceIdInColumn(ss, SHEETS.proposals, 'reviewerId', oldId, newId);
@@ -1030,4 +1055,42 @@ function replaceIdInListColumn(ss, sheetName, headerNameEn, oldId, newId) {
     }
   }
   if (changed) range.setValues(values);
+}
+
+// MIGRATION 1 LẦN (2026-09-10, bản 2 — đổi từ mảng JSON sang CHUỖI PHẨY) —
+// cột "Mã người phụ trách" (Công việc) ban đầu được chuyển sang mảng JSON
+// (`["id"]`) để hỗ trợ nhiều người phụ trách, nhưng sau đó phát hiện Sheets
+// dropdown "Cho phép có nhiều lựa chọn" (bật trực tiếp trên Sheet UI) lại tự
+// lưu dạng CHUỖI PHẨY ("id1, id2"), không phải JSON — nên đổi hẳn sang đúng
+// định dạng đó để CEO/manager sửa trực tiếp trên Sheet không phá dropdown.
+// Chạy TAY từ trình chỉnh sửa Apps Script. Idempotent: ô không còn ký tự "["
+// ở đầu thì bỏ qua, chạy lại nhiều lần không hỏng dữ liệu.
+function migrateTaskAssigneeToCommaFormat() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = findSheet(ss, SHEETS.tasks);
+  if (!sheet) return 'Không tìm thấy sheet Công việc';
+  const headers = getHeaders(sheet);
+  const colIdx = headers.indexOf(enToViHeader(SHEETS.tasks, 'assigneeIds'));
+  if (colIdx === -1) return 'Không tìm thấy cột Mã người phụ trách';
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return 'Sheet trống, không có gì để chuyển';
+  const range = sheet.getRange(2, colIdx + 1, lastRow - 1, 1);
+  const values = range.getValues();
+  let changed = 0;
+  for (let i = 0; i < values.length; i++) {
+    const raw = values[i][0];
+    if (!raw) continue;
+    const str = String(raw).trim();
+    if (str.charAt(0) !== '[') continue; // đã là chuỗi phẩy (hoặc mã đơn) rồi
+    try {
+      const arr = JSON.parse(str);
+      if (Array.isArray(arr)) {
+        values[i][0] = arr.join(', ');
+        changed++;
+      }
+    } catch (e) { /* không phải JSON hợp lệ, bỏ qua */ }
+  }
+  if (changed) range.setValues(values);
+  Logger.log('Đã chuyển ' + changed + ' dòng sang chuỗi phẩy');
+  return 'Đã chuyển ' + changed + ' dòng sang chuỗi phẩy';
 }
