@@ -723,13 +723,14 @@ function getAllData(ss, sheetName) {
       if (typeof val === 'string' && val.startsWith('[')) {
         try { val = JSON.parse(val); } catch (e) { /* keep raw string */ }
       }
-      // "Mã người phụ trách" (Công việc) dùng dropdown "Cho phép có nhiều lựa
-      // chọn" gốc của Sheets — tính năng này lưu các giá trị đã chọn thành
-      // CHUỖI phân tách bởi dấu phẩy trong ô (KHÔNG phải mảng JSON như các cột
-      // multi-value khác), vì đây là hành vi Sheets tự viết khi CEO/manager
-      // chọn trực tiếp trên Sheet UI (đã kiểm chứng thực tế 2026-09-10).
+      // "Mã người phụ trách" (Công việc) và "Thành viên tham gia" (Dự án) đều
+      // dùng dropdown "Cho phép có nhiều lựa chọn" gốc của Sheets — tính năng
+      // này lưu các giá trị đã chọn thành CHUỖI phân tách bởi dấu phẩy trong
+      // ô (KHÔNG phải mảng JSON như các cột multi-value khác), vì đây là hành
+      // vi Sheets tự viết khi CEO/manager chọn trực tiếp trên Sheet UI (đã
+      // kiểm chứng thực tế 2026-09-10, áp dụng thêm cho members cùng ngày).
       // Luôn trả về mảng cho client dù ô đang trống/có 1/có nhiều người.
-      if (key === 'assigneeIds') {
+      if (COMMA_LIST_FIELDS[key]) {
         if (Array.isArray(val)) {
           // đã được JSON.parse ở trên (ô cũ trước khi đổi sang multi-select)
         } else if (typeof val === 'string' && val.trim()) {
@@ -788,6 +789,28 @@ function forceTextIfDateLike(val, enKey) {
   return val;
 }
 
+// 2026-09-10: ghi các field NGÀY/THỜI GIAN (không phải "month" YYYY-MM, đã
+// forceTextIfDateLike ép text ở trên — không đụng) dưới dạng Date THẬT thay
+// vì chuỗi ISO thô. Trước đây createdAt/date... ghi chuỗi "YYYY-MM-DD" (Sheets
+// có tự nhận ra tuỳ trường hợp) còn updatedAt/reviewedAt... ghi cả giờ-phút-
+// giây kiểu "2026-09-10T06:14:53.976Z" thì Sheets KHÔNG tự nhận ra được, cứ
+// hiện nguyên văn xấu — không theo được định dạng dd/mm/yyyy người dùng đã tự
+// đặt cho cột đó. Ghi hẳn 1 Date object thì Apps Script biết chắc là ngày,
+// Sheets tự hiển thị đúng theo định dạng cột (không quan tâm chuỗi gốc trông
+// thế nào) — đọc lại vẫn qua đúng nhánh "Object Date" có sẵn trong
+// getAllData() (format lại về 'yyyy-MM-dd' cho app dùng nội bộ, không đổi).
+var REAL_DATE_FIELDS = {
+  createdAt: true, updatedAt: true, date: true, dob: true, deadline: true,
+  startDate: true, endDate: true, dueDate: true, checkedAt: true, approvedAt: true,
+  reviewedAt: true, plannedStart: true, plannedEnd: true, actualStart: true, actualEnd: true
+};
+function toRealDateIfDateField(val, enKey) {
+  if (!REAL_DATE_FIELDS[enKey] || typeof val !== 'string' || !val) return val;
+  if (!/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?Z?)?$/.test(val)) return val;
+  var d = new Date(val);
+  return isNaN(d.getTime()) ? val : d;
+}
+
 // Ghi nhiều dòng trong 1 lần thực thi (1 lệnh appendRows) — dùng khi cần tạo
 // sẵn nhiều dòng mẫu cùng lúc (VD: seed 18 đầu việc Tiến độ cho 1 dự án mới
 // mở tab lần đầu). KHÔNG gọi addData() nhiều lần song song từ client cho việc
@@ -816,22 +839,45 @@ function addDataBatch(ss, sheetName, dataList) {
       let val = data[enKey];
       if (Array.isArray(val)) return stringifyArrayForCell(enKey, val);
       if (typeof val === 'string') val = enToViValue(sheetName, enKey, val);
+      val = toRealDateIfDateField(val, enKey);
+      if (val instanceof Date) return val;
       return forceTextIfDateLike(val !== undefined && val !== null ? val : '', enKey);
     });
   });
   if (rows.length) {
-    sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, headers.length).setValues(rows);
+    const firstNewRow = sheet.getLastRow() + 1;
+    sheet.getRange(firstNewRow, 1, rows.length, headers.length).setValues(rows);
+    fillComputedHelperFormulas(sheet, headers, firstNewRow, rows.length);
   }
   return dataList;
 }
 
-// Cột "Mã người phụ trách" (assigneeIds) dùng dropdown "Cho phép có nhiều lựa
-// chọn" gốc của Sheets, tính năng này tự lưu dạng CHUỖI phân tách bởi dấu
-// phẩy — ghi khớp đúng định dạng đó để CEO/manager vẫn sửa được trực tiếp
-// trên Sheet UI mà không phá dropdown. Các cột mảng khác (dailyTasks, items...)
-// vẫn dùng JSON như cũ.
+// Cột phụ trợ thuần công thức (VD "Tên dự án" tra theo Mã dự án bằng VLOOKUP,
+// xem thêm ở phần thêm cột trên Sheet) — client không bao giờ gửi giá trị
+// cho các cột này (không nằm trong FIELD_MAP), nên addData/addDataBatch ở
+// trên sẽ ghi '' vào ô đó cho MỌI dòng mới nếu không tự xử lý — xoá mất công
+// thức. Copy công thức từ dòng ngay trên xuống (đúng cách Sheets tự "kéo
+// công thức" khi thêm dòng bằng tay) để dòng mới luôn có công thức, không
+// cần người dùng tự kéo lại mỗi lần.
+var COMPUTED_HELPER_HEADERS = ['Tên dự án'];
+function fillComputedHelperFormulas(sheet, headers, startRow, numRows) {
+  if (startRow < 3) return; // không có dòng trên (dòng 1 là header) để copy công thức từ
+  headers.forEach(function (h, i) {
+    if (COMPUTED_HELPER_HEADERS.indexOf(h) === -1) return;
+    var srcCell = sheet.getRange(startRow - 1, i + 1);
+    if (!srcCell.getFormula()) return;
+    srcCell.copyTo(sheet.getRange(startRow, i + 1, numRows, 1));
+  });
+}
+
+// Các cột dùng dropdown "Cho phép có nhiều lựa chọn" gốc của Sheets (assigneeIds
+// của Công việc, members của Dự án — "Thành viên tham gia") tự lưu dạng CHUỖI
+// phân tách bởi dấu phẩy khi CEO/manager chọn trực tiếp trên Sheet UI — ghi
+// khớp đúng định dạng đó để không phá dropdown. Các cột mảng khác (dailyTasks,
+// items...) vẫn dùng JSON như cũ.
+var COMMA_LIST_FIELDS = { assigneeIds: true, members: true };
 function stringifyArrayForCell(enKey, val) {
-  if (enKey === 'assigneeIds') return val.join(', ');
+  if (COMMA_LIST_FIELDS[enKey]) return val.join(', ');
   return JSON.stringify(val);
 }
 
@@ -855,9 +901,12 @@ function addData(ss, sheetName, data) {
     let val = data[enKey];
     if (Array.isArray(val)) return stringifyArrayForCell(enKey, val);
     if (typeof val === 'string') val = enToViValue(sheetName, enKey, val);
+    val = toRealDateIfDateField(val, enKey);
+    if (val instanceof Date) return val;
     return forceTextIfDateLike(val !== undefined && val !== null ? val : '', enKey);
   });
   sheet.appendRow(row);
+  fillComputedHelperFormulas(sheet, headers, sheet.getLastRow(), 1);
   return data;
 }
 
@@ -877,7 +926,8 @@ function updateData(ss, sheetName, id, updates) {
       let val = updates[enKey];
       if (Array.isArray(val)) val = stringifyArrayForCell(enKey, val);
       else if (typeof val === 'string') val = enToViValue(sheetName, enKey, val);
-      sheet.getRange(rowNum, i + 1).setValue(forceTextIfDateLike(val, enKey) || '');
+      val = toRealDateIfDateField(val, enKey);
+      sheet.getRange(rowNum, i + 1).setValue(val instanceof Date ? val : (forceTextIfDateLike(val, enKey) || ''));
     }
   });
   return Object.assign({}, data[index], updates);
@@ -1083,6 +1133,41 @@ function migrateTaskAssigneeToCommaFormat() {
   const headers = getHeaders(sheet);
   const colIdx = headers.indexOf(enToViHeader(SHEETS.tasks, 'assigneeIds'));
   if (colIdx === -1) return 'Không tìm thấy cột Mã người phụ trách';
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return 'Sheet trống, không có gì để chuyển';
+  const range = sheet.getRange(2, colIdx + 1, lastRow - 1, 1);
+  const values = range.getValues();
+  let changed = 0;
+  for (let i = 0; i < values.length; i++) {
+    const raw = values[i][0];
+    if (!raw) continue;
+    const str = String(raw).trim();
+    if (str.charAt(0) !== '[') continue; // đã là chuỗi phẩy (hoặc mã đơn) rồi
+    try {
+      const arr = JSON.parse(str);
+      if (Array.isArray(arr)) {
+        values[i][0] = arr.join(', ');
+        changed++;
+      }
+    } catch (e) { /* không phải JSON hợp lệ, bỏ qua */ }
+  }
+  if (changed) range.setValues(values);
+  Logger.log('Đã chuyển ' + changed + ' dòng sang chuỗi phẩy');
+  return 'Đã chuyển ' + changed + ' dòng sang chuỗi phẩy';
+}
+
+// MIGRATION 1 LẦN (2026-09-10) — cùng lý do/cách làm với
+// migrateTaskAssigneeToCommaFormat() ở trên, áp dụng cho cột "Thành viên
+// tham gia" (Dự án, field members): đổi từ mảng JSON sang chuỗi phẩy để khớp
+// đúng định dạng dropdown "Cho phép có nhiều lựa chọn" gốc của Sheets. Chạy
+// TAY từ trình chỉnh sửa Apps Script. Idempotent.
+function migrateProjectMembersToCommaFormat() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = findSheet(ss, SHEETS.projects);
+  if (!sheet) return 'Không tìm thấy sheet Dự án';
+  const headers = getHeaders(sheet);
+  const colIdx = headers.indexOf(enToViHeader(SHEETS.projects, 'members'));
+  if (colIdx === -1) return 'Không tìm thấy cột Thành viên tham gia';
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return 'Sheet trống, không có gì để chuyển';
   const range = sheet.getRange(2, colIdx + 1, lastRow - 1, 1);
