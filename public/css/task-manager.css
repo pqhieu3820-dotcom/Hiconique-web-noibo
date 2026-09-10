@@ -1692,6 +1692,18 @@
   .kanban-board {
     grid-template-columns: 1fr;
   }
+
+  /* Modal tạo/sửa task: 2 cột ép cứng (Người được giao/Dự án, ngày bắt đầu/
+     deadline, trạng thái/độ ưu tiên) không co lại được trên màn hình hẹp vì
+     select/input có kích thước tối thiểu riêng — làm cả modal tràn ra ngoài
+     viewport và bị cắt mất phần bên trái. Xếp lại thành 1 cột như projects.css
+     đã làm cho modal tạo dự án. */
+  .modal {
+    max-width: 100%;
+  }
+  .form-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ========== Main Objective Section ========== */
