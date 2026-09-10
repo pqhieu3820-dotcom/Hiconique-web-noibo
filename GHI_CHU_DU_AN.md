@@ -4,7 +4,19 @@ File này tồn tại để không phải hỏi lại các thông tin dưới đ
 chat mới với Claude. Đây là nguồn tham chiếu chính (source of truth) cho các liên kết và quy
 tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
-## Trạng thái hiện tại (cập nhật lần cuối: 2026-09-10 — form ngày dd/mm/yyyy toàn hệ thống, dropdown Thành viên tham gia của Dự án, cột "Tên dự án" tra cứu — MỚI XONG 1/12 sheet, đọc kỹ mục này trước)
+## Trạng thái hiện tại (cập nhật lần cuối: 2026-09-10 — fix thiết bị chấm công ghi đè lẫn nhau + thêm cột deviceIds còn thiếu trên Sheet, đọc kỹ mục này trước)
+
+**Việc mới nhất (2026-09-10, theo report kèm ảnh chụp: mở web trên PC và trên điện thoại, cả 2 đều hiện mình là thiết bị "slot 1" duy nhất, đáng lẽ phải là slot 1 và slot 2):**
+
+- **2 lỗi thật, không phải 1**:
+  1. `checkDeviceStatus()` (`timesheet.html`) trước đó TỰ ĐỘNG đăng ký thiết bị mỗi lần kiểm tra (im lặng, không hỏi) bằng cách đọc/ghi `member` từ cache CỤC BỘ của từng trình duyệt — 2 máy check gần nhau đều thấy cache cũ "chưa có ai đăng ký" rồi đều tự ghi mình là thiết bị đầu tiên, ghi đè lẫn nhau (race điều kiện đọc-sửa-ghi không nguyên tử kinh điển).
+  2. **Nguyên nhân gốc thật sự khiến 2 máy "không thấy nhau" chút nào**: cột `deviceIds` **CHƯA TỪNG TỒN TẠI** trên sheet Thành viên thật — nên mọi lần "đăng ký" trước giờ chỉ nằm trong localStorage của riêng từng máy, không hề lên được Sheet dùng chung, bất kể lỗi race ở trên.
+- **Đã sửa cả 2**:
+  1. Bỏ hẳn tự động đăng ký — `checkDeviceStatus()` giờ CHỈ ĐỌC trạng thái. Đăng ký thật sự chỉ xảy ra khi người dùng tự bấm nút **"+ Đăng ký thiết bị này"** (đổi tên từ "+ Thêm thiết bị này" theo đúng yêu cầu), và trước khi ghi sẽ tự `refreshFromGSheets()` tải lại dữ liệu mới nhất để không ghi đè lên thiết bị máy khác vừa đăng ký. Thiết bị lạ/chưa đăng ký vẫn KHÔNG chặn cứng chấm công (vẫn chỉ tính 1/3 điều kiện như GPS/Wifi, đúng thiết kế cũ).
+  2. Thêm cột `deviceIds` (plain, không map FIELD_MAP, giống `lastActiveAt`/`theme`) vào sheet Thành viên — verify round-trip qua curl, không cần redeploy Apps Script.
+- Dữ liệu thiết bị cũ (nếu người dùng từng bấm "đăng ký" trước bản sửa này) coi như MẤT vì chưa từng lên Sheet thật — không có gì để khôi phục, người dùng cần đăng ký lại từ đầu ở mỗi máy sau bản sửa này (bình thường, không phải lỗi).
+
+## Trạng thái phiên trước (2026-09-10 — form ngày dd/mm/yyyy toàn hệ thống, dropdown Thành viên tham gia của Dự án, cột "Tên dự án" tra cứu — MỚI XONG 1/12 sheet, đọc kỹ mục này trước)
 
 **Việc mới nhất (2026-09-10, theo 3 yêu cầu trong 1 tin nhắn — ngày tháng dd/mm/yyyy, dropdown Thành viên tham gia, cột Tên dự án):**
 
