@@ -854,13 +854,20 @@
     // nào cho phép — cố ý bị chặn ở mọi trình duyệt vì lý do riêng tư), nên
     // tự sinh 1 mã ngẫu nhiên đại diện cho "thiết bị này" và lưu bền trong
     // localStorage của trình duyệt. Mỗi thành viên tự đăng ký tối đa
-    // MAX_MEMBER_DEVICES (2) mã như vậy (2 máy/điện thoại quen dùng) — 2 mã
-    // đầu tự đăng ký ngay không hỏi gì; từ mã thứ 3 trở đi (thiết bị lạ) chỉ
-    // CẢNH BÁO và hỏi xác nhận, KHÔNG chặn cứng (tài khoản đổi điện thoại/máy
-    // vẫn chấm công được, tránh tự khoá nhầm chính chủ). Nhược điểm đã báo
-    // trước: mã mất nếu xoá dữ liệu trình duyệt (Clear browsing data), và ai
-    // rành kỹ thuật vẫn có thể copy mã sang máy khác — đây là lớp cảnh báo
-    // phụ, không phải xác thực tuyệt đối.
+    // MAX_MEMBER_DEVICES (2) mã như vậy (2 máy/điện thoại quen dùng).
+    // 2026-09-10: ĐỔI SANG ĐĂNG KÝ THỦ CÔNG BẮT BUỘC (trước đó 2 thiết bị đầu
+    // tự đăng ký ngay không hỏi gì — bị lỗi 2 máy khác nhau cùng lúc coi mình
+    // là "máy đầu tiên" rồi ghi đè lẫn nhau do mỗi máy đọc/ghi theo cache cục
+    // bộ riêng, không đồng bộ tức thời, người dùng phát hiện 2 máy cùng hiện
+    // "slot 1"). Giờ thiết bị lạ LUÔN bị tính là chưa đăng ký (không tự động
+    // chiếm slot trống), phải tự bấm "Đăng ký thiết bị này" — bấm mới thật sự
+    // ghi, và trước khi ghi sẽ tải lại dữ liệu mới nhất từ Sheet để không ghi
+    // đè lên thiết bị máy khác vừa đăng ký. Thiết bị lạ vẫn KHÔNG chặn cứng
+    // chấm công (chỉ tính là 1/3 điều kiện fail, hỏi xác nhận thủ công như
+    // GPS/Wifi) — tài khoản đổi điện thoại/máy vẫn chấm công được.
+    // Nhược điểm đã báo trước: mã mất nếu xoá dữ liệu trình duyệt (Clear
+    // browsing data), và ai rành kỹ thuật vẫn có thể copy mã sang máy khác —
+    // đây là lớp cảnh báo phụ, không phải xác thực tuyệt đối.
     var DEVICE_ID_KEY = 'hiconique_device_id';
     function getOrCreateDeviceId() {
       try {
@@ -909,22 +916,22 @@
     // Điều kiện thứ 3 (cùng nhóm với GPS/Wifi) — { ok, skip, message } giống
     // hệt format của checkGeoStatus()/checkIpStatus() nên dùng chung được với
     // renderVerifyRow/showConfirmDialog và luật "tối thiểu 2/3 điều kiện" ở
-    // handler Check In. Đồng thời tự đăng ký thiết bị vào 1 trong 2 slot đầu
-    // nếu còn trống (silent, không tính là "fail") — chỉ tính fail khi thiết
-    // bị lạ VÀ đã đủ MAX_MEMBER_DEVICES_UI thiết bị quen dùng.
+    // handler Check In. CHỈ ĐỌC trạng thái, KHÔNG tự ghi đăng ký nữa (xem lý
+    // do ở comment DEVICE_ID_KEY phía trên) — đăng ký thật sự chỉ xảy ra khi
+    // người dùng tự bấm nút trong renderDeviceTable().
     function checkDeviceStatus() {
       var deviceId = getOrCreateDeviceId();
       var userId = getUserId();
-      if (!deviceId || !userId || typeof TaskManager === 'undefined' || !TaskManager.registerMemberDevice) {
+      if (!deviceId || !userId || typeof TaskManager === 'undefined' || !TaskManager.getMemberDeviceIds) {
         return { skip: true, ok: false, message: 'Đang tắt' };
       }
-      var user = TaskManager.getCurrentUser ? TaskManager.getCurrentUser() : null;
-      var result = TaskManager.registerMemberDevice(userId, deviceId, user, getDeviceLabel());
       renderDeviceTable();
-      if (result.ok) return { skip: false, ok: true, message: 'Thiết bị quen dùng' };
+      var ids = TaskManager.getMemberDeviceIds(userId);
+      if (ids.indexOf(deviceId) !== -1) return { skip: false, ok: true, message: 'Thiết bị quen dùng' };
+      var full = ids.length >= MAX_MEMBER_DEVICES_UI;
       return {
         skip: false, ok: false,
-        message: result.full ? 'Thiết bị lạ (đã đủ ' + MAX_MEMBER_DEVICES_UI + ' thiết bị)' : 'Không xác định được thiết bị'
+        message: full ? 'Thiết bị lạ (đã đủ ' + MAX_MEMBER_DEVICES_UI + ' thiết bị)' : 'Thiết bị chưa đăng ký — bấm "Đăng ký thiết bị này" bên dưới'
       };
     }
 
@@ -949,14 +956,16 @@
         '</div>';
       }).join('');
       // Ô trống đầu tiên (nếu còn) cho phép đăng ký ngay THIẾT BỊ ĐANG DÙNG —
-      // các ô trống còn lại vẫn chỉ chờ tự đăng ký khi check-in từ máy khác,
-      // vì web không có cách nào biết trước ID của 1 thiết bị chưa từng ghé.
+      // đây là ĐƯỜNG DUY NHẤT để 1 thiết bị được ghi vào deviceIds (không còn
+      // tự động đăng ký nữa, xem checkDeviceStatus()). Các ô trống còn lại chỉ
+      // hiện "Còn trống" chờ tự tay đăng ký từ đúng máy đó — web không có cách
+      // nào biết trước ID của 1 thiết bị chưa từng ghé để đăng ký hộ.
       var emptySlots = MAX_MEMBER_DEVICES_UI - devices.length;
       for (var i = 0; i < emptySlots; i++) {
         if (i === 0 && !alreadyRegistered) {
           rows += '<div class="ts-device-row ts-device-empty">' +
-            '<span class="ts-device-id">Còn trống</span>' +
-            '<button type="button" class="ts-device-add" id="tsDeviceAddBtn">+ Thêm thiết bị này</button>' +
+            '<span class="ts-device-id">Còn trống — thiết bị này (' + myLabel + ') chưa đăng ký</span>' +
+            '<button type="button" class="ts-device-add" id="tsDeviceAddBtn">+ Đăng ký thiết bị này</button>' +
           '</div>';
         } else {
           rows += '<div class="ts-device-row ts-device-empty"><span class="ts-device-id">Còn trống</span></div>';
@@ -976,9 +985,23 @@
       var addBtn = document.getElementById('tsDeviceAddBtn');
       if (addBtn) {
         addBtn.addEventListener('click', function () {
-          var user = TaskManager.getCurrentUser ? TaskManager.getCurrentUser() : null;
-          TaskManager.registerMemberDevice(userId, myDeviceId, user, myLabel);
-          renderDeviceTable();
+          addBtn.disabled = true;
+          addBtn.textContent = 'Đang đăng ký...';
+          // Tải lại dữ liệu thành viên MỚI NHẤT từ Sheet trước khi ghi — nếu
+          // không, cache cục bộ cũ (chưa thấy thiết bị máy khác vừa đăng ký
+          // trước đó) sẽ khiến máy này tưởng nhầm mình là "thiết bị đầu tiên"
+          // rồi ghi đè mất đăng ký của máy kia (đúng lỗi đã xảy ra trước khi
+          // sửa — xem comment ở DEVICE_ID_KEY).
+          function doRegister() {
+            var user = TaskManager.getCurrentUser ? TaskManager.getCurrentUser() : null;
+            TaskManager.registerMemberDevice(userId, myDeviceId, user, myLabel);
+            renderDeviceTable();
+          }
+          if (TaskManager.refreshFromGSheets) {
+            TaskManager.refreshFromGSheets(doRegister);
+          } else {
+            doRegister();
+          }
         });
       }
     }
