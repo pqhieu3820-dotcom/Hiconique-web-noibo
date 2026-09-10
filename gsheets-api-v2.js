@@ -304,6 +304,13 @@ const VALUE_MAP = {
   // Nhãn khớp đúng STATUS_LABEL trong orders.html.
   'orders.status': [
     ['Nháp', 'draft'], ['Đã xác nhận', 'confirmed'], ['Đã thanh toán', 'paid'], ['Đã huỷ', 'cancelled']
+  ],
+  // Nhãn khớp đúng các slug dùng trong hicon-bim.html cho Issue BIM.
+  'bimIssues.status': [
+    ['Mới', 'moi'], ['Đang xử lý', 'dang-xu-ly'], ['Chờ phản hồi', 'cho-phan-hoi'], ['Đã giải quyết', 'da-giai-quyet']
+  ],
+  'bimIssues.priority': [
+    ['Cao', 'cao'], ['Trung bình', 'trung-binh'], ['Thấp', 'thap']
   ]
 };
 
