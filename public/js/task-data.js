@@ -705,37 +705,61 @@ var TaskManager = (function() {
   // Chống chấm công hộ (kiểu 2) — mỗi thành viên tự "đăng ký" tối đa 2 thiết
   // bị (deviceId sinh ngẫu nhiên, lưu ở localStorage của trình duyệt, xem
   // getOrCreateDeviceId() trong timesheet.html — web không có cách nào đọc
-  // ID phần cứng thật). Lưu dạng chuỗi "id1,id2" trong 1 cột `deviceIds` của
-  // Members (cần tự thêm cột này vào Sheet mới đồng bộ được, xem
-  // GHI_CHU_DU_AN.md — code vẫn hoạt động cache-only nếu chưa có cột).
+  // ID phần cứng thật). Lưu dạng chuỗi "id1::tên1,id2::tên2" trong 1 cột
+  // `deviceIds` của Members (cần tự thêm cột này vào Sheet mới đồng bộ được,
+  // xem GHI_CHU_DU_AN.md — code vẫn hoạt động cache-only nếu chưa có cột).
+  // Tên thiết bị (VD "iPhone · Safari") tự rút ra từ User-Agent phía
+  // timesheet.html, giống kiểu "lịch sử đăng nhập thiết bị" của Facebook/Zalo
+  // — entry cũ (chưa có "::tên") vẫn parse được bình thường, chỉ thiếu name.
   var MAX_MEMBER_DEVICES = 2;
   function parseDeviceIds(member) {
-    return String((member && member.deviceIds) || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+    var raw = String((member && member.deviceIds) || '');
+    if (!raw) return [];
+    return raw.split(',').map(function (s) { return s.trim(); }).filter(Boolean).map(function (entry) {
+      var sep = entry.indexOf('::');
+      return sep === -1 ? { id: entry, name: '' } : { id: entry.slice(0, sep), name: entry.slice(sep + 2) };
+    });
+  }
+
+  function stringifyDeviceEntries(entries) {
+    return entries.map(function (e) { return e.name ? (e.id + '::' + e.name) : e.id; }).join(',');
   }
 
   function getMemberDeviceIds(memberId) {
+    return parseDeviceIds(getMember(memberId)).map(function (e) { return e.id; });
+  }
+
+  function getMemberDevices(memberId) {
     return parseDeviceIds(getMember(memberId));
   }
 
   // Trả về { ok, isNew, full }. full=true nghĩa là deviceId lạ nhưng đã đủ
   // MAX_MEMBER_DEVICES thiết bị — caller (UI) tự quyết định cảnh báo/hỏi lại,
   // hàm này không tự chặn.
-  function registerMemberDevice(memberId, deviceId, user) {
+  function registerMemberDevice(memberId, deviceId, user, deviceName) {
     var member = getMember(memberId);
     if (!member || !deviceId) return { ok: false, isNew: false, full: false };
-    var ids = parseDeviceIds(member);
-    if (ids.indexOf(deviceId) !== -1) return { ok: true, isNew: false, full: false };
-    if (ids.length >= MAX_MEMBER_DEVICES) return { ok: false, isNew: false, full: true };
-    ids.push(deviceId);
-    updateMember(memberId, { deviceIds: ids.join(',') }, user);
+    var entries = parseDeviceIds(member);
+    var existing = entries.filter(function (e) { return e.id === deviceId; })[0];
+    if (existing) {
+      // Tự vá lại tên cho entry cũ (đăng ký trước khi có tính năng tên thiết bị).
+      if (deviceName && existing.name !== deviceName) {
+        existing.name = deviceName;
+        updateMember(memberId, { deviceIds: stringifyDeviceEntries(entries) }, user);
+      }
+      return { ok: true, isNew: false, full: false };
+    }
+    if (entries.length >= MAX_MEMBER_DEVICES) return { ok: false, isNew: false, full: true };
+    entries.push({ id: deviceId, name: deviceName || '' });
+    updateMember(memberId, { deviceIds: stringifyDeviceEntries(entries) }, user);
     return { ok: true, isNew: true, full: false };
   }
 
   function removeMemberDevice(memberId, deviceId, user) {
     var member = getMember(memberId);
     if (!member) return null;
-    var ids = parseDeviceIds(member).filter(function (id) { return id !== deviceId; });
-    return updateMember(memberId, { deviceIds: ids.join(',') }, user);
+    var entries = parseDeviceIds(member).filter(function (e) { return e.id !== deviceId; });
+    return updateMember(memberId, { deviceIds: stringifyDeviceEntries(entries) }, user);
   }
 
   // Duyệt/từ chối thành viên đăng ký mới: CEO hoặc Manager.
@@ -1515,6 +1539,7 @@ var TaskManager = (function() {
     getTaskAssignees: getTaskAssignees,
     updateMember: updateMember,
     getMemberDeviceIds: getMemberDeviceIds,
+    getMemberDevices: getMemberDevices,
     registerMemberDevice: registerMemberDevice,
     removeMemberDevice: removeMemberDevice,
     canManageMembers: canManageMembers,
