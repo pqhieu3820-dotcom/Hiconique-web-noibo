@@ -294,6 +294,12 @@ const VALUE_MAP = {
   'proposals.type': [
     ['Nghỉ phép', 'nghi-phep'], ['Mua sắm', 'mua-sam'], ['Nhân sự', 'nhan-su'],
     ['Công tác', 'cong-tac'], ['Tài chính', 'tai-chinh'], ['Khen thưởng', 'khen-thuong']
+  ],
+  // Nhãn khớp đúng TYPES trong finance.html — sổ giao dịch tài chính công ty.
+  'financeEntries.type': [
+    ['Doanh thu', 'revenue'], ['Chi phí', 'expense'], ['Vay nợ (nhận)', 'loan'],
+    ['Trả nợ', 'repayment'], ['Thưởng nhân viên', 'bonus'], ['Phạt nhân viên (thu về)', 'penalty'],
+    ['Tiền ứ đọng', 'idle'], ['Chưa giải ngân', 'undisbursed']
   ]
 };
 
