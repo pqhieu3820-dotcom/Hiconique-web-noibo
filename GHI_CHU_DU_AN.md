@@ -4,7 +4,20 @@ File này tồn tại để không phải hỏi lại các thông tin dưới đ
 chat mới với Claude. Đây là nguồn tham chiếu chính (source of truth) cho các liên kết và quy
 tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
-## Trạng thái hiện tại (cập nhật lần cuối: 2026-09-10 — multi-assignee cho Công việc + fix lệch dữ liệu Hồ sơ công trình, đọc kỹ mục này trước)
+## Trạng thái hiện tại (cập nhật lần cuối: 2026-09-10 — đồng bộ 2 chiều "Loại dự án" web ↔ Google Sheet + fix dữ liệu thô chưa qua dropdown ở Công việc/Dự án, đọc kỹ mục này trước)
+
+**Việc mới nhất (2026-09-10, theo yêu cầu người dùng kèm 3 ảnh chụp: web hiển thị 11 loại dự án chi tiết nhưng dropdown Google Sheet chỉ có 3, yêu cầu đồng bộ 2 chiều — sổ trên web thì Sheet cũng đúng list đó, thêm ở Sheet thì web cũng tự thấy; ảnh 3 lộ thêm nhiều ô Trạng thái ở Công việc/Dự án là text thô tiếng Anh chưa qua dropdown dù rule dropdown đã có sẵn):**
+
+- **Kiến trúc đồng bộ 2 chiều "Loại dự án"**: thêm 1 cột nguồn thật (không phải danh sách tĩnh) — cột **U** (ẩn) trên sheet "Dự án", header "Danh sách Loại dự án (nguồn dropdown)", U2:U12 chứa đúng 11 giá trị đang hardcode trong web, chừa trống đến U50 để dễ thêm sau. Cột R (Loại dự án) đổi từ dropdown tĩnh 3 giá trị sang **Trình đơn thả xuống (của một dải ô)** trỏ thẳng `Dự án!U2:U50` — y hệt pattern "dropdown sống" đã dùng cho mã thành viên/mã dự án trước đây, lần đầu áp dụng cho 1 cột enum dạng text tự do thay vì cột tham chiếu mã.
+  - Backend: thêm action `getProjectTypes` trong `gsheets-api-v2.js` (đọc `Dự án!U2:U50`, lọc rỗng, trả mảng) — cùng pattern với `getProvinceList` đã có.
+  - Frontend: `projects.js` (`bindProjectModal`) và `pricing.html` (hàm `fetchProjectTypes`, gọi cạnh `fetchProvinceList`) đều fetch `getProjectTypes` lúc mở modal, dựng lại `<option>` của `#project-building-type` từ dữ liệu sống, giữ nguyên giá trị đang chọn nếu có. **11 `<option>` hardcode trong `projects.html`/`pricing.html` CỐ Ý giữ lại làm fallback** nếu API lỗi/chậm — JS sẽ ghi đè ngay khi fetch xong.
+  - Kết quả: giờ chỉ cần sửa 1 chỗ duy nhất (cột U trên Sheet) để thêm/bớt loại dự án — cả dropdown Sheet lẫn dropdown web đều tự cập nhật, không cần sửa code hay redeploy nữa cho việc thêm loại dự án mới.
+  - Đã verify: gọi thẳng API `getProjectTypes` sau khi redeploy, nhận đúng 11 giá trị.
+- **Tiện làm luôn (do lộ ra trong ảnh 3 của yêu cầu)**: phát hiện sheet Công việc VÀ Dự án đều còn nhiều ô Trạng thái/Mức độ ưu tiên là **text thô tiếng Anh/chưa chuẩn hoá** (VD "completed") dù rule dropdown Việt hoá đã có từ trước — cùng loại lỗi "dropdown đã gắn nhưng dữ liệu cũ chưa migrate" từng gặp với BIM Issues trước đây nhưng bị bỏ sót ở 2 sheet này. Đã dùng Tìm-và-Thay-thế sửa hết, verify lại bằng API thấy 0 giá trị sai.
+- Redeploy Apps Script: **Phiên bản 45** (thêm action `getProjectTypes`) — dán lại TOÀN BỘ file qua clipboard (Ctrl+A → Ctrl+V nội dung từ file local đã đúng) thay vì gõ chèn từng đoạn, vì gõ chèn nhiều lần liên tiếp trong trình soạn thảo Apps Script (auto-indent + auto-close ngoặc `{}` của editor) làm hỏng cấu trúc code 2-3 lần liên tiếp (dòng bị dính chữ, ngoặc thừa) — **bài học mới cho lần sau: sửa TRỰC TIẾP file `.js` local trước rồi copy TOÀN BỘ nội dung qua clipboard (PowerShell `Set-Clipboard -Value (Get-Content -Raw ...)`) dán đè vào Apps Script, thay vì gõ tay từng đoạn chèn vào giữa code cũ trên trình duyệt — đáng tin cậy hơn nhiều lần với file lớn.**
+- Chưa làm/không thuộc phạm vi lần này: quét thêm các sheet khác ngoài Công việc/Dự án xem có bị lệch dữ liệu thô-chưa-migrate tương tự không (người dùng yêu cầu "xử lí hết cho đồng bộ" nhưng phạm vi đã xử lý mới giới hạn ở những gì lộ ra trong 3 ảnh chụp).
+
+## Trạng thái phiên trước (2026-09-10 — multi-assignee cho Công việc + fix lệch dữ liệu Hồ sơ công trình, đọc kỹ mục này trước)
 
 **Việc mới nhất (2026-09-10, ngay sau đợt Việt hoá dropdown toàn sheet — 2 việc còn treo lại đã làm xong): (1) tính năng "nhiều người phụ trách" cho Công việc; (2) sửa `pricing.html` khớp lại đúng 3 trạng thái thật của Hồ sơ công trình.**
 
