@@ -12,9 +12,23 @@
   var html = document.documentElement;
   var state = { miniTaskFilter: 'all' };
 
-  function setTheme(theme) {
+  function getSyncUser() {
+    return (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
+  }
+
+  // Giao diện sáng/tối nhớ THEO TÀI KHOẢN (field `theme` của Thành viên,
+  // đồng bộ qua Google Sheets), không chỉ theo trình duyệt/máy — đăng nhập
+  // lại ở máy/trình duyệt khác vẫn ra đúng theme đã chọn ở lần cuối. Vẫn ghi
+  // localStorage song song để áp dụng ngay (không nháy màn hình) trước khi
+  // đọc được dữ liệu tài khoản.
+  function setTheme(theme, skipAccountSync) {
     html.setAttribute('data-theme', theme);
     localStorage.setItem('hiconique-theme', theme);
+    if (skipAccountSync) return;
+    var user = getSyncUser();
+    if (user && typeof TaskManager !== 'undefined' && TaskManager.updateMember) {
+      TaskManager.updateMember(user.id, { theme: theme }, user);
+    }
   }
 
   function initTheme() {
@@ -23,6 +37,16 @@
       html.setAttribute('data-theme', saved);
     }
     // Default is dark (html has data-theme="dark" in markup)
+
+    // Tài khoản là nguồn đúng cuối cùng — nếu khác với localStorage của máy
+    // này (VD lần trước đăng nhập ở máy khác rồi đổi theme), áp dụng lại theo
+    // tài khoản (skipAccountSync=true vì đang ĐỌC lại giá trị đã lưu, không
+    // phải người dùng vừa bấm đổi — không cần ghi ngược lên Sheet).
+    var user = getSyncUser();
+    var member = (user && typeof TaskManager !== 'undefined' && TaskManager.getMember) ? TaskManager.getMember(user.id) : null;
+    if (member && (member.theme === 'light' || member.theme === 'dark') && member.theme !== saved) {
+      setTheme(member.theme, true);
+    }
   }
 
   initTheme();
@@ -52,6 +76,11 @@
 
   // ----- Hero stat: real-time date + active members -----
   var VI_DOW = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+  // Đặt trước updateHeroStat() vì nó dùng ngay PRESENCE_ONLINE_WINDOW_MS ở
+  // lần gọi đầu tiên (bên dưới) — khai báo sau sẽ bị hoisting làm undefined
+  // đúng lần gọi đó.
+  var PRESENCE_PING_MS = 60000;
+  var PRESENCE_ONLINE_WINDOW_MS = 3 * 60 * 1000; // coi là online nếu ping trong 3 phút gần nhất
 
   function updateHeroStat() {
     var dateEl = document.getElementById('heroStatDate');
@@ -69,35 +98,67 @@
     dateEl.textContent = dow + ', ' + dd + '/' + mm + '/' + yyyy;
 
     var members = (typeof TaskManager !== 'undefined' && TaskManager.getMembers) ? TaskManager.getMembers() : [];
-    var tasks = (typeof TaskManager !== 'undefined' && TaskManager.getTasks) ? TaskManager.getTasks() : [];
-    var hour = now.getHours();
-    var isWorkHour = hour >= 8 && hour < 18;
-    var isWeekday = now.getDay() >= 1 && now.getDay() <= 5;
 
-    // Active = có task đang in-progress HOẶC trong giờ làm việc ngày thường
-    var activeIds = {};
-    tasks.forEach(function (t) {
-      if (t.status === 'in-progress' && Array.isArray(t.assigneeIds)) {
-        t.assigneeIds.forEach(function (id) { activeIds[id] = true; });
-      }
-    });
-    if (isWorkHour && isWeekday) {
-      members.forEach(function (m) {
-        if (m.id) activeIds[m.id] = true;
-      });
-    }
-
-    var onlineCount = Object.keys(activeIds).length;
+    // "Đang hoạt động" = có ping presence (lastActiveAt, xem
+    // startPresenceHeartbeat() dưới) trong PRESENCE_ONLINE_WINDOW_MS gần đây
+    // — tức thật sự đang mở & dùng web, không phải suy đoán theo giờ hành
+    // chính như trước (2026-09-10, trước đó hiện cứng total/total suốt giờ
+    // làm dù chỉ 1 người đang mở web — sai với thực tế người dùng phản hồi).
+    var nowMs = now.getTime();
+    var onlineCount = members.filter(function (m) {
+      if (!m.lastActiveAt) return false;
+      var t = new Date(m.lastActiveAt).getTime();
+      return !isNaN(t) && (nowMs - t) <= PRESENCE_ONLINE_WINDOW_MS;
+    }).length;
     var totalCount = members.length;
 
     if (totalEl) totalEl.textContent = totalCount;
     if (onlineEl) onlineEl.textContent = onlineCount;
     if (numberEl) numberEl.textContent = onlineCount;
     if (dotEl) {
-      dotEl.style.background = (onlineCount > 0 && isWorkHour) ? '#4F6F52' : '#A04848';
+      dotEl.style.background = onlineCount > 0 ? '#4F6F52' : '#A04848';
     }
   }
   updateHeroStat();
+
+  // Nếu đang ở trang chủ (có phần tử hero stat) thì định kỳ lấy lại dữ liệu
+  // thành viên mới nhất từ Google Sheets rồi tính lại — nếu không sẽ chỉ thấy
+  // đúng bản cache tải lúc mở trang, không thấy người khác vừa online/offline.
+  // Chỉ polling khi thật sự cần (có phần tử hero) để không gọi API thừa ở
+  // các trang khác.
+  function refreshHeroStat() {
+    if (!document.getElementById('heroStatOnline')) return;
+    if (typeof TaskManager !== 'undefined' && TaskManager.refreshFromGSheets) {
+      TaskManager.refreshFromGSheets(function () { updateHeroStat(); });
+    } else {
+      updateHeroStat();
+    }
+  }
+  setInterval(refreshHeroStat, 45000);
+
+  // ----- Presence heartbeat -----
+  // Ping timestamp lên Sheet (field `lastActiveAt` của Thành viên) mỗi ~60s
+  // trong lúc tab đang mở & hiển thị (tạm dừng khi chuyển sang tab khác/thu
+  // nhỏ), để BẤT KỲ máy nào cũng tính được đúng ai đang thực sự mở web —
+  // đây là cách duy nhất để biết "online" thật vì hệ thống không có server
+  // real-time, chỉ có Google Sheets làm nguồn dữ liệu chung.
+  function pingPresence() {
+    var user = getSyncUser();
+    if (!user || typeof TaskManager === 'undefined' || !TaskManager.updateMember) return;
+    TaskManager.updateMember(user.id, { lastActiveAt: new Date().toISOString() }, user);
+  }
+
+  function startPresenceHeartbeat() {
+    if (!getSyncUser()) return;
+    pingPresence(); // ping ngay khi mở trang, không chờ hết chu kỳ đầu
+    setInterval(function () {
+      if (document.visibilityState === 'visible') pingPresence();
+    }, PRESENCE_PING_MS);
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') pingPresence();
+    });
+  }
+  startPresenceHeartbeat();
   setInterval(updateHeroStat, 30000);
 
   // ----- Search overlay (self-installing so every page gets a working search, not just index.html) -----

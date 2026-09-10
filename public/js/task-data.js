@@ -688,7 +688,14 @@ var TaskManager = (function() {
   // các trường không nhạy cảm về quyền hạn (không cho đổi role/roleLevel/email
   // qua đường này). Chủ tài khoản luôn sửa được hồ sơ của chính mình; CEO/Manager
   // sửa được hồ sơ người khác.
-  var MEMBER_SELF_EDIT_FIELDS = ['dob', 'gender', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount', 'password', 'deviceIds'];
+  // - lastActiveAt: portal.js tự "ping" mỗi ~60s trong lúc tab đang mở & hiển
+  //   thị, để trang chủ tính đúng số người ĐANG THỰC SỰ mở web thay vì đoán
+  //   theo giờ hành chính như trước (2026-09-10 — trước đó hiện cứng tổng số
+  //   thành viên trong giờ làm, sai hoàn toàn với thực tế).
+  // - theme: nhớ giao diện sáng/tối THEO TÀI KHOẢN (không chỉ theo trình
+  //   duyệt/máy) — đăng nhập lại ở máy khác vẫn ra đúng theme đã chọn lần
+  //   cuối, xem initTheme()/setTheme() trong portal.js.
+  var MEMBER_SELF_EDIT_FIELDS = ['dob', 'gender', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount', 'password', 'deviceIds', 'lastActiveAt', 'theme'];
   function updateMember(id, updates, user) {
     if (!user) return null;
     var isSelf = user.id === id;
