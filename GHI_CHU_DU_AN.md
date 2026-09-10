@@ -4,7 +4,19 @@ File này tồn tại để không phải hỏi lại các thông tin dưới đ
 chat mới với Claude. Đây là nguồn tham chiếu chính (source of truth) cho các liên kết và quy
 tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
-## Trạng thái hiện tại (cập nhật lần cuối: 2026-09-10 — đồng bộ 2 chiều "Loại dự án" web ↔ Google Sheet + fix dữ liệu thô chưa qua dropdown ở Công việc/Dự án, đọc kỹ mục này trước)
+## Trạng thái hiện tại (cập nhật lần cuối: 2026-09-10 — fix bug Check Out bỏ qua GPS/Wifi, tên thiết bị dễ đọc, fix modal Tạo Task tràn màn hình mobile, presence thật + theme theo tài khoản, đọc kỹ mục này trước)
+
+**Việc mới nhất (2026-09-10, 4 việc riêng theo phản hồi trực tiếp của người dùng, không liên quan tới "Loại dự án" ở mục dưới):**
+
+1. **Bug bảo mật chấm công**: Check In kiểm tra đủ 3 điều kiện (GPS/Wifi công ty/Thiết bị đã đăng ký) và bắt buộc đạt tối thiểu 2/3, nhưng **Check Out chỉ kiểm tra mỗi điều kiện Thiết bị** — bỏ hẳn GPS/Wifi, nên dù 2/3 điều kiện fail vẫn check-out được (đúng lỗi người dùng chụp ảnh báo). Đã gộp logic 2 hành động dùng chung 1 hàm `verifyThenProceed()` trong `public/pages/timesheet.html`.
+2. **Tên thiết bị dễ đọc kiểu Facebook/Zalo**: thay mã hex vô nghĩa ("B53893BF") bằng tên tự nhận diện qua User-Agent (VD "iPhone · Safari", "Windows PC · Chrome") — hàm `getDeviceLabel()`. Lưu kèm ID trong `Members.deviceIds` dạng cặp `id::tên` (tương thích ngược với dữ liệu cũ chỉ có ID trần). **Lưu ý đã báo người dùng**: nếu mã thiết bị vẫn đổi liên tục, khả năng do mở web qua 2 đường khác nhau trên iOS (Safari thường vs "Thêm vào màn hình chính" — 2 vùng lưu trữ tách biệt hoàn toàn) hoặc chế độ Ẩn danh — giới hạn của iOS/trình duyệt, không sửa được bằng code.
+3. **Modal "Tạo Task Mới" tràn ra ngoài màn hình trên mobile**: `task-manager.css` thiếu quy tắc responsive cho `.form-row` (2 cột) — `projects.css` (modal tạo dự án khác) đã có sẵn rule này nhưng task-manager.css thì không. Đã thêm `.form-row { grid-template-columns: 1fr; }` ở `@media (max-width: 768px)`, giống đúng pattern projects.css.
+4. **Số "đang hoạt động" ở trang chủ luôn hiện total/total** (VD "6/6") vì code cũ SUY ĐOÁN theo giờ hành chính (8h-18h ngày thường → tính TẤT CẢ thành viên là online) — sai hoàn toàn với thực tế. Thay bằng **presence heartbeat thật**: `portal.js` tự ping timestamp lên field mới `Members.lastActiveAt` mỗi ~60s trong lúc tab đang mở & hiển thị (dừng khi ẩn tab), trang chủ tính online = ping trong 3 phút gần nhất, và định kỳ `refreshFromGSheets` (chỉ khi đang ở trang chủ, tránh gọi API thừa ở trang khác) để thấy người khác online/offline gần thời gian thực.
+   - Tiện làm luôn theo yêu cầu thứ 2 cùng lúc: **nhớ giao diện sáng/tối THEO TÀI KHOẢN** (field mới `Members.theme`, không chỉ theo trình duyệt) — đăng nhập lại ở máy khác vẫn ra đúng theme đã chọn lần cuối.
+   - 2 field mới `lastActiveAt`/`theme` đã thêm cột trực tiếp trên sheet "Thành viên" (cột S, T) — **KHÔNG cần sửa/redeploy Apps Script** vì đi qua đúng cơ chế "cột không map trong FIELD_MAP, chỉ cần header khớp tên field tiếng Anh" đã có sẵn cho `deviceIds` — verify round-trip qua `updateMember`/`getMembers` bằng curl trực tiếp, chạy đúng ngay không cần deploy version mới.
+- **Bài học thao tác Google Sheets mới**: khi cần gõ vào ô ở cột chưa có trong 1 "Table" (Bảng_N), Name Box (ô nhập địa chỉ ô góc trên-trái) đôi lúc KHÔNG nhận click/type qua automation — cách chắc ăn hơn là click trực tiếp vào 1 cell gần đó trong lưới rồi dùng phím mũi tên (Left/Right) để di chuyển tới đúng ô cần, tin theo ô địa chỉ hiện ra ở Name Box sau mỗi lần di chuyển thay vì đoán toạ độ click.
+
+## Trạng thái phiên trước (2026-09-10 — đồng bộ 2 chiều "Loại dự án" web ↔ Google Sheet + fix dữ liệu thô chưa qua dropdown ở Công việc/Dự án, đọc kỹ mục này trước)
 
 **Việc mới nhất (2026-09-10, theo yêu cầu người dùng kèm 3 ảnh chụp: web hiển thị 11 loại dự án chi tiết nhưng dropdown Google Sheet chỉ có 3, yêu cầu đồng bộ 2 chiều — sổ trên web thì Sheet cũng đúng list đó, thêm ở Sheet thì web cũng tự thấy; ảnh 3 lộ thêm nhiều ô Trạng thái ở Công việc/Dự án là text thô tiếng Anh chưa qua dropdown dù rule dropdown đã có sẵn):**
 
