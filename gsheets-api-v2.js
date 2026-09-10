@@ -336,6 +336,15 @@ function getProvinceList(ss) {
   return values.map(function (r) { return r[0]; }).filter(function (v) { return v && String(v).trim(); });
 }
 
+function getProjectTypes(ss) {
+  var sheet = findSheet(ss, SHEETS.projects);
+  if (!sheet) return [];
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+  var values = sheet.getRange(2, 21, lastRow - 1, 1).getValues(); // cột U
+  return values.map(function (r) { return r[0]; }).filter(function (v) { return v && String(v).trim(); });
+}
+
 function getProvincePricing(ss, provinceName) {
   if (!provinceName) return { error: 'Missing province' };
   var sheet = findSheet(ss, PROVINCE_SHEET_PREFIX + provinceName);
@@ -536,6 +545,8 @@ function handleRequest(e) {
       result = deleteData(ss, SHEETS.orders, params.id);
     } else if (action === 'getProvinceList') {
       result = getProvinceList(ss);
+    } else if (action === 'getProjectTypes') {
+      result = getProjectTypes(ss);
     } else if (action === 'getProvincePricing') {
       result = getProvincePricing(ss, params.province);
     } else if (action === 'getContractorComparisons') {

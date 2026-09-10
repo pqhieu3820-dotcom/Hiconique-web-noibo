@@ -848,6 +848,28 @@
         })
         .catch(function (e) { console.error('Không tải được danh sách tỉnh:', e); });
     }
+    // Loại dự án — đồng bộ 2 chiều với dropdown "nguồn" (cột U ẩn) trên sheet Dự án,
+    // y hệt cơ chế fetchProvinceList ở trên (xem getProjectTypes trong gsheets-api-v2.js).
+    function fetchProjectTypes() {
+      if (!provinceApiReady()) return;
+      var sel = document.getElementById('project-building-type');
+      if (!sel) return;
+      fetch(GSHEETS_CONFIG.API_URL + '?action=getProjectTypes', { redirect: 'follow' })
+        .then(function (r) { return r.json(); })
+        .then(function (list) {
+          if (!Array.isArray(list) || !list.length) return;
+          var currentVal = sel.value;
+          sel.innerHTML = '<option value="">— Chọn loại công trình —</option>';
+          list.forEach(function (name) {
+            var opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name;
+            sel.appendChild(opt);
+          });
+          if (currentVal) sel.value = currentVal;
+        })
+        .catch(function (e) { console.error('Không tải được danh sách loại dự án:', e); });
+    }
     // Cấu trúc mỗi sheet tỉnh: nhiều bảng xếp chồng, mỗi bảng có 1 dòng tiêu đề mục
     // (chỉ cột A có chữ, các cột còn lại trống) rồi ngay tới dòng header cột — dựng
     // lại đúng cấu trúc đó thành bảng HTML thay vì hiển thị 1 bảng phẳng gây hiểu nhầm.
@@ -953,6 +975,7 @@
         .catch(function (e) { setProvinceWrapMessage('Không tải được dữ liệu. Kiểm tra kết nối mạng.'); console.error(e); });
     });
     fetchProvinceList();
+    fetchProjectTypes();
 
     // ---------- Dự toán khối lượng chi tiết sơ bộ ----------
     // Định mức (ĐM thấp/cao trên mỗi m² sàn, hoặc /phòng VS) chép lại từ sheet

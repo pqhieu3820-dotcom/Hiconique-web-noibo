@@ -969,6 +969,27 @@
         .catch(function (e) { console.error('Không tải được danh sách tỉnh:', e); });
     }
 
+    // Loại dự án — đồng bộ 2 chiều với dropdown "nguồn" (cột U ẩn) trên sheet Dự án:
+    // thêm giá trị mới ở cột đó thì web cũng tự thấy, không cần sửa code.
+    var buildingTypeSel = document.getElementById('project-building-type');
+    if (buildingTypeSel && typeof GSHEETS_CONFIG !== 'undefined' && GSHEETS_CONFIG.USE_GSHEETS && GSHEETS_CONFIG.API_URL) {
+      fetch(GSHEETS_CONFIG.API_URL + '?action=getProjectTypes', { redirect: 'follow' })
+        .then(function (r) { return r.json(); })
+        .then(function (list) {
+          if (!Array.isArray(list) || !list.length) return;
+          var currentVal = buildingTypeSel.value;
+          buildingTypeSel.innerHTML = '<option value="">— Chọn loại công trình —</option>';
+          list.forEach(function (name) {
+            var opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name;
+            buildingTypeSel.appendChild(opt);
+          });
+          if (currentVal) buildingTypeSel.value = currentVal;
+        })
+        .catch(function (e) { console.error('Không tải được danh sách loại dự án:', e); });
+    }
+
     // Type cards behavior
     var typeCards = form.querySelectorAll('.type-card');
     typeCards.forEach(function (card) {
