@@ -292,7 +292,8 @@ const VALUE_MAP = {
     ['Chờ duyệt', 'pending'], ['Đã duyệt', 'approved'], ['Từ chối', 'rejected']
   ],
   'proposals.type': [
-    ['Mua sắm', 'mua-sam'], ['Đào tạo', 'dao-tao'], ['Sửa chữa', 'sua-chua'], ['Khác', 'khac']
+    ['Nghỉ phép', 'nghi-phep'], ['Mua sắm', 'mua-sam'], ['Nhân sự', 'nhan-su'],
+    ['Công tác', 'cong-tac'], ['Tài chính', 'tai-chinh'], ['Khen thưởng', 'khen-thuong']
   ]
 };
 

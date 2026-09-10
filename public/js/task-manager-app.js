@@ -1697,11 +1697,17 @@
           const reviewer = proposal.reviewerId ? TaskManager.getMember(proposal.reviewerId) : null;
 
           const typeIcon = proposal.type === 'mua-sam' ? '🛒' :
-                         proposal.type === 'dao-tao' ? '📚' :
-                         proposal.type === 'sua-chua' ? '🔧' : '📝';
+                         proposal.type === 'nghi-phep' ? '🌴' :
+                         proposal.type === 'nhan-su' ? '👥' :
+                         proposal.type === 'cong-tac' ? '✈️' :
+                         proposal.type === 'tai-chinh' ? '💰' :
+                         proposal.type === 'khen-thuong' ? '🏆' : '📝';
           const typeLabel = proposal.type === 'mua-sam' ? 'Mua sắm' :
-                           proposal.type === 'dao-tao' ? 'Đào tạo' :
-                           proposal.type === 'sua-chua' ? 'Sửa chữa' : 'Khác';
+                           proposal.type === 'nghi-phep' ? 'Nghỉ phép' :
+                           proposal.type === 'nhan-su' ? 'Nhân sự' :
+                           proposal.type === 'cong-tac' ? 'Công tác' :
+                           proposal.type === 'tai-chinh' ? 'Tài chính' :
+                           proposal.type === 'khen-thuong' ? 'Khen thưởng' : 'Khác';
 
           const statusBadge = proposal.status === 'pending' ? '<span class="task-priority-badge priority-medium">Chờ duyệt</span>' :
                             proposal.status === 'approved' ? '<span class="task-priority-badge priority-low">Đã duyệt</span>' :
@@ -1768,17 +1774,29 @@
         <div class="form-group">
           <label class="form-label">Loại đề xuất</label>
           <div class="proposal-type-options">
-            <div class="proposal-type-option ${proposal && proposal.type === 'mua-sam' ? 'active' : ''}" data-value="mua-sam" onclick="selectProposalType(this)">
+            <div class="proposal-type-option ${proposal && proposal.type === 'nghi-phep' ? 'active' : ''}" data-value="nghi-phep" onclick="selectProposalType(this)">
+              <div class="type-icon">🌴</div>
+              <div class="type-label">Nghỉ phép</div>
+            </div>
+            <div class="proposal-type-option ${!proposal || proposal.type === 'mua-sam' ? 'active' : ''}" data-value="mua-sam" onclick="selectProposalType(this)">
               <div class="type-icon">🛒</div>
               <div class="type-label">Mua sắm</div>
             </div>
-            <div class="proposal-type-option ${proposal && proposal.type === 'dao-tao' ? 'active' : ''}" data-value="dao-tao" onclick="selectProposalType(this)">
-              <div class="type-icon">📚</div>
-              <div class="type-label">Đào tạo</div>
+            <div class="proposal-type-option ${proposal && proposal.type === 'nhan-su' ? 'active' : ''}" data-value="nhan-su" onclick="selectProposalType(this)">
+              <div class="type-icon">👥</div>
+              <div class="type-label">Nhân sự</div>
             </div>
-            <div class="proposal-type-option ${proposal && proposal.type === 'sua-chua' ? 'active' : ''}" data-value="sua-chua" onclick="selectProposalType(this)">
-              <div class="type-icon">🔧</div>
-              <div class="type-label">Sửa chữa</div>
+            <div class="proposal-type-option ${proposal && proposal.type === 'cong-tac' ? 'active' : ''}" data-value="cong-tac" onclick="selectProposalType(this)">
+              <div class="type-icon">✈️</div>
+              <div class="type-label">Công tác</div>
+            </div>
+            <div class="proposal-type-option ${proposal && proposal.type === 'tai-chinh' ? 'active' : ''}" data-value="tai-chinh" onclick="selectProposalType(this)">
+              <div class="type-icon">💰</div>
+              <div class="type-label">Tài chính</div>
+            </div>
+            <div class="proposal-type-option ${proposal && proposal.type === 'khen-thuong' ? 'active' : ''}" data-value="khen-thuong" onclick="selectProposalType(this)">
+              <div class="type-icon">🏆</div>
+              <div class="type-label">Khen thưởng</div>
             </div>
           </div>
           <input type="hidden" name="type" id="proposalTypeInput" value="${proposal ? proposal.type : 'mua-sam'}">
