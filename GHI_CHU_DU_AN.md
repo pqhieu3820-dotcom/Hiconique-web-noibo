@@ -4,6 +4,19 @@ File này tồn tại để không phải hỏi lại các thông tin dưới đ
 chat mới với Claude. Đây là nguồn tham chiếu chính (source of truth) cho các liên kết và quy
 tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
+## ⏳ VIỆC CÒN TỒN ĐỌNG (đọc mục này đầu tiên — cập nhật 2026-09-10 cuối phiên)
+
+Không có việc gì đang dở dang/nguy hiểm — mọi thay đổi trong các phiên gần đây đều đã **commit + push xong**, Apps Script đã deploy, dữ liệu Sheet đã verify qua API. Duy nhất còn 1 việc lớn CHƯA làm, không gấp, làm khi nào tiện:
+
+- **Cột "Tên dự án" tra cứu (VLOOKUP) mới xong 1/12 sheet (Công việc/Tasks)**. Còn thiếu ở: **Hoa hồng dự án, Công nợ khách hàng, Đơn hàng, So sánh nhà thầu, Dòng tiền, Phát sinh, Tiến độ, Nghiệm thu, Hồ sơ công trình, Issue BIM, BOQ BIM** (11 sheet). Cách làm (đã verify đúng trên Công việc, xem chi tiết mục "Trạng thái phiên trước" ngay dưới):
+  1. Chèn 1 cột trống ngay sau cột "Mã dự án" của sheet đó, đặt tên header **"Tên dự án"**.
+  2. Gõ công thức vào dòng dữ liệu đầu tiên: `=IFERROR(VLOOKUP($<cột Mã dự án của dòng đó>;'Dự án'!$A:$B;2;FALSE);"")` — **nhớ dùng dấu `;` không phải `,`** (xem bài học locale bên dưới).
+  3. Kéo/fill-down công thức xuống hết các dòng có dữ liệu thật (không cần dư ra ngoài, `fillComputedHelperFormulas()` trong code đã tự lo phần dòng mới tạo sau này qua app).
+  4. Verify lại bằng cách gọi API tương ứng (VD `getCommissions`, `getOrders`...) và kiểm tra field `"Tên dự án"` xuất hiện đủ ở mọi dòng.
+  - Không cần sửa code/redeploy Apps Script cho bước này — cơ chế đã có sẵn, chỉ là thao tác tay trên Sheet.
+
+Ngoài ra, 2 việc nhỏ đã CHỦ ĐỘNG bỏ qua (không phải quên, xem lý do trong các mục bên dưới nếu cần): field "Tháng" (YYYY-MM) không đổi sang mm/yyyy vì sẽ hỏng lọc tháng ở Tài chính/Lương/Hoa hồng; và việc quét toàn bộ sheet khác xem có bị lệch dữ liệu thô-chưa-migrate tương tự Công việc/Dự án hay không (người dùng yêu cầu rộng "xử lí hết" nhưng phạm vi đã làm mới giới hạn ở 3 ảnh chụp gốc).
+
 ## Trạng thái hiện tại (cập nhật lần cuối: 2026-09-10 — fix thiết bị chấm công ghi đè lẫn nhau + thêm cột deviceIds còn thiếu trên Sheet, đọc kỹ mục này trước)
 
 **Việc mới nhất (2026-09-10, theo report kèm ảnh chụp: mở web trên PC và trên điện thoại, cả 2 đều hiện mình là thiết bị "slot 1" duy nhất, đáng lẽ phải là slot 1 và slot 2):**
