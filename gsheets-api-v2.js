@@ -1081,6 +1081,124 @@ function normalizeAllLegacyIds() {
   return summary;
 }
 
+// Chèn cột phụ trợ "Tên dự án" (VLOOKUP theo cột projectId của từng sheet,
+// tra 'Dự án'!A:B) ngay sau cột projectId, cho MỌI sheet có field projectId
+// còn thiếu cột này — làm nốt việc dở dang đã làm tay 1/12 sheet (Công việc)
+// trước đó, giờ làm hết 1 lượt qua script thay vì thao tác chuột trên UI
+// (UI Bảng/Table dễ bị lag/revert khi sửa header bằng automation). Chạy TAY
+// 1 lần từ trình chỉnh sửa Apps Script. Idempotent: sheet đã có cột "Tên dự
+// án" thì bị bỏ qua, an toàn chạy lại nhiều lần.
+function colLetter(n) {
+  let s = '';
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    s = String.fromCharCode(65 + rem) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s;
+}
+function addTenDuAnLookupColumns() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const TARGET_KEYS = ['commissions', 'receivables', 'orders', 'contractorComparisons',
+    'cashFlowPlans', 'changeOrders', 'scheduleItems', 'acceptanceChecks',
+    'projectDocuments', 'bimIssues', 'bimBoqItems'];
+  const summary = [];
+  TARGET_KEYS.forEach(function (key) {
+    const sheetName = SHEETS[key];
+    try {
+      const sheet = findSheet(ss, sheetName);
+      if (!sheet) { summary.push(sheetName + ': sheet không tồn tại'); return; }
+      const headers = getHeaders(sheet);
+      if (headers.indexOf('Tên dự án') !== -1) { summary.push(sheetName + ': đã có, bỏ qua'); return; }
+      const projectIdColIdx = headers.map(function (h) { return viToEnHeader(sheetName, h); }).indexOf('projectId');
+      if (projectIdColIdx === -1) { summary.push(sheetName + ': không tìm thấy cột projectId'); return; }
+      const projectIdCol1Based = projectIdColIdx + 1;
+      const projectIdLetter = colLetter(projectIdCol1Based);
+      sheet.insertColumnAfter(projectIdCol1Based);
+      const newColIdx = projectIdCol1Based + 1;
+      const newColRangeWide = sheet.getRange(1, newColIdx, Math.max(sheet.getLastRow(), 2), 1);
+      // Cột vừa chèn đôi khi thừa hưởng 1 quy tắc xác thực dữ liệu "mồ côi"
+      // dính vào đúng vị trí cột/ô đó từ thời sheet còn là Bảng (Table) rồi bị
+      // chuyển đổi qua lại — xoá sạch trước để formula chắc chắn ghi được.
+      newColRangeWide.clearDataValidations();
+      sheet.getRange(1, newColIdx).setValue('Tên dự án');
+      const lastRow = sheet.getLastRow();
+      let failedRows = 0;
+      if (lastRow >= 2) {
+        const numRows = lastRow - 1;
+        const formulas = [];
+        for (let r = 2; r <= lastRow; r++) {
+          formulas.push(["=IFERROR(VLOOKUP($" + projectIdLetter + r + ";'Dự án'!$A:$B;2;FALSE);\"\")"]);
+        }
+        try {
+          sheet.getRange(2, newColIdx, numRows, 1).setFormulas(formulas);
+        } catch (bulkErr) {
+          // 1 vài ô cụ thể vẫn có thể bị chặn dù đã xoá validation ở trên (VD
+          // rule đặt lại đúng lúc ghi) — fallback ghi từng dòng, bỏ qua dòng lỗi
+          // thay vì mất trắng cả sheet.
+          for (let r = 2; r <= lastRow; r++) {
+            try {
+              sheet.getRange(r, newColIdx).setFormula(formulas[r - 2][0]);
+            } catch (rowErr) {
+              failedRows++;
+            }
+          }
+        }
+      }
+      summary.push(sheetName + ': đã thêm cột ở vị trí ' + colLetter(newColIdx) + (failedRows ? (' (LỖI ' + failedRows + ' dòng)') : ''));
+    } catch (sheetErr) {
+      summary.push(sheetName + ': LỖI — ' + sheetErr.message);
+    }
+  });
+  Logger.log('Kết quả thêm cột "Tên dự án": ' + JSON.stringify(summary));
+  return summary;
+}
+
+// Vá lại các ô "Tên dự án" bị bỏ trống do addTenDuAnLookupColumns() ở trên
+// gặp lỗi validation giữa chừng ở 1 số sheet (cột đã có header nhưng công
+// thức chưa ghi được cho mọi dòng) — chạy sau addTenDuAnLookupColumns(), an
+// toàn chạy lại nhiều lần (chỉ đụng ô đang trống VÀ không có công thức).
+function backfillMissingTenDuAnFormulas() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const TARGET_KEYS = ['commissions', 'receivables', 'orders', 'contractorComparisons',
+    'cashFlowPlans', 'changeOrders', 'scheduleItems', 'acceptanceChecks',
+    'projectDocuments', 'bimIssues', 'bimBoqItems'];
+  const summary = [];
+  TARGET_KEYS.forEach(function (key) {
+    const sheetName = SHEETS[key];
+    try {
+      const sheet = findSheet(ss, sheetName);
+      if (!sheet) return;
+      const headers = getHeaders(sheet);
+      const tenDuAnColIdx = headers.indexOf('Tên dự án');
+      const projectIdColIdx = headers.map(function (h) { return viToEnHeader(sheetName, h); }).indexOf('projectId');
+      if (tenDuAnColIdx === -1 || projectIdColIdx === -1) return;
+      const projectIdLetter = colLetter(projectIdColIdx + 1);
+      const lastRow = sheet.getLastRow();
+      if (lastRow < 2) return;
+      const range = sheet.getRange(2, tenDuAnColIdx + 1, lastRow - 1, 1);
+      const formulasNow = range.getFormulas();
+      range.clearDataValidations();
+      let fixed = 0, stillFailed = 0;
+      for (let i = 0; i < formulasNow.length; i++) {
+        if (formulasNow[i][0]) continue; // đã có công thức, bỏ qua
+        const r = i + 2;
+        try {
+          sheet.getRange(r, tenDuAnColIdx + 1).setFormula("=IFERROR(VLOOKUP($" + projectIdLetter + r + ";'Dự án'!$A:$B;2;FALSE);\"\")");
+          fixed++;
+        } catch (e) {
+          stillFailed++;
+        }
+      }
+      if (fixed || stillFailed) summary.push(sheetName + ': vá ' + fixed + ' dòng' + (stillFailed ? (', vẫn lỗi ' + stillFailed) : ''));
+    } catch (e) {
+      summary.push(sheetName + ': LỖI — ' + e.message);
+    }
+  });
+  Logger.log('Kết quả vá công thức "Tên dự án": ' + JSON.stringify(summary));
+  return summary;
+}
+
 function replaceIdInListColumn(ss, sheetName, headerNameEn, oldId, newId) {
   const sheet = findSheet(ss, sheetName);
   if (!sheet) return;
