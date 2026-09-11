@@ -233,6 +233,10 @@
   height: 16px;
 }
 
+.icon-btn-tm.spinning svg {
+  animation: sync-spin 1s linear infinite;
+}
+
 /* ========== Stats Grid ========== */
 .stats-grid {
   display: grid;

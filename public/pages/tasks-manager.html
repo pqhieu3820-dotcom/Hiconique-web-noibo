@@ -530,84 +530,69 @@
       </div>
     </div>
 
-    <!-- Right Panel: Daily Progress -->
+    <!-- Right Panel: Daily Progress — dữ liệu thật của chính người đang đăng
+         nhập, xem renderDailyProgressPanel() trong task-manager-app.js. -->
     <aside class="tm-right-panel">
       <header class="right-panel-header">
         <h3>Tiến độ hôm nay</h3>
-        <button class="icon-btn-tm small"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></button>
+        <button class="icon-btn-tm small" id="dpRefreshBtn" title="Tải lại dữ liệu mới nhất"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></button>
       </header>
 
       <div class="daily-progress-circle">
         <svg viewBox="0 0 120 120">
           <circle cx="60" cy="60" r="50" fill="none" stroke="var(--color-surface-2)" stroke-width="10"/>
           <circle cx="60" cy="60" r="50" fill="none" stroke="var(--color-bronze)" stroke-width="10"
-                  stroke-dasharray="314" stroke-dashoffset="116" transform="rotate(-90 60 60)" stroke-linecap="round"/>
+                  id="dpRing" stroke-dasharray="314" stroke-dashoffset="314" transform="rotate(-90 60 60)" stroke-linecap="round"/>
         </svg>
         <div class="daily-circle-content">
-          <span class="daily-percent">63%</span>
+          <span class="daily-percent" id="dpPercent">0%</span>
           <span class="daily-label">Hoàn thành</span>
         </div>
       </div>
 
-      <p class="daily-text">5/8 tasks hoàn thành hôm nay</p>
+      <p class="daily-text" id="dpTasksText">Đang tải…</p>
 
       <div class="week-chart">
         <h4>Tuần này</h4>
-        <div class="week-bars">
+        <div class="week-bars" id="dpWeekBars">
           <div class="week-day">
             <span class="day-label">T2</span>
-            <div class="day-bar"><span style="height:60%"></span></div>
+            <div class="day-bar"><span style="height:0%"></span></div>
           </div>
           <div class="week-day">
             <span class="day-label">T3</span>
-            <div class="day-bar"><span style="height:80%"></span></div>
+            <div class="day-bar"><span style="height:0%"></span></div>
           </div>
           <div class="week-day">
             <span class="day-label">T4</span>
-            <div class="day-bar"><span style="height:100%; background:var(--color-bronze)"></span></div>
+            <div class="day-bar"><span style="height:0%"></span></div>
           </div>
           <div class="week-day">
             <span class="day-label">T5</span>
-            <div class="day-bar"><span style="height:45%"></span></div>
+            <div class="day-bar"><span style="height:0%"></span></div>
           </div>
           <div class="week-day">
             <span class="day-label">T6</span>
-            <div class="day-bar"><span style="height:75%"></span></div>
+            <div class="day-bar"><span style="height:0%"></span></div>
           </div>
           <div class="week-day">
             <span class="day-label">T7</span>
-            <div class="day-bar"><span style="height:30%"></span></div>
+            <div class="day-bar"><span style="height:0%"></span></div>
           </div>
           <div class="week-day">
             <span class="day-label">CN</span>
-            <div class="day-bar"><span style="height:50%"></span></div>
+            <div class="day-bar"><span style="height:0%"></span></div>
           </div>
         </div>
       </div>
 
-      <!-- Schedule -->
+      <!-- Task sắp đến hạn (giữ nguyên tiêu đề "Lịch hôm nay" theo yêu cầu,
+           nội dung thay bằng deadline thật vì hệ thống chưa có lịch họp/sự
+           kiện riêng). -->
       <div class="schedule-list">
         <h4>Lịch hôm nay</h4>
-        <div class="schedule-item">
-          <span class="schedule-time">11:00</span>
-          <div class="schedule-content">
-            <h5>Review mockups</h5>
-            <p>Vinhouse · Web Redesign</p>
-          </div>
-        </div>
-        <div class="schedule-item">
-          <span class="schedule-time">14:00</span>
-          <div class="schedule-content">
-            <h5>Client presentation</h5>
-            <p>Marketing Q1</p>
-          </div>
-        </div>
-        <div class="schedule-item">
-          <span class="schedule-time">15:00</span>
-          <div class="schedule-content">
-            <h5>Code review</h5>
-            <p>Mobile App</p>
-          </div>
+        <div id="dpSchedule">
+          <p class="daily-text">Đang tải…</p>
         </div>
       </div>
     </aside>

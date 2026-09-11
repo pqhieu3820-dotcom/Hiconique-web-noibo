@@ -59,6 +59,23 @@
     var syncBtn = document.getElementById('syncFromSheetsBtn');
     if (syncBtn) syncBtn.addEventListener('click', syncFromSheets);
 
+    // Nút refresh nhỏ trên panel "Tiến độ hôm nay" — ép tải lại từ Sheet trước khi tính lại.
+    var dpRefreshBtn = document.getElementById('dpRefreshBtn');
+    if (dpRefreshBtn) {
+      dpRefreshBtn.addEventListener('click', function () {
+        dpRefreshBtn.classList.add('spinning');
+        if (typeof TaskManager !== 'undefined' && TaskManager.refreshFromGSheets) {
+          TaskManager.refreshFromGSheets(function () {
+            renderDailyProgressPanel();
+            dpRefreshBtn.classList.remove('spinning');
+          });
+        } else {
+          renderDailyProgressPanel();
+          dpRefreshBtn.classList.remove('spinning');
+        }
+      });
+    }
+
     // Update user info in UI
     if (currentUser) updateUserUIUI(currentUser);
 
@@ -111,6 +128,7 @@
         updateNavBadges();
         var stats = TaskManager.getStats();
         if (stats) updateStats(stats);
+        renderDailyProgressPanel();
       });
     }, 60000);
   }
@@ -1061,6 +1079,108 @@
 
     // Animate progress bars
     setTimeout(animateProgressBars, 100);
+
+    // Panel "Tiến độ hôm nay" bên phải (dữ liệu thật của chính người đăng nhập)
+    renderDailyProgressPanel();
+  }
+
+  // Thứ Hai của tuần chứa ngày d (00:00), dùng để khớp đúng cột T2 trong
+  // #dpWeekBars — tuần cố định (không phải "7 ngày gần nhất") để luôn khớp
+  // đúng nhãn T2..CN có sẵn trong HTML.
+  function mondayOfWeek(d) {
+    var day = d.getDay(); // 0=CN, 1=T2 ... 6=T7
+    var diff = day === 0 ? -6 : 1 - day;
+    var monday = new Date(d);
+    monday.setDate(d.getDate() + diff);
+    monday.setHours(0, 0, 0, 0);
+    return monday;
+  }
+  function ymd(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  // Panel bên phải trang Tasks — trước đây là mockup tĩnh (số/lịch hardcode
+  // sẵn trong HTML, không có dòng JS nào wire dữ liệu thật). Giữ nguyên UI/
+  // tiêu đề, chỉ thay nội dung bằng dữ liệu thật của CHÍNH người đang đăng
+  // nhập: (1) vòng tròn + "N/M tasks hoàn thành hôm nay" tính từ
+  // TaskManager.getTodayProgress() trên các task đang xử lý (chưa completed)
+  // được giao cho họ; (2) biểu đồ "Tuần này" = tiến độ trung bình mỗi ngày
+  // trong tuần hiện tại (T2..CN) từ dailyTasks của họ; (3) "Lịch hôm nay" ->
+  // đổi nội dung thành các task SẮP ĐẾN HẠN gần nhất (hệ thống chưa có lịch
+  // họp/sự kiện riêng nên không thể hiện đúng nghĩa "lịch", nhưng đây là
+  // thông tin thật gần nhất với nhu cầu "hôm nay cần làm/chú ý gì").
+  function renderDailyProgressPanel() {
+    if (typeof TaskManager === 'undefined') return;
+    var user = TaskManager.getCurrentUser ? TaskManager.getCurrentUser() : null;
+    if (!user) return;
+
+    var myTasks = TaskManager.getTasks({ assigneeId: user.id }) || [];
+    var activeTasks = myTasks.filter(function (t) { return t.status !== 'completed'; });
+    var today = new Date();
+    var todayKey = ymd(today);
+
+    var todayEntries = activeTasks.map(function (t) {
+      return TaskManager.getTodayProgress ? TaskManager.getTodayProgress(t.id) : { progress: 0, done: false };
+    });
+    var percent = todayEntries.length ? Math.round(todayEntries.reduce(function (s, e) { return s + (e.progress || 0); }, 0) / todayEntries.length) : 0;
+    var doneToday = todayEntries.filter(function (e) { return e.done; }).length;
+
+    var ring = document.getElementById('dpRing');
+    if (ring) {
+      var circumference = 314; // khớp stroke-dasharray có sẵn trong HTML (2*pi*50 làm tròn)
+      ring.setAttribute('stroke-dashoffset', String(Math.round(circumference * (1 - percent / 100))));
+    }
+    var percentEl = document.getElementById('dpPercent');
+    if (percentEl) percentEl.textContent = percent + '%';
+    var tasksTextEl = document.getElementById('dpTasksText');
+    if (tasksTextEl) {
+      tasksTextEl.textContent = activeTasks.length
+        ? doneToday + '/' + activeTasks.length + ' tasks hoàn thành hôm nay'
+        : 'Không có task nào đang xử lý';
+    }
+
+    var monday = mondayOfWeek(today);
+    var weekBars = document.querySelectorAll('#dpWeekBars .day-bar > span');
+    for (var i = 0; i < weekBars.length; i++) {
+      var d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      var dKey = ymd(d);
+      var entriesForDay = [];
+      myTasks.forEach(function (t) {
+        if (!Array.isArray(t.dailyTasks)) return;
+        var e = t.dailyTasks.find(function (x) { return x.date === dKey; });
+        if (e) entriesForDay.push(e.progress || 0);
+      });
+      var dayPct = entriesForDay.length ? Math.round(entriesForDay.reduce(function (a, b) { return a + b; }, 0) / entriesForDay.length) : 0;
+      weekBars[i].style.height = dayPct + '%';
+      weekBars[i].style.background = dKey === todayKey ? 'var(--color-bronze)' : '';
+    }
+
+    var upcoming = myTasks
+      .filter(function (t) { return t.status !== 'completed' && t.deadline; })
+      .sort(function (a, b) { return new Date(a.deadline) - new Date(b.deadline); })
+      .slice(0, 4);
+    var scheduleEl = document.getElementById('dpSchedule');
+    if (scheduleEl) {
+      if (upcoming.length === 0) {
+        scheduleEl.innerHTML = '<p class="daily-text">Không có việc nào sắp đến hạn</p>';
+      } else {
+        scheduleEl.innerHTML = upcoming.map(function (t) {
+          var project = TaskManager.getProject ? TaskManager.getProject(t.projectId) : null;
+          var d = new Date(t.deadline);
+          var hasTime = !isNaN(d.getTime()) && t.deadline.indexOf('T') !== -1;
+          var timeLabel = hasTime ? (String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0')) : '';
+          var dateLabel = TaskManager.formatShortDate ? TaskManager.formatShortDate(t.deadline.slice(0, 10)) : t.deadline.slice(0, 10);
+          return '<div class="schedule-item">'
+            + '<span class="schedule-time">' + (timeLabel || dateLabel) + '</span>'
+            + '<div class="schedule-content">'
+            +   '<h5>' + (t.title || '') + '</h5>'
+            +   '<p>' + (project ? project.name : '') + (timeLabel ? ' · ' + dateLabel : '') + '</p>'
+            + '</div>'
+          + '</div>';
+        }).join('');
+      }
+    }
   }
 
   // Render main objective section

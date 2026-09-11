@@ -6,15 +6,27 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
 ## ⏳ VIỆC CÒN TỒN ĐỌNG (đọc mục này đầu tiên — cập nhật 2026-09-11 cuối phiên)
 
-**Chưa làm (do người dùng chưa yêu cầu, chỉ mới phát hiện ra khi làm việc khác): bảng "Tiến độ hôm nay"/"Tuần này"/"Lịch hôm nay" ở góc phải trang `tasks-manager.html` là mockup HTML tĩnh 100%, chưa từng có JS nào wire dữ liệu thật vào (số 63%, "5/8 tasks", 3 sự kiện lịch... đều hardcode sẵn).** Đã thay thế đúng nhu cầu cụ thể người dùng cần (xem "Báo cáo công việc" ngay dưới) nhưng bảng mockup cũ này vẫn còn nguyên ở `tasks-manager.html`, cần quay lại xoá hẳn hoặc thay bằng dữ liệu thật khi người dùng yêu cầu.
+Không có việc gì đang dở dang — mọi thay đổi trong phiên này đều đã commit + push xong.
 
-Các việc khác đã xong, commit + push hết:
+- Panel "Tiến độ hôm nay" ở trang Tasks (`tasks-manager.html`) — ĐÃ SỬA XONG, không còn là mockup tĩnh nữa (xem mục "Trạng thái hiện tại — 2026-09-11 (d)" ngay dưới).
 - Nút "Báo cáo công việc" (CEO/Manager) ở trang Dự án — tiến độ dự án/từng người/nhật ký hàng ngày theo thời gian thực. Đã test đủ trên trình duyệt (xem mục "Trạng thái hiện tại — 2026-09-11 (c)" ngay dưới).
 - Cột "Tên dự án" tra cứu (VLOOKUP) — đã xong đủ 12/12 sheet (xem mục "Trạng thái hiện tại — 2026-09-11 (a)" ngay dưới).
 - Chấm công Check In/Check Out — nâng lên bắt buộc đủ 3/3 điều kiện (GPS/Wifi/Thiết bị), thiếu bất kỳ điều kiện nào đều chặn hẳn + hiện bảng thông báo (xem mục "Trạng thái hiện tại — 2026-09-11 (b)" ngay dưới).
 - FIELD_MAP/VALUE_MAP 3 cột phụ Thành viên (lastActiveAt/theme/deviceIds) — người dùng tự đổi header sang tiếng Việt trên Sheet, đã map lại + deploy Apps Script phiên bản 48.
 
 Ngoài ra, 2 việc nhỏ đã CHỦ ĐỘNG bỏ qua (không phải quên, xem lý do trong các mục bên dưới nếu cần): field "Tháng" (YYYY-MM) không đổi sang mm/yyyy vì sẽ hỏng lọc tháng ở Tài chính/Lương/Hoa hồng; và việc quét toàn bộ sheet khác xem có bị lệch dữ liệu thô-chưa-migrate tương tự Công việc/Dự án hay không (người dùng yêu cầu rộng "xử lí hết" nhưng phạm vi đã làm mới giới hạn ở 3 ảnh chụp gốc).
+
+## Trạng thái hiện tại (cập nhật lần cuối: 2026-09-11 (d) — panel "Tiến độ hôm nay" ở trang Tasks đổi từ mockup sang dữ liệu thật, đọc kỹ mục này trước)
+
+**Việc mới nhất (2026-09-11, theo yêu cầu người dùng): thay dữ liệu mockup tĩnh của panel bên phải trang Tasks (`tasks-manager.html`) bằng dữ liệu thật của CHÍNH người đang đăng nhập — giữ nguyên UI/tiêu đề như yêu cầu, chỉ đổi phần nội dung.**
+
+- **`renderDailyProgressPanel()`** (mới, trong `task-manager-app.js`, gọi từ `renderDashboard()` + trong vòng poll 60s có sẵn + nút refresh riêng `#dpRefreshBtn`):
+  - **Vòng tròn + "N/M tasks hoàn thành hôm nay"**: N/M tính trên các task được giao cho người dùng hiện tại (`TaskManager.getTasks({assigneeId: user.id})`) mà CHƯA `completed` — dùng đúng `TaskManager.getTodayProgress(taskId)` đã có sẵn (từ tính năng "Update tiến độ việc hàng ngày"), % = trung bình `progress` hôm nay trên các task đó, N = số task có `done:true` hôm nay.
+  - **"Tuần này"**: 7 cột T2..CN giữ nguyên vị trí cố định (không phải "7 ngày gần nhất" trôi) — tính đúng Thứ Hai của TUẦN HIỆN TẠI rồi lấy trung bình `dailyTasks` mỗi ngày trong tuần đó cho các task của người dùng, cột đúng ngày hôm nay tô màu đồng (bronze) như bản mockup gốc từng làm cho 1 cột cố định, còn lại giữ màu xanh mặc định của CSS.
+  - **"Lịch hôm nay"** (giữ nguyên tiêu đề theo đúng yêu cầu "UI và đầu mục vẫn thế") — đổi nội dung thành **task sắp đến hạn gần nhất** (chưa `completed`, có `deadline`, sắp xếp tăng dần, lấy 4 task đầu) vì hệ thống chưa có lịch họp/sự kiện riêng — đây là thông tin thật gần nghĩa nhất với "hôm nay cần chú ý gì". Rỗng thì hiện "Không có việc nào sắp đến hạn" thay vì để trống.
+  - CSS thêm 1 rule nhỏ `.icon-btn-tm.spinning svg` (tái dùng keyframe `sync-spin` có sẵn) cho nút refresh mới.
+- **Đã test trên trình duyệt với 2 tài khoản**: CEO (không có task nào được giao — đúng hiện "Không có task nào đang xử lý"/"Không có việc nào sắp đến hạn", không phải lỗi) và Trần Mạnh (quản lý thi công, có nhiều task) — hiện đúng "0/14 tasks hoàn thành hôm nay" (seed data không có tiến độ ngày hôm nay/tuần này nên đúng là 0%, không phải bug) và 4 task sắp đến hạn thật với ngày/tên dự án đúng. Không có lỗi console phát sinh từ code mới.
+- Đã commit + push.
 
 ## Trạng thái hiện tại (cập nhật lần cuối: 2026-09-11 (c) — nút "Báo cáo công việc" CEO/Manager (ĐÃ TEST XONG) + map lại 3 cột phụ Thành viên, đọc kỹ mục này trước)
 
