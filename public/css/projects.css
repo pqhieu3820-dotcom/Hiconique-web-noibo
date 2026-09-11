@@ -248,13 +248,18 @@
 .kanban-board {
   display: flex;
   gap: var(--space-md);
-  min-width: max-content;
   padding-bottom: var(--space-lg);
 }
 
+/* Cột co giãn lấp đầy chiều rộng màn hình (trước đây cố định 280px, màn
+   hình rộng như 27" thừa nhiều khoảng trắng bên phải, nhìn lệch/cụt) —
+   flex-grow đều nhau giữa các cột, min-width giữ cột không bị bóp quá hẹp
+   trên màn hẹp (tự cuộn ngang nhờ overflow-x của .projects-content), còn
+   max-width tránh cột giãn quá khổ trên màn siêu rộng (32"+). */
 .kanban-column {
-  width: 280px;
-  flex-shrink: 0;
+  flex: 1 1 280px;
+  min-width: 280px;
+  max-width: 420px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -887,7 +892,13 @@
   }
 
   .kanban-column {
+    /* .kanban-board đổi flex-direction:column trên mobile — flex-basis
+       280px của .kanban-column (đặt cho layout desktop) sẽ áp lên CHIỀU
+       CAO thay vì chiều rộng nếu không reset về "none" ở đây, làm cột méo
+       chiều cao trên điện thoại. */
+    flex: none;
     width: 100%;
+    max-width: 100%;
     min-width: 0;
   }
 

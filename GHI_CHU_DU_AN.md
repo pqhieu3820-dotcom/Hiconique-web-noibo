@@ -13,6 +13,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
 Không có việc gì đang dở dang — mọi thay đổi trong phiên này đều đã commit + push xong.
 
+- Cột Kanban trang Dự án co giãn lấp đầy màn hình rộng (trước đó cố định 280px, màn 27" thừa nhiều khoảng trắng bên phải) — xem mục "Trạng thái hiện tại — 2026-09-11 (h)" ngay dưới.
 - Đồng bộ hình dạng avatar toàn hệ thống (vuông bo góc, xoá hết hình tròn) — xem mục "Trạng thái hiện tại — 2026-09-11 (g)" ngay dưới.
 - Kanban "Hoàn thành/Done" tự ẩn việc/dự án đã xong QUA TUẦN + cột Kanban giới hạn chiều cao (cuộn riêng, không kéo dài cả trang) — xem mục "Trạng thái hiện tại — 2026-09-11 (f)" ngay dưới.
 - Panel "Tiến độ hôm nay" ở trang Tasks (`tasks-manager.html`) — ĐÃ SỬA XONG, không còn là mockup tĩnh nữa (xem mục "Trạng thái hiện tại — 2026-09-11 (d)" ngay dưới).
@@ -20,6 +21,15 @@ Không có việc gì đang dở dang — mọi thay đổi trong phiên này đ
 - Cột "Tên dự án" tra cứu (VLOOKUP) — đã xong đủ 12/12 sheet (xem mục "Trạng thái hiện tại — 2026-09-11 (a)" ngay dưới).
 - Chấm công Check In/Check Out — nâng lên bắt buộc đủ 3/3 điều kiện (GPS/Wifi/Thiết bị), thiếu bất kỳ điều kiện nào đều chặn hẳn + hiện bảng thông báo (xem mục "Trạng thái hiện tại — 2026-09-11 (b)" ngay dưới).
 - FIELD_MAP/VALUE_MAP 3 cột phụ Thành viên (lastActiveAt/theme/deviceIds) — người dùng tự đổi header sang tiếng Việt trên Sheet, đã map lại + deploy Apps Script phiên bản 48.
+
+## Trạng thái hiện tại (cập nhật lần cuối: 2026-09-11 (h) — cột Kanban trang Dự án co giãn theo màn hình, đọc kỹ mục này trước)
+
+**Việc mới nhất (2026-09-11, theo ảnh chụp người dùng dùng màn 27"): Board Kanban trang Dự án (`.kanban-column`) trước đó cố định `width: 280px`, nên trên màn hình rộng chỉ 4 cột dồn hết về bên trái, để lại 1 khoảng trắng lớn bên phải nhìn lệch/cụt.**
+
+- Đổi `.kanban-column` từ `width: 280px; flex-shrink: 0` sang `flex: 1 1 280px; min-width: 280px; max-width: 420px` — cột co giãn đều lấp đầy chiều rộng thật của màn hình, có trần (420px) để không bị giãn quá khổ trên màn siêu rộng (32"+), có sàn (280px) để không bị bóp quá hẹp trên màn nhỏ (dưới sàn thì tự cuộn ngang nhờ `overflow-x` sẵn có của `.projects-content`).
+- **Bẫy kỹ thuật đã tự phát hiện + sửa trong lúc làm**: mobile media query (`max-width: 768px`) đổi `.kanban-board` sang `flex-direction: column` để xếp cột theo chiều dọc trên điện thoại — nếu không reset `flex: none` cho `.kanban-column` ở đúng breakpoint đó, `flex-basis: 280px` (đặt cho layout ngang trên desktop) sẽ áp nhầm lên CHIỀU CAO thay vì chiều rộng khi trục chính đổi hướng, làm cột méo chiều cao trên điện thoại. Đã thêm `flex: none; max-width: 100%;` vào đúng rule mobile hiện có.
+- **Đã test qua 3 kích thước viewport thật (dùng `resize_window` để giả lập)**: 2200px (≈27"), 1600px, 1280px (laptop nhỏ) — cột co giãn đúng như kỳ vọng ở cả 3 mốc (420px/303.5px/280px mỗi cột tương ứng), lấp đầy 95-97% chiều rộng khả dụng, không còn khoảng trắng lớn bất đối xứng.
+- **Không đụng** Dashboard Kanban ở trang Tasks (`task-manager.css` `.kanban-board`) — đã dùng `display: grid; grid-template-columns: repeat(3, 1fr)` từ trước nên vốn đã co giãn đúng, không có lỗi tương tự.
 
 ## Trạng thái hiện tại (cập nhật lần cuối: 2026-09-11 (g) — đồng bộ hình dạng avatar toàn hệ thống, đọc kỹ mục này trước)
 
