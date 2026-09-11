@@ -7,17 +7,28 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 ## ⚠️ QUY TẮC LÀM VIỆC CỐ ĐỊNH — LUÔN ÁP DỤNG, KHÔNG CẦN NHẮC LẠI
 
 - **Đổi 1 field/quy tắc hiển thị dùng chung ở nhiều trang → phải tự rà + sửa HẾT mọi trang dùng field đó, không chỉ sửa đúng trang người dùng đang nói tới.** (Thêm 2026-09-11 sau khi `shortCode` (mã dự án viết tắt làm avatar) chỉ được cập nhật ở `projects.js` mà quên mất `task-manager-app.js` cũng render y hệt project card đó — người dùng phải tự phát hiện bug này.) Cách làm: `grep` toàn bộ `public/js/*.js`, `public/pages/*.html`, `public/css/*.css` tìm pattern CŨ trước khi coi là xong, không chỉ sửa 1 chỗ rồi dừng.
+- **Avatar (người HOẶC dự án) toàn hệ thống LUÔN là hình VUÔNG BO GÓC, KHÔNG BAO GIỜ hình tròn.** (Chốt cứng 2026-09-11 theo yêu cầu người dùng, xem chi tiết mục "Trạng thái hiện tại — 2026-09-11 (g)".) Chuẩn được ép toàn cục qua 1 block CSS trong `portal.css` (nạp ở mọi trang) — thêm avatar mới ở đâu cũng phải dùng lại 1 trong các class avatar đã có sẵn (không tự bịa class mới với `border-radius: 50%`), nếu thật sự cần class mới thì thêm luôn vào danh sách override trong `portal.css`.
 
 ## ⏳ VIỆC CÒN TỒN ĐỌNG (đọc mục này đầu tiên — cập nhật 2026-09-11 cuối phiên)
 
 Không có việc gì đang dở dang — mọi thay đổi trong phiên này đều đã commit + push xong.
 
+- Đồng bộ hình dạng avatar toàn hệ thống (vuông bo góc, xoá hết hình tròn) — xem mục "Trạng thái hiện tại — 2026-09-11 (g)" ngay dưới.
 - Kanban "Hoàn thành/Done" tự ẩn việc/dự án đã xong QUA TUẦN + cột Kanban giới hạn chiều cao (cuộn riêng, không kéo dài cả trang) — xem mục "Trạng thái hiện tại — 2026-09-11 (f)" ngay dưới.
 - Panel "Tiến độ hôm nay" ở trang Tasks (`tasks-manager.html`) — ĐÃ SỬA XONG, không còn là mockup tĩnh nữa (xem mục "Trạng thái hiện tại — 2026-09-11 (d)" ngay dưới).
 - Nút "Báo cáo công việc" (CEO/Manager) ở trang Dự án — tiến độ dự án/từng người/nhật ký hàng ngày theo thời gian thực. Đã test đủ trên trình duyệt (xem mục "Trạng thái hiện tại — 2026-09-11 (c)" ngay dưới).
 - Cột "Tên dự án" tra cứu (VLOOKUP) — đã xong đủ 12/12 sheet (xem mục "Trạng thái hiện tại — 2026-09-11 (a)" ngay dưới).
 - Chấm công Check In/Check Out — nâng lên bắt buộc đủ 3/3 điều kiện (GPS/Wifi/Thiết bị), thiếu bất kỳ điều kiện nào đều chặn hẳn + hiện bảng thông báo (xem mục "Trạng thái hiện tại — 2026-09-11 (b)" ngay dưới).
 - FIELD_MAP/VALUE_MAP 3 cột phụ Thành viên (lastActiveAt/theme/deviceIds) — người dùng tự đổi header sang tiếng Việt trên Sheet, đã map lại + deploy Apps Script phiên bản 48.
+
+## Trạng thái hiện tại (cập nhật lần cuối: 2026-09-11 (g) — đồng bộ hình dạng avatar toàn hệ thống, đọc kỹ mục này trước)
+
+**Việc mới nhất (2026-09-11, theo 3 ảnh chụp người dùng khoanh đỏ List/Timeline/Gantt): avatar đại diện người/dự án trước đây MỖI NƠI 1 KIỂU — có chỗ tròn (sidebar Thành viên, List view, avatar header góc phải, Team directory), có chỗ vuông bo góc (avatar dự án ở Gantt/Timeline). Người dùng yêu cầu đồng bộ TẤT CẢ thành vuông bo góc và CHỐT CỨNG lâu dài — xem [[feedback_avatar_shape_locked]] trong memory.**
+
+- **Cách làm**: thêm 1 block CSS trong `portal.css` (file DUY NHẤT nạp ở MỌI trang trong app, kể cả trang không dùng `projects.css`/`task-manager.css`) — ép `border-radius: 28% !important` cho toàn bộ class avatar đã biết trong codebase: `.avatar` (nút avatar header), `.avatar-sm`/`.avatar-xs`/`.avatar-xxs`/`.avatar-tm`/`.avatar-xs-tm`/`.avatar-chip` (các chip nhỏ nhiều nơi), `.team-avatar` (trang Team), `.project-avatar`/`.project-list-avatar` (loại trừ 2 biến thể `-long` dạng viên nhộn cho mã dự án dài, giữ nguyên bo tròn kiểu pill), `.gantt-task-avatar` (chuẩn tham chiếu gốc, 30px hộp/8px bo góc ≈ 27%), `.report-avatar`, `.pf-avatar` (trang hồ sơ cá nhân), và 3 class riêng của `hicon-bim.html` (`.w-topbar-right .who`, `.w-feed-row .av`, `.w-rep-avatar`). Dùng đơn vị **%** thay vì px để tự co giãn đúng tỉ lệ ở MỌI kích thước — không cần chỉnh tay mỗi khi có size avatar mới.
+  - **Chủ động không đụng**: các chấm tròn CHỈ BÁO TRẠNG THÁI (không phải avatar) như `.team-avatar::after` (chấm online/offline), `.column-dot`, số ngày trong lịch, con trượt (slider thumb), color swatch chọn màu... — giữ nguyên hình tròn, đúng bản chất của chúng.
+  - **Phát hiện + sửa luôn 2 lỗ hổng phụ trong lúc rà soát** (không phải yêu cầu ban đầu nhưng liên quan trực tiếp): `.avatar-xxs` dùng trong Timeline (`projects.js`) và `.avatar-xs` dùng trong panel chọn nhiều người phụ trách (`.assignee-dd-item`) trước đó **hoàn toàn không có CSS định nghĩa kích thước** ở `projects.css` (chỉ có định nghĩa theo NGỮ CẢNH khác như `.task-assignee .avatar-xs`, không bao phủ 2 chỗ này) — thêm rule dự phòng (specificity thấp, nạp sớm ở `portal.css`) cho `.avatar-xs`/`.avatar-xxs` để 2 chỗ này hiện đúng hình dạng/kích thước thay vì chỉ có màu nền không hình khối rõ ràng.
+- **Đã test trên trình duyệt đủ các nơi user chỉ ra + thêm**: Board/List/Timeline/Gantt trang Dự án, sidebar "Thành viên", avatar header, Dashboard + tab "Dự án" trong Task Manager (kể cả `project-avatar` dùng `shortCode` dài như "TDH"/"VPLV"), trang Team directory (avatar lớn vuông bo góc, chấm online vẫn tròn đúng ý) — không còn chỗ nào tròn, không lỗi console.
 
 ## Trạng thái hiện tại (cập nhật lần cuối: 2026-09-11 (f) — cột Kanban giới hạn chiều cao + việc "Hoàn thành" tự ẩn sau 1 tuần, đọc kỹ mục này trước)
 

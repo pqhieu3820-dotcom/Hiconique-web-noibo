@@ -444,7 +444,7 @@ main { flex: 1; }
 
 .avatar {
   width: 38px; height: 38px;
-  border-radius: 50%;
+  border-radius: 30%;
   display: grid;
   place-items: center;
   background: linear-gradient(140deg, var(--color-navy), var(--color-navy-hover));
@@ -457,6 +457,56 @@ main { flex: 1; }
   transition: transform var(--dur-base) var(--ease);
 }
 .avatar:hover { transform: scale(1.06); }
+
+/* ===== CHUẨN HÌNH DẠNG AVATAR TOÀN HỆ THỐNG (chốt cứng 2026-09-11) =====
+   Trước đây avatar đại diện người/dự án mỗi nơi 1 kiểu khác nhau — có chỗ
+   tròn (sidebar Thành viên, List/Kanban chip, avatar header...), có chỗ
+   vuông bo góc (avatar dự án ở Gantt/Timeline). Từ giờ TẤT CẢ avatar/chip
+   đại diện 1 người HOẶC 1 dự án ở MỌI trang đều dùng chung đúng 1 kiểu:
+   HÌNH VUÔNG BO GÓC (không phải hình tròn). Dùng border-radius theo % thay
+   vì px để tự co giãn đúng tỉ lệ ở mọi kích thước (không cần chỉnh tay mỗi
+   khi thêm 1 size avatar mới) — ~28% khớp đúng tỉ lệ avatar dự án ở Gantt
+   (tham chiếu chuẩn ban đầu, 30px hộp / 8px bo góc). `!important` để đảm
+   bảo luôn thắng bất kỳ rule cục bộ nào lỡ đặt lại `border-radius: 50%` ở
+   trang/component khác nạp sau — ĐÂY LÀ QUY TẮC CỐ ĐỊNH, không tự ý đổi lại
+   tròn cho bất kỳ avatar người/dự án nào nữa. (Không áp dụng cho các dot
+   trạng thái nhỏ như .team-avatar::after, .column-dot... — những cái đó
+   là chấm tròn chỉ báo trạng thái, không phải avatar, giữ nguyên tròn.) */
+.avatar,
+.avatar-sm,
+.avatar-xs,
+.avatar-xxs,
+.avatar-tm,
+.avatar-xs-tm,
+.avatar-chip,
+.team-avatar,
+.project-avatar:not(.project-avatar-long),
+.project-list-avatar:not(.project-list-avatar-long),
+.gantt-task-avatar,
+.report-avatar,
+.pf-avatar,
+.w-topbar-right .who,
+.w-feed-row .av,
+.w-rep-avatar {
+  border-radius: 28% !important;
+}
+/* Fallback kích thước cho .avatar-xs/.avatar-xxs ở những nơi trước đây
+   CHƯA từng định nghĩa base rule riêng (VD chip trong panel chọn người phụ
+   trách, chip trong Timeline trang Dự án) nên trước đây hiện ra không đúng
+   hình dạng/kích thước gì cả. Đặc hiệu THẤP (1 class, không kèm ngữ cảnh)
+   và nạp SỚM (đầu <head> mọi trang) nên bất kỳ định nghĩa nào cụ thể/nạp
+   sau đều tự thắng bình thường theo cascade — đây chỉ là giá trị dự phòng,
+   không phải ép buộc. */
+.avatar-xs {
+  width: 20px; height: 20px;
+  display: inline-grid; place-items: center;
+  font-size: 0.625rem; font-weight: 600; color: #0B0D10; flex-shrink: 0;
+}
+.avatar-xxs {
+  width: 20px; height: 20px;
+  display: inline-grid; place-items: center;
+  font-size: 0.5625rem; font-weight: 600; color: #0B0D10; flex-shrink: 0;
+}
 
 /* Search overlay */
 .search-overlay {
