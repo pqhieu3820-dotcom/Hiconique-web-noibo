@@ -204,6 +204,10 @@
   gap: var(--space-sm);
 }
 
+/* [hidden] thua .btn-filter{display:flex} vì cùng độ đặc hiệu (0,1,0) — CSS
+   sau trong file luôn thắng, nên nút "Báo cáo công việc" (ẩn qua thuộc tính
+   hidden cho member thường) vẫn hiện ra nếu không có rule riêng này. */
+.btn-filter[hidden] { display: none; }
 .btn-filter,
 .btn-sort {
   display: flex;
@@ -1874,4 +1878,139 @@
 }
 .modal-footer .btn-secondary {
   margin-left: auto;
+}
+
+/* ─── Work Report modal (Báo cáo công việc — CEO/Manager) ─── */
+#work-report-modal .modal { max-width: 920px; }
+.report-filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+.report-filters select {
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+.report-filters select:focus { outline: none; border-color: var(--color-bronze); }
+.report-updated-at {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+}
+.report-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-md);
+  padding: 20px 24px 0;
+}
+.report-stat {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.report-stat-label {
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 500;
+  display: block;
+  margin-bottom: 4px;
+}
+.report-stat-value {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1;
+}
+.report-section {
+  padding: 20px 24px;
+}
+.report-section h4 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0 12px;
+}
+.report-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) 2fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.report-row:last-child { border-bottom: none; }
+.report-row-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 0.8125rem;
+  color: var(--color-text);
+  font-weight: 500;
+}
+.report-row-name span.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.report-row-meta {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  font-family: var(--font-mono);
+}
+.report-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 0.625rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.report-daily-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.report-daily-item:last-child { border-bottom: none; }
+.report-daily-body { flex: 1; min-width: 0; }
+.report-daily-title { font-size: 0.8125rem; font-weight: 500; color: var(--color-text); }
+.report-daily-meta { font-size: 0.75rem; color: var(--color-text-muted); margin-top: 2px; }
+.report-daily-note { font-size: 0.75rem; color: var(--color-text-muted); margin-top: 4px; font-style: italic; }
+.report-daily-pct {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-bronze);
+  flex-shrink: 0;
+}
+.report-empty {
+  text-align: center;
+  padding: 24px;
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+}
+@media (max-width: 768px) {
+  .report-stat-grid { grid-template-columns: repeat(2, 1fr); }
+  .report-row { grid-template-columns: 1fr; gap: 6px; }
+  .report-updated-at { margin-left: 0; width: 100%; }
 }

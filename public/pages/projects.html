@@ -205,6 +205,10 @@
           </button>
         </div>
         <div class="content-actions">
+          <button class="btn-filter" id="btnWorkReport" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 15l4-4 3 3 5-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Báo cáo công việc
+          </button>
           <button class="btn-filter" id="btnSort">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M6 12h12M9 18h6" stroke-linecap="round"/></svg>
             <span id="sortLabel">Sắp xếp: Deadline</span>
@@ -682,6 +686,37 @@
         </div>
       </div>
       <div class="modal-body" id="projectListBody"></div>
+    </div>
+  </div>
+
+  <!-- Work Report Modal (CEO/Manager only) — tiến độ dự án/từng người/từng
+       task theo thời gian thực, xem projects.js renderWorkReport(). -->
+  <div class="modal-overlay" id="work-report-modal" hidden>
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <div>
+          <span class="modal-eyebrow">BÁO CÁO</span>
+          <h3>Báo cáo công việc</h3>
+        </div>
+        <div class="modal-header-actions">
+          <button type="button" class="btn-secondary-action" id="reportRefreshBtn" title="Tải lại dữ liệu mới nhất">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          </button>
+          <button class="modal-close modal-close-report" aria-label="Đóng">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="report-filters">
+        <select id="reportProjectFilter">
+          <option value="all">Tất cả dự án</option>
+        </select>
+        <select id="reportMemberFilter">
+          <option value="all">Tất cả thành viên</option>
+        </select>
+        <span class="report-updated-at" id="reportUpdatedAt"></span>
+      </div>
+      <div class="modal-body" id="workReportBody"></div>
     </div>
   </div>
 

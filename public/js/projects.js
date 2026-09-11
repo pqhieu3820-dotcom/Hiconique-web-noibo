@@ -1305,6 +1305,185 @@
     return ids;
   }
 
+  // ----- Work Report (Báo cáo công việc — CEO/Manager) -----
+  // Tiến độ dự án + tiến độ từng người + nhật ký cập nhật hàng ngày của từng
+  // task, tính lại trực tiếp từ dữ liệu đang có trong TaskManager mỗi lần mở
+  // (không phải số liệu tĩnh) — nút refresh còn ép tải lại từ Google Sheets
+  // trước khi tính, để chắc chắn "theo thời gian thực tế ngay lúc đó".
+  function reportActiveMembers() {
+    return getMembers().filter(function (m) { return !m.status || m.status === 'active'; });
+  }
+
+  function populateReportFilters() {
+    var projectSel = document.getElementById('reportProjectFilter');
+    var memberSel = document.getElementById('reportMemberFilter');
+    if (projectSel) {
+      var projects = getProjects();
+      projectSel.innerHTML = '<option value="all">Tất cả dự án</option>' +
+        projects.map(function (p) { return '<option value="' + escapeHtml(p.id) + '">' + escapeHtml(p.name || p.id) + '</option>'; }).join('');
+    }
+    if (memberSel) {
+      var members = reportActiveMembers();
+      memberSel.innerHTML = '<option value="all">Tất cả thành viên</option>' +
+        members.map(function (m) { return '<option value="' + escapeHtml(m.id) + '">' + escapeHtml(m.name || m.id) + '</option>'; }).join('');
+    }
+  }
+
+  function formatNowTime() {
+    var d = new Date();
+    return 'Cập nhật lúc ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0');
+  }
+
+  function renderWorkReport() {
+    var body = document.getElementById('workReportBody');
+    if (!body) return;
+    var updatedEl = document.getElementById('reportUpdatedAt');
+    if (updatedEl) updatedEl.textContent = formatNowTime();
+
+    var projectFilter = document.getElementById('reportProjectFilter');
+    var memberFilter = document.getElementById('reportMemberFilter');
+    var projectId = projectFilter ? projectFilter.value : 'all';
+    var memberId = memberFilter ? memberFilter.value : 'all';
+
+    // Lọc bỏ dòng rác không có id/tên (VD 1 dòng trống sót lại trên Sheet
+    // "Dự án") — báo cáo không nên hiện 1 dòng trống gây khó hiểu, dù dữ liệu
+    // gốc trên Sheet vẫn giữ nguyên (không tự ý sửa/xoá dữ liệu người dùng).
+    var allProjects = getProjects().filter(function (p) { return p && p.id && p.name; });
+    var allTasks = getTasks();
+    var members = reportActiveMembers();
+    var today = todayStr();
+
+    var projects = projectId === 'all' ? allProjects : allProjects.filter(function (p) { return p.id === projectId; });
+    var tasks = allTasks.filter(function (t) {
+      if (projectId !== 'all' && t.projectId !== projectId) return false;
+      if (memberId !== 'all' && !(Array.isArray(t.assigneeIds) && t.assigneeIds.indexOf(memberId) !== -1)) return false;
+      return true;
+    });
+
+    // ----- Overview -----
+    var completedToday = tasks.filter(function (t) {
+      return Array.isArray(t.dailyTasks) && t.dailyTasks.some(function (d) { return d.date === today && d.done; });
+    }).length;
+    var avgProgress = tasks.length ? Math.round(tasks.reduce(function (s, t) { return s + (t.progress || 0); }, 0) / tasks.length) : 0;
+    var overdueCount = tasks.filter(isOverdue).length;
+
+    var overviewHtml = '<div class="report-stat-grid">'
+      + '<div class="report-stat"><span class="report-stat-label">Dự án</span><span class="report-stat-value">' + projects.length + '</span></div>'
+      + '<div class="report-stat"><span class="report-stat-label">Tổng việc</span><span class="report-stat-value">' + tasks.length + '</span></div>'
+      + '<div class="report-stat"><span class="report-stat-label">Tiến độ TB</span><span class="report-stat-value">' + avgProgress + '%</span></div>'
+      + '<div class="report-stat"><span class="report-stat-label">Quá hạn</span><span class="report-stat-value" style="' + (overdueCount ? 'color:#DC2626' : '') + '">' + overdueCount + '</span></div>'
+      + '</div>';
+
+    // ----- Theo dự án -----
+    var byProjectHtml = '<div class="report-section"><h4>Tiến độ theo dự án</h4>' +
+      (projects.length === 0 ? '<div class="report-empty">Không có dự án nào khớp bộ lọc.</div>' : projects.map(function (p) {
+        var pTasks = tasks.filter(function (t) { return t.projectId === p.id; });
+        var pDone = pTasks.filter(function (t) { return t.status === 'completed'; }).length;
+        var pProgress = pTasks.length ? Math.round(pTasks.reduce(function (s, t) { return s + (t.progress || 0); }, 0) / pTasks.length) : 0;
+        return '<div class="report-row">'
+          + '<div class="report-row-name"><span class="truncate" title="' + escapeHtml(p.name || '') + '">' + escapeHtml(p.name || p.id) + '</span></div>'
+          + '<div class="progress-track"><span style="width:' + pProgress + '%"></span></div>'
+          + '<div class="report-row-meta">' + pProgress + '% · ' + pDone + '/' + pTasks.length + ' xong</div>'
+          + '</div>';
+      }).join('')) + '</div>';
+
+    // ----- Theo người -----
+    var reportMembers = memberId === 'all' ? members : members.filter(function (m) { return m.id === memberId; });
+    var byMemberHtml = '<div class="report-section"><h4>Tiến độ theo người</h4>' +
+      (reportMembers.length === 0 ? '<div class="report-empty">Không có thành viên nào khớp bộ lọc.</div>' : reportMembers.map(function (m) {
+        var mTasks = allTasks.filter(function (t) {
+          if (!(Array.isArray(t.assigneeIds) && t.assigneeIds.indexOf(m.id) !== -1)) return false;
+          if (projectId !== 'all' && t.projectId !== projectId) return false;
+          return true;
+        });
+        if (mTasks.length === 0 && memberId === 'all') return ''; // ẩn người chưa được giao việc nào khớp bộ lọc khi xem tổng
+        var mDone = mTasks.filter(function (t) { return t.status === 'completed'; }).length;
+        var mProgress = mTasks.length ? Math.round(mTasks.reduce(function (s, t) { return s + (t.progress || 0); }, 0) / mTasks.length) : 0;
+        var mOverdue = mTasks.filter(isOverdue).length;
+        return '<div class="report-row">'
+          + '<div class="report-row-name"><span class="report-avatar" style="background:' + (m.color || '#6B7280') + '">' + escapeHtml(m.avatar || (m.name || '?').substring(0, 2).toUpperCase()) + '</span><span class="truncate">' + escapeHtml(m.name || m.id) + '</span></div>'
+          + '<div class="progress-track"><span style="width:' + mProgress + '%"></span></div>'
+          + '<div class="report-row-meta">' + mProgress + '% · ' + mDone + '/' + mTasks.length + ' xong' + (mOverdue ? ' · ' + mOverdue + ' quá hạn' : '') + '</div>'
+          + '</div>';
+      }).join('')) + '</div>';
+
+    // ----- Nhật ký tiến độ hôm nay (dailyTasks) -----
+    var dailyEntries = [];
+    tasks.forEach(function (t) {
+      if (!Array.isArray(t.dailyTasks)) return;
+      var entry = t.dailyTasks.find(function (d) { return d.date === today; });
+      if (!entry) return;
+      dailyEntries.push({ task: t, entry: entry });
+    });
+    var byDailyHtml = '<div class="report-section"><h4>Nhật ký tiến độ hôm nay (' + dailyEntries.length + ')</h4>' +
+      (dailyEntries.length === 0 ? '<div class="report-empty">Chưa có ai cập nhật tiến độ hôm nay.</div>' : dailyEntries.map(function (row) {
+        var t = row.task, entry = row.entry;
+        var project = getProjectById(t.projectId);
+        var assignees = getAssigneesForTask(t).map(function (a) { return a.name; }).join(', ');
+        return '<div class="report-daily-item">'
+          + '<div class="report-daily-body">'
+          +   '<div class="report-daily-title">' + escapeHtml(t.title || '') + '</div>'
+          +   '<div class="report-daily-meta">' + escapeHtml(project ? project.name : '—') + (assignees ? ' · ' + escapeHtml(assignees) : '') + '</div>'
+          +   (entry.note ? '<div class="report-daily-note">"' + escapeHtml(entry.note) + '"</div>' : '')
+          + '</div>'
+          + '<div class="report-daily-pct">' + (entry.progress || 0) + '%' + (entry.done ? ' ✓' : '') + '</div>'
+          + '</div>';
+      }).join('')) + '</div>';
+
+    body.innerHTML = overviewHtml + byProjectHtml + byMemberHtml + byDailyHtml;
+  }
+
+  function bindWorkReportModal() {
+    var modal = document.getElementById('work-report-modal');
+    var openBtn = document.getElementById('btnWorkReport');
+    if (!modal || !openBtn) return;
+
+    var canManage = !!currentUser && (currentUser.roleLevel === 'admin' || currentUser.roleLevel === 'manager');
+    if (!canManage) { openBtn.hidden = true; return; }
+    openBtn.hidden = false;
+
+    openBtn.addEventListener('click', function () {
+      populateReportFilters();
+      renderWorkReport();
+      modal.hidden = false;
+      // Vừa mở là tự tải lại dữ liệu mới nhất từ Sheet 1 lần cho đúng nghĩa
+      // "thời gian thực" — không chặn hiển thị, render lại khi xong.
+      if (typeof TaskManager !== 'undefined' && TaskManager.refreshFromGSheets) {
+        TaskManager.refreshFromGSheets(function () {
+          populateReportFilters();
+          renderWorkReport();
+        });
+      }
+    });
+
+    modal.querySelectorAll('.modal-close-report').forEach(function (btn) {
+      btn.addEventListener('click', function () { modal.hidden = true; });
+    });
+    modal.addEventListener('click', function (e) { if (e.target === modal) modal.hidden = true; });
+
+    var refreshBtn = document.getElementById('reportRefreshBtn');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', function () {
+        refreshBtn.classList.add('spinning');
+        if (typeof TaskManager !== 'undefined' && TaskManager.refreshFromGSheets) {
+          TaskManager.refreshFromGSheets(function () {
+            populateReportFilters();
+            renderWorkReport();
+            refreshBtn.classList.remove('spinning');
+          });
+        } else {
+          renderWorkReport();
+          refreshBtn.classList.remove('spinning');
+        }
+      });
+    }
+
+    var projectFilter = document.getElementById('reportProjectFilter');
+    var memberFilter = document.getElementById('reportMemberFilter');
+    if (projectFilter) projectFilter.addEventListener('change', renderWorkReport);
+    if (memberFilter) memberFilter.addEventListener('change', renderWorkReport);
+  }
+
   // ----- Sync from Google Sheets -----
   function showToast(msg) {
     var toast = document.createElement('div');
@@ -1334,6 +1513,7 @@
     bindProjectModal();
     bindProjectListModal();
     bindDetailModal();
+    bindWorkReportModal();
     if (typeof HiconiqueGantt !== 'undefined') HiconiqueGantt.bind(document.getElementById('gantt-view'));
 
     if (window.location.hash === '#gantt') {
