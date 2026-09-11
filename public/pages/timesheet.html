@@ -715,7 +715,11 @@
     };
     var IP_RESTRICTION = {
       enabled: true,
-      allowedIPs: ['14.171.113.174']  // IP công khai của mạng Wifi văn phòng
+      // IP công khai của mạng Wifi văn phòng — ISP có thể đổi IP này theo thời
+      // gian (IP động), nên để MẢNG nhiều IP thay vì 1 IP cố định, thêm dần khi
+      // phát hiện IP mới thay vì thay thế IP cũ (đề phòng IP cũ vẫn còn dùng ở
+      // đường truyền khác). 172.225.56.21 thêm 2026-09-11 theo report thực tế.
+      allowedIPs: ['14.171.113.174', '172.225.56.21']
     };
 
     function haversineMeters(lat1, lng1, lat2, lng2) {
