@@ -6,11 +6,22 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
 ## ⏳ VIỆC CÒN TỒN ĐỌNG (đọc mục này đầu tiên — cập nhật 2026-09-11 cuối phiên)
 
-Không có việc gì đang dở dang/nguy hiểm — mọi thay đổi trong các phiên gần đây đều đã **commit local**, chưa push (chờ xác nhận người dùng theo quy tắc luôn hỏi trước khi push). Apps Script đã lưu (chưa cần redeploy version mới vì chỉ chạy hàm tay, không đụng doGet/doPost), dữ liệu Sheet đã verify đủ qua API.
+Không có việc gì đang dở dang/nguy hiểm — mọi thay đổi trong phiên này đều đã **commit + push xong**.
 
-- **Cột "Tên dự án" tra cứu (VLOOKUP) — ĐÃ LÀM XONG cho TẤT CẢ 11 sheet còn thiếu** (Hoa hồng dự án, Đơn hàng, So sánh nhà thầu, Dòng tiền, Phát sinh, Tiến độ, Nghiệm thu, Hồ sơ công trình, Issue BIM, BOQ BIM — 9 sheet; "Công nợ khách hàng" sheet chưa tồn tại thật do chưa có dữ liệu, sẽ tự có cột này khi cần), cộng với "Công việc" đã làm từ trước — **đủ 12/12**. Xem chi tiết cách làm + sự cố gặp phải ở mục "Trạng thái hiện tại" ngay dưới.
+- Cột "Tên dự án" tra cứu (VLOOKUP) — đã xong đủ 12/12 sheet (xem mục "Trạng thái hiện tại — 2026-09-11 (a)" ngay dưới).
+- Chấm công Check In/Check Out — nâng lên bắt buộc đủ 3/3 điều kiện (GPS/Wifi/Thiết bị), thiếu bất kỳ điều kiện nào đều chặn hẳn + hiện bảng thông báo (xem mục "Trạng thái hiện tại — 2026-09-11 (b)" ngay dưới).
 
 Ngoài ra, 2 việc nhỏ đã CHỦ ĐỘNG bỏ qua (không phải quên, xem lý do trong các mục bên dưới nếu cần): field "Tháng" (YYYY-MM) không đổi sang mm/yyyy vì sẽ hỏng lọc tháng ở Tài chính/Lương/Hoa hồng; và việc quét toàn bộ sheet khác xem có bị lệch dữ liệu thô-chưa-migrate tương tự Công việc/Dự án hay không (người dùng yêu cầu rộng "xử lí hết" nhưng phạm vi đã làm mới giới hạn ở 3 ảnh chụp gốc).
+
+## Trạng thái hiện tại (cập nhật lần cuối: 2026-09-11 (b) — chấm công bắt buộc đủ 3/3 điều kiện, đọc kỹ mục này trước)
+
+**Việc mới nhất (2026-09-11, theo yêu cầu người dùng): nâng cấp luật xác thực chấm công Check In/Check Out từ "tối thiểu 2/3, thiếu thì hỏi xác nhận thủ công để bỏ qua" lên "bắt buộc đủ 100% các điều kiện đang bật (GPS/Wifi công ty/Thiết bị đã đăng ký), thiếu bất kỳ điều kiện nào đều chặn hẳn, chỉ hiện bảng thông báo".**
+
+- Sửa `verifyThenProceed()` trong `public/pages/timesheet.html` (dùng chung cho cả Check In lẫn Check Out): điều kiện qua thẳng đổi từ `passCount >= (checks.length >= 2 ? 2 : checks.length)` thành `passCount === checks.length` (yêu cầu ĐỦ mọi điều kiện đang bật — GPS/Wifi có thể tắt qua `GEO_RESTRICTION`/`IP_RESTRICTION`, Thiết bị luôn bật).
+- Thay hẳn `showConfirmDialog()` (có 2 nút Huỷ/Đồng ý chấm công — cho phép bỏ qua điều kiện thiếu) bằng `showFailNotice()` (chỉ 1 nút "Đã hiểu", không còn đường nào chấm công khi thiếu điều kiện) — vẫn liệt kê rõ cả 3 điều kiện + điều kiện nào đang fail (tái dùng `verifyRowHtml()`/CSS `ts-confirm-*` có sẵn).
+- Đã test thật trên trình duyệt (đăng nhập bằng `Auth.login()` qua console thay vì nhập mật khẩu, vì hàm này không kiểm tra mật khẩu — chỉ dùng để test nội bộ, không phải cách đăng nhập thật của app): tài khoản CEO đang GPS OK + Wifi OK nhưng Thiết bị lạ (máy dev chưa đăng ký) — bấm Check Out ra đúng bảng "Chưa đủ điều kiện chấm công", đánh dấu đỏ đúng dòng Thiết bị, chỉ có nút "Đã hiểu", và xác nhận check-out KHÔNG xảy ra (nút vẫn "Check Out", vẫn "Đang làm việc từ 11:22").
+
+## Trạng thái hiện tại (cập nhật lần cuối: 2026-09-11 (a) — hoàn tất cột "Tên dự án" cho 11 sheet còn lại bằng script Apps Script thay vì thao tác tay, đọc kỹ mục này trước)
 
 ## Trạng thái hiện tại (cập nhật lần cuối: 2026-09-11 — hoàn tất cột "Tên dự án" cho 11 sheet còn lại bằng script Apps Script thay vì thao tác tay, đọc kỹ mục này trước)
 

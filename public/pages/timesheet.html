@@ -818,35 +818,31 @@
       '</span></div>';
     }
 
-    // Xác nhận thủ công khi chưa đạt đủ tối thiểu 2/3 điều kiện (GPS/Wifi/
-    // Thiết bị) — trả về Promise<boolean>.
-    function showConfirmDialog(geoResult, ipResult, deviceResult) {
+    // Bảng thông báo khi CHƯA ĐẠT ĐỦ CẢ 3 điều kiện (GPS/Wifi/Thiết bị) — chỉ
+    // để BÁO cho người dùng biết đang thiếu điều kiện nào, KHÔNG có lựa chọn
+    // "vẫn chấm công" bỏ qua nữa (2026-09-11: trước đó đạt tối thiểu 2/3 là
+    // cho qua thẳng, đạt đúng 1/3 thì hỏi xác nhận thủ công để bỏ qua điều
+    // kiện thiếu — nay siết lại bắt buộc đủ 3/3 mới cho chấm công, thiếu bất
+    // kỳ điều kiện nào đều bị chặn hẳn, xem verifyThenProceed()).
+    function showFailNotice(geoResult, ipResult, deviceResult) {
       deviceResult = deviceResult || { skip: true };
-      return new Promise(function (resolve) {
-        var overlay = document.createElement('div');
-        overlay.className = 'ts-confirm-overlay';
-        overlay.innerHTML =
-          '<div class="ts-confirm-box">' +
-            '<div class="ts-confirm-title">Bạn có chắc chắn muốn chấm công không?</div>' +
-            '<div class="ts-verify-panel">' +
-              verifyRowHtml('Vị trí GPS', geoResult) +
-              verifyRowHtml('Mạng Wifi công ty', ipResult) +
-              verifyRowHtml('Thiết bị đã đăng ký', deviceResult) +
-            '</div>' +
-            '<div class="ts-confirm-actions">' +
-              '<button type="button" class="ts-confirm-cancel">Huỷ</button>' +
-              '<button type="button" class="ts-confirm-ok">Đồng ý chấm công</button>' +
-            '</div>' +
-          '</div>';
-        document.body.appendChild(overlay);
-        overlay.querySelector('.ts-confirm-cancel').addEventListener('click', function () {
-          overlay.remove();
-          resolve(false);
-        });
-        overlay.querySelector('.ts-confirm-ok').addEventListener('click', function () {
-          overlay.remove();
-          resolve(true);
-        });
+      var overlay = document.createElement('div');
+      overlay.className = 'ts-confirm-overlay';
+      overlay.innerHTML =
+        '<div class="ts-confirm-box">' +
+          '<div class="ts-confirm-title">Chưa đủ điều kiện chấm công</div>' +
+          '<div class="ts-verify-panel">' +
+            verifyRowHtml('Vị trí GPS', geoResult) +
+            verifyRowHtml('Mạng Wifi công ty', ipResult) +
+            verifyRowHtml('Thiết bị đã đăng ký', deviceResult) +
+          '</div>' +
+          '<div class="ts-confirm-actions">' +
+            '<button type="button" class="ts-confirm-ok">Đã hiểu</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(overlay);
+      overlay.querySelector('.ts-confirm-ok').addEventListener('click', function () {
+        overlay.remove();
       });
     }
 
@@ -915,7 +911,7 @@
 
     // Điều kiện thứ 3 (cùng nhóm với GPS/Wifi) — { ok, skip, message } giống
     // hệt format của checkGeoStatus()/checkIpStatus() nên dùng chung được với
-    // renderVerifyRow/showConfirmDialog và luật "tối thiểu 2/3 điều kiện" ở
+    // renderVerifyRow/showFailNotice và luật "bắt buộc đủ 3/3 điều kiện" ở
     // handler Check In. CHỈ ĐỌC trạng thái, KHÔNG tự ghi đăng ký nữa (xem lý
     // do ở comment DEVICE_ID_KEY phía trên) — đăng ký thật sự chỉ xảy ra khi
     // người dùng tự bấm nút trong renderDeviceTable().
@@ -1333,9 +1329,11 @@
     // trước đây Check Out chỉ kiểm tra mỗi Thiết bị (bỏ qua hẳn GPS/Wifi) nên
     // dù 2/3 điều kiện fail vẫn check-out được bình thường — đây là bug đã
     // sửa (2026-09-10). Chỉ tính điều kiện đang BẬT (GPS/Wifi có thể tắt qua
-    // GEO_RESTRICTION/IP_RESTRICTION, Thiết bị luôn bật). Cần đạt tối thiểu
-    // 2/3 (hoặc toàn bộ nếu chỉ có 1 điều kiện đang bật) mới cho qua thẳng;
-    // đạt đúng 1 thì hỏi xác nhận thủ công; 0 thì chặn hẳn.
+    // GEO_RESTRICTION/IP_RESTRICTION, Thiết bị luôn bật). 2026-09-11: siết từ
+    // "tối thiểu 2/3, thiếu thì hỏi xác nhận thủ công để bỏ qua" lên **BẮT
+    // BUỘC ĐẠT ĐỦ 100% các điều kiện đang bật** — thiếu bất kỳ điều kiện nào
+    // đều CHẶN HẲN, chỉ hiện bảng thông báo (showFailNotice) liệt kê điều
+    // kiện nào chưa đạt, không còn đường nào bỏ qua để chấm công.
     function verifyThenProceed(onPass) {
       var btn = document.getElementById('tsCheckinBtn');
       var originalText = btn.textContent;
@@ -1356,15 +1354,10 @@
         if (checks.length === 0) { onPass(geoResult, ipResult, deviceResult); return; }
 
         var passCount = checks.filter(function (r) { return r.ok; }).length;
-        var required = checks.length >= 2 ? 2 : checks.length;
-        if (passCount >= required) {
+        if (passCount === checks.length) {
           onPass(geoResult, ipResult, deviceResult);
-        } else if (passCount > 0) {
-          showConfirmDialog(geoResult, ipResult, deviceResult).then(function (confirmed) {
-            if (confirmed) onPass(geoResult, ipResult, deviceResult);
-          });
         } else {
-          setGeoStatus('Không thể chấm công: không đạt đủ điều kiện xác thực (GPS/Wifi/Thiết bị).', false);
+          showFailNotice(geoResult, ipResult, deviceResult);
         }
       });
     }
