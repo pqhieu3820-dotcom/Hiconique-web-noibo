@@ -53,7 +53,18 @@ const FIELD_MAP = {
     ['Giới tính', 'gender'], ['Mail', 'email'], ['Mật khẩu', 'password'], ['Ngày sinh', 'dob'],
     ['SĐT', 'phone'], ['CCCD', 'cccd'], ['Quê quán', 'hometown'], ['Số tài khoản ngân hàng', 'bankAccount'],
     ['Ngân hàng thụ hưởng', 'bank'], ['Màu sắc đại diện', 'color'], ['Tên viết tắt đại diện', 'avatar'],
-    ['Làm việc từ', 'createdAt'], ['Lương cơ bản', 'baseSalary'], ['Trạng thái', 'status']
+    ['Làm việc từ', 'createdAt'], ['Lương cơ bản', 'baseSalary'], ['Trạng thái', 'status'],
+    // 2026-09-11: 3 cột này ban đầu thêm KHÔNG qua FIELD_MAP (chỉ cần header
+    // tiếng Anh khớp key, xem cơ chế "cột không map" ở getAllData/updateData) —
+    // người dùng vừa tự đổi header sang tiếng Việt trên Sheet nên PHẢI khai báo
+    // ở đây từ giờ, không thì round-trip vỡ (header không khớp key tiếng Anh
+    // nữa, addData/updateData sẽ không tìm thấy cột để ghi).
+    ['Lần hoạt động cuối', 'lastActiveAt'], ['Màu nền trình duyệt', 'theme'],
+    // Header thật trên Sheet dùng "kí" (không dấu ý dài) chứ không phải "ký" —
+    // đã verify qua API (getMembers trả nguyên header này làm key khi không
+    // khớp FIELD_MAP thay vì "deviceIds"), sửa lại đúng chính tả người dùng
+    // đã gõ trên Sheet.
+    ['Thiết bị đăng kí để chấm công', 'deviceIds']
   ],
   // 2026-09-09: "Loại dự án" đổi nghĩa thành LOẠI CÔNG TRÌNH thật (Nhà phố,
   // Biệt thự, Căn hộ chung cư...), giá trị cũ (Thiết kế/Thi công/Nội thất...)
@@ -311,6 +322,12 @@ const VALUE_MAP = {
   ],
   'bimIssues.priority': [
     ['Cao', 'cao'], ['Trung bình', 'trung-binh'], ['Thấp', 'thap']
+  ],
+  // portal.js đọc/ghi field theme bằng đúng chuỗi 'light'/'dark' (setTheme(),
+  // xem data-theme trên <html>) — dropdown Việt hoá mới thêm 2026-09-11 chỉ
+  // đổi NHÃN hiển thị trên Sheet, key nội bộ phải giữ nguyên 'light'/'dark'.
+  'members.theme': [
+    ['Nền sáng', 'light'], ['Nền tối', 'dark']
   ]
 };
 
