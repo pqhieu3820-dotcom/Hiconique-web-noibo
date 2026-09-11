@@ -391,6 +391,18 @@
   font-size: 1.125rem;
   flex-shrink: 0;
 }
+/* Mã dự án tự đặt (shortCode) có thể dài hơn 1 chữ (VD "HMHOUSE") — nới
+   avatar ra thành viên nhộn thay vì bóp chữ vào ô vuông 40px cố định, cùng
+   pattern với .project-list-avatar-long trong projects.css. */
+.project-avatar-long {
+  width: auto;
+  min-width: 40px;
+  padding: 0 10px;
+  border-radius: 16px;
+  font-size: 0.6875rem;
+  letter-spacing: 0.02em;
+  font-family: var(--font-sans);
+}
 
 .project-card h3 {
   font-size: 0.9375rem;

@@ -4,6 +4,10 @@ File này tồn tại để không phải hỏi lại các thông tin dưới đ
 chat mới với Claude. Đây là nguồn tham chiếu chính (source of truth) cho các liên kết và quy
 tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
+## ⚠️ QUY TẮC LÀM VIỆC CỐ ĐỊNH — LUÔN ÁP DỤNG, KHÔNG CẦN NHẮC LẠI
+
+- **Đổi 1 field/quy tắc hiển thị dùng chung ở nhiều trang → phải tự rà + sửa HẾT mọi trang dùng field đó, không chỉ sửa đúng trang người dùng đang nói tới.** (Thêm 2026-09-11 sau khi `shortCode` (mã dự án viết tắt làm avatar) chỉ được cập nhật ở `projects.js` mà quên mất `task-manager-app.js` cũng render y hệt project card đó — người dùng phải tự phát hiện bug này.) Cách làm: `grep` toàn bộ `public/js/*.js`, `public/pages/*.html`, `public/css/*.css` tìm pattern CŨ trước khi coi là xong, không chỉ sửa 1 chỗ rồi dừng.
+
 ## ⏳ VIỆC CÒN TỒN ĐỌNG (đọc mục này đầu tiên — cập nhật 2026-09-11 cuối phiên)
 
 Không có việc gì đang dở dang — mọi thay đổi trong phiên này đều đã commit + push xong.
@@ -15,6 +19,16 @@ Không có việc gì đang dở dang — mọi thay đổi trong phiên này đ
 - FIELD_MAP/VALUE_MAP 3 cột phụ Thành viên (lastActiveAt/theme/deviceIds) — người dùng tự đổi header sang tiếng Việt trên Sheet, đã map lại + deploy Apps Script phiên bản 48.
 
 Ngoài ra, 2 việc nhỏ đã CHỦ ĐỘNG bỏ qua (không phải quên, xem lý do trong các mục bên dưới nếu cần): field "Tháng" (YYYY-MM) không đổi sang mm/yyyy vì sẽ hỏng lọc tháng ở Tài chính/Lương/Hoa hồng; và việc quét toàn bộ sheet khác xem có bị lệch dữ liệu thô-chưa-migrate tương tự Công việc/Dự án hay không (người dùng yêu cầu rộng "xử lí hết" nhưng phạm vi đã làm mới giới hạn ở 3 ảnh chụp gốc).
+
+## Trạng thái hiện tại (cập nhật lần cuối: 2026-09-11 (e) — fix avatar mã dự án viết tắt bị thiếu ở trang Tasks, đọc kỹ mục này trước)
+
+**Việc mới nhất (2026-09-11, người dùng tự phát hiện qua ảnh chụp): trang "Dự án" trong Task Manager (`tasks-manager.html`, khác với trang `projects.html` riêng) vẫn hiện avatar dự án là CHỮ CÁI ĐẦU TÊN thay vì mã viết tắt (`shortCode`, tính năng đã làm từ 2026-09-10 nhưng chỉ áp dụng cho `projects.js`).**
+
+- Sửa cả 3 chỗ trong `task-manager-app.js` render `project-avatar` (modal chi tiết dự án, preview 6 dự án ở Dashboard, lưới đầy đủ ở tab "Dự án") — đổi `project.name.charAt(0)` thành `project.shortCode || project.name.charAt(0)`, đúng pattern đã dùng ở `projects.js`.
+- Thêm class `.project-avatar-long`/CSS trong `task-manager.css` (nới ô avatar thành viên nhộn khi mã dài hơn 3 ký tự, VD "HMHOUSE") — y hệt `.project-list-avatar-long` đã có ở `projects.css`, tránh chữ bị bóp/tràn trong ô vuông 40px cố định.
+- Đã `grep` toàn bộ `public/` tìm hết các chỗ dùng `.charAt(0)` để xác nhận không còn chỗ nào khác bị sót (2 chỗ còn lại trong `auth.js`/`portal.js` là initials CỦA NGƯỜI, không phải dự án — không đụng).
+- Đã test trên trình duyệt: tab "Dự án" trong Task Manager giờ hiện đúng TDH/NTL/VPLV/CCQ7... khớp y hệt trang `projects.html`, không bị tràn chữ.
+- **Người dùng yêu cầu thêm 1 quy tắc làm việc cố định từ giờ** (đã ghi ở đầu file, mục "⚠️ QUY TẮC LÀM VIỆC CỐ ĐỊNH"): mọi lần đổi 1 field/quy tắc hiển thị DÙNG CHUNG nhiều trang, phải tự rà + sửa hết mọi trang liên quan trong cùng 1 lượt, không chỉ sửa đúng trang đang được nhắc tới rồi để các trang khác bị bỏ sót.
 
 ## Trạng thái hiện tại (cập nhật lần cuối: 2026-09-11 (d) — panel "Tiến độ hôm nay" ở trang Tasks đổi từ mockup sang dữ liệu thật, đọc kỹ mục này trước)
 

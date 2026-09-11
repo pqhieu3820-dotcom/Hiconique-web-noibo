@@ -935,8 +935,8 @@
     const body = `
       <div style="margin-bottom: 20px;">
         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-          <div class="project-avatar" style="background:${project.color}; width: 48px; height: 48px; border-radius: 8px; display: grid; place-items: center; color: #0B0D10; font-weight: 600;">
-            ${project.name.charAt(0)}
+          <div class="project-avatar" style="background:${project.color}; width: auto; min-width: 48px; height: 48px; padding: 0 8px; border-radius: 8px; display: grid; place-items: center; color: #0B0D10; font-weight: 600; font-size: ${project.shortCode && project.shortCode.length > 3 ? '0.75rem' : '1.125rem'};">
+            ${project.shortCode || project.name.charAt(0)}
           </div>
           <div>
             <h3 style="font-size: 1.25rem; font-weight: 600; color: var(--color-text);">${project.name}</h3>
@@ -1540,7 +1540,7 @@
       return `
         <article class="project-card" data-project-id="${project.id}">
           <header>
-            <div class="project-avatar" style="background:${project.color}">${project.name.charAt(0)}</div>
+            <div class="project-avatar${project.shortCode && project.shortCode.length > 3 ? ' project-avatar-long' : ''}" style="background:${project.color}">${project.shortCode || project.name.charAt(0)}</div>
             <div>
               <h3>${project.name}</h3>
               <p>${project.type}</p>
@@ -1589,7 +1589,7 @@
           return `
             <article class="project-card" data-project-id="${project.id}" style="cursor: pointer;">
               <header>
-                <div class="project-avatar" style="background:${project.color}">${project.name.charAt(0)}</div>
+                <div class="project-avatar${project.shortCode && project.shortCode.length > 3 ? ' project-avatar-long' : ''}" style="background:${project.color}">${project.shortCode || project.name.charAt(0)}</div>
                 <div>
                   <h3>${project.name}</h3>
                   <p>${project.type}</p>
