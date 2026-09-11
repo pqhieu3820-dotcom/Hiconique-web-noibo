@@ -560,17 +560,49 @@
     }
   }
 
+  // Dropdown chọn thẳng kiểu chọn (trước đây bấm để xoay vòng qua từng lựa
+  // chọn — người dùng phải bấm nhiều lần mới ra đúng ý, không thấy trước các
+  // lựa chọn khác). Cùng pattern mở/đóng panel với dropdown chọn nhiều người
+  // phụ trách (.assignee-dd) đã có sẵn.
+  var SORT_LABELS = { deadline: 'Deadline', priority: 'Ưu tiên', createdAt: 'Mới tạo' };
   function bindSort() {
+    var wrap = document.getElementById('sortDd');
     var btn = document.getElementById('btnSort');
+    var menu = document.getElementById('sortMenu');
     var labelEl = document.getElementById('sortLabel');
-    if (!btn) return;
-    btn.addEventListener('click', function () {
-      var order = ['deadline', 'priority', 'createdAt'];
-      var labels = { deadline: 'Deadline', priority: 'Ưu tiên', createdAt: 'Mới tạo' };
-      var i = order.indexOf(state.sortBy);
-      state.sortBy = order[(i + 1) % order.length];
-      if (labelEl) labelEl.textContent = 'Sắp xếp: ' + labels[state.sortBy];
-      renderAll();
+    if (!wrap || !btn || !menu) return;
+
+    function closeMenu() {
+      menu.hidden = true;
+      wrap.classList.remove('open');
+    }
+    function syncSelected() {
+      menu.querySelectorAll('.sort-dd-item').forEach(function (item) {
+        item.classList.toggle('selected', item.dataset.sort === state.sortBy);
+      });
+    }
+    syncSelected();
+
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var willOpen = menu.hidden;
+      closeMenu();
+      if (willOpen) {
+        menu.hidden = false;
+        wrap.classList.add('open');
+        syncSelected();
+      }
+    });
+    menu.querySelectorAll('.sort-dd-item').forEach(function (item) {
+      item.addEventListener('click', function () {
+        state.sortBy = item.dataset.sort;
+        if (labelEl) labelEl.textContent = 'Sắp xếp: ' + SORT_LABELS[state.sortBy];
+        closeMenu();
+        renderAll();
+      });
+    });
+    document.addEventListener('click', function (e) {
+      if (!wrap.contains(e.target)) closeMenu();
     });
   }
 

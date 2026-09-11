@@ -2022,3 +2022,35 @@
   .report-row { grid-template-columns: 1fr; gap: 6px; }
   .report-updated-at { margin-left: 0; width: 100%; }
 }
+
+/* ─── Sort dropdown ("Sắp xếp: ...") — chọn thẳng thay vì bấm xoay vòng ─── */
+.sort-dd { position: relative; }
+.sort-dd .chevron { width: 14px; height: 14px; flex-shrink: 0; transition: transform 0.15s; margin-left: -2px; }
+.sort-dd.open .chevron { transform: rotate(180deg); }
+.sort-dd-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  min-width: 160px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  padding: 4px;
+}
+.sort-dd-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: var(--text-sm);
+  color: var(--color-text);
+}
+.sort-dd-item:hover { background: rgba(176, 141, 87, 0.1); }
+.sort-dd-item.selected { color: var(--color-bronze); font-weight: 600; }
+.sort-dd-item .check { width: 15px; height: 15px; flex-shrink: 0; opacity: 0; }
+.sort-dd-item.selected .check { opacity: 1; }
