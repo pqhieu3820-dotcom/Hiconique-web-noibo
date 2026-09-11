@@ -493,6 +493,27 @@ var TaskManager = (function() {
     return filtered;
   }
 
+  // "Hoàn thành trong tuần này" — tuần tính từ 0h Thứ Hai tới hết 23:59:59 CN
+  // (giờ trình duyệt của người dùng). Dùng để cột "Hoàn thành"/"Done" trên
+  // Kanban (projects.js, task-manager-app.js) tự ẩn bớt việc/dự án đã xong
+  // TỪ TUẦN TRƯỚC trở về trước — tránh cột dài vô tận theo thời gian. Dữ liệu
+  // KHÔNG bị xoá, các view khác (List, quick-filter "Đã hoàn thành"...) vẫn
+  // hiển thị đầy đủ để tra cứu/trích xuất lại khi cần.
+  function isCompletedThisWeek(completedAt) {
+    if (!completedAt) return false;
+    var d = new Date(completedAt);
+    if (isNaN(d.getTime())) return false;
+    var now = new Date();
+    var day = now.getDay(); // 0 = Chủ nhật
+    var diffToMonday = day === 0 ? -6 : 1 - day;
+    var monday = new Date(now);
+    monday.setDate(now.getDate() + diffToMonday);
+    monday.setHours(0, 0, 0, 0);
+    var nextMonday = new Date(monday);
+    nextMonday.setDate(monday.getDate() + 7);
+    return d >= monday && d < nextMonday;
+  }
+
   // Projects
   function getProjects() {
     return getAll(STORAGE_KEYS.projects);
@@ -517,6 +538,15 @@ var TaskManager = (function() {
   function updateProject(id, updates, user) {
     user = user || getCurrentUser();
     if (!canManageNotifications(user)) return null;
+    if (updates && updates.status) {
+      var existing = getProject(id);
+      var wasCompleted = existing && existing.status === 'completed';
+      if (updates.status === 'completed' && !wasCompleted) {
+        updates.completedAt = new Date().toISOString();
+      } else if (updates.status !== 'completed' && wasCompleted) {
+        updates.completedAt = '';
+      }
+    }
     var updated = update(STORAGE_KEYS.projects, id, updates);
     // Sync to Google Sheets
     if (updated) syncToGSheets('projects', 'update', updates, id);
@@ -579,7 +609,20 @@ var TaskManager = (function() {
     return newTask;
   }
 
+  // completedAt tự set khi status chuyển SANG 'completed', tự xoá khi chuyển
+  // KHỎI 'completed' (mở lại) — dùng để tự ẩn khỏi cột "Hoàn thành" sau khi
+  // hết tuần hoàn thành (xem isCompletedThisWeek() + nơi dùng ở projects.js/
+  // task-manager-app.js), KHÔNG xoá dữ liệu, chỉ ẩn hiển thị mặc định.
   function updateTask(id, updates) {
+    if (updates && updates.status) {
+      var existing = getTask(id);
+      var wasCompleted = existing && existing.status === 'completed';
+      if (updates.status === 'completed' && !wasCompleted) {
+        updates.completedAt = new Date().toISOString();
+      } else if (updates.status !== 'completed' && wasCompleted) {
+        updates.completedAt = '';
+      }
+    }
     var updated = update(STORAGE_KEYS.tasks, id, updates);
     // Sync to Google Sheets
     if (updated) syncToGSheets('tasks', 'update', updates, id);
@@ -1528,6 +1571,7 @@ var TaskManager = (function() {
     createProject: createProject,
     updateProject: updateProject,
     deleteProject: deleteProject,
+    isCompletedThisWeek: isCompletedThisWeek,
 
     // Tasks
     getTasks: getTasks,

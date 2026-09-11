@@ -1290,10 +1290,12 @@
     const tasks = TaskManager.getTasks();
     const currentUser = TaskManager.getCurrentUser();
 
-    // Group tasks by status
+    // Group tasks by status. "Done" chỉ hiện việc hoàn thành TRONG TUẦN NÀY
+    // (tự ẩn sau khi qua 0h Thứ Hai tuần sau — dữ liệu vẫn còn, chỉ ẩn khỏi
+    // Board cho gọn) — xem TaskManager.isCompletedThisWeek().
     const todo = tasks.filter(t => t.status === 'pending');
     const inProgress = tasks.filter(t => t.status === 'in-progress');
-    const done = tasks.filter(t => t.status === 'completed');
+    const done = tasks.filter(t => t.status === 'completed' && (!TaskManager.isCompletedThisWeek || TaskManager.isCompletedThisWeek(t.completedAt)));
 
     const columnHTML = (title, dotColor, dotBg, tasks, colId) => `
       <div class="kanban-col" id="${colId}">

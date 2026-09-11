@@ -302,6 +302,10 @@
   flex-direction: column;
   gap: var(--space-sm);
   min-height: 200px;
+  /* Cuộn RIÊNG bên trong từng cột thay vì để cả trang kéo dài vô tận khi 1
+     cột có nhiều việc — giữ chiều cao cột ổn định, dễ kiểm soát khi số việc
+     tăng theo thời gian. */
+  max-height: 640px;
   overflow-y: auto;
 }
 
@@ -885,6 +889,10 @@
   .kanban-column {
     width: 100%;
     min-width: 0;
+  }
+
+  .column-tasks {
+    max-height: 420px;
   }
 
   .form-row {

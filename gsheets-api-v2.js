@@ -85,14 +85,19 @@ const FIELD_MAP = {
     // làm avatar đại diện dự án (thay vì tự lấy chữ đầu tên) và làm phần "Mã dự
     // án" trong số hồ sơ/hợp đồng tự sinh. Đặt tên field là shortCode để không
     // đụng field 'id' (đã map với cột "Mã DA" — mã hệ thống, không phải mã này).
-    ['Mã dự án viết tắt', 'shortCode']
+    ['Mã dự án viết tắt', 'shortCode'],
+    // 2026-09-11: mốc thời điểm chuyển sang 'completed' — dùng để cột "Hoàn
+    // thành" trên Kanban tự ẩn việc/dự án đã xong QUA TUẦN đó (xem
+    // TaskManager.isCompletedThisWeek() trong task-data.js). Tự set/xoá ở
+    // updateProject()/updateTask(), không phải người dùng tự nhập tay.
+    ['Ngày hoàn thành', 'completedAt']
   ],
   tasks: [
     ['Mã CV', 'id'], ['Tên công việc', 'title'], ['Mô tả', 'description'], ['Mã dự án', 'projectId'],
     ['Mã người phụ trách', 'assigneeIds'], ['Mức độ ưu tiên', 'priority'], ['Trạng thái', 'status'],
     ['Ngày bắt đầu', 'startDate'], ['Ngày tới hạn deadline', 'deadline'], ['Người tạo', 'createdBy'],
     ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt'], ['Tiến độ', 'progress'],
-    ['Update tiến độ việc hàng ngày', 'dailyTasks']
+    ['Update tiến độ việc hàng ngày', 'dailyTasks'], ['Ngày hoàn thành', 'completedAt']
   ],
   proposals: [
     ['Mã ĐX', 'id'], ['Tiêu đề', 'title'], ['Nội dung', 'description'], ['Loại đề xuất', 'type'],
@@ -819,7 +824,8 @@ function forceTextIfDateLike(val, enKey) {
 var REAL_DATE_FIELDS = {
   createdAt: true, updatedAt: true, date: true, dob: true, deadline: true,
   startDate: true, endDate: true, dueDate: true, checkedAt: true, approvedAt: true,
-  reviewedAt: true, plannedStart: true, plannedEnd: true, actualStart: true, actualEnd: true
+  reviewedAt: true, plannedStart: true, plannedEnd: true, actualStart: true, actualEnd: true,
+  completedAt: true
 };
 function toRealDateIfDateField(val, enKey) {
   if (!REAL_DATE_FIELDS[enKey] || typeof val !== 'string' || !val) return val;
@@ -1213,6 +1219,60 @@ function backfillMissingTenDuAnFormulas() {
     }
   });
   Logger.log('Kết quả vá công thức "Tên dự án": ' + JSON.stringify(summary));
+  return summary;
+}
+
+// Chèn cột "Ngày hoàn thành" (completedAt) cho tasks + projects nếu chưa có,
+// và VÁ cho những dòng ĐÃ 'Hoàn thành' từ trước (trước khi field này tồn tại)
+// bằng "Ngày cập nhật" (ước lượng tốt nhất hiện có) rồi "Ngày tạo" nếu không
+// có Ngày cập nhật — để chúng còn hiện đúng 1 tuần rồi tự ẩn khỏi cột "Hoàn
+// thành" trên Kanban thay vì hiện MÃI MÃI (không có completedAt) hoặc BIẾN
+// MẤT NGAY (completedAt rỗng bị coi là "không phải tuần này"). Chạy TAY 1 lần
+// từ trình chỉnh sửa Apps Script, an toàn chạy lại (chỉ vá ô đang trống).
+function addCompletedAtColumns() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const TARGET_KEYS = ['tasks', 'projects'];
+  const summary = [];
+  TARGET_KEYS.forEach(function (key) {
+    const sheetName = SHEETS[key];
+    try {
+      const sheet = findSheet(ss, sheetName);
+      if (!sheet) { summary.push(sheetName + ': sheet không tồn tại'); return; }
+      let headers = getHeaders(sheet);
+      let colIdx = headers.indexOf('Ngày hoàn thành');
+      if (colIdx === -1) {
+        const newColIdx1Based = headers.length + 1;
+        sheet.getRange(1, newColIdx1Based).setValue('Ngày hoàn thành');
+        sheet.getRange(1, newColIdx1Based, Math.max(sheet.getLastRow(), 2), 1).clearDataValidations();
+        headers = getHeaders(sheet);
+        colIdx = headers.indexOf('Ngày hoàn thành');
+      }
+      const col1Based = colIdx + 1;
+      const statusColIdx = headers.indexOf('Trạng thái');
+      const updatedAtColIdx = headers.indexOf('Ngày cập nhật');
+      const createdAtColIdx = headers.indexOf('Ngày tạo');
+      const lastRow = sheet.getLastRow();
+      if (lastRow < 2 || statusColIdx === -1) { summary.push(sheetName + ': đã có cột, không có dữ liệu để vá'); return; }
+      const numRows = lastRow - 1;
+      const statusVals = sheet.getRange(2, statusColIdx + 1, numRows, 1).getValues();
+      const completedAtRange = sheet.getRange(2, col1Based, numRows, 1);
+      const completedAtVals = completedAtRange.getValues();
+      const updatedAtVals = updatedAtColIdx !== -1 ? sheet.getRange(2, updatedAtColIdx + 1, numRows, 1).getValues() : null;
+      const createdAtVals = createdAtColIdx !== -1 ? sheet.getRange(2, createdAtColIdx + 1, numRows, 1).getValues() : null;
+      let patched = 0;
+      for (let i = 0; i < numRows; i++) {
+        const isCompleted = String(statusVals[i][0]).trim() === 'Hoàn thành';
+        if (!isCompleted || completedAtVals[i][0]) continue;
+        const fallback = (updatedAtVals && updatedAtVals[i][0]) || (createdAtVals && createdAtVals[i][0]) || '';
+        if (fallback) { completedAtVals[i][0] = fallback; patched++; }
+      }
+      if (patched) completedAtRange.setValues(completedAtVals);
+      summary.push(sheetName + ': đã có cột "Ngày hoàn thành" ở vị trí ' + colLetter(col1Based) + ', vá ' + patched + ' dòng');
+    } catch (e) {
+      summary.push(sheetName + ': LỖI — ' + e.message);
+    }
+  });
+  Logger.log('completedAt: ' + JSON.stringify(summary));
   return summary;
 }
 

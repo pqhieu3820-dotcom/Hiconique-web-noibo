@@ -1519,6 +1519,10 @@
   flex-direction: column;
   gap: var(--space-sm);
   min-height: 200px;
+  /* Cuộn riêng bên trong từng cột thay vì để cả trang kéo dài vô tận khi 1
+     cột có nhiều việc. */
+  max-height: 640px;
+  overflow-y: auto;
 }
 
 .kanban-empty {
@@ -1707,6 +1711,10 @@
 
   .kanban-board {
     grid-template-columns: 1fr;
+  }
+
+  .kanban-cards {
+    max-height: 420px;
   }
 
   /* Modal tạo/sửa task: 2 cột ép cứng (Người được giao/Dự án, ngày bắt đầu/

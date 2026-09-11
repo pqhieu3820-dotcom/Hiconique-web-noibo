@@ -253,8 +253,15 @@
   }
 
   // ----- Render Board (Kanban) -----
+  // Việc đã "Hoàn thành" chỉ hiện trên Board trong TUẦN hoàn thành đó — hết
+  // tuần (qua 0h Thứ Hai tuần sau) tự ẩn khỏi cột này để cột không dài vô tận
+  // theo thời gian. Dữ liệu KHÔNG mất — List/Timeline/Gantt và quick-filter
+  // "Đã hoàn thành" vẫn thấy đủ, xem TaskManager.isCompletedThisWeek().
   function renderBoard() {
-    var tasks = getFilteredTasks();
+    var tasks = getFilteredTasks().filter(function (t) {
+      if (t.status !== 'completed') return true;
+      return !TaskManager.isCompletedThisWeek || TaskManager.isCompletedThisWeek(t.completedAt);
+    });
     var columns = document.querySelectorAll('.column-tasks');
     var counts = { pending: 0, 'in-progress': 0, review: 0, completed: 0 };
 
