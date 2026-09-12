@@ -9,10 +9,11 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 - **Đổi 1 field/quy tắc hiển thị dùng chung ở nhiều trang → phải tự rà + sửa HẾT mọi trang dùng field đó, không chỉ sửa đúng trang người dùng đang nói tới.** (Thêm 2026-09-11 sau khi `shortCode` (mã dự án viết tắt làm avatar) chỉ được cập nhật ở `projects.js` mà quên mất `task-manager-app.js` cũng render y hệt project card đó — người dùng phải tự phát hiện bug này.) Cách làm: `grep` toàn bộ `public/js/*.js`, `public/pages/*.html`, `public/css/*.css` tìm pattern CŨ trước khi coi là xong, không chỉ sửa 1 chỗ rồi dừng.
 - **Avatar (người HOẶC dự án) toàn hệ thống LUÔN là hình VUÔNG BO GÓC, KHÔNG BAO GIỜ hình tròn.** (Chốt cứng 2026-09-11 theo yêu cầu người dùng, xem chi tiết mục "Trạng thái hiện tại — 2026-09-11 (g)".) Chuẩn được ép toàn cục qua 1 block CSS trong `portal.css` (nạp ở mọi trang) — thêm avatar mới ở đâu cũng phải dùng lại 1 trong các class avatar đã có sẵn (không tự bịa class mới với `border-radius: 50%`), nếu thật sự cần class mới thì thêm luôn vào danh sách override trong `portal.css`.
 
-## ⏳ VIỆC CÒN TỒN ĐỌNG (đọc mục này đầu tiên — cập nhật 2026-09-11 cuối phiên)
+## ⏳ VIỆC CÒN TỒN ĐỌNG (đọc mục này đầu tiên — cập nhật 2026-09-12 cuối phiên)
 
-Không có việc gì đang dở dang — mọi thay đổi trong phiên này đều đã commit + push xong.
+Không có việc gì đang dở dang — mọi thay đổi trong phiên này đều đã commit (chờ lệnh push cuối phiên).
 
+- Tự động check-out khi quên chấm công (qua 0h) + thông báo CEO/Manager và chính nhân viên đó; nút "Xuất báo cáo chấm công" (Excel nhiều sheet) cho CEO ở trang Chấm công — xem mục "Trạng thái hiện tại — 2026-09-12 (a)" ngay dưới.
 - Cột Kanban trang Dự án co giãn lấp đầy màn hình rộng (trước đó cố định 280px, màn 27" thừa nhiều khoảng trắng bên phải) — xem mục "Trạng thái hiện tại — 2026-09-11 (h)" ngay dưới.
 - Đồng bộ hình dạng avatar toàn hệ thống (vuông bo góc, xoá hết hình tròn) — xem mục "Trạng thái hiện tại — 2026-09-11 (g)" ngay dưới.
 - Kanban "Hoàn thành/Done" tự ẩn việc/dự án đã xong QUA TUẦN + cột Kanban giới hạn chiều cao (cuộn riêng, không kéo dài cả trang) — xem mục "Trạng thái hiện tại — 2026-09-11 (f)" ngay dưới.
@@ -21,6 +22,16 @@ Không có việc gì đang dở dang — mọi thay đổi trong phiên này đ
 - Cột "Tên dự án" tra cứu (VLOOKUP) — đã xong đủ 12/12 sheet (xem mục "Trạng thái hiện tại — 2026-09-11 (a)" ngay dưới).
 - Chấm công Check In/Check Out — nâng lên bắt buộc đủ 3/3 điều kiện (GPS/Wifi/Thiết bị), thiếu bất kỳ điều kiện nào đều chặn hẳn + hiện bảng thông báo (xem mục "Trạng thái hiện tại — 2026-09-11 (b)" ngay dưới).
 - FIELD_MAP/VALUE_MAP 3 cột phụ Thành viên (lastActiveAt/theme/deviceIds) — người dùng tự đổi header sang tiếng Việt trên Sheet, đã map lại + deploy Apps Script phiên bản 48.
+
+## Trạng thái hiện tại (cập nhật lần cuối: 2026-09-12 (a) — tự động check-out quên chấm công + xuất báo cáo Excel chấm công, đọc kỹ mục này trước)
+
+**Việc mới nhất (2026-09-12, theo yêu cầu người dùng từ trang Chấm công cá nhân): 2 tính năng cho việc quên chấm công và báo cáo tổng hợp.**
+
+- **Tự động đóng ca quên check-out** — thêm `autoCheckoutForgottenEntries()` trong `gsheets-api-v2.js`: mỗi ngày lúc ~0h05 (trigger `setupAutoCheckoutTrigger()`, đã chạy 1 lần để cài đặt — **ĐÃ XÁC NHẬN CÀI THÀNH CÔNG**), quét toàn bộ bản ghi `timesheet` có `status === 'working'` và `date < hôm nay` (tức còn "mở ca" từ hôm qua trở về trước), tự set `checkoutTime = checkinTime` (0 giờ công, không tính lương/OT sai), gắn tag `[TỰ ĐỘNG ĐÓNG CA — QUÊN CHECK-OUT]` vào `note`, rồi tạo 2 thông báo qua hệ thống `notifications` có sẵn: 1 gửi riêng nhân viên đó (`scope = memberId`), 1 gửi từng admin/manager (`scope = mgr.id`, lặp qua toàn bộ `roleLevel === 'admin' || 'manager'`).
+- **Nút "Xuất báo cáo chấm công"** (`public/pages/timesheet.html`, chỉ `roleLevel === 'admin'` mới thấy) — dùng ExcelJS (CDN, đã có sẵn convention từ `gantt.js`) tạo file `.xlsx` nhiều sheet: 1 sheet "Tổng hợp" (mã NV/họ tên/chức vụ/ngày công/tổng giờ/giờ OT/số lần quên check-out, toàn bộ nhân viên active), và N sheet chi tiết — 1 sheet/người, đủ mọi ngày từ 1 tới ngày cuối tháng đang xem (không phụ thuộc có dữ liệu hay không), mỗi ngày show Check-in/Check-out/Trạng thái/Tổng giờ/OT/Ghi chú, đánh dấu đỏ "Quên check-out" (dò tag ở trên) và "Chưa chấm công" (ngày trong quá khứ, không cuối tuần, không có bản ghi).
+- **Bẫy đã gặp khi debug**: sau khi bấm nút, không thấy file trong `~/Downloads` — tưởng lỗi code, nhưng thực ra Chrome (qua Claude in Chrome) tải về thư mục Desktop chứ không phải Downloads mặc định của máy này. Đã xác nhận file tải về đúng, đủ cấu trúc (19.5KB, mở được).
+- **Bẫy deploy Apps Script tái diễn** (xem quy tắc "redeploy mỗi lần sửa" bên dưới): lần đầu bấm "Phiên bản mới" bằng click toạ độ (coordinate) bị lệch, vô tình chọn nhầm 1 phiên bản CŨ trong danh sách dropdown (deploy nhầm bản 48 rồi bản 49, đều thấp hơn/bằng bản đang active) — **PHẢI dùng `find` tool lấy `ref` chính xác của mục "Phiên bản mới" trong dropdown rồi click theo `ref` đó**, click theo toạ độ (x,y) cho dropdown này không đáng tin cậy vì danh sách dài hay bị cuộn/re-render giữa các lần thao tác. Đã deploy thành công **phiên bản 50** (xác nhận số phiên bản mới CAO HƠN phiên bản active trước đó).
+- Đã kiểm tra: tính công (Ngày công/Tổng giờ) trong cả 2 nơi (thống kê trang cá nhân qua `getMemberTimesheetSummary` và sheet chi tiết trong báo cáo xuất) đều tính đúng theo tháng dương lịch trọn vẹn từ ngày 1 tới ngày cuối tháng (`tsDaysInMonth`), không bị giới hạn theo khoảng có dữ liệu — khớp yêu cầu người dùng, không cần sửa thêm.
 
 ## Trạng thái hiện tại (cập nhật lần cuối: 2026-09-11 (h) — cột Kanban trang Dự án co giãn theo màn hình, đọc kỹ mục này trước)
 

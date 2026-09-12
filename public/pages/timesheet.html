@@ -542,9 +542,19 @@
 
   <main class="subpage">
   <div class="subpage-inner ts-container">
-    <p class="eyebrow">— Chấm công</p>
-    <h1 class="subpage-title">Bảng <span class="subpage-title-italic">chấm công</span></h1>
-    <p class="subpage-lede" id="tsPageSub">Theo dõi giờ làm việc và tăng ca hàng ngày</p>
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+      <div>
+        <p class="eyebrow">— Chấm công</p>
+        <h1 class="subpage-title">Bảng <span class="subpage-title-italic">chấm công</span></h1>
+        <p class="subpage-lede" id="tsPageSub">Theo dõi giờ làm việc và tăng ca hàng ngày</p>
+      </div>
+      <!-- Chỉ CEO thấy nút này — xuất báo cáo chấm công CẢ CÔNG TY (không
+           phải chỉ của riêng mình), xem bindExportAttendanceBtn(). -->
+      <button class="quick-add-btn" id="tsExportBtn" hidden style="margin-top:4px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Xuất báo cáo chấm công
+      </button>
+    </div>
 
     <!-- Stats -->
     <div class="ts-top-stats">
@@ -696,6 +706,7 @@
   </main>
 
   <script src="/js/portal.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js" defer></script>
   <script>
   (function() {
     'use strict';
@@ -703,6 +714,11 @@
     var calMonth = new Date().getMonth() + 1;
     var calYear = new Date().getFullYear();
     var selectedDayDate = null;
+
+    // Chuỗi đánh dấu ghi chú của bản ghi bị hệ thống TỰ ĐỘNG đóng ca do quên
+    // check-out — PHẢI khớp đúng AUTO_CHECKOUT_NOTE_TAG bên gsheets-api-v2.js
+    // (hàm autoCheckoutForgottenEntries), dùng để dò cột "Lỗi" khi xuất Excel.
+    var TS_AUTO_CHECKOUT_TAG = '[TỰ ĐỘNG ĐÓNG CA — QUÊN CHECK-OUT]';
 
     // ====== CẤU HÌNH GIỚI HẠN CHECK-IN (IP văn phòng + vị trí GPS) ======
     // Bảo mật 2 lớp: chỉ cần 1 trong 2 điều kiện thoả (GPS gần văn phòng HOẶC đang
@@ -1366,6 +1382,200 @@
       });
     }
 
+    // ===== Xuất báo cáo chấm công CẢ CÔNG TY (chỉ CEO thấy nút) =====
+    // 1 sheet "Tổng hợp" (mọi nhân viên, số liệu gộp cả tháng) + 1 sheet
+    // riêng cho từng người (đủ mọi ngày trong tháng, kể cả ngày chưa/không
+    // chấm công) — dùng ExcelJS, cùng thư viện + phong cách (viền, màu
+    // header tối) đã dùng cho "Xuất Excel" ở Gantt (xem gantt.js).
+    function tsDaysInMonth(year, month) { return new Date(year, month, 0).getDate(); }
+    function tsDow(dateObj) {
+      var names = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+      return names[dateObj.getDay()];
+    }
+    function tsIsWeekend(dateObj) { var d = dateObj.getDay(); return d === 0 || d === 6; }
+    function tsBorderAll() {
+      var s = { style: 'thin', color: { argb: 'FFD9D9D9' } };
+      return { top: s, left: s, bottom: s, right: s };
+    }
+    function tsHeaderCell(cell, label) {
+      cell.value = label;
+      cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF22272E' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+      cell.border = tsBorderAll();
+    }
+
+    function exportAttendanceReport() {
+      if (typeof ExcelJS === 'undefined') { alert('Thư viện xuất Excel chưa tải xong, thử lại sau vài giây.'); return; }
+      var btn = document.getElementById('tsExportBtn');
+      var originalHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.textContent = 'Đang xuất...';
+
+      function restoreBtn() { btn.disabled = false; btn.innerHTML = originalHtml; }
+
+      try {
+        var members = (typeof TaskManager !== 'undefined' && TaskManager.getMembers ? TaskManager.getMembers() : [])
+          .filter(function (m) { return !m.status || m.status === 'active'; });
+        var allEntries = (typeof TaskManager !== 'undefined' && TaskManager.getTimesheetEntries)
+          ? TaskManager.getTimesheetEntries({ year: calYear, month: calMonth })
+          : [];
+        var entriesByMember = {};
+        allEntries.forEach(function (e) {
+          if (!entriesByMember[e.memberId]) entriesByMember[e.memberId] = {};
+          entriesByMember[e.memberId][e.date] = e;
+        });
+
+        var nDays = tsDaysInMonth(calYear, calMonth);
+        var todayKey = getToday();
+
+        var wb = new ExcelJS.Workbook();
+        wb.creator = 'HICONIQUE Internal Hub';
+        wb.created = new Date();
+
+        // ----- Sheet "Tổng hợp" -----
+        var wsSum = wb.addWorksheet('Tổng hợp', { views: [{ state: 'frozen', ySplit: 2 }] });
+        wsSum.mergeCells(1, 1, 1, 7);
+        var sumTitle = wsSum.getCell(1, 1);
+        sumTitle.value = 'BÁO CÁO CHẤM CÔNG THÁNG ' + calMonth + '/' + calYear + ' — HICONIQUE VIETNAM';
+        sumTitle.font = { bold: true, size: 13, color: { argb: 'FF0B0D10' } };
+        wsSum.getRow(1).height = 24;
+
+        var sumHeaders = ['Mã NV', 'Họ tên', 'Chức vụ', 'Ngày công', 'Tổng giờ làm', 'Giờ tăng ca', 'Số lần quên check-out'];
+        sumHeaders.forEach(function (label, i) { tsHeaderCell(wsSum.getCell(2, i + 1), label); });
+        wsSum.getRow(2).height = 26;
+        [14, 22, 18, 11, 13, 12, 18].forEach(function (w, i) { wsSum.getColumn(i + 1).width = w; });
+
+        var sr = 3;
+        members.forEach(function (m) {
+          var byDate = entriesByMember[m.id] || {};
+          var workDays = 0, totalHours = 0, overtimeHours = 0, forgotCount = 0;
+          Object.keys(byDate).forEach(function (dk) {
+            var e = byDate[dk];
+            if (e.checkoutTime) {
+              workDays++;
+              totalHours += parseFloat(e.totalHours) || 0;
+              overtimeHours += parseFloat(e.overtimeHours) || 0;
+            }
+            if (e.note && e.note.indexOf(TS_AUTO_CHECKOUT_TAG) !== -1) forgotCount++;
+          });
+          var rowVals = [m.id, m.name || '', m.role || '', workDays, Math.round(totalHours * 10) / 10, Math.round(overtimeHours * 10) / 10, forgotCount];
+          rowVals.forEach(function (val, i) {
+            var cell = wsSum.getCell(sr, i + 1);
+            cell.value = val;
+            cell.font = { size: 10, bold: i === 6 && val > 0, color: { argb: i === 6 && val > 0 ? 'FFA04848' : 'FF14181D' } };
+            cell.alignment = { horizontal: i === 1 || i === 2 ? 'left' : 'center', vertical: 'middle' };
+            cell.border = tsBorderAll();
+          });
+          sr++;
+        });
+
+        // ----- 1 sheet chi tiết / người — đủ mọi ngày trong tháng -----
+        var usedSheetNames = {};
+        members.forEach(function (m) {
+          var base = (m.name || m.id).replace(/[\\\/\?\*\[\]:]/g, ' ').trim().slice(0, 28) || m.id;
+          var sheetName = base, n = 2;
+          while (usedSheetNames[sheetName]) { sheetName = (base + ' ' + n).slice(0, 31); n++; }
+          usedSheetNames[sheetName] = true;
+
+          var ws = wb.addWorksheet(sheetName, { views: [{ state: 'frozen', ySplit: 2 }] });
+          ws.mergeCells(1, 1, 1, 8);
+          var t = ws.getCell(1, 1);
+          t.value = (m.name || m.id) + (m.role ? ' — ' + m.role : '') + ' — Tháng ' + calMonth + '/' + calYear;
+          t.font = { bold: true, size: 12, color: { argb: 'FF0B0D10' } };
+          ws.getRow(1).height = 22;
+
+          var headers = ['Ngày', 'Thứ', 'Check-in', 'Check-out', 'Trạng thái', 'Tổng giờ', 'Giờ OT', 'Ghi chú / Lỗi'];
+          headers.forEach(function (label, i) { tsHeaderCell(ws.getCell(2, i + 1), label); });
+          ws.getRow(2).height = 24;
+          [12, 6, 10, 10, 17, 10, 9, 42].forEach(function (w, i) { ws.getColumn(i + 1).width = w; });
+
+          var byDate = entriesByMember[m.id] || {};
+          for (var d = 1; d <= nDays; d++) {
+            var dateStr = calYear + '-' + String(calMonth).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+            var dateObj = new Date(calYear, calMonth - 1, d);
+            var weekend = tsIsWeekend(dateObj);
+            var e = byDate[dateStr];
+            var status = '', note = '', checkin = '', checkout = '', hours = '', ot = '';
+
+            if (e) {
+              checkin = e.checkinTime || '';
+              checkout = e.checkoutTime || '';
+              hours = e.checkoutTime ? (parseFloat(e.totalHours) || 0) : '';
+              ot = e.checkoutTime ? (parseFloat(e.overtimeHours) || 0) : '';
+              note = e.note || '';
+              if (note.indexOf(TS_AUTO_CHECKOUT_TAG) !== -1) {
+                status = 'Quên check-out';
+              } else if (e.checkoutTime) {
+                status = 'Đi làm';
+              } else {
+                status = dateStr === todayKey ? 'Đang làm' : 'Chưa check-out';
+              }
+            } else if (dateStr > todayKey) {
+              status = '';
+            } else if (weekend) {
+              status = 'Cuối tuần';
+            } else {
+              status = 'Chưa chấm công';
+              note = 'Không có dữ liệu chấm công — kiểm tra lại (có thể nghỉ phép hoặc quên chấm công)';
+            }
+
+            var r = 2 + d;
+            var rowVals = [dateObj, tsDow(dateObj), checkin, checkout, status, hours, ot, note];
+            rowVals.forEach(function (val, i) {
+              var cell = ws.getCell(r, i + 1);
+              cell.value = val;
+              if (i === 0) cell.numFmt = 'dd/mm/yyyy';
+              cell.font = { size: 9.5 };
+              cell.alignment = { horizontal: i === 7 ? 'left' : 'center', vertical: 'middle', wrapText: i === 7 };
+              cell.border = tsBorderAll();
+            });
+            var statusCell = ws.getCell(r, 5);
+            if (status === 'Quên check-out' || status === 'Chưa chấm công') {
+              statusCell.font = { size: 9.5, bold: true, color: { argb: 'FFA04848' } };
+            } else if (status === 'Đi làm') {
+              statusCell.font = { size: 9.5, bold: true, color: { argb: 'FF4F6F52' } };
+            } else if (status === 'Cuối tuần') {
+              statusCell.font = { size: 9.5, color: { argb: 'FF9AA0A8' } };
+            }
+            if (weekend) {
+              [1, 2].forEach(function (i) { ws.getCell(r, i).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F5F5' } }; });
+            }
+          }
+        });
+
+        wb.xlsx.writeBuffer().then(function (buffer) {
+          var blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url;
+          a.download = 'Cham-cong-HICONIQUE-Thang' + calMonth + '-' + calYear + '.xlsx';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+          restoreBtn();
+        }).catch(function (err) {
+          console.error('Xuất báo cáo chấm công thất bại:', err);
+          alert('Xuất báo cáo thất bại. Vui lòng thử lại.');
+          restoreBtn();
+        });
+      } catch (err) {
+        console.error('Xuất báo cáo chấm công thất bại:', err);
+        alert('Xuất báo cáo thất bại. Vui lòng thử lại.');
+        restoreBtn();
+      }
+    }
+
+    function bindExportAttendanceBtn() {
+      var btn = document.getElementById('tsExportBtn');
+      if (!btn) return;
+      var user = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
+      if (!user || user.roleLevel !== 'admin') return; // giữ hidden — chỉ CEO thấy nút này
+      btn.hidden = false;
+      btn.addEventListener('click', exportAttendanceReport);
+    }
+
     // Init
     document.getElementById('tsCheckinBtn').addEventListener('click', function() {
       var record = getEntryByDate(getToday());
@@ -1398,6 +1608,7 @@
     renderCalendar();
     updateCheckinUI();
     renderDeviceTable();
+    bindExportAttendanceBtn();
 
     if (typeof Auth !== 'undefined' && Auth.getCurrentUser && !Auth.getCurrentUser()) {
       Auth.showLoginModal();

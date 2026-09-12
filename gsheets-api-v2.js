@@ -1276,6 +1276,89 @@ function addCompletedAtColumns() {
   return summary;
 }
 
+// ===== Tự động đóng ca "quên check-out" (2026-09-12) =====
+// Chạy 1 lần/ngày qua time-driven trigger (cài 1 LẦN bằng
+// setupAutoCheckoutTrigger(), xem cuối hàm — không tự cài lại mỗi lần đọc
+// file). Quét mọi dòng "Chấm công" của các ngày ĐÃ QUA còn status='working'
+// (đã check-in, chưa check-out) — đóng ca bằng CHÍNH giờ check-in (0 giờ
+// công), KHÔNG suy đoán giờ tan làm thật để tránh tính khống/thiếu công,
+// luôn kèm ghi chú cảnh báo rõ ràng + gửi thông báo nội bộ (sheet "Thông
+// báo" có sẵn cơ chế hiển thị trên web) cho CHÍNH người quên VÀ mọi
+// CEO/Manager để biết mà xác nhận lại thủ công.
+var AUTO_CHECKOUT_NOTE_TAG = '[TỰ ĐỘNG ĐÓNG CA — QUÊN CHECK-OUT]'; // PHẢI khớp TS_AUTO_CHECKOUT_TAG trong timesheet.html
+function autoCheckoutForgottenEntries() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const todayKey = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd');
+  const entries = getAllData(ss, SHEETS.timesheet);
+  const members = getAllData(ss, SHEETS.members);
+  const memberById = {};
+  members.forEach(function (m) { memberById[m.id] = m; });
+  const managers = members.filter(function (m) { return m.roleLevel === 'admin' || m.roleLevel === 'manager'; });
+
+  const fixed = [];
+  entries.forEach(function (e) {
+    if (e.status !== 'working') return;
+    if (!e.date || e.date >= todayKey) return; // chỉ đóng ca của ngày ĐÃ QUA — hôm nay vẫn tự check-out bình thường
+    if (!e.checkinTime) return; // dữ liệu hỏng (không có giờ check-in) — bỏ qua, không đoán bừa
+    const note = (e.note ? e.note + ' | ' : '') + AUTO_CHECKOUT_NOTE_TAG + ' lúc ' + e.checkinTime + ' — vui lòng xác nhận lại giờ làm thực tế.';
+    updateData(ss, SHEETS.timesheet, e.id, {
+      checkoutTime: e.checkinTime,
+      totalHours: 0,
+      overtimeHours: 0,
+      status: 'completed',
+      note: note
+    });
+    fixed.push(e);
+  });
+
+  fixed.forEach(function (e) {
+    const member = memberById[e.memberId];
+    const name = member ? member.name : e.memberId;
+    const msg = name + ' quên check-out ngày ' + e.date + ' (check-in lúc ' + e.checkinTime + ') — hệ thống đã tự động đóng ca (0 giờ công), vui lòng kiểm tra và điều chỉnh lại nếu cần.';
+    addData(ss, SHEETS.notifications, {
+      title: 'Quên check-out ngày ' + e.date,
+      message: msg,
+      type: 'attendance',
+      scope: e.memberId,
+      recurring: false,
+      active: true,
+      createdBy: 'SYSTEM'
+    });
+    managers.forEach(function (mgr) {
+      if (mgr.id === e.memberId) return; // tránh gửi trùng nếu chính người quên lại là CEO/Manager
+      addData(ss, SHEETS.notifications, {
+        title: 'NV quên check-out: ' + name,
+        message: msg,
+        type: 'attendance',
+        scope: mgr.id,
+        recurring: false,
+        active: true,
+        createdBy: 'SYSTEM'
+      });
+    });
+  });
+
+  Logger.log('autoCheckoutForgottenEntries: đã tự đóng ' + fixed.length + ' ca quên check-out.');
+  return fixed.length;
+}
+
+// Cài time-driven trigger chạy autoCheckoutForgottenEntries() mỗi ngày lúc
+// ~0h05 — chạy TAY hàm này ĐÚNG 1 LẦN từ trình chỉnh sửa Apps Script để cài
+// đặt (Chạy > chọn setupAutoCheckoutTrigger). An toàn chạy lại nhiều lần:
+// tự xoá trigger cũ của đúng hàm này trước khi tạo lại, không tạo trùng.
+function setupAutoCheckoutTrigger() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'autoCheckoutForgottenEntries') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('autoCheckoutForgottenEntries')
+    .timeBased()
+    .everyDays(1)
+    .atHour(0)
+    .nearMinute(5)
+    .create();
+  Logger.log('Đã cài trigger tự động đóng ca — chạy hàng ngày lúc ~0h05.');
+}
+
 function replaceIdInListColumn(ss, sheetName, headerNameEn, oldId, newId) {
   const sheet = findSheet(ss, sheetName);
   if (!sheet) return;
