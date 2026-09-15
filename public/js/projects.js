@@ -1492,22 +1492,110 @@
 
   function populateReportFilters() {
     var projectSel = document.getElementById('reportProjectFilter');
-    var memberSel = document.getElementById('reportMemberFilter');
     if (projectSel) {
       var projects = getProjects();
       projectSel.innerHTML = '<option value="all">Tất cả dự án</option>' +
         projects.map(function (p) { return '<option value="' + escapeHtml(p.id) + '">' + escapeHtml(p.name || p.id) + '</option>'; }).join('');
     }
-    if (memberSel) {
-      var members = reportActiveMembers();
-      memberSel.innerHTML = '<option value="all">Tất cả thành viên</option>' +
-        members.map(function (m) { return '<option value="' + escapeHtml(m.id) + '">' + escapeHtml(m.name || m.id) + '</option>'; }).join('');
+    renderReportMemberDropdown();
+  }
+
+  // Lọc "thành viên" trong Báo cáo công việc — kiểu liệt kê avatar + tên +
+  // ô tìm kiếm giống dropdown "Người phụ trách" ở form tạo task/dự án
+  // (.assignee-dd), nhưng CHỌN 1 (không phải multi-select) nên tự viết
+  // riêng thay vì tái dùng renderTaskAssigneeDropdown().
+  var reportMemberFilterId = 'all';
+  function renderReportMemberDropdown() {
+    var dd = document.getElementById('report-member-dd');
+    if (!dd) return;
+    var panel = dd.querySelector('.assignee-dd-panel');
+    var trigger = dd.querySelector('.assignee-dd-trigger');
+    var triggerText = dd.querySelector('.assignee-dd-trigger-text');
+    var searchInput = document.getElementById('reportMemberSearch');
+    var listEl = document.getElementById('reportMemberList');
+    var members = reportActiveMembers();
+
+    function renderList(query) {
+      var q = (query || '').trim().toLowerCase();
+      var filtered = q ? members.filter(function (m) { return (m.name || '').toLowerCase().indexOf(q) !== -1; }) : members;
+      var allItemHtml = '<div class="assignee-dd-item' + (reportMemberFilterId === 'all' ? ' selected' : '') + '" data-member-id="all">'
+        + '<svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>'
+        + '<span class="avatar-xs" style="background:var(--color-bronze)">⚡</span>'
+        + '<span>Tất cả thành viên</span>'
+      + '</div>';
+      var itemsHtml = filtered.map(function (m) {
+        var checked = reportMemberFilterId === m.id;
+        return '<div class="assignee-dd-item' + (checked ? ' selected' : '') + '" data-member-id="' + escapeHtml(m.id) + '">'
+          + '<svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>'
+          + '<span class="avatar-xs" style="background:' + (m.color || '#6B7280') + '">' + escapeHtml(m.avatar || (m.name || '?').substring(0, 2).toUpperCase()) + '</span>'
+          + '<span>' + escapeHtml(m.name || '') + '</span>'
+        + '</div>';
+      }).join('');
+      listEl.innerHTML = (q ? '' : allItemHtml) + (filtered.length ? itemsHtml : (q ? '<div class="assignee-dd-empty">Không tìm thấy "' + escapeHtml(query) + '"</div>' : ''));
+      listEl.querySelectorAll('.assignee-dd-item').forEach(function (item) {
+        item.addEventListener('click', function () {
+          reportMemberFilterId = item.dataset.memberId;
+          updateTriggerText();
+          dd.classList.remove('open');
+          panel.hidden = true;
+          renderWorkReport();
+        });
+      });
+    }
+
+    function updateTriggerText() {
+      if (reportMemberFilterId === 'all') {
+        triggerText.textContent = 'Tất cả thành viên';
+      } else {
+        var m = members.find(function (mm) { return mm.id === reportMemberFilterId; });
+        triggerText.textContent = m ? m.name : 'Tất cả thành viên';
+      }
+    }
+
+    updateTriggerText();
+    renderList(searchInput ? searchInput.value : '');
+
+    if (!trigger.dataset.bound) {
+      trigger.dataset.bound = '1';
+      trigger.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var isOpen = dd.classList.toggle('open');
+        panel.hidden = !isOpen;
+        if (isOpen && searchInput) { searchInput.value = ''; renderList(''); searchInput.focus(); }
+      });
+      document.addEventListener('click', function (e) {
+        if (!dd.contains(e.target)) {
+          dd.classList.remove('open');
+          panel.hidden = true;
+        }
+      });
+      if (searchInput) {
+        searchInput.addEventListener('input', function () { renderList(searchInput.value); });
+        searchInput.addEventListener('click', function (e) { e.stopPropagation(); });
+      }
     }
   }
 
   function formatNowTime() {
     var d = new Date();
     return 'Cập nhật lúc ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0');
+  }
+
+  // Chart.js instances đang sống của modal báo cáo — giữ lại để .destroy()
+  // trước khi vẽ lại mỗi lần renderWorkReport() chạy (đổi bộ lọc/refresh),
+  // tránh Chart.js log lỗi "Canvas is already in use" và rò rỉ bộ nhớ.
+  var reportCharts = {};
+  function destroyReportCharts() {
+    Object.keys(reportCharts).forEach(function (k) {
+      if (reportCharts[k]) reportCharts[k].destroy();
+    });
+    reportCharts = {};
+  }
+
+  // Đọc màu từ CSS variables thật của trang (không hard-code) — tự khớp
+  // theme sáng/tối đang bật, xem tokens.css.
+  function reportCssVar(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   }
 
   function renderWorkReport() {
@@ -1517,9 +1605,8 @@
     if (updatedEl) updatedEl.textContent = formatNowTime();
 
     var projectFilter = document.getElementById('reportProjectFilter');
-    var memberFilter = document.getElementById('reportMemberFilter');
     var projectId = projectFilter ? projectFilter.value : 'all';
-    var memberId = memberFilter ? memberFilter.value : 'all';
+    var memberId = reportMemberFilterId;
 
     // Lọc bỏ dòng rác không có id/tên (VD 1 dòng trống sót lại trên Sheet
     // "Dự án") — báo cáo không nên hiện 1 dòng trống gây khó hiểu, dù dữ liệu
@@ -1537,22 +1624,33 @@
     });
 
     // ----- Overview -----
-    var completedToday = tasks.filter(function (t) {
-      return Array.isArray(t.dailyTasks) && t.dailyTasks.some(function (d) { return d.date === today && d.done; });
-    }).length;
+    var doneCount = tasks.filter(function (t) { return t.status === 'completed'; }).length;
     var avgProgress = tasks.length ? Math.round(tasks.reduce(function (s, t) { return s + (t.progress || 0); }, 0) / tasks.length) : 0;
     var overdueCount = tasks.filter(isOverdue).length;
 
-    var overviewHtml = '<div class="report-stat-grid">'
-      + '<div class="report-stat"><span class="report-stat-label">Dự án</span><span class="report-stat-value">' + projects.length + '</span></div>'
-      + '<div class="report-stat"><span class="report-stat-label">Tổng việc</span><span class="report-stat-value">' + tasks.length + '</span></div>'
-      + '<div class="report-stat"><span class="report-stat-label">Tiến độ TB</span><span class="report-stat-value">' + avgProgress + '%</span></div>'
-      + '<div class="report-stat"><span class="report-stat-label">Quá hạn</span><span class="report-stat-value" style="' + (overdueCount ? 'color:#DC2626' : '') + '">' + overdueCount + '</span></div>'
-      + '</div>';
+    var statGrid = document.getElementById('reportStatGrid');
+    if (statGrid) {
+      statGrid.innerHTML =
+        '<div class="report-stat"><span class="report-stat-label">Dự án</span><span class="report-stat-value">' + projects.length + '</span></div>'
+        + '<div class="report-stat"><span class="report-stat-label">Tổng việc</span><span class="report-stat-value">' + tasks.length + '</span></div>'
+        + '<div class="report-stat"><span class="report-stat-label">Hoàn thành</span><span class="report-stat-value" style="color:' + reportCssVar('--color-success') + '">' + doneCount + '</span></div>'
+        + '<div class="report-stat"><span class="report-stat-label">Tiến độ TB</span><span class="report-stat-value">' + avgProgress + '%</span></div>'
+        + '<div class="report-stat"><span class="report-stat-label">Quá hạn</span><span class="report-stat-value" style="' + (overdueCount ? 'color:#DC2626' : '') + '">' + overdueCount + '</span></div>';
+    }
 
-    // ----- Theo dự án -----
-    var byProjectHtml = '<div class="report-section"><h4>Tiến độ theo dự án</h4>' +
-      (projects.length === 0 ? '<div class="report-empty">Không có dự án nào khớp bộ lọc.</div>' : projects.map(function (p) {
+    destroyReportCharts();
+    if (typeof Chart !== 'undefined') {
+      renderReportStatusChart(tasks);
+      renderReportPriorityChart(tasks);
+      renderReportTrendChart(tasks);
+      renderReportProjectChart(projects, tasks);
+      renderReportMemberChart(members, allTasks, projectId, memberId);
+    }
+
+    // ----- Theo dự án (danh sách chi tiết, dưới biểu đồ) -----
+    var byProjectEl = document.getElementById('workReportByProject');
+    if (byProjectEl) {
+      byProjectEl.innerHTML = projects.length === 0 ? '<div class="report-empty">Không có dự án nào khớp bộ lọc.</div>' : projects.map(function (p) {
         var pTasks = tasks.filter(function (t) { return t.projectId === p.id; });
         var pDone = pTasks.filter(function (t) { return t.status === 'completed'; }).length;
         var pProgress = pTasks.length ? Math.round(pTasks.reduce(function (s, t) { return s + (t.progress || 0); }, 0) / pTasks.length) : 0;
@@ -1561,12 +1659,14 @@
           + '<div class="progress-track"><span style="width:' + pProgress + '%"></span></div>'
           + '<div class="report-row-meta">' + pProgress + '% · ' + pDone + '/' + pTasks.length + ' xong</div>'
           + '</div>';
-      }).join('')) + '</div>';
+      }).join('');
+    }
 
-    // ----- Theo người -----
+    // ----- Theo người (danh sách chi tiết, dưới biểu đồ) -----
     var reportMembers = memberId === 'all' ? members : members.filter(function (m) { return m.id === memberId; });
-    var byMemberHtml = '<div class="report-section"><h4>Tiến độ theo người</h4>' +
-      (reportMembers.length === 0 ? '<div class="report-empty">Không có thành viên nào khớp bộ lọc.</div>' : reportMembers.map(function (m) {
+    var byMemberEl = document.getElementById('workReportByMember');
+    if (byMemberEl) {
+      byMemberEl.innerHTML = reportMembers.length === 0 ? '<div class="report-empty">Không có thành viên nào khớp bộ lọc.</div>' : reportMembers.map(function (m) {
         var mTasks = allTasks.filter(function (t) {
           if (!(Array.isArray(t.assigneeIds) && t.assigneeIds.indexOf(m.id) !== -1)) return false;
           if (projectId !== 'all' && t.projectId !== projectId) return false;
@@ -1581,7 +1681,8 @@
           + '<div class="progress-track"><span style="width:' + mProgress + '%"></span></div>'
           + '<div class="report-row-meta">' + mProgress + '% · ' + mDone + '/' + mTasks.length + ' xong' + (mOverdue ? ' · ' + mOverdue + ' quá hạn' : '') + '</div>'
           + '</div>';
-      }).join('')) + '</div>';
+      }).join('');
+    }
 
     // ----- Nhật ký tiến độ hôm nay (dailyTasks) -----
     var dailyEntries = [];
@@ -1591,22 +1692,185 @@
       if (!entry) return;
       dailyEntries.push({ task: t, entry: entry });
     });
-    var byDailyHtml = '<div class="report-section"><h4>Nhật ký tiến độ hôm nay (' + dailyEntries.length + ')</h4>' +
-      (dailyEntries.length === 0 ? '<div class="report-empty">Chưa có ai cập nhật tiến độ hôm nay.</div>' : dailyEntries.map(function (row) {
-        var t = row.task, entry = row.entry;
-        var project = getProjectById(t.projectId);
-        var assignees = getAssigneesForTask(t).map(function (a) { return a.name; }).join(', ');
-        return '<div class="report-daily-item">'
-          + '<div class="report-daily-body">'
-          +   '<div class="report-daily-title">' + escapeHtml(t.title || '') + '</div>'
-          +   '<div class="report-daily-meta">' + escapeHtml(project ? project.name : '—') + (assignees ? ' · ' + escapeHtml(assignees) : '') + '</div>'
-          +   (entry.note ? '<div class="report-daily-note">"' + escapeHtml(entry.note) + '"</div>' : '')
-          + '</div>'
-          + '<div class="report-daily-pct">' + (entry.progress || 0) + '%' + (entry.done ? ' ✓' : '') + '</div>'
-          + '</div>';
-      }).join('')) + '</div>';
+    var dailyEl = document.getElementById('workReportDaily');
+    if (dailyEl) {
+      dailyEl.innerHTML = '<div class="report-section"><h4>Nhật ký tiến độ hôm nay (' + dailyEntries.length + ')</h4>' +
+        (dailyEntries.length === 0 ? '<div class="report-empty">Chưa có ai cập nhật tiến độ hôm nay.</div>' : dailyEntries.map(function (row) {
+          var t = row.task, entry = row.entry;
+          var project = getProjectById(t.projectId);
+          var assignees = getAssigneesForTask(t).map(function (a) { return a.name; }).join(', ');
+          return '<div class="report-daily-item">'
+            + '<div class="report-daily-body">'
+            +   '<div class="report-daily-title">' + escapeHtml(t.title || '') + '</div>'
+            +   '<div class="report-daily-meta">' + escapeHtml(project ? project.name : '—') + (assignees ? ' · ' + escapeHtml(assignees) : '') + '</div>'
+            +   (entry.note ? '<div class="report-daily-note">"' + escapeHtml(entry.note) + '"</div>' : '')
+            + '</div>'
+            + '<div class="report-daily-pct">' + (entry.progress || 0) + '%' + (entry.done ? ' ✓' : '') + '</div>'
+            + '</div>';
+        }).join('')) + '</div>';
+    }
+  }
 
-    body.innerHTML = overviewHtml + byProjectHtml + byMemberHtml + byDailyHtml;
+  // Biểu đồ tròn — phân bố trạng thái công việc, dùng đúng màu status-badge
+  // (statusBadgeClass) trong CSS để nhìn quen với Board/List.
+  function renderReportStatusChart(tasks) {
+    var el = document.getElementById('reportStatusChart');
+    if (!el) return;
+    var counts = { todo: 0, 'in-progress': 0, review: 0, completed: 0 };
+    tasks.forEach(function (t) { var s = t.status && counts.hasOwnProperty(t.status) ? t.status : 'todo'; counts[s]++; });
+    reportCharts.status = new Chart(el, {
+      type: 'doughnut',
+      data: {
+        labels: ['Chưa bắt đầu', 'Đang làm', 'Chờ duyệt', 'Hoàn thành'],
+        datasets: [{
+          data: [counts.todo, counts['in-progress'], counts.review, counts.completed],
+          backgroundColor: [reportCssVar('--color-text-faint'), reportCssVar('--color-blue'), reportCssVar('--color-terracotta'), reportCssVar('--color-success')],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '62%',
+        plugins: { legend: { position: 'bottom', labels: { color: reportCssVar('--color-text-muted'), boxWidth: 10, font: { size: 11 } } } }
+      }
+    });
+  }
+
+  // Biểu đồ tròn — mức độ ưu tiên (thấp/trung bình/cao), khớp màu priority-badge.
+  function renderReportPriorityChart(tasks) {
+    var el = document.getElementById('reportPriorityChart');
+    if (!el) return;
+    var counts = { low: 0, medium: 0, high: 0 };
+    tasks.forEach(function (t) { var p = t.priority && counts.hasOwnProperty(t.priority) ? t.priority : 'medium'; counts[p]++; });
+    reportCharts.priority = new Chart(el, {
+      type: 'doughnut',
+      data: {
+        labels: ['Thấp', 'Trung bình', 'Cao'],
+        datasets: [{
+          data: [counts.low, counts.medium, counts.high],
+          backgroundColor: ['#059669', reportCssVar('--color-bronze'), '#DC2626'],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '62%',
+        plugins: { legend: { position: 'bottom', labels: { color: reportCssVar('--color-text-muted'), boxWidth: 10, font: { size: 11 } } } }
+      }
+    });
+  }
+
+  // Biểu đồ đường — số việc được đánh "xong" (dailyTasks.done) mỗi ngày
+  // trong 7 ngày gần nhất, tính trên TOÀN BỘ task đang lọc (không chỉ hôm
+  // nay như phần "Nhật ký" — cho thấy xu hướng thay vì 1 lát cắt).
+  function renderReportTrendChart(tasks) {
+    var el = document.getElementById('reportTrendChart');
+    if (!el) return;
+    var days = [];
+    for (var i = 6; i >= 0; i--) {
+      var d = new Date();
+      d.setDate(d.getDate() - i);
+      days.push(d.toISOString().slice(0, 10));
+    }
+    var counts = days.map(function (day) {
+      return tasks.reduce(function (sum, t) {
+        if (!Array.isArray(t.dailyTasks)) return sum;
+        return sum + t.dailyTasks.filter(function (e) { return e.date === day && e.done; }).length;
+      }, 0);
+    });
+    var labels = days.map(function (day) {
+      var d = new Date(day + 'T00:00:00');
+      return d.toLocaleDateString('vi-VN', { day: 'numeric', month: 'numeric' });
+    });
+    reportCharts.trend = new Chart(el, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Việc hoàn thành',
+          data: counts,
+          borderColor: reportCssVar('--color-bronze'),
+          backgroundColor: reportCssVar('--color-bronze') + '33',
+          fill: true, tension: 0.35, pointRadius: 3, pointBackgroundColor: reportCssVar('--color-bronze')
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: reportCssVar('--color-text-muted'), font: { size: 11 } }, grid: { display: false } },
+          y: { beginAtZero: true, ticks: { color: reportCssVar('--color-text-muted'), stepSize: 1, font: { size: 11 } }, grid: { color: reportCssVar('--color-border') } }
+        }
+      }
+    });
+  }
+
+  // Biểu đồ cột ngang — tiến độ % mỗi dự án (giới hạn 10 dự án đầu để biểu
+  // đồ không bị quá dài, danh sách chi tiết đầy đủ vẫn có bên dưới).
+  function renderReportProjectChart(projects, tasks) {
+    var el = document.getElementById('reportProjectChart');
+    if (!el) return;
+    var rows = projects.slice(0, 10).map(function (p) {
+      var pTasks = tasks.filter(function (t) { return t.projectId === p.id; });
+      var pProgress = pTasks.length ? Math.round(pTasks.reduce(function (s, t) { return s + (t.progress || 0); }, 0) / pTasks.length) : 0;
+      return { name: p.name || p.id, progress: pProgress };
+    });
+    var canvasWrap = el.parentElement;
+    if (canvasWrap) canvasWrap.style.height = Math.max(120, rows.length * 34) + 'px';
+    reportCharts.project = new Chart(el, {
+      type: 'bar',
+      data: {
+        labels: rows.map(function (r) { return r.name; }),
+        datasets: [{ label: 'Tiến độ %', data: rows.map(function (r) { return r.progress; }), backgroundColor: reportCssVar('--color-bronze'), borderRadius: 4, maxBarThickness: 20 }]
+      },
+      options: {
+        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { beginAtZero: true, max: 100, ticks: { color: reportCssVar('--color-text-muted'), font: { size: 11 } }, grid: { color: reportCssVar('--color-border') } },
+          y: { ticks: { color: reportCssVar('--color-text-muted'), font: { size: 11 } }, grid: { display: false } }
+        }
+      }
+    });
+  }
+
+  // Biểu đồ cột chồng — số việc xong/đang làm/quá hạn theo từng người.
+  function renderReportMemberChart(members, allTasks, projectId, memberId) {
+    var el = document.getElementById('reportMemberChart');
+    if (!el) return;
+    var list = memberId === 'all' ? members : members.filter(function (m) { return m.id === memberId; });
+    var rows = list.map(function (m) {
+      var mTasks = allTasks.filter(function (t) {
+        if (!(Array.isArray(t.assigneeIds) && t.assigneeIds.indexOf(m.id) !== -1)) return false;
+        if (projectId !== 'all' && t.projectId !== projectId) return false;
+        return true;
+      });
+      return {
+        name: m.name || m.id,
+        done: mTasks.filter(function (t) { return t.status === 'completed'; }).length,
+        remaining: mTasks.filter(function (t) { return t.status !== 'completed' && !isOverdue(t); }).length,
+        overdue: mTasks.filter(isOverdue).length
+      };
+    }).filter(function (r) { return r.done + r.remaining + r.overdue > 0 || memberId !== 'all'; });
+    var canvasWrap = el.parentElement;
+    if (canvasWrap) canvasWrap.style.height = Math.max(120, rows.length * 34) + 'px';
+    reportCharts.member = new Chart(el, {
+      type: 'bar',
+      data: {
+        labels: rows.map(function (r) { return r.name; }),
+        datasets: [
+          { label: 'Xong', data: rows.map(function (r) { return r.done; }), backgroundColor: reportCssVar('--color-success'), stack: 's' },
+          { label: 'Đang làm', data: rows.map(function (r) { return r.remaining; }), backgroundColor: reportCssVar('--color-blue'), stack: 's' },
+          { label: 'Quá hạn', data: rows.map(function (r) { return r.overdue; }), backgroundColor: '#DC2626', stack: 's' }
+        ]
+      },
+      options: {
+        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { color: reportCssVar('--color-text-muted'), boxWidth: 10, font: { size: 11 } } } },
+        scales: {
+          x: { stacked: true, beginAtZero: true, ticks: { color: reportCssVar('--color-text-muted'), stepSize: 1, font: { size: 11 } }, grid: { color: reportCssVar('--color-border') } },
+          y: { stacked: true, ticks: { color: reportCssVar('--color-text-muted'), font: { size: 11 } }, grid: { display: false } }
+        }
+      }
+    });
   }
 
   function bindWorkReportModal() {
@@ -1655,9 +1919,7 @@
     }
 
     var projectFilter = document.getElementById('reportProjectFilter');
-    var memberFilter = document.getElementById('reportMemberFilter');
     if (projectFilter) projectFilter.addEventListener('change', renderWorkReport);
-    if (memberFilter) memberFilter.addEventListener('change', renderWorkReport);
   }
 
   // ----- Sync from Google Sheets -----

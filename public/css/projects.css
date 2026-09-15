@@ -903,6 +903,27 @@
 .assignee-dd-item .check { width: 16px; height: 16px; flex-shrink: 0; opacity: 0; }
 .assignee-dd-item.selected .check { opacity: 1; }
 
+/* Panel có ô tìm kiếm (báo cáo công việc — lọc thành viên) — search cố định
+   trên cùng, danh sách cuộn riêng bên dưới thay vì cuộn cả panel. */
+.assignee-dd-panel:has(.assignee-dd-search) { overflow-y: visible; max-height: none; padding: 6px; }
+.assignee-dd-search {
+  width: 100%;
+  padding: 7px 10px;
+  margin-bottom: 4px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--text-sm);
+}
+.assignee-dd-search:focus { outline: none; border-color: var(--color-bronze); }
+.assignee-dd-list { max-height: 200px; overflow-y: auto; }
+.assignee-dd-empty { padding: 10px; font-size: var(--text-sm); color: var(--color-text-muted); text-align: center; }
+
+.report-member-dd { width: 200px; flex-shrink: 0; }
+.report-member-dd .assignee-dd-trigger { padding: 8px 12px; font-size: 0.8125rem; }
+
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1994,7 +2015,7 @@
 }
 .report-stat-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: var(--space-md);
   padding: 20px 24px 0;
 }
@@ -2094,10 +2115,54 @@
   color: var(--color-text-muted);
   font-size: 0.8125rem;
 }
+
+/* ─── Biểu đồ trong báo cáo công việc (Chart.js) ─── */
+.report-charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.6fr;
+  gap: var(--space-md);
+  padding: 20px 24px 0;
+}
+.report-chart-box {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 14px 16px 16px;
+}
+.report-chart-box-full {
+  margin: 0 24px 0;
+  padding: 14px 16px 16px;
+}
+.report-chart-box h4 {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0 10px;
+}
+.report-chart-canvas-wrap {
+  position: relative;
+  height: 190px;
+}
+.report-chart-canvas-wrap-sm {
+  height: 160px;
+}
+.report-chart-canvas-wrap-bar {
+  height: 120px;
+}
+.report-chart-box .report-section,
+.report-chart-box > div[id] {
+  margin-top: 14px;
+}
+@media (max-width: 900px) {
+  .report-charts-grid { grid-template-columns: 1fr 1fr; }
+  .report-chart-box-wide { grid-column: 1 / -1; }
+}
 @media (max-width: 768px) {
   .report-stat-grid { grid-template-columns: repeat(2, 1fr); }
   .report-row { grid-template-columns: 1fr; gap: 6px; }
   .report-updated-at { margin-left: 0; width: 100%; }
+  .report-charts-grid { grid-template-columns: 1fr; padding: 16px 16px 0; }
+  .report-chart-box-full { margin: 0 16px; }
 }
 
 /* ─── Sort dropdown ("Sắp xếp: ...") — chọn thẳng thay vì bấm xoay vòng ─── */
