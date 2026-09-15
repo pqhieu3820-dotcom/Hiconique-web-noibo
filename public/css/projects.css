@@ -100,6 +100,52 @@
   border-radius: var(--radius-sm);
 }
 
+/* Toggle 14 hạng mục dưới "Tất cả dự án" — đóng theo mặc định để sidebar
+   không bị dài, mở/đóng nhớ qua localStorage (bindHangMucToggle trong
+   projects.js). */
+.project-nav-all-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.project-nav-all-row .project-nav-item {
+  flex: 1;
+  min-width: 0;
+}
+
+.project-nav-toggle {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  color: var(--color-text-faint);
+  transition: all var(--dur-base) var(--ease);
+}
+.project-nav-toggle:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+}
+.project-nav-toggle svg {
+  width: 16px;
+  height: 16px;
+  transition: transform var(--dur-base) var(--ease);
+}
+.project-nav-toggle.open svg {
+  transform: rotate(180deg);
+}
+
+.project-nav-collapse {
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+}
+.project-nav-collapse.open {
+  display: flex;
+}
+
 /* Sidebar Sections */
 .sidebar-section h3 {
   font-size: var(--text-eyebrow);

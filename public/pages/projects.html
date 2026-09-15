@@ -61,18 +61,26 @@
       </div>
 
       <nav class="project-nav">
-        <a href="#" class="project-nav-item active" data-project="all">
-          <span class="project-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>
-            </svg>
-          </span>
-          <span>Tất cả dự án</span>
-          <span class="project-count" id="countAll">0</span>
-        </a>
+        <div class="project-nav-all-row">
+          <a href="#" class="project-nav-item active" data-project="all">
+            <span class="project-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>
+              </svg>
+            </span>
+            <span>Tất cả dự án</span>
+            <span class="project-count" id="countAll">0</span>
+          </a>
+          <button type="button" class="project-nav-toggle" id="btnToggleHangMuc" aria-expanded="false" aria-controls="hangMucList" title="Hiện/ẩn hạng mục">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+        </div>
         <!-- 14 mục hạng mục còn lại tự sinh bằng JS (renderProjectNav() trong
              projects.js) — dùng chung HANG_MUC_LIST với modal "Thêm dự án"
-             để icon/nhãn luôn khớp nhau, không viết trùng ở 2 nơi. -->
+             để icon/nhãn luôn khớp nhau, không viết trùng ở 2 nơi. Gói trong
+             #hangMucList để đóng/mở qua toggle phía trên, tránh sidebar dài
+             lê thê khi liệt kê đủ 14 hạng mục. -->
+        <div class="project-nav-collapse" id="hangMucList"></div>
       </nav>
 
       <div class="sidebar-section">

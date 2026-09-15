@@ -246,20 +246,36 @@
   // yêu cầu bổ sung đủ hạng mục vào sidebar để lọc cho tiện (trước đó chỉ có
   // 3 mục thô Thiết kế/Thi công/Hành chính, ẩn mất 11 hạng mục còn lại).
   function renderProjectNav() {
-    var nav = document.querySelector('.project-nav');
-    if (!nav) return;
-    var allItem = nav.querySelector('[data-project="all"]');
-    if (!allItem) return;
-    var extraHtml = HANG_MUC_LIST.map(function (h) {
+    var list = document.getElementById('hangMucList');
+    if (!list) return;
+    list.innerHTML = HANG_MUC_LIST.map(function (h) {
       return '<a href="#" class="project-nav-item" data-project="' + h.slug + '">' +
         '<span class="project-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">' + h.icon + '</svg></span>' +
         '<span>' + escapeHtml(h.label) + '</span>' +
         '<span class="project-count" id="count-' + h.slug + '">0</span>' +
       '</a>';
     }).join('');
-    // Xoá các mục cũ (nếu render lại) rồi chèn lại, giữ nguyên "Tất cả dự án" đầu tiên.
-    nav.querySelectorAll('.project-nav-item:not([data-project="all"])').forEach(function (el) { el.remove(); });
-    allItem.insertAdjacentHTML('afterend', extraHtml);
+    bindHangMucToggle();
+  }
+
+  // Đóng/mở danh sách 14 hạng mục dưới "Tất cả dự án" — nhớ trạng thái theo
+  // localStorage để người dùng không phải mở lại mỗi lần load trang.
+  function bindHangMucToggle() {
+    var btn = document.getElementById('btnToggleHangMuc');
+    var list = document.getElementById('hangMucList');
+    if (!btn || !list || btn.dataset.bound) return;
+    btn.dataset.bound = '1';
+    var open = localStorage.getItem('hangMucNavOpen') === '1';
+    setHangMucOpen(open);
+    btn.addEventListener('click', function () {
+      setHangMucOpen(!list.classList.contains('open'));
+    });
+    function setHangMucOpen(isOpen) {
+      list.classList.toggle('open', isOpen);
+      btn.classList.toggle('open', isOpen);
+      btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      localStorage.setItem('hangMucNavOpen', isOpen ? '1' : '0');
+    }
   }
 
   function renderSidebarCounts() {
