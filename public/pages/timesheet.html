@@ -506,6 +506,56 @@
       .ts-grid { grid-template-columns: 1fr; }
       .ts-checkin-card { position: static; }
     }
+
+    /* ─── Modal "Báo cáo chấm công" trực tiếp (CEO) — cùng bộ class .report-*
+       với modal "Báo cáo công việc" ở projects.css, chép lại vì trang này
+       không load projects.css. ─── */
+    .ts-report-modal { max-width: 900px; }
+    .ts-report-month-nav {
+      display: flex; align-items: center; justify-content: center; gap: 16px;
+      padding: 12px 24px; border-bottom: 1px solid var(--ts-border);
+      font-weight: 600; color: var(--ts-text);
+    }
+    .ts-report-month-nav button {
+      width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 6px; color: var(--ts-muted); font-family: inherit;
+    }
+    .ts-report-month-nav button:hover { background: var(--ts-surface); color: var(--ts-text); }
+    .report-stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 20px 24px 0; }
+    .report-stat {
+      background: var(--ts-surface); border: 1px solid var(--ts-border); border-radius: 12px; padding: 14px 16px;
+    }
+    .report-stat-label {
+      font-size: 0.6875rem; color: var(--ts-muted); text-transform: uppercase; letter-spacing: 0.06em;
+      font-weight: 500; display: block; margin-bottom: 4px;
+    }
+    .report-stat-value { font-size: 1.75rem; font-weight: 700; color: var(--ts-text); line-height: 1; }
+    .report-charts-grid { display: grid; grid-template-columns: 1fr 1.6fr; gap: 16px; padding: 20px 24px 0; }
+    .report-chart-box {
+      background: var(--ts-surface); border: 1px solid var(--ts-border); border-radius: 12px; padding: 14px 16px 16px;
+    }
+    .report-chart-box-full { margin: 20px 24px 0; padding: 14px 16px 16px; }
+    .report-chart-box h4 { font-size: 0.8125rem; font-weight: 600; color: var(--ts-text); margin: 0 0 10px; }
+    .report-chart-canvas-wrap { position: relative; height: 190px; }
+    .report-chart-canvas-wrap-sm { height: 160px; }
+    .report-chart-canvas-wrap-bar { height: 190px; }
+    .report-row {
+      display: grid; grid-template-columns: minmax(0,1.4fr) auto; align-items: center; gap: 14px;
+      padding: 10px 0; border-bottom: 1px solid var(--ts-border); font-size: 0.8125rem;
+    }
+    .report-row:last-child { border-bottom: none; }
+    .report-row-name { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--ts-text); font-weight: 500; }
+    .report-row-meta { font-size: 0.75rem; color: var(--ts-muted); white-space: nowrap; font-family: 'SF Mono', monospace; }
+    .report-avatar {
+      width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+      color: #fff; font-size: 0.625rem; font-weight: 700; flex-shrink: 0;
+    }
+    .report-empty { text-align: center; padding: 24px; color: var(--ts-muted); font-size: 0.8125rem; }
+    @media (max-width: 768px) {
+      .report-stat-grid { grid-template-columns: repeat(2, 1fr); }
+      .report-charts-grid { grid-template-columns: 1fr; }
+      .report-chart-box-full { margin: 20px 16px 0; }
+    }
   </style>
 </head>
 <body>
@@ -553,6 +603,10 @@
         <button class="quick-add-btn" id="tsExportBtn" hidden style="padding:10px 20px; font-size:0.875rem;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:17px;height:17px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Xuất báo cáo chấm công
+        </button>
+        <button class="btn btn-secondary" id="tsReportBtn" hidden style="padding:10px 20px; font-size:0.875rem;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:17px;height:17px;"><path d="M3 3v18h18"/><path d="M7 15l4-6 4 3 5-8"/></svg>
+          Xem báo cáo chấm công
         </button>
         <button class="btn btn-secondary" id="tsLocationManagerBtn" hidden style="padding:10px 20px; font-size:0.875rem;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:17px;height:17px;"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -622,6 +676,42 @@
         </div>
         <div class="modal-footer">
           <button class="btn btn-secondary" id="tsLocationModalCloseFooter">Đóng</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal báo cáo chấm công trực tiếp (CHỈ CEO) — tính lại ngay từ dữ
+         liệu TaskManager mỗi lần mở, giống kiểu modal "Báo cáo công việc" ở
+         projects.js (renderWorkReport), không cần xuất Excel mới xem được. -->
+    <div class="modal-overlay" id="tsReportModal">
+      <div class="modal ts-report-modal">
+        <div class="modal-header">
+          <span class="modal-title">Báo cáo chấm công</span>
+          <button class="modal-close" id="tsReportModalClose" aria-label="Đóng">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="ts-report-month-nav">
+          <button type="button" id="tsReportPrevMonth" aria-label="Tháng trước">&larr;</button>
+          <span id="tsReportMonthLabel">Tháng 9/2026</span>
+          <button type="button" id="tsReportNextMonth" aria-label="Tháng sau">&rarr;</button>
+        </div>
+        <div class="modal-body">
+          <div class="report-stat-grid" id="tsReportStatGrid"></div>
+          <div class="report-charts-grid">
+            <div class="report-chart-box">
+              <h4>Trạng thái ngày công (cả công ty)</h4>
+              <div class="report-chart-canvas-wrap report-chart-canvas-wrap-sm"><canvas id="tsReportStatusChart"></canvas></div>
+            </div>
+            <div class="report-chart-box report-chart-box-wide">
+              <h4>Tổng giờ làm theo người</h4>
+              <div class="report-chart-canvas-wrap report-chart-canvas-wrap-bar" id="tsReportHoursWrap"><canvas id="tsReportHoursChart"></canvas></div>
+            </div>
+          </div>
+          <div class="report-chart-box report-chart-box-full">
+            <h4>Chi tiết theo người</h4>
+            <div id="tsReportByMember"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -789,6 +879,7 @@
 
   <script src="/js/portal.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
   <script>
   (function() {
     'use strict';
@@ -1740,6 +1831,174 @@
       btn.addEventListener('click', exportAttendanceReport);
     }
 
+    // ====== Báo cáo chấm công trực tiếp (CHỈ CEO) — modal xem ngay trong
+    // trang, không cần tải file Excel, dùng chung logic tính toán với
+    // exportAttendanceReport() (workDays/totalHours/overtimeHours/forgotCount)
+    // nhưng vẽ ra biểu đồ Chart.js + bảng thay vì ghi vào file .xlsx. ======
+    var tsReportCharts = {};
+    function tsDestroyReportCharts() {
+      Object.keys(tsReportCharts).forEach(function (k) { if (tsReportCharts[k]) tsReportCharts[k].destroy(); });
+      tsReportCharts = {};
+    }
+    function tsCssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+    var reportMonth = calMonth;
+    var reportYear = calYear;
+
+    function renderAttendanceReportModal() {
+      var monthLabel = document.getElementById('tsReportMonthLabel');
+      if (monthLabel) monthLabel.textContent = 'Tháng ' + reportMonth + '/' + reportYear;
+
+      var members = (typeof TaskManager !== 'undefined' && TaskManager.getMembers ? TaskManager.getMembers() : [])
+        .filter(function (m) { return !m.status || m.status === 'active'; });
+      var allEntries = (typeof TaskManager !== 'undefined' && TaskManager.getTimesheetEntries)
+        ? TaskManager.getTimesheetEntries({ year: reportYear, month: reportMonth })
+        : [];
+      var entriesByMember = {};
+      allEntries.forEach(function (e) {
+        if (!entriesByMember[e.memberId]) entriesByMember[e.memberId] = {};
+        entriesByMember[e.memberId][e.date] = e;
+      });
+
+      var nDays = tsDaysInMonth(reportYear, reportMonth);
+      var todayKey = getToday();
+
+      var perMember = members.map(function (m) {
+        var byDate = entriesByMember[m.id] || {};
+        var workDays = 0, totalHours = 0, overtimeHours = 0, forgotCount = 0;
+        Object.keys(byDate).forEach(function (dk) {
+          var e = byDate[dk];
+          if (e.checkoutTime) {
+            workDays++;
+            totalHours += parseFloat(e.totalHours) || 0;
+            overtimeHours += parseFloat(e.overtimeHours) || 0;
+          }
+          if (e.note && e.note.indexOf(TS_AUTO_CHECKOUT_TAG) !== -1) forgotCount++;
+        });
+        return { member: m, workDays: workDays, totalHours: totalHours, overtimeHours: overtimeHours, forgotCount: forgotCount };
+      });
+
+      var sumDays = perMember.reduce(function (s, r) { return s + r.workDays; }, 0);
+      var sumHours = perMember.reduce(function (s, r) { return s + r.totalHours; }, 0);
+      var sumOT = perMember.reduce(function (s, r) { return s + r.overtimeHours; }, 0);
+      var sumForgot = perMember.reduce(function (s, r) { return s + r.forgotCount; }, 0);
+
+      var statGrid = document.getElementById('tsReportStatGrid');
+      if (statGrid) {
+        statGrid.innerHTML =
+          '<div class="report-stat"><span class="report-stat-label">Tổng ngày công</span><span class="report-stat-value">' + sumDays + '</span></div>'
+          + '<div class="report-stat"><span class="report-stat-label">Tổng giờ làm</span><span class="report-stat-value">' + (Math.round(sumHours * 10) / 10) + 'h</span></div>'
+          + '<div class="report-stat"><span class="report-stat-label">Tổng giờ OT</span><span class="report-stat-value" style="color:var(--ts-bronze)">' + (Math.round(sumOT * 10) / 10) + 'h</span></div>'
+          + '<div class="report-stat"><span class="report-stat-label">Quên check-out</span><span class="report-stat-value" style="' + (sumForgot ? 'color:var(--ts-danger)' : '') + '">' + sumForgot + '</span></div>';
+      }
+
+      // ----- Trạng thái ngày công cả công ty (member × ngày trong tháng) -----
+      var statusCounts = { work: 0, forgot: 0, missing: 0, weekend: 0, future: 0 };
+      members.forEach(function (m) {
+        var byDate = entriesByMember[m.id] || {};
+        for (var d = 1; d <= nDays; d++) {
+          var dateStr = reportYear + '-' + String(reportMonth).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+          var dateObj = new Date(Date.UTC(reportYear, reportMonth - 1, d));
+          var weekend = tsIsWeekend(dateObj);
+          var e = byDate[dateStr];
+          if (e) {
+            if (e.note && e.note.indexOf(TS_AUTO_CHECKOUT_TAG) !== -1) statusCounts.forgot++;
+            else statusCounts.work++;
+          } else if (dateStr > todayKey) {
+            statusCounts.future++;
+          } else if (weekend) {
+            statusCounts.weekend++;
+          } else {
+            statusCounts.missing++;
+          }
+        }
+      });
+
+      tsDestroyReportCharts();
+      if (typeof Chart !== 'undefined') {
+        var statusEl = document.getElementById('tsReportStatusChart');
+        if (statusEl) {
+          tsReportCharts.status = new Chart(statusEl, {
+            type: 'doughnut',
+            data: {
+              labels: ['Đi làm', 'Quên check-out', 'Chưa chấm công', 'Cuối tuần'],
+              datasets: [{
+                data: [statusCounts.work, statusCounts.forgot, statusCounts.missing, statusCounts.weekend],
+                backgroundColor: [tsCssVar('--ts-success'), tsCssVar('--ts-danger'), '#DC2626', tsCssVar('--ts-muted')],
+                borderWidth: 0
+              }]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false, cutout: '62%',
+              plugins: { legend: { position: 'bottom', labels: { color: tsCssVar('--ts-muted'), boxWidth: 10, font: { size: 11 } } } }
+            }
+          });
+        }
+
+        var hoursEl = document.getElementById('tsReportHoursChart');
+        var hoursWrap = document.getElementById('tsReportHoursWrap');
+        if (hoursEl) {
+          if (hoursWrap) hoursWrap.style.height = Math.max(190, perMember.length * 30) + 'px';
+          tsReportCharts.hours = new Chart(hoursEl, {
+            type: 'bar',
+            data: {
+              labels: perMember.map(function (r) { return r.member.name || r.member.id; }),
+              datasets: [
+                { label: 'Giờ làm', data: perMember.map(function (r) { return Math.round(r.totalHours * 10) / 10; }), backgroundColor: tsCssVar('--ts-bronze'), stack: 's', borderRadius: 4 },
+                { label: 'Giờ OT', data: perMember.map(function (r) { return Math.round(r.overtimeHours * 10) / 10; }), backgroundColor: '#C7A464', stack: 's', borderRadius: 4 }
+              ]
+            },
+            options: {
+              indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+              plugins: { legend: { position: 'bottom', labels: { color: tsCssVar('--ts-muted'), boxWidth: 10, font: { size: 11 } } } },
+              scales: {
+                x: { stacked: true, beginAtZero: true, ticks: { color: tsCssVar('--ts-muted'), font: { size: 11 } }, grid: { color: tsCssVar('--ts-border') } },
+                y: { stacked: true, ticks: { color: tsCssVar('--ts-muted'), font: { size: 11 } }, grid: { display: false } }
+              }
+            }
+          });
+        }
+      }
+
+      var byMemberEl = document.getElementById('tsReportByMember');
+      if (byMemberEl) {
+        byMemberEl.innerHTML = perMember.length === 0 ? '<div class="report-empty">Chưa có nhân viên nào.</div>' : perMember.map(function (r) {
+          var m = r.member;
+          return '<div class="report-row">'
+            + '<div class="report-row-name"><span class="report-avatar" style="background:' + (m.color || '#6B7280') + '">' + (m.avatar || (m.name || '?').substring(0, 2).toUpperCase()) + '</span><span>' + (m.name || m.id) + '</span></div>'
+            + '<div class="report-row-meta">' + r.workDays + ' ngày · ' + (Math.round(r.totalHours * 10) / 10) + 'h' + (r.overtimeHours ? ' · OT ' + (Math.round(r.overtimeHours * 10) / 10) + 'h' : '') + (r.forgotCount ? ' · ' + r.forgotCount + ' lần quên checkout' : '') + '</div>'
+            + '</div>';
+        }).join('');
+      }
+    }
+
+    function bindAttendanceReportBtn() {
+      var btn = document.getElementById('tsReportBtn');
+      var modal = document.getElementById('tsReportModal');
+      if (!btn || !modal) return;
+      var user = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
+      if (!user || user.roleLevel !== 'admin') return; // giữ hidden — chỉ CEO thấy nút này
+      btn.hidden = false;
+
+      function openModal() { reportMonth = calMonth; reportYear = calYear; modal.classList.add('active'); renderAttendanceReportModal(); }
+      function closeModal() { modal.classList.remove('active'); }
+
+      btn.addEventListener('click', openModal);
+      document.getElementById('tsReportModalClose').addEventListener('click', closeModal);
+      modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
+
+      document.getElementById('tsReportPrevMonth').addEventListener('click', function () {
+        reportMonth--;
+        if (reportMonth < 1) { reportMonth = 12; reportYear--; }
+        renderAttendanceReportModal();
+      });
+      document.getElementById('tsReportNextMonth').addEventListener('click', function () {
+        reportMonth++;
+        if (reportMonth > 12) { reportMonth = 1; reportYear++; }
+        renderAttendanceReportModal();
+      });
+    }
+
     // ====== Quản lý địa điểm GPS/IP (CHỈ CEO/admin) ======
     // Mọi thay đổi (thêm/sửa/xoá) ghi thẳng xuống sheet "Địa điểm chấm công"
     // qua TaskManager.*AttendanceLocation() — xem gsheets-api-v2.js. Sau mỗi
@@ -1970,6 +2229,7 @@
     updateCheckinUI();
     renderDeviceTable();
     bindExportAttendanceBtn();
+    bindAttendanceReportBtn();
     bindLocationManagerBtn();
     bindPendingDevicesPanel();
 
