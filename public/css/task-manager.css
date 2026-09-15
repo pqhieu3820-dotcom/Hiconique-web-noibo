@@ -1208,6 +1208,10 @@
 .priority-option.active.low { background: rgba(79, 111, 82, 0.15); }
 
 /* Buttons */
+/* .btn[hidden] cần khai báo riêng vì .btn tự đặt display: inline-flex — nếu
+   không, nút gắn thuộc tính hidden vẫn hiện ra (đã gặp bug y hệt với
+   .btn-filter, xem portal.css). */
+.btn[hidden] { display: none; }
 .btn {
   display: inline-flex;
   align-items: center;

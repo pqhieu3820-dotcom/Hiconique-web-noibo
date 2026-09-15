@@ -546,12 +546,84 @@
       <p class="eyebrow">— Chấm công</p>
       <h1 class="subpage-title">Bảng <span class="subpage-title-italic">chấm công</span></h1>
       <p class="subpage-lede" id="tsPageSub">Theo dõi giờ làm việc và tăng ca hàng ngày</p>
-      <!-- Chỉ CEO thấy nút này — xuất báo cáo chấm công CẢ CÔNG TY (không
-           phải chỉ của riêng mình), xem bindExportAttendanceBtn(). -->
-      <button class="quick-add-btn" id="tsExportBtn" hidden style="margin-top:24px; margin-bottom:32px; padding:10px 20px; font-size:0.875rem;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:17px;height:17px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Xuất báo cáo chấm công
-      </button>
+      <!-- Chỉ CEO thấy 2 nút này — xuất báo cáo chấm công CẢ CÔNG TY và quản
+           lý địa điểm GPS/IP hợp lệ (không phải việc của riêng từng nhân
+           viên), xem bindExportAttendanceBtn()/bindLocationManagerBtn(). -->
+      <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:24px; margin-bottom:32px;">
+        <button class="quick-add-btn" id="tsExportBtn" hidden style="padding:10px 20px; font-size:0.875rem;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:17px;height:17px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Xuất báo cáo chấm công
+        </button>
+        <button class="btn btn-secondary" id="tsLocationManagerBtn" hidden style="padding:10px 20px; font-size:0.875rem;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:17px;height:17px;"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+          Quản lý địa điểm GPS/IP
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal quản lý địa điểm GPS/IP hợp lệ để chấm công — CHỈ CEO/admin
+         thấy được nút mở (bindLocationManagerBtn()), toàn bộ CRUD ghi thẳng
+         xuống sheet "Địa điểm chấm công" qua TaskManager.*AttendanceLocation(). -->
+    <div class="modal-overlay" id="tsLocationModal">
+      <div class="modal" style="max-width:680px;">
+        <div class="modal-header">
+          <span class="modal-title">Địa điểm GPS &amp; IP chấm công</span>
+          <button class="modal-close" id="tsLocationModalClose" aria-label="Đóng">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p style="font-size:0.8125rem; color:var(--color-text-muted); margin:-8px 0 20px;">
+            Thêm bao nhiêu điểm GPS hoặc IP Wifi cũng được — nhân viên chỉ cần đạt GPS gần 1 điểm bất kỳ HOẶC đúng 1 IP bất kỳ đang bật là chấm công được. Bỏ tick "Đang dùng" để tắt tạm 1 dòng mà không cần xoá.
+          </p>
+
+          <form id="tsLocationForm">
+            <input type="hidden" id="tsLocEditId" value="">
+            <div class="form-group">
+              <label class="form-label">Tên địa điểm / mạng</label>
+              <input type="text" class="form-input" id="tsLocName" placeholder="VD: Văn phòng chính, Công trình Vũng Tàu..." required>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Vĩ độ (lat) — để trống nếu chỉ ép IP</label>
+                <input type="text" class="form-input" id="tsLocLat" placeholder="VD: 20.926738">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Kinh độ (lng)</label>
+                <input type="text" class="form-input" id="tsLocLng" placeholder="VD: 106.301584">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Bán kính cho phép (m)</label>
+                <input type="text" class="form-input" id="tsLocRadius" placeholder="Mặc định 50m">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Địa chỉ IP — để trống nếu chỉ ép GPS</label>
+                <input type="text" class="form-input" id="tsLocIp" placeholder="VD: 14.171.113.174">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Ghi chú (tuỳ chọn)</label>
+              <input type="text" class="form-input" id="tsLocNote" placeholder="VD: IP nhà mạng Viettel, đổi theo thời gian...">
+            </div>
+            <div class="form-group" style="display:flex; align-items:center; justify-content:space-between;">
+              <label class="form-checkbox"><input type="checkbox" id="tsLocActive" checked> Đang dùng</label>
+              <div style="display:flex; gap:8px;">
+                <button type="button" class="btn btn-secondary" id="tsLocCancelEdit" hidden>Huỷ sửa</button>
+                <button type="submit" class="btn btn-primary" id="tsLocSubmitBtn">Thêm địa điểm</button>
+              </div>
+            </div>
+          </form>
+
+          <hr style="border:none; border-top:1px solid var(--color-border); margin:20px 0;">
+
+          <div id="tsLocationList" style="display:flex; flex-direction:column; gap:10px;"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" id="tsLocationModalCloseFooter">Đóng</button>
+        </div>
+      </div>
     </div>
 
     <!-- Stats -->
@@ -870,6 +942,30 @@
     // cho qua thẳng, đạt đúng 1/3 thì hỏi xác nhận thủ công để bỏ qua điều
     // kiện thiếu — nay siết lại bắt buộc đủ 3/3 mới cho chấm công, thiếu bất
     // kỳ điều kiện nào đều bị chặn hẳn, xem verifyThenProceed()).
+    // Hộp thoại xác nhận tự dựng thay cho confirm() gốc của trình duyệt —
+    // confirm() là 1 dialog NATIVE chặn hẳn main thread, khiến các công cụ
+    // automation (Claude in Chrome) không tương tác/chụp màn hình được nữa,
+    // treo cứng luôn tab (đã gặp thật khi test nút xoá địa điểm). Dùng chung
+    // được cho mọi xác nhận xoá trong trang này.
+    function showConfirmDialog(title, onConfirm) {
+      var overlay = document.createElement('div');
+      overlay.className = 'ts-confirm-overlay';
+      overlay.innerHTML =
+        '<div class="ts-confirm-box">' +
+          '<div class="ts-confirm-title">' + title + '</div>' +
+          '<div class="ts-confirm-actions">' +
+            '<button type="button" class="ts-confirm-cancel">Huỷ</button>' +
+            '<button type="button" class="ts-confirm-ok">Xoá</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(overlay);
+      overlay.querySelector('.ts-confirm-cancel').addEventListener('click', function () { overlay.remove(); });
+      overlay.querySelector('.ts-confirm-ok').addEventListener('click', function () {
+        overlay.remove();
+        onConfirm();
+      });
+    }
+
     function showFailNotice(geoResult, ipResult, deviceResult) {
       deviceResult = deviceResult || { skip: true };
       var overlay = document.createElement('div');
@@ -1604,6 +1700,149 @@
       btn.addEventListener('click', exportAttendanceReport);
     }
 
+    // ====== Quản lý địa điểm GPS/IP (CHỈ CEO/admin) ======
+    // Mọi thay đổi (thêm/sửa/xoá) ghi thẳng xuống sheet "Địa điểm chấm công"
+    // qua TaskManager.*AttendanceLocation() — xem gsheets-api-v2.js. Sau mỗi
+    // thay đổi, xoá attendanceLocationsCache (biến ở đầu file) để lần check-in
+    // kế tiếp trong CÙNG phiên trang lấy đúng danh sách mới, không cần F5.
+    function locTypeLabel(loc) {
+      var hasGeo = loc.lat !== '' && loc.lat != null;
+      var hasIp = !!loc.ip;
+      if (hasGeo && hasIp) return 'GPS + IP';
+      if (hasGeo) return 'GPS';
+      if (hasIp) return 'IP';
+      return '—';
+    }
+
+    function renderLocationList() {
+      var list = document.getElementById('tsLocationList');
+      if (!list) return;
+      list.innerHTML = '<p style="font-size:0.8125rem; color:var(--color-text-muted);">Đang tải...</p>';
+      TaskManager.getAttendanceLocations(function (rows) {
+        attendanceLocationsCache = null; // buộc checkGeoStatus/checkIpStatus tải lại danh sách mới nhất
+        if (!rows || rows.length === 0) {
+          list.innerHTML = '<p style="font-size:0.8125rem; color:var(--color-text-muted);">Chưa có địa điểm nào — thêm ở form phía trên.</p>';
+          return;
+        }
+        list.innerHTML = rows.map(function (loc) {
+          var isOff = loc.active === false;
+          var detail = [];
+          if (loc.lat !== '' && loc.lat != null) detail.push('GPS ' + loc.lat + ', ' + loc.lng + ' (±' + (loc.radiusMeters || 50) + 'm)');
+          if (loc.ip) detail.push('IP ' + loc.ip);
+          return ''
+            + '<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; background:var(--color-bg); border:1px solid var(--color-border); border-radius:10px;' + (isOff ? ' opacity:0.55;' : '') + '">'
+            +   '<div style="min-width:0;">'
+            +     '<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">'
+            +       '<span style="font-weight:600; font-size:0.9375rem;">' + escapeHtmlTs(loc.name || '(chưa đặt tên)') + '</span>'
+            +       '<span class="tl-project" style="font-size:0.6875rem;">' + locTypeLabel(loc) + '</span>'
+            +       (isOff ? '<span style="font-size:0.6875rem; color:var(--color-text-faint);">Đã tắt</span>' : '')
+            +     '</div>'
+            +     '<div style="font-size:0.8125rem; color:var(--color-text-muted); margin-top:2px;">' + escapeHtmlTs(detail.join(' · ') || '—') + (loc.note ? ' · ' + escapeHtmlTs(loc.note) : '') + '</div>'
+            +   '</div>'
+            +   '<div style="display:flex; gap:6px; flex-shrink:0;">'
+            +     '<button type="button" class="btn btn-secondary btn-icon tsLocEditBtn" data-id="' + escapeHtmlTs(loc.id) + '" aria-label="Sửa" style="padding:6px 10px;">'
+            +       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>'
+            +     '</button>'
+            +     '<button type="button" class="btn btn-danger btn-icon tsLocDeleteBtn" data-id="' + escapeHtmlTs(loc.id) + '" data-name="' + escapeHtmlTs(loc.name || '') + '" aria-label="Xoá" style="padding:6px 10px;">'
+            +       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>'
+            +     '</button>'
+            +   '</div>'
+            + '</div>';
+        }).join('');
+
+        list.querySelectorAll('.tsLocEditBtn').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var loc = rows.filter(function (r) { return r.id === btn.dataset.id; })[0];
+            if (loc) fillLocationForm(loc);
+          });
+        });
+        list.querySelectorAll('.tsLocDeleteBtn').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            showConfirmDialog('Xoá địa điểm "' + escapeHtmlTs(btn.dataset.name) + '"? Không thể hoàn tác.', function () {
+              btn.disabled = true;
+              TaskManager.deleteAttendanceLocation(btn.dataset.id, function () {
+                if (document.getElementById('tsLocEditId').value === btn.dataset.id) resetLocationForm();
+                renderLocationList();
+              });
+            });
+          });
+        });
+      });
+    }
+
+    function escapeHtmlTs(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+
+    function fillLocationForm(loc) {
+      document.getElementById('tsLocEditId').value = loc.id;
+      document.getElementById('tsLocName').value = loc.name || '';
+      document.getElementById('tsLocLat').value = loc.lat != null ? loc.lat : '';
+      document.getElementById('tsLocLng').value = loc.lng != null ? loc.lng : '';
+      document.getElementById('tsLocRadius').value = loc.radiusMeters != null ? loc.radiusMeters : '';
+      document.getElementById('tsLocIp').value = loc.ip || '';
+      document.getElementById('tsLocNote').value = loc.note || '';
+      document.getElementById('tsLocActive').checked = loc.active !== false;
+      document.getElementById('tsLocSubmitBtn').textContent = 'Lưu thay đổi';
+      document.getElementById('tsLocCancelEdit').hidden = false;
+      document.getElementById('tsLocName').focus();
+    }
+
+    function resetLocationForm() {
+      document.getElementById('tsLocationForm').reset();
+      document.getElementById('tsLocEditId').value = '';
+      document.getElementById('tsLocActive').checked = true;
+      document.getElementById('tsLocSubmitBtn').textContent = 'Thêm địa điểm';
+      document.getElementById('tsLocCancelEdit').hidden = true;
+    }
+
+    function bindLocationManagerBtn() {
+      var btn = document.getElementById('tsLocationManagerBtn');
+      var modal = document.getElementById('tsLocationModal');
+      if (!btn || !modal) return;
+      var user = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
+      if (!user || user.roleLevel !== 'admin') return; // giữ hidden — chỉ CEO thấy nút này
+      btn.hidden = false;
+
+      function openModal() { modal.classList.add('active'); renderLocationList(); }
+      function closeModal() { modal.classList.remove('active'); resetLocationForm(); }
+
+      btn.addEventListener('click', openModal);
+      document.getElementById('tsLocationModalClose').addEventListener('click', closeModal);
+      document.getElementById('tsLocationModalCloseFooter').addEventListener('click', closeModal);
+      modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
+      document.getElementById('tsLocCancelEdit').addEventListener('click', resetLocationForm);
+
+      document.getElementById('tsLocationForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var editId = document.getElementById('tsLocEditId').value;
+        var data = {
+          name: document.getElementById('tsLocName').value.trim(),
+          lat: document.getElementById('tsLocLat').value.trim(),
+          lng: document.getElementById('tsLocLng').value.trim(),
+          radiusMeters: document.getElementById('tsLocRadius').value.trim(),
+          ip: document.getElementById('tsLocIp').value.trim(),
+          note: document.getElementById('tsLocNote').value.trim(),
+          active: document.getElementById('tsLocActive').checked
+        };
+        if (!data.name) { alert('Nhập tên địa điểm / mạng.'); return; }
+        if (!data.lat && !data.ip) { alert('Phải nhập ít nhất GPS (vĩ độ + kinh độ) hoặc IP.'); return; }
+        if ((data.lat && !data.lng) || (!data.lat && data.lng)) { alert('Nhập đủ cả vĩ độ và kinh độ, hoặc để trống cả hai.'); return; }
+
+        var submitBtn = document.getElementById('tsLocSubmitBtn');
+        submitBtn.disabled = true;
+        function done() { submitBtn.disabled = false; resetLocationForm(); renderLocationList(); }
+
+        if (editId) {
+          TaskManager.updateAttendanceLocation(editId, data, done);
+        } else {
+          TaskManager.addAttendanceLocation(data, done);
+        }
+      });
+    }
+
     // Init
     document.getElementById('tsCheckinBtn').addEventListener('click', function() {
       var record = getEntryByDate(getToday());
@@ -1637,6 +1876,7 @@
     updateCheckinUI();
     renderDeviceTable();
     bindExportAttendanceBtn();
+    bindLocationManagerBtn();
 
     if (typeof Auth !== 'undefined' && Auth.getCurrentUser && !Auth.getCurrentUser()) {
       Auth.showLoginModal();

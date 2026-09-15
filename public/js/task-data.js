@@ -1184,6 +1184,31 @@ var TaskManager = (function() {
     getFromGSheets('attendanceLocations', callback);
   }
 
+  // Thêm/sửa/xoá địa điểm GPS/IP — CHỈ CEO/admin dùng (xem bindLocationManagerUI()
+  // trong timesheet.html), gọi thẳng API (không qua localStorage) rồi xoá cache
+  // 30s để lần đọc kế tiếp lấy đúng dữ liệu mới nhất, không phải chờ hết cache.
+  function addAttendanceLocation(data, callback) {
+    if (!isUsingGSheets()) { callback && callback(null); return; }
+    fetch(GSHEETS_CONFIG.API_URL + '?action=addAttendanceLocation&data=' + encodeURIComponent(JSON.stringify(data)), { redirect: 'follow' })
+      .then(function (r) { return r.json(); })
+      .then(function (result) { gsCache.lastFetch = 0; callback && callback(result); })
+      .catch(function (e) { console.error('addAttendanceLocation failed:', e); callback && callback(null); });
+  }
+  function updateAttendanceLocation(id, updates, callback) {
+    if (!isUsingGSheets()) { callback && callback(null); return; }
+    fetch(GSHEETS_CONFIG.API_URL + '?action=updateAttendanceLocation&id=' + encodeURIComponent(id) + '&data=' + encodeURIComponent(JSON.stringify(updates)), { redirect: 'follow' })
+      .then(function (r) { return r.json(); })
+      .then(function (result) { gsCache.lastFetch = 0; callback && callback(result); })
+      .catch(function (e) { console.error('updateAttendanceLocation failed:', e); callback && callback(null); });
+  }
+  function deleteAttendanceLocation(id, callback) {
+    if (!isUsingGSheets()) { callback && callback(null); return; }
+    fetch(GSHEETS_CONFIG.API_URL + '?action=deleteAttendanceLocation&id=' + encodeURIComponent(id), { redirect: 'follow' })
+      .then(function (r) { return r.json(); })
+      .then(function (result) { gsCache.lastFetch = 0; callback && callback(result); })
+      .catch(function (e) { console.error('deleteAttendanceLocation failed:', e); callback && callback(null); });
+  }
+
   function updateTimesheetEntry(id, updates) {
     var updated = update(STORAGE_KEYS.timesheet, id, updates);
     if (updated) syncToGSheets('timesheet', 'update', updates, id);
@@ -1624,6 +1649,9 @@ var TaskManager = (function() {
     addTimesheetEntry: addTimesheetEntry,
     updateTimesheetEntry: updateTimesheetEntry,
     getAttendanceLocations: getAttendanceLocations,
+    addAttendanceLocation: addAttendanceLocation,
+    updateAttendanceLocation: updateAttendanceLocation,
+    deleteAttendanceLocation: deleteAttendanceLocation,
 
     // Notifications
     getNotifications: getNotifications,
