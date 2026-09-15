@@ -772,6 +772,18 @@
         </div>
       </div>
     </div>
+
+    <!-- Panel duyệt thiết bị chấm công — CHỈ CEO/Manager thấy (canManageMembers),
+         xem bindPendingDevicesPanel(). Thiết bị nhân viên tự đăng ký nằm ở đây
+         chờ duyệt (approve/reject), khác với ts-device-table (chỉ hiện thiết
+         bị CỦA CHÍNH người đang đăng nhập). -->
+    <div class="ts-calendar-card" id="tsPendingDevicesCard" hidden style="margin-top:24px; padding:24px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+        <h3 style="font-size:1.0625rem; font-weight:600; margin:0;">Thiết bị chấm công chờ duyệt</h3>
+        <span class="ts-device-title" id="tsPendingDevicesCount" style="margin:0;"></span>
+      </div>
+      <div id="tsPendingDevicesList" style="display:flex; flex-direction:column; gap:10px;"></div>
+    </div>
   </div>
   </main>
 
@@ -947,7 +959,18 @@
     // automation (Claude in Chrome) không tương tác/chụp màn hình được nữa,
     // treo cứng luôn tab (đã gặp thật khi test nút xoá địa điểm). Dùng chung
     // được cho mọi xác nhận xoá trong trang này.
-    function showConfirmDialog(title, onConfirm) {
+    // Thông báo nhẹ, KHÔNG chặn main thread (khác alert()/confirm() gốc —
+    // 2 hàm đó từng làm treo cứng tab khi test với Claude in Chrome, xem
+    // comment ở showConfirmDialog() ngay dưới). Tự biến mất sau vài giây.
+    function showToast(message, ok) {
+      var el = document.createElement('div');
+      el.style.cssText = 'position:fixed; top:20px; left:50%; transform:translateX(-50%); z-index:10001; max-width:420px; padding:14px 18px; background:var(--ts-surface); border:1px solid var(--ts-border); border-left:4px solid ' + (ok === false ? '#A04848' : 'var(--ts-bronze)') + '; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.25); font-size:0.875rem; color:var(--ts-text);';
+      el.textContent = message;
+      document.body.appendChild(el);
+      setTimeout(function () { el.remove(); }, 4000);
+    }
+
+    function showConfirmDialog(title, onConfirm, confirmLabel) {
       var overlay = document.createElement('div');
       overlay.className = 'ts-confirm-overlay';
       overlay.innerHTML =
@@ -955,7 +978,7 @@
           '<div class="ts-confirm-title">' + title + '</div>' +
           '<div class="ts-confirm-actions">' +
             '<button type="button" class="ts-confirm-cancel">Huỷ</button>' +
-            '<button type="button" class="ts-confirm-ok">Xoá</button>' +
+            '<button type="button" class="ts-confirm-ok">' + (confirmLabel || 'Xoá') + '</button>' +
           '</div>' +
         '</div>';
       document.body.appendChild(overlay);
@@ -1060,13 +1083,19 @@
     function checkDeviceStatus() {
       var deviceId = getOrCreateDeviceId();
       var userId = getUserId();
-      if (!deviceId || !userId || typeof TaskManager === 'undefined' || !TaskManager.getMemberDeviceIds) {
+      if (!deviceId || !userId || typeof TaskManager === 'undefined' || !TaskManager.getMemberDevices) {
         return { skip: true, ok: false, message: 'Đang tắt' };
       }
       renderDeviceTable();
-      var ids = TaskManager.getMemberDeviceIds(userId);
-      if (ids.indexOf(deviceId) !== -1) return { skip: false, ok: true, message: 'Thiết bị quen dùng' };
-      var full = ids.length >= MAX_MEMBER_DEVICES_UI;
+      var devices = TaskManager.getMemberDevices(userId);
+      var mine = devices.filter(function (d) { return d.id === deviceId; })[0];
+      if (mine) {
+        // Thiết bị mới đăng ký phải chờ CEO/Manager duyệt (status 'pending')
+        // mới tính là "quen dùng" — xem registerMemberDevice() trong task-data.js.
+        if (mine.status === 'pending') return { skip: false, ok: false, message: 'Thiết bị đang chờ CEO/Quản lý duyệt' };
+        return { skip: false, ok: true, message: 'Thiết bị quen dùng' };
+      }
+      var full = devices.length >= MAX_MEMBER_DEVICES_UI;
       return {
         skip: false, ok: false,
         message: full ? 'Thiết bị lạ (đã đủ ' + MAX_MEMBER_DEVICES_UI + ' thiết bị)' : 'Thiết bị chưa đăng ký — bấm "Đăng ký thiết bị này" bên dưới'
@@ -1081,15 +1110,18 @@
       var userId = getUserId();
       var myDeviceId = getOrCreateDeviceId();
       var myLabel = getDeviceLabel();
-      var devices = TaskManager.getMemberDevices(userId); // [{id, name}]
+      var devices = TaskManager.getMemberDevices(userId); // [{id, name, status}]
       var alreadyRegistered = devices.some(function (d) { return d.id === myDeviceId; });
       var rows = devices.map(function (d) {
         var isThis = d.id === myDeviceId;
         // Entry cũ đăng ký trước khi có tính năng tên thiết bị: không biết tên
         // thật của máy đó, chỉ còn cách hiện mã rút gọn như trước.
         var label = d.name || (isThis ? myLabel : 'Thiết bị chưa xác định (' + shortDeviceId(d.id) + ')');
+        var statusBadge = d.status === 'pending'
+          ? '<span style="font-size:0.6875rem; color:var(--ts-warning, #C7A464); font-weight:600; margin-left:6px;">Chờ duyệt</span>'
+          : '<span style="font-size:0.6875rem; color:var(--ts-success, #4F6F52); font-weight:600; margin-left:6px;">Đã duyệt</span>';
         return '<div class="ts-device-row">' +
-          '<span class="ts-device-id">' + label + (isThis ? ' <em>(thiết bị này)</em>' : '') + '</span>' +
+          '<span class="ts-device-id">' + label + (isThis ? ' <em>(thiết bị này)</em>' : '') + statusBadge + '</span>' +
           '<button type="button" class="ts-device-remove" data-device-id="' + d.id + '">Gỡ</button>' +
         '</div>';
       }).join('');
@@ -1114,10 +1146,11 @@
         rows;
       wrap.querySelectorAll('.ts-device-remove').forEach(function (btn) {
         btn.addEventListener('click', function () {
-          if (!confirm('Gỡ thiết bị này? Lần chấm công sau từ máy đó sẽ bị coi là thiết bị lạ.')) return;
-          var user = TaskManager.getCurrentUser ? TaskManager.getCurrentUser() : null;
-          TaskManager.removeMemberDevice(userId, btn.dataset.deviceId, user);
-          renderDeviceTable();
+          showConfirmDialog('Gỡ thiết bị này? Lần chấm công sau từ máy đó sẽ bị coi là thiết bị lạ.', function () {
+            var user = TaskManager.getCurrentUser ? TaskManager.getCurrentUser() : null;
+            TaskManager.removeMemberDevice(userId, btn.dataset.deviceId, user);
+            renderDeviceTable();
+          });
         });
       });
       var addBtn = document.getElementById('tsDeviceAddBtn');
@@ -1132,8 +1165,15 @@
           // sửa — xem comment ở DEVICE_ID_KEY).
           function doRegister() {
             var user = TaskManager.getCurrentUser ? TaskManager.getCurrentUser() : null;
-            TaskManager.registerMemberDevice(userId, myDeviceId, user, myLabel);
+            var result = TaskManager.registerMemberDevice(userId, myDeviceId, user, myLabel);
             renderDeviceTable();
+            if (result && result.ok && result.isNew) {
+              if (result.status === 'pending') {
+                showToast('Đã gửi yêu cầu đăng ký thiết bị — chờ CEO/Quản lý duyệt thì mới dùng để chấm công được.');
+              } else {
+                showToast('Đã đăng ký thiết bị thành công.', true);
+              }
+            }
           }
           if (TaskManager.refreshFromGSheets) {
             TaskManager.refreshFromGSheets(doRegister);
@@ -1827,9 +1867,9 @@
           note: document.getElementById('tsLocNote').value.trim(),
           active: document.getElementById('tsLocActive').checked
         };
-        if (!data.name) { alert('Nhập tên địa điểm / mạng.'); return; }
-        if (!data.lat && !data.ip) { alert('Phải nhập ít nhất GPS (vĩ độ + kinh độ) hoặc IP.'); return; }
-        if ((data.lat && !data.lng) || (!data.lat && data.lng)) { alert('Nhập đủ cả vĩ độ và kinh độ, hoặc để trống cả hai.'); return; }
+        if (!data.name) { showToast('Nhập tên địa điểm / mạng.', false); return; }
+        if (!data.lat && !data.ip) { showToast('Phải nhập ít nhất GPS (vĩ độ + kinh độ) hoặc IP.', false); return; }
+        if ((data.lat && !data.lng) || (!data.lat && data.lng)) { showToast('Nhập đủ cả vĩ độ và kinh độ, hoặc để trống cả hai.', false); return; }
 
         var submitBtn = document.getElementById('tsLocSubmitBtn');
         submitBtn.disabled = true;
@@ -1841,6 +1881,60 @@
           TaskManager.addAttendanceLocation(data, done);
         }
       });
+    }
+
+    // ====== Panel duyệt thiết bị chấm công (CHỈ CEO/Manager) ======
+    // Khác ts-device-table (chỉ hiện thiết bị CỦA CHÍNH người đăng nhập) —
+    // panel này gom thiết bị 'pending' của TOÀN CÔNG TY để CEO/Manager duyệt.
+    function renderPendingDevicesList() {
+      var list = document.getElementById('tsPendingDevicesList');
+      var countEl = document.getElementById('tsPendingDevicesCount');
+      var card = document.getElementById('tsPendingDevicesCard');
+      if (!list || typeof TaskManager === 'undefined' || !TaskManager.getPendingDeviceRegistrations) return;
+      var pending = TaskManager.getPendingDeviceRegistrations();
+      card.hidden = false;
+      countEl.textContent = pending.length + ' đang chờ';
+      if (pending.length === 0) {
+        list.innerHTML = '<p style="font-size:0.8125rem; color:var(--ts-muted);">Không có thiết bị nào đang chờ duyệt.</p>';
+        return;
+      }
+      list.innerHTML = pending.map(function (p) {
+        return ''
+          + '<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; background:var(--color-bg); border:1px solid var(--ts-border); border-radius:10px;">'
+          +   '<div style="min-width:0;">'
+          +     '<span style="font-weight:600; font-size:0.9375rem;">' + escapeHtmlTs(p.memberName) + '</span>'
+          +     '<div style="font-size:0.8125rem; color:var(--ts-muted); margin-top:2px;">' + escapeHtmlTs(p.deviceName || '(không rõ tên thiết bị)') + '</div>'
+          +   '</div>'
+          +   '<div style="display:flex; gap:6px; flex-shrink:0;">'
+          +     '<button type="button" class="btn btn-secondary tsDeviceRejectBtn" data-member="' + escapeHtmlTs(p.memberId) + '" data-device="' + escapeHtmlTs(p.deviceId) + '" style="padding:6px 12px; font-size:0.8125rem;">Từ chối</button>'
+          +     '<button type="button" class="btn btn-primary tsDeviceApproveBtn" data-member="' + escapeHtmlTs(p.memberId) + '" data-device="' + escapeHtmlTs(p.deviceId) + '" style="padding:6px 12px; font-size:0.8125rem;">Duyệt</button>'
+          +   '</div>'
+          + '</div>';
+      }).join('');
+
+      list.querySelectorAll('.tsDeviceApproveBtn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var user = TaskManager.getCurrentUser ? TaskManager.getCurrentUser() : null;
+          btn.disabled = true;
+          TaskManager.approveMemberDevice(btn.dataset.member, btn.dataset.device, user);
+          renderPendingDevicesList();
+        });
+      });
+      list.querySelectorAll('.tsDeviceRejectBtn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          showConfirmDialog('Từ chối thiết bị này? Nhân viên sẽ phải đăng ký lại.', function () {
+            var user = TaskManager.getCurrentUser ? TaskManager.getCurrentUser() : null;
+            TaskManager.rejectMemberDevice(btn.dataset.member, btn.dataset.device, user);
+            renderPendingDevicesList();
+          }, 'Từ chối');
+        });
+      });
+    }
+
+    function bindPendingDevicesPanel() {
+      var user = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
+      if (!user || (user.roleLevel !== 'admin' && user.roleLevel !== 'manager')) return; // giữ hidden — chỉ CEO/Manager thấy
+      renderPendingDevicesList();
     }
 
     // Init
@@ -1877,6 +1971,7 @@
     renderDeviceTable();
     bindExportAttendanceBtn();
     bindLocationManagerBtn();
+    bindPendingDevicesPanel();
 
     if (typeof Auth !== 'undefined' && Auth.getCurrentUser && !Auth.getCurrentUser()) {
       Auth.showLoginModal();

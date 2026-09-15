@@ -502,6 +502,12 @@ function handleRequest(e) {
       result = updateData(ss, SHEETS.notifications, params.id, JSON.parse(params.data));
     } else if (action === 'deleteNotification') {
       result = deleteData(ss, SHEETS.notifications, params.id);
+    } else if (action === 'addNotificationsBatch') {
+      // 1 lần ghi (setValues) cho nhiều thông báo cùng lúc — VD sự kiện đăng
+      // ký/duyệt thiết bị chấm công cần báo tới nhiều CEO/Manager một lượt.
+      // KHÔNG gọi addNotification() nhiều lần song song từ client cho việc
+      // này (xem comment addDataBatch()) — dễ đua nhau ghi đè, rớt dữ liệu.
+      result = addDataBatch(ss, SHEETS.notifications, JSON.parse(params.data));
     } else if (action === 'getNotices') {
       result = getAllData(ss, SHEETS.notices);
     } else if (action === 'addNotice') {

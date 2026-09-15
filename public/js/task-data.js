@@ -763,17 +763,52 @@ var TaskManager = (function() {
   // timesheet.html, giống kiểu "lịch sử đăng nhập thiết bị" của Facebook/Zalo
   // — entry cũ (chưa có "::tên") vẫn parse được bình thường, chỉ thiếu name.
   var MAX_MEMBER_DEVICES = 2;
+  // 2026-09-15: thêm "status" (pending/approved/rejected) — thiết bị đăng ký
+  // MỚI phải chờ CEO/Manager duyệt mới tính là "quen dùng" trong 3 điều kiện
+  // chấm công (xem checkDeviceStatus() ở timesheet.html). Entry cũ trước khi
+  // có tính năng này (chỉ 1-2 phần, không có status) mặc định coi là
+  // 'approved' — không đột ngột khoá thiết bị đang hoạt động bình thường của
+  // người dùng hiện tại.
   function parseDeviceIds(member) {
     var raw = String((member && member.deviceIds) || '');
     if (!raw) return [];
     return raw.split(',').map(function (s) { return s.trim(); }).filter(Boolean).map(function (entry) {
-      var sep = entry.indexOf('::');
-      return sep === -1 ? { id: entry, name: '' } : { id: entry.slice(0, sep), name: entry.slice(sep + 2) };
+      var parts = entry.split('::');
+      return { id: parts[0], name: parts[1] || '', status: parts[2] || 'approved' };
     });
   }
 
   function stringifyDeviceEntries(entries) {
-    return entries.map(function (e) { return e.name ? (e.id + '::' + e.name) : e.id; }).join(',');
+    return entries.map(function (e) { return [e.id, e.name || '', e.status || 'approved'].join('::'); }).join(',');
+  }
+
+  // Ghi thông báo hệ thống (không do người dùng tự soạn) — VD sự kiện đăng
+  // ký/gỡ/duyệt thiết bị chấm công, thường cần báo tới NHIỀU người 1 lúc
+  // (mọi CEO/Manager). KHÔNG qua canManageNotifications() như
+  // createNotification(): nhân viên thường (không phải admin/manager) vẫn
+  // cần kích hoạt được loại thông báo này khi TỰ đăng ký/gỡ thiết bị của
+  // chính họ — đây là sự kiện hệ thống ghi hộ, không phải nội dung tự soạn.
+  // LUÔN gửi theo BATCH (1 lệnh API duy nhất, kể cả chỉ 1 người nhận) —
+  // KHÔNG gọi API nhiều lần song song trong 1 vòng lặp: mỗi lần gọi là 1 lần
+  // thực thi Apps Script riêng, đọc/ghi cùng sheet cùng lúc dễ đua nhau đọc
+  // sai "dòng cuối" rồi ghi đè lên nhau, rớt mất thông báo — đã xảy ra thật
+  // khi test tính năng duyệt thiết bị (gửi 4 thông báo cùng lúc, chỉ còn 3,
+  // 2 trong số đó trùng luôn cả ID). Vì action ghi thẳng xuống Sheet (không
+  // qua add() nội bộ trước), local cache của TRÌNH DUYỆT NGƯỜI GỬI sẽ không
+  // thấy các thông báo này cho tới lần refreshFromGSheets() kế tiếp — chấp
+  // nhận được vì thông báo này luôn dành cho NGƯỜI KHÁC, không phải người gửi.
+  function addSystemNotificationsBatch(dataList) {
+    if (!dataList || !dataList.length || !isUsingGSheets() || !GSHEETS_CONFIG.API_URL) return;
+    dataList.forEach(function (d) { d.active = d.active !== false; d.createdBy = 'SYSTEM'; });
+    try {
+      var params = '?action=addNotificationsBatch&data=' + encodeURIComponent(JSON.stringify(dataList));
+      fetch(GSHEETS_CONFIG.API_URL + params, { method: 'GET', redirect: 'follow' })
+        .then(function (r) { return r.json(); })
+        .then(function (result) { if (result && result.error) console.error('addNotificationsBatch error:', result.error); })
+        .catch(function (e) { console.error('addNotificationsBatch failed:', e); });
+    } catch (e) {
+      console.error('addNotificationsBatch error:', e);
+    }
   }
 
   function getMemberDeviceIds(memberId) {
@@ -784,9 +819,18 @@ var TaskManager = (function() {
     return parseDeviceIds(getMember(memberId));
   }
 
-  // Trả về { ok, isNew, full }. full=true nghĩa là deviceId lạ nhưng đã đủ
-  // MAX_MEMBER_DEVICES thiết bị — caller (UI) tự quyết định cảnh báo/hỏi lại,
-  // hàm này không tự chặn.
+  function adminAndManagerMembers(excludeId) {
+    return getMembers().filter(function (m) {
+      return (m.roleLevel === 'admin' || m.roleLevel === 'manager') && m.id !== excludeId;
+    });
+  }
+
+  // Trả về { ok, isNew, full, status }. full=true nghĩa là deviceId lạ nhưng
+  // đã đủ MAX_MEMBER_DEVICES thiết bị — caller (UI) tự quyết định cảnh báo/
+  // hỏi lại, hàm này không tự chặn. Thiết bị MỚI của nhân viên thường luôn ở
+  // trạng thái 'pending' — phải chờ CEO/Manager duyệt (xem approveMemberDevice)
+  // mới tính là "quen dùng" khi chấm công; CEO/Manager tự đăng ký thì duyệt
+  // luôn cho chính mình (không lẽ tự đăng ký xong lại phải tự chờ chính mình).
   function registerMemberDevice(memberId, deviceId, user, deviceName) {
     var member = getMember(memberId);
     if (!member || !deviceId) return { ok: false, isNew: false, full: false };
@@ -798,19 +842,86 @@ var TaskManager = (function() {
         existing.name = deviceName;
         updateMember(memberId, { deviceIds: stringifyDeviceEntries(entries) }, user);
       }
-      return { ok: true, isNew: false, full: false };
+      return { ok: true, isNew: false, full: false, status: existing.status };
     }
     if (entries.length >= MAX_MEMBER_DEVICES) return { ok: false, isNew: false, full: true };
-    entries.push({ id: deviceId, name: deviceName || '' });
+    var isSelfAdmin = canManageMembers(user) && user.id === memberId;
+    var status = isSelfAdmin ? 'approved' : 'pending';
+    entries.push({ id: deviceId, name: deviceName || '', status: status });
     updateMember(memberId, { deviceIds: stringifyDeviceEntries(entries) }, user);
-    return { ok: true, isNew: true, full: false };
+    if (!isSelfAdmin) {
+      var msg = (member.name || memberId) + ' vừa đăng ký thiết bị chấm công mới (' + (deviceName || 'không rõ tên') + ') — đang chờ duyệt.';
+      addSystemNotificationsBatch(adminAndManagerMembers(user && user.id).map(function (mgr) {
+        return { title: 'Chờ duyệt thiết bị chấm công', message: msg, type: 'attendance', scope: mgr.id, recurring: false };
+      }));
+    }
+    return { ok: true, isNew: true, full: false, status: status };
   }
 
   function removeMemberDevice(memberId, deviceId, user) {
     var member = getMember(memberId);
     if (!member) return null;
-    var entries = parseDeviceIds(member).filter(function (e) { return e.id !== deviceId; });
-    return updateMember(memberId, { deviceIds: stringifyDeviceEntries(entries) }, user);
+    var entries = parseDeviceIds(member);
+    var removed = entries.filter(function (e) { return e.id === deviceId; })[0];
+    entries = entries.filter(function (e) { return e.id !== deviceId; });
+    var updated = updateMember(memberId, { deviceIds: stringifyDeviceEntries(entries) }, user);
+    if (updated && removed) {
+      var msg = (member.name || memberId) + ' đã gỡ thiết bị chấm công (' + (removed.name || 'không rõ tên') + ').';
+      addSystemNotificationsBatch(adminAndManagerMembers(user && user.id).map(function (mgr) {
+        return { title: 'Gỡ thiết bị chấm công', message: msg, type: 'attendance', scope: mgr.id, recurring: false };
+      }));
+    }
+    return updated;
+  }
+
+  // Danh sách thiết bị đang chờ duyệt của TOÀN CÔNG TY — CEO/Manager dùng để
+  // hiển thị panel duyệt trong trang Chấm công (timesheet.html).
+  function getPendingDeviceRegistrations() {
+    var out = [];
+    getMembers().forEach(function (m) {
+      parseDeviceIds(m).forEach(function (e) {
+        if (e.status === 'pending') out.push({ memberId: m.id, memberName: m.name || m.id, deviceId: e.id, deviceName: e.name });
+      });
+    });
+    return out;
+  }
+
+  // CHỈ CEO/Manager (canManageMembers). approve: đánh dấu 'approved', gỡ
+  // trạng thái chờ. reject: XOÁ hẳn entry (nhả slot lại cho nhân viên đăng ký
+  // thiết bị khác) — không giữ lại trạng thái 'rejected' vì sẽ chiếm mất 1
+  // trong tối đa 2 slot của người đó không cần thiết.
+  function approveMemberDevice(memberId, deviceId, user) {
+    if (!canManageMembers(user)) return null;
+    var member = getMember(memberId);
+    if (!member) return null;
+    var entries = parseDeviceIds(member);
+    var entry = entries.filter(function (e) { return e.id === deviceId; })[0];
+    if (!entry) return null;
+    entry.status = 'approved';
+    var updated = updateMember(memberId, { deviceIds: stringifyDeviceEntries(entries) }, user);
+    addSystemNotificationsBatch([{
+      title: 'Thiết bị chấm công đã được duyệt',
+      message: 'Thiết bị "' + (entry.name || deviceId) + '" của bạn đã được ' + (user.name || 'quản lý') + ' duyệt — có thể dùng để chấm công.',
+      type: 'attendance', scope: memberId, recurring: false
+    }]);
+    return updated;
+  }
+
+  function rejectMemberDevice(memberId, deviceId, user) {
+    if (!canManageMembers(user)) return null;
+    var member = getMember(memberId);
+    if (!member) return null;
+    var entries = parseDeviceIds(member);
+    var entry = entries.filter(function (e) { return e.id === deviceId; })[0];
+    if (!entry) return null;
+    entries = entries.filter(function (e) { return e.id !== deviceId; });
+    var updated = updateMember(memberId, { deviceIds: stringifyDeviceEntries(entries) }, user);
+    addSystemNotificationsBatch([{
+      title: 'Thiết bị chấm công bị từ chối',
+      message: 'Thiết bị "' + (entry.name || deviceId) + '" của bạn bị ' + (user.name || 'quản lý') + ' từ chối — vui lòng đăng ký lại hoặc liên hệ để biết thêm.',
+      type: 'attendance', scope: memberId, recurring: false
+    }]);
+    return updated;
   }
 
   // Duyệt/từ chối thành viên đăng ký mới: CEO hoặc Manager.
@@ -1628,6 +1739,9 @@ var TaskManager = (function() {
     getMemberDevices: getMemberDevices,
     registerMemberDevice: registerMemberDevice,
     removeMemberDevice: removeMemberDevice,
+    getPendingDeviceRegistrations: getPendingDeviceRegistrations,
+    approveMemberDevice: approveMemberDevice,
+    rejectMemberDevice: rejectMemberDevice,
     canManageMembers: canManageMembers,
     canTerminateMembers: canTerminateMembers,
     updateMemberStatus: updateMemberStatus,
