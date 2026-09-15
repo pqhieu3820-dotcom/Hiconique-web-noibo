@@ -480,6 +480,26 @@
   background: var(--color-surface-2);
 }
 
+/* Bấm header để sắp xếp (toggle A-Z / Z-A) — xem bindListSortHeaders() trong projects.js */
+.task-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.task-table th.sortable:hover {
+  color: var(--color-text);
+}
+.task-table th.sortable .sort-arrow {
+  display: inline-block;
+  margin-left: 4px;
+  opacity: 0.35;
+  font-size: 0.75em;
+}
+.task-table th.sortable.sort-active .sort-arrow {
+  opacity: 1;
+  color: var(--color-bronze);
+}
+
 .task-checkbox {
   display: flex;
   align-items: center;

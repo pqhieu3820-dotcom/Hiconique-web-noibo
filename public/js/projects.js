@@ -11,7 +11,13 @@
     statusFilter: null, // set by clicking the "Dang lam" stat card ('in-progress' | null)
     sortBy: 'deadline',
     timelineMonth: new Date().getMonth(),
-    timelineYear: new Date().getFullYear()
+    timelineYear: new Date().getFullYear(),
+    // Sắp xếp bằng cách bấm header cột trong bảng List — khác với sortBy ở
+    // trên (dropdown "Sắp xếp", chỉ có deadline/priority/createdAt, áp dụng
+    // cho mọi view). listSortKey null = dùng nguyên thứ tự mặc định từ
+    // getFilteredTasks(); có giá trị thì override lại cho riêng bảng List.
+    listSortKey: null,
+    listSortDir: 'asc'
   };
 
   var currentUser = null;
@@ -330,8 +336,75 @@
     bindDragEvents();
   }
 
+  // Giá trị dùng để so sánh khi sắp xếp theo cột đã bấm trong bảng List.
+  function listSortValue(task, key) {
+    if (key === 'title') return task.title || '';
+    if (key === 'project') { var p = getProjectById(task.projectId); return p ? p.name : ''; }
+    if (key === 'assignee') { var as = getAssigneesForTask(task); return as.length ? as[0].name : ''; }
+    if (key === 'status') return statusLabel(task.status);
+    if (key === 'priority') return priorityLabel(task.priority);
+    return '';
+  }
+
+  // Áp dụng SAU getFilteredTasks() — chỉ đổi thứ tự khi người dùng đã bấm 1
+  // header cột (state.listSortKey), không đụng tới thứ tự mặc định (deadline)
+  // khi chưa bấm gì. Ngày đến hạn luôn so theo thời gian thực (không phải
+  // chuỗi ABC) — task không có deadline luôn xếp cuối bất kể chiều tăng/giảm.
+  function applyListSort(tasks) {
+    if (!state.listSortKey) return tasks;
+    var key = state.listSortKey;
+    var dir = state.listSortDir === 'desc' ? -1 : 1;
+    var sorted = tasks.slice();
+    sorted.sort(function (a, b) {
+      if (key === 'deadline') {
+        var da = a.deadline ? new Date(a.deadline).getTime() : null;
+        var db = b.deadline ? new Date(b.deadline).getTime() : null;
+        if (da === null && db === null) return 0;
+        if (da === null) return 1;
+        if (db === null) return -1;
+        return (da - db) * dir;
+      }
+      var va = String(listSortValue(a, key));
+      var vb = String(listSortValue(b, key));
+      return va.localeCompare(vb, 'vi') * dir;
+    });
+    return sorted;
+  }
+
+  // Bấm header cột để sắp xếp (toggle A→Z / Z→A) — bấm lại cùng cột thì đổi
+  // chiều, bấm cột khác thì chuyển sang cột đó (chiều A→Z). Chỉ ảnh hưởng
+  // bảng List, không đụng Board/Timeline/Gantt.
+  function updateListSortHeaderUI() {
+    var row = document.getElementById('listHeaderRow');
+    if (!row) return;
+    row.querySelectorAll('th.sortable').forEach(function (th) {
+      var active = th.dataset.sortKey === state.listSortKey;
+      th.classList.toggle('sort-active', active);
+      var arrow = th.querySelector('.sort-arrow');
+      if (arrow) arrow.textContent = active ? (state.listSortDir === 'asc' ? '↑' : '↓') : '↕';
+    });
+  }
+  function bindListSortHeaders() {
+    var row = document.getElementById('listHeaderRow');
+    if (!row) return;
+    row.querySelectorAll('th.sortable').forEach(function (th) {
+      th.addEventListener('click', function () {
+        var key = th.dataset.sortKey;
+        if (state.listSortKey === key) {
+          state.listSortDir = state.listSortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          state.listSortKey = key;
+          state.listSortDir = 'asc';
+        }
+        updateListSortHeaderUI();
+        renderList();
+      });
+    });
+    updateListSortHeaderUI();
+  }
+
   function renderList() {
-    var tasks = getFilteredTasks();
+    var tasks = applyListSort(getFilteredTasks());
     var body = document.getElementById('listBody');
     if (!body) return;
 
@@ -1547,6 +1620,7 @@
     bindQuickFilters();
     bindStatCards();
     bindSort();
+    bindListSortHeaders();
     bindTimelineNav();
     bindTaskModal();
     bindProjectModal();

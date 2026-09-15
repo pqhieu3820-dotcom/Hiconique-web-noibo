@@ -276,13 +276,13 @@
       <div class="list-view" id="list-view" style="display:none">
         <table class="task-table">
           <thead>
-            <tr>
-              <th>Việc</th>
-              <th>Dự án</th>
-              <th>Người làm</th>
-              <th>Ngày đến hạn</th>
-              <th>Trạng thái</th>
-              <th>Ưu tiên</th>
+            <tr id="listHeaderRow">
+              <th class="sortable" data-sort-key="title">Việc<span class="sort-arrow">↕</span></th>
+              <th class="sortable" data-sort-key="project">Dự án<span class="sort-arrow">↕</span></th>
+              <th class="sortable" data-sort-key="assignee">Người làm<span class="sort-arrow">↕</span></th>
+              <th class="sortable" data-sort-key="deadline">Ngày đến hạn<span class="sort-arrow">↕</span></th>
+              <th class="sortable" data-sort-key="status">Trạng thái<span class="sort-arrow">↕</span></th>
+              <th class="sortable" data-sort-key="priority">Ưu tiên<span class="sort-arrow">↕</span></th>
             </tr>
           </thead>
           <tbody id="listBody"></tbody>
