@@ -828,6 +828,23 @@ function forceTextIfDateLike(val, enKey) {
   return val;
 }
 
+// Dùng cho field "ip"/"checkinIp"... — KHÔNG dùng cách ép "'" (leading
+// apostrophe) như forceTextIfDateLike() ở trên: đã kiểm chứng thực tế
+// (2026-09-15) qua Range.setValue() gọi từ Apps Script API, dấu nháy đơn đó
+// KHÔNG ép được text — Sheet ở locale Việt Nam vẫn tự đọc "." là dấu phân
+// cách hàng nghìn và biến 1 IP như "14.171.113.174" (mỗi cụm sau octet đầu
+// đúng 3 chữ số, y hệt cách nhóm hàng nghìn) thành số 14171113174, mất hết
+// dấu chấm — IP khác nếu cụm không đủ 3 chữ số (VD "172.225.56.21") lại
+// tình cờ giữ đúng dạng chuỗi, khiến bug rất dễ bị bỏ sót khi chỉ test 1 IP.
+// Cách ép CHẮC CHẮN: đặt định dạng ô = "Văn bản thuần" (@) TRƯỚC khi ghi.
+function needsPlainTextFormat(enKey) {
+  return !!(enKey && (FORCE_TEXT_FIELDS[enKey] || /^ip$|Ip$/.test(enKey)));
+}
+function writeTextForcedCell(cell, val) {
+  cell.setNumberFormat('@');
+  cell.setValue(val);
+}
+
 // 2026-09-10: ghi các field NGÀY/THỜI GIAN (không phải "month" YYYY-MM, đã
 // forceTextIfDateLike ép text ở trên — không đụng) dưới dạng Date THẬT thay
 // vì chuỗi ISO thô. Trước đây createdAt/date... ghi chuỗi "YYYY-MM-DD" (Sheets
@@ -936,17 +953,27 @@ function addData(ss, sheetName, data) {
     data.id = makeId(prefix);
   }
   data.createdAt = data.createdAt || new Date().toISOString().split('T')[0];
-  const row = headers.map(function (h) {
+  // Cột cần ép TEXT (ip/phone/cccd/bankAccount...) để trống lúc appendRow —
+  // ghi lại riêng SAU với định dạng ô đã đặt "Văn bản thuần" (xem
+  // writeTextForcedCell) để chắc chắn Sheet không tự đọc nhầm thành số.
+  const textForcedCols = [];
+  const row = headers.map(function (h, i) {
     const enKey = viToEnHeader(sheetName, h);
     let val = data[enKey];
     if (Array.isArray(val)) return stringifyArrayForCell(enKey, val);
     if (typeof val === 'string') val = enToViValue(sheetName, enKey, val);
     val = toRealDateIfDateField(val, enKey);
     if (val instanceof Date) return val;
-    return forceTextIfDateLike(val !== undefined && val !== null ? val : '', enKey);
+    if (typeof val === 'string' && val && needsPlainTextFormat(enKey)) {
+      textForcedCols.push({ col: i + 1, val: val });
+      return '';
+    }
+    return val !== undefined && val !== null ? val : '';
   });
   sheet.appendRow(row);
-  fillComputedHelperFormulas(sheet, headers, sheet.getLastRow(), 1);
+  const newRowNum = sheet.getLastRow();
+  textForcedCols.forEach(function (tf) { writeTextForcedCell(sheet.getRange(newRowNum, tf.col), tf.val); });
+  fillComputedHelperFormulas(sheet, headers, newRowNum, 1);
   return data;
 }
 
@@ -967,7 +994,14 @@ function updateData(ss, sheetName, id, updates) {
       if (Array.isArray(val)) val = stringifyArrayForCell(enKey, val);
       else if (typeof val === 'string') val = enToViValue(sheetName, enKey, val);
       val = toRealDateIfDateField(val, enKey);
-      sheet.getRange(rowNum, i + 1).setValue(val instanceof Date ? val : (forceTextIfDateLike(val, enKey) || ''));
+      const cell = sheet.getRange(rowNum, i + 1);
+      if (val instanceof Date) {
+        cell.setValue(val);
+      } else if (typeof val === 'string' && val && needsPlainTextFormat(enKey)) {
+        writeTextForcedCell(cell, val);
+      } else {
+        cell.setValue(forceTextIfDateLike(val, enKey) || '');
+      }
     }
   });
   return Object.assign({}, data[index], updates);
