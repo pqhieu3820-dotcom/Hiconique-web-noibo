@@ -1090,6 +1090,37 @@ key nội bộ ở [SETUP_HUONG_DAN.md](SETUP_HUONG_DAN.md#cấu-trúc-spreadshe
   — không cần tạo tay. Đọc dữ liệu 3 sheet này đi qua Apps Script Web App (JSON), không qua CSV
   publish như các sheet cũ.
 
+## 6.5. Quy ước đặt tên tab Sheet (tiền tố theo nhóm, từ 2026-09-16)
+
+Toàn bộ tab Sheet nghiệp vụ thật đã được gom nhóm bằng tiền tố ngắn để dễ tô
+màu tab quản lý theo trang trong Google Sheets — xem commit đổi tên hàng loạt
+(`renameRealSheets()`/`renameCopySheets()` từng chạy 1 lần trong Apps Script,
+đã xoá khỏi code sau khi dùng xong). **Sheet MỚI tạo sau này phải đặt tên theo
+đúng 1 trong các nhóm dưới đây — không để tên trần không tiền tố:**
+
+| Tiền tố | Nhóm | Sheet hiện có |
+|---|---|---|
+| `NS-` | Nhân sự | Thành viên |
+| `TLCC-` | Tiền lương & chấm công | Chấm công, Địa điểm chấm công, Phiếu lương, Hoa hồng dự án, Mức hoa hồng |
+| `DA-` | Dự án (core) | Dự án, Công việc, Đề xuất, So sánh nhà thầu, Dòng tiền, Phát sinh, Tiến độ, Nghiệm thu, Hồ sơ công trình |
+| `BIM-` | HICON-BIM | Sản phẩm, Vật liệu, Nhà cung cấp, Issue, BOQ |
+| `TC-` | Tài chính/kế toán | Bảng giá dịch vụ, Tài chính công ty, Công nợ khách hàng, Chỉ số cân đối kế toán, Đơn hàng |
+| `TT-` | Truyền thông nội bộ | Thông báo, Bảng tin, Tài liệu |
+| `DGXD-` | Đơn giá xây dựng (46 sheet tham khảo read-only, 34 tỉnh + công cụ đi kèm) | Mục lục, Tính nhanh, Khối lượng sơ bộ, So sánh nhà thầu, Dòng tiền, Phát sinh, Tiến độ, Nghiệm thu, Hồ sơ công trình, Hướng dẫn, Nguồn, Dữ liệu tính, + tên 34 tỉnh — **KHÔNG có trong `SHEETS` map, code không tham chiếu theo tên nên đổi tên nhóm này luôn an toàn, không cần redeploy** |
+
+**Khi thêm sheet mới cho 1 tính năng thuộc 1 trong 6 nhóm nghiệp vụ thật ở
+trên**: đặt tên tab đúng `<TiềnTố>-<Tên tiếng Việt>` NGAY từ đầu, và thêm vào
+`SHEETS` map trong `gsheets-api-v2.js` với đúng tên đó (không tạo trần rồi
+đổi sau — đổi tên sheet THẬT đang chạy production cần sửa code + deploy bản
+mới NGAY LẬP TỨC để tránh khoảng hở khiến `findSheet()` không khớp tên cũ và
+`getOrCreateSheet()` tạo nhầm sheet rỗng trùng tên). Nếu sheet mới thuộc nhóm
+nào chưa có (không khớp 6 nhóm trên), hỏi người dùng muốn đặt tiền tố mới nào
+trước khi tạo, đừng tự bịa tiền tố.
+
+Sheet tham khảo/copy thuần đọc (không CRUD qua code) — như các bảng đơn giá
+tỉnh mới nếu có sau này — dùng tiền tố `DGXD-` (hoặc tiền tố nhóm phù hợp nếu
+không phải đơn giá xây dựng), không cần thêm vào `SHEETS` map.
+
 ## 7. Tài liệu khác trong repo
 
 - [README.md](README.md) — tổng quan kiến trúc, cấu trúc thư mục, cách chạy local/deploy.
