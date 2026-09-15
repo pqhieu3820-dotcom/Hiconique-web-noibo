@@ -277,7 +277,20 @@
       <div class="timeline-view" id="timeline-view" style="display:none">
         <div class="timeline-header">
           <button class="timeline-nav" id="prevMonth">← Tháng trước</button>
-          <h3 id="timelineTitle">Tháng 8 / 2026</h3>
+          <div class="timeline-month-picker" id="timelineMonthPicker">
+            <button type="button" class="timeline-title-btn" id="timelineTitleBtn">
+              <h3 id="timelineTitle">Tháng 8 / 2026</h3>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="timeline-month-panel" id="timelineMonthPanel" hidden>
+              <div class="timeline-year-nav">
+                <button type="button" id="timelineYearPrev" aria-label="Năm trước">&larr;</button>
+                <span id="timelineYearLabel">2026</span>
+                <button type="button" id="timelineYearNext" aria-label="Năm sau">&rarr;</button>
+              </div>
+              <div class="timeline-month-grid" id="timelineMonthGrid"></div>
+            </div>
+          </div>
           <button class="timeline-nav" id="nextMonth">Tháng sau →</button>
         </div>
         <div class="timeline-body" id="timelineBody"></div>
@@ -289,7 +302,20 @@
           <div class="gantt-filter-tabs" id="ganttFilterTabs"></div>
           <div class="gantt-month-nav">
             <button type="button" class="gantt-nav-btn" id="ganttPrevMonth" aria-label="Tháng trước">&larr;</button>
-            <span class="gantt-month-label" id="ganttMonthLabel"></span>
+            <div class="timeline-month-picker" id="ganttMonthPicker">
+              <button type="button" class="timeline-title-btn" id="ganttMonthLabelBtn">
+                <span class="gantt-month-label" id="ganttMonthLabel"></span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="timeline-month-panel" id="ganttMonthPanel" hidden>
+                <div class="timeline-year-nav">
+                  <button type="button" id="ganttYearPrev" aria-label="Năm trước">&larr;</button>
+                  <span id="ganttYearLabel"></span>
+                  <button type="button" id="ganttYearNext" aria-label="Năm sau">&rarr;</button>
+                </div>
+                <div class="timeline-month-grid" id="ganttMonthGrid"></div>
+              </div>
+            </div>
             <button type="button" class="gantt-nav-btn" id="ganttNextMonth" aria-label="Tháng sau">&rarr;</button>
             <button type="button" class="gantt-today-btn" id="ganttTodayMonth">Hôm nay</button>
           </div>
@@ -355,7 +381,7 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Người phụ trách</label>
+          <label>Thành viên tham gia</label>
           <div class="member-multi" id="taskAssignees"></div>
         </div>
         <div class="form-row">
@@ -393,7 +419,7 @@
         </div>
         <div class="modal-actions">
           <button type="button" class="btn-secondary modal-cancel">Hủy</button>
-          <button type="submit" class="btn-primary">Lưu việc</button>
+          <button type="submit" class="btn-primary" id="taskSubmitBtn">Tạo việc</button>
         </div>
       </form>
     </div>

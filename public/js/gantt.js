@@ -271,6 +271,55 @@ var HiconiqueGantt = (function () {
       currentMonth = new Date(t.getFullYear(), t.getMonth(), 1);
       render(root);
     });
+
+    bindMonthPicker(root);
+  }
+
+  // Bấm thẳng vào nhãn "Tháng X Năm YYYY" mở bảng chọn nhanh 12 tháng + điều
+  // hướng năm — cùng kiểu với timeline picker ở projects.js (dùng chung CSS
+  // .timeline-month-picker/.timeline-month-panel/.timeline-month-grid).
+  var pickerYear = null;
+  function bindMonthPicker(root) {
+    var picker = root.querySelector('#ganttMonthPicker');
+    var btn = root.querySelector('#ganttMonthLabelBtn');
+    var panel = root.querySelector('#ganttMonthPanel');
+    var yearLabel = root.querySelector('#ganttYearLabel');
+    var grid = root.querySelector('#ganttMonthGrid');
+    var yearPrev = root.querySelector('#ganttYearPrev');
+    var yearNext = root.querySelector('#ganttYearNext');
+    if (!picker || !btn || !panel || !grid || btn.dataset.bound) return;
+    btn.dataset.bound = '1';
+
+    var monthNames = ['Th1', 'Th2', 'Th3', 'Th4', 'Th5', 'Th6', 'Th7', 'Th8', 'Th9', 'Th10', 'Th11', 'Th12'];
+
+    function renderGrid() {
+      yearLabel.textContent = pickerYear;
+      grid.innerHTML = monthNames.map(function (label, i) {
+        var isCurrent = pickerYear === currentMonth.getFullYear() && i === currentMonth.getMonth();
+        return '<button type="button" class="timeline-month-cell' + (isCurrent ? ' active' : '') + '" data-month="' + i + '">' + label + '</button>';
+      }).join('');
+      grid.querySelectorAll('.timeline-month-cell').forEach(function (cell) {
+        cell.addEventListener('click', function () {
+          currentMonth = new Date(pickerYear, parseInt(cell.dataset.month, 10), 1);
+          panel.hidden = true;
+          picker.classList.remove('open');
+          render(root);
+        });
+      });
+    }
+
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var willOpen = panel.hidden;
+      panel.hidden = !willOpen;
+      picker.classList.toggle('open', willOpen);
+      if (willOpen) { pickerYear = currentMonth.getFullYear(); renderGrid(); }
+    });
+    yearPrev.addEventListener('click', function (e) { e.stopPropagation(); pickerYear--; renderGrid(); });
+    yearNext.addEventListener('click', function (e) { e.stopPropagation(); pickerYear++; renderGrid(); });
+    document.addEventListener('click', function (e) {
+      if (!picker.contains(e.target)) { panel.hidden = true; picker.classList.remove('open'); }
+    });
   }
 
   // ----- Excel export: classic construction "Bảng tiến độ thi công" weekly Gantt -----

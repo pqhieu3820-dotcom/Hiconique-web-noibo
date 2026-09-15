@@ -756,6 +756,57 @@
       if (state.timelineMonth > 11) { state.timelineMonth = 0; state.timelineYear++; }
       renderTimeline();
     });
+    bindTimelineMonthPicker();
+  }
+
+  // Bấm thẳng vào tiêu đề "Tháng X / YYYY" mở bảng chọn nhanh 12 tháng +
+  // điều hướng năm — thay vì phải bấm "Tháng trước/sau" từng bước 1 khi
+  // cần nhảy xa (VD từ tháng 6 sang tháng 11 cùng năm).
+  var timelinePickerYear = null;
+  function bindTimelineMonthPicker() {
+    var picker = document.getElementById('timelineMonthPicker');
+    var btn = document.getElementById('timelineTitleBtn');
+    var panel = document.getElementById('timelineMonthPanel');
+    var yearLabel = document.getElementById('timelineYearLabel');
+    var grid = document.getElementById('timelineMonthGrid');
+    var yearPrev = document.getElementById('timelineYearPrev');
+    var yearNext = document.getElementById('timelineYearNext');
+    if (!picker || !btn || !panel || !grid) return;
+
+    var monthNames = ['Th1', 'Th2', 'Th3', 'Th4', 'Th5', 'Th6', 'Th7', 'Th8', 'Th9', 'Th10', 'Th11', 'Th12'];
+
+    function renderGrid() {
+      yearLabel.textContent = timelinePickerYear;
+      grid.innerHTML = monthNames.map(function (label, i) {
+        var isCurrent = timelinePickerYear === state.timelineYear && i === state.timelineMonth;
+        return '<button type="button" class="timeline-month-cell' + (isCurrent ? ' active' : '') + '" data-month="' + i + '">' + label + '</button>';
+      }).join('');
+      grid.querySelectorAll('.timeline-month-cell').forEach(function (cell) {
+        cell.addEventListener('click', function () {
+          state.timelineMonth = parseInt(cell.dataset.month, 10);
+          state.timelineYear = timelinePickerYear;
+          panel.hidden = true;
+          picker.classList.remove('open');
+          renderTimeline();
+        });
+      });
+    }
+
+    if (!btn.dataset.bound) {
+      btn.dataset.bound = '1';
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var willOpen = panel.hidden;
+        panel.hidden = !willOpen;
+        picker.classList.toggle('open', willOpen);
+        if (willOpen) { timelinePickerYear = state.timelineYear; renderGrid(); }
+      });
+      yearPrev.addEventListener('click', function (e) { e.stopPropagation(); timelinePickerYear--; renderGrid(); });
+      yearNext.addEventListener('click', function (e) { e.stopPropagation(); timelinePickerYear++; renderGrid(); });
+      document.addEventListener('click', function (e) {
+        if (!picker.contains(e.target)) { panel.hidden = true; picker.classList.remove('open'); }
+      });
+    }
   }
 
   // ----- Drag & drop -----
@@ -816,6 +867,8 @@
   function openTaskModalForCreate(status) {
     var titleEl = document.getElementById('taskModalTitle');
     if (titleEl) titleEl.textContent = 'Tạo việc mới';
+    var submitBtn = document.getElementById('taskSubmitBtn');
+    if (submitBtn) submitBtn.textContent = 'Tạo việc';
     if (taskForm) taskForm.reset();
     delete taskForm.dataset.editingId;
     taskAssigneeSelectedIds = [];
@@ -996,7 +1049,7 @@
     var bodyHtml = ''
       + '<div class="detail-grid">'
       +   '<div class="detail-field"><label>Dự án</label><p>' + (project ? escapeHtml(project.name) : 'Chưa có') + '</p></div>'
-      +   '<div class="detail-field"><label>Người phụ trách</label><p>' + (assignees.length ? escapeHtml(assignees.map(function (a) { return a.name; }).join(', ')) : 'Chưa giao') + '</p></div>'
+      +   '<div class="detail-field"><label>Thành viên tham gia</label><p>' + (assignees.length ? escapeHtml(assignees.map(function (a) { return a.name; }).join(', ')) : 'Chưa giao') + '</p></div>'
       +   '<div class="detail-field"><label>Ngày bắt đầu</label><p>' + (task.startDate ? fmtDate(task.startDate) : '—') + '</p></div>'
       +   '<div class="detail-field"><label>Deadline</label><p>' + (task.deadline ? fmtDate(task.deadline) : '—') + '</p></div>'
       + '</div>'

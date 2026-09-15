@@ -636,6 +636,74 @@
   color: var(--color-text);
 }
 
+/* ─── Bảng chọn nhanh tháng/năm ở tiêu đề Timeline ─── */
+.timeline-month-picker { position: relative; }
+.timeline-title-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  transition: background var(--dur-base) var(--ease);
+}
+.timeline-title-btn:hover { background: var(--color-surface-2); }
+.timeline-title-btn svg { width: 14px; height: 14px; color: var(--color-text-muted); transition: transform 0.15s; }
+.timeline-month-picker.open .timeline-title-btn svg { transform: rotate(180deg); }
+
+.timeline-month-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  width: 220px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  padding: 12px;
+}
+.timeline-year-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 10px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+.timeline-year-nav button {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+}
+.timeline-year-nav button:hover { background: var(--color-surface-2); color: var(--color-text); }
+.timeline-month-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.timeline-month-cell {
+  padding: 8px 0;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  transition: all var(--dur-base) var(--ease);
+}
+.timeline-month-cell:hover { border-color: var(--color-bronze); }
+.timeline-month-cell.active {
+  background: var(--color-bronze);
+  border-color: var(--color-bronze);
+  color: #fff;
+  font-weight: 600;
+}
+
 .timeline-body {
   padding: var(--space-md);
 }
@@ -1928,8 +1996,14 @@
   border-color: var(--color-bronze);
 }
 .member-multi-item.active {
-  background: rgba(176, 141, 87, 0.1);
+  background: rgba(176, 141, 87, 0.16);
   border-color: var(--color-bronze);
+  box-shadow: 0 0 0 1px var(--color-bronze);
+  color: var(--color-bronze);
+  font-weight: 600;
+}
+.member-multi-item.active .avatar-xs {
+  box-shadow: 0 0 0 2px var(--color-bronze);
 }
 .member-multi-item input { position: absolute; opacity: 0; pointer-events: none; }
 
