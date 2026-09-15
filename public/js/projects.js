@@ -885,6 +885,8 @@
     if (!task) return;
     var titleEl = document.getElementById('taskModalTitle');
     if (titleEl) titleEl.textContent = 'Sửa việc';
+    var submitBtn = document.getElementById('taskSubmitBtn');
+    if (submitBtn) submitBtn.textContent = 'Lưu thay đổi';
     populateTaskFormOptions();
 
     document.getElementById('task-name').value = task.title || '';
