@@ -1600,7 +1600,7 @@ main { flex: 1; }
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   max-height: 520px;
   overflow-y: auto;
   padding-right: 4px;
@@ -1609,14 +1609,19 @@ main { flex: 1; }
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
+  gap: 12px;
+  padding: 10px 14px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 12px;
   transition: all var(--dur-base) ease;
   position: relative;
   overflow: hidden;
+  /* .task-list-mini là flex column có max-height + overflow-y:auto — không
+     có dòng này, flex mặc định CO NHỎ từng <li> lại cho vừa 520px thay vì
+     cuộn (flex-shrink:1 mặc định), khiến nội dung (title/project/meta) bị
+     nén/che mất khi đủ nhiều task (VD 12 task) để vượt quá max-height. */
+  flex-shrink: 0;
 }
 .task-list-mini li::before {
   content: '';
@@ -1698,7 +1703,7 @@ main { flex: 1; }
   flex-wrap: wrap;
 }
 .task-list-mini .tl-title {
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   font-weight: 600;
   color: var(--color-text);
   line-height: 1.4;

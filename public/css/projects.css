@@ -2070,6 +2070,26 @@
   border-bottom: 1px solid var(--color-border);
   flex-wrap: wrap;
 }
+.report-member-chips-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--color-border);
+}
+.report-member-chips-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  padding-top: 9px;
+  flex-shrink: 0;
+}
+.report-member-chips-row .member-multi {
+  flex: 1;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+}
 .report-filters select {
   padding: 8px 12px;
   border: 1px solid var(--color-border);

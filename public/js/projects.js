@@ -224,12 +224,25 @@
   }
 
   // ----- Stats -----
+  // Bấm 1 thành viên ở sidebar bên trái phải làm 4 thẻ Tổng dự án/Tổng việc/
+  // Đang làm/Quá hạn đổi theo NGƯỜI ĐÓ (trước đây 4 thẻ này luôn tính trên
+  // toàn bộ dữ liệu, không phản ứng với state.memberFilter — gây hiểu nhầm
+  // "đang xem của ai" khi đã lọc theo người).
   function renderStats() {
-    var projects = getProjects();
+    var allProjects = getProjects();
     var tasks = getTasks();
+    if (state.memberFilter) {
+      tasks = tasks.filter(function (t) { return Array.isArray(t.assigneeIds) && t.assigneeIds.indexOf(state.memberFilter) !== -1; });
+    }
+    var projectCount = allProjects.length;
+    if (state.memberFilter) {
+      var projSet = {};
+      tasks.forEach(function (t) { if (t.projectId) projSet[t.projectId] = true; });
+      projectCount = Object.keys(projSet).length;
+    }
     var inProgress = tasks.filter(function (t) { return t.status === 'in-progress'; }).length;
     var overdue = tasks.filter(isOverdue).length;
-    document.getElementById('statProjects').textContent = projects.length;
+    document.getElementById('statProjects').textContent = projectCount;
     document.getElementById('statTasks').textContent = tasks.length;
     document.getElementById('statInProgress').textContent = inProgress;
     document.getElementById('statOverdue').textContent = overdue;
@@ -1534,80 +1547,43 @@
     renderReportMemberDropdown();
   }
 
-  // Lọc "thành viên" trong Báo cáo công việc — kiểu liệt kê avatar + tên +
-  // ô tìm kiếm giống dropdown "Người phụ trách" ở form tạo task/dự án
-  // (.assignee-dd), nhưng CHỌN 1 (không phải multi-select) nên tự viết
-  // riêng thay vì tái dùng renderTaskAssigneeDropdown().
+  // Lọc "thành viên" trong Báo cáo công việc — lưới chip bấm chọn trực tiếp
+  // (đồng bộ kiểu .member-multi với "Thành viên tham gia" ở form task/dự án,
+  // xem GHI_CHU_DU_AN.md §6.6), CHỌN 1 (không phải multi-select như
+  // .member-multi gốc) nên bắt click tự xử lý active thay vì toggle.
   var reportMemberFilterId = 'all';
   function renderReportMemberDropdown() {
-    var dd = document.getElementById('report-member-dd');
-    if (!dd) return;
-    var panel = dd.querySelector('.assignee-dd-panel');
-    var trigger = dd.querySelector('.assignee-dd-trigger');
-    var triggerText = dd.querySelector('.assignee-dd-trigger-text');
-    var searchInput = document.getElementById('reportMemberSearch');
-    var listEl = document.getElementById('reportMemberList');
+    var container = document.getElementById('reportMemberChips');
+    if (!container) return;
     var members = reportActiveMembers();
 
-    function renderList(query) {
-      var q = (query || '').trim().toLowerCase();
-      var filtered = q ? members.filter(function (m) { return (m.name || '').toLowerCase().indexOf(q) !== -1; }) : members;
-      var allItemHtml = '<div class="assignee-dd-item' + (reportMemberFilterId === 'all' ? ' selected' : '') + '" data-member-id="all">'
-        + '<svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>'
-        + '<span class="avatar-xs" style="background:var(--color-bronze)">⚡</span>'
-        + '<span>Tất cả thành viên</span>'
-      + '</div>';
-      var itemsHtml = filtered.map(function (m) {
-        var checked = reportMemberFilterId === m.id;
-        return '<div class="assignee-dd-item' + (checked ? ' selected' : '') + '" data-member-id="' + escapeHtml(m.id) + '">'
-          + '<svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>'
-          + '<span class="avatar-xs" style="background:' + (m.color || '#6B7280') + '">' + escapeHtml(m.avatar || (m.name || '?').substring(0, 2).toUpperCase()) + '</span>'
-          + '<span>' + escapeHtml(m.name || '') + '</span>'
-        + '</div>';
-      }).join('');
-      listEl.innerHTML = (q ? '' : allItemHtml) + (filtered.length ? itemsHtml : (q ? '<div class="assignee-dd-empty">Không tìm thấy "' + escapeHtml(query) + '"</div>' : ''));
-      listEl.querySelectorAll('.assignee-dd-item').forEach(function (item) {
-        item.addEventListener('click', function () {
-          reportMemberFilterId = item.dataset.memberId;
-          updateTriggerText();
-          dd.classList.remove('open');
-          panel.hidden = true;
-          renderWorkReport();
+    var allChipHtml = '<label class="member-multi-item' + (reportMemberFilterId === 'all' ? ' active' : '') + '" data-member-id="all">'
+      + '<input type="radio" name="reportMemberChip" value="all"' + (reportMemberFilterId === 'all' ? ' checked' : '') + '>'
+      + '<span class="avatar-xs" style="background:var(--color-bronze)">⚡</span>'
+      + '<span>Tất cả</span>'
+    + '</label>';
+    var itemsHtml = members.map(function (m) {
+      var checked = reportMemberFilterId === m.id;
+      return '<label class="member-multi-item' + (checked ? ' active' : '') + '" data-member-id="' + escapeHtml(m.id) + '">'
+        + '<input type="radio" name="reportMemberChip" value="' + escapeHtml(m.id) + '"' + (checked ? ' checked' : '') + '>'
+        + '<span class="avatar-xs" style="background:' + (m.color || '#6B7280') + '">' + escapeHtml(m.avatar || (m.name || '?').substring(0, 2).toUpperCase()) + '</span>'
+        + '<span>' + escapeHtml(m.name || '') + '</span>'
+      + '</label>';
+    }).join('');
+    container.innerHTML = allChipHtml + itemsHtml;
+
+    container.querySelectorAll('.member-multi-item').forEach(function (item) {
+      item.addEventListener('click', function (e) {
+        e.preventDefault();
+        reportMemberFilterId = item.dataset.memberId;
+        container.querySelectorAll('.member-multi-item').forEach(function (el) {
+          var isActive = el.dataset.memberId === reportMemberFilterId;
+          el.classList.toggle('active', isActive);
+          el.querySelector('input').checked = isActive;
         });
+        renderWorkReport();
       });
-    }
-
-    function updateTriggerText() {
-      if (reportMemberFilterId === 'all') {
-        triggerText.textContent = 'Tất cả thành viên';
-      } else {
-        var m = members.find(function (mm) { return mm.id === reportMemberFilterId; });
-        triggerText.textContent = m ? m.name : 'Tất cả thành viên';
-      }
-    }
-
-    updateTriggerText();
-    renderList(searchInput ? searchInput.value : '');
-
-    if (!trigger.dataset.bound) {
-      trigger.dataset.bound = '1';
-      trigger.addEventListener('click', function (e) {
-        e.stopPropagation();
-        var isOpen = dd.classList.toggle('open');
-        panel.hidden = !isOpen;
-        if (isOpen && searchInput) { searchInput.value = ''; renderList(''); searchInput.focus(); }
-      });
-      document.addEventListener('click', function (e) {
-        if (!dd.contains(e.target)) {
-          dd.classList.remove('open');
-          panel.hidden = true;
-        }
-      });
-      if (searchInput) {
-        searchInput.addEventListener('input', function () { renderList(searchInput.value); });
-        searchInput.addEventListener('click', function (e) { e.stopPropagation(); });
-      }
-    }
+    });
   }
 
   function formatNowTime() {

@@ -1121,6 +1121,18 @@ Sheet tham khảo/copy thuần đọc (không CRUD qua code) — như các bản
 tỉnh mới nếu có sau này — dùng tiền tố `DGXD-` (hoặc tiền tố nhóm phù hợp nếu
 không phải đơn giá xây dựng), không cần thêm vào `SHEETS` map.
 
+## 6.6. Đồng bộ UI dùng chung nhiều trang (từ 2026-09-16)
+
+Một số chức năng/component TỒN TẠI Ở NHIỀU TRANG cùng lúc (VD modal "Thêm
+task" có cả ở `projects.html` — quick-add trên Dashboard Dự án — LẪN
+`tasks-manager.html` — Task Manager đầy đủ). Khi sửa/redesign 1 bản, PHẢI
+đồng bộ sang bản còn lại luôn, không đợi người dùng nhắc riêng từng trang.
+Danh sách các cặp trang đang dùng chung UI kiểu này (cập nhật khi phát hiện
+thêm):
+- Modal tạo/sửa việc + picker "Người phụ trách"/"Thành viên tham gia":
+  `public/js/projects.js` (`.member-multi`, dùng ở `projects.html`) và
+  `public/js/task-manager-app.js` (`tasks-manager.html`).
+
 ## 7. Tài liệu khác trong repo
 
 - [README.md](README.md) — tổng quan kiến trúc, cấu trúc thư mục, cách chạy local/deploy.

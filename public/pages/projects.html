@@ -721,17 +721,11 @@
         <select id="reportProjectFilter">
           <option value="all">Tất cả dự án</option>
         </select>
-        <div id="report-member-dd" class="assignee-dd report-member-dd">
-          <button type="button" class="assignee-dd-trigger">
-            <span class="assignee-dd-trigger-text">Tất cả thành viên</span>
-            <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
-          </button>
-          <div class="assignee-dd-panel" hidden>
-            <input type="text" class="assignee-dd-search" id="reportMemberSearch" placeholder="Tìm tên thành viên...">
-            <div class="assignee-dd-list" id="reportMemberList"></div>
-          </div>
-        </div>
         <span class="report-updated-at" id="reportUpdatedAt"></span>
+      </div>
+      <div class="report-member-chips-row">
+        <span class="report-member-chips-label">Thành viên</span>
+        <div class="member-multi member-multi-single" id="reportMemberChips"></div>
       </div>
       <div class="modal-body" id="workReportBody">
         <div class="report-stat-grid" id="reportStatGrid"></div>

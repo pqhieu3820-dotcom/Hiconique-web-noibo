@@ -413,13 +413,12 @@
     const taskAssigneeIds = (task && Array.isArray(task.assigneeIds)) ? task.assigneeIds : [];
     const assigneeItemsHtml = members.map(m => {
       const checked = taskAssigneeIds.includes(m.id);
-      return `<div class="assignee-dd-item${checked ? ' selected' : ''}" data-member-id="${m.id}" data-member-name="${m.name}">`
-        + `<svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`
+      return `<label class="member-multi-item${checked ? ' active' : ''}">`
+        + `<input type="checkbox" value="${m.id}" data-member-name="${m.name}"${checked ? ' checked' : ''}>`
         + `<span class="avatar-xs-tm" style="background:${m.color || '#6B7280'}">${m.avatar || (m.name || '?').substring(0, 2).toUpperCase()}</span>`
         + `<span>${m.name}</span>`
-        + `</div>`;
+        + `</label>`;
     }).join('');
-    const assigneeTriggerLabel = members.filter(m => taskAssigneeIds.includes(m.id)).map(m => m.name).join(', ') || 'Chọn người...';
 
     const projectOptions = projects.map(p =>
       `<option value="${p.id}" ${task && task.projectId === p.id ? 'selected' : ''}>${p.name}</option>`
@@ -440,23 +439,16 @@
             placeholder="Mô tả chi tiết công việc...">${task ? (task.description || '') : ''}</textarea>
         </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Dự án</label>
-            <select class="form-select" name="projectId">
-              <option value="">-- Chọn dự án --</option>
-              ${projectOptions}
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Người được giao</label>
-            <div id="taskAssigneeDd" class="assignee-dd">
-              <button type="button" class="form-select assignee-dd-trigger">
-                <span class="assignee-dd-trigger-text${taskAssigneeIds.length ? '' : ' placeholder'}">${assigneeTriggerLabel}</span>
-              </button>
-              <div class="assignee-dd-panel" hidden>${assigneeItemsHtml}</div>
-            </div>
-          </div>
+        <div class="form-group">
+          <label class="form-label">Dự án</label>
+          <select class="form-select" name="projectId">
+            <option value="">-- Chọn dự án --</option>
+            ${projectOptions}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Người được giao</label>
+          <div class="member-multi" id="taskAssigneeChips">${assigneeItemsHtml}</div>
         </div>
 
         <div class="form-row">
@@ -501,48 +493,28 @@
     `;
 
     openModal(isEdit ? 'Chỉnh sửa Task' : 'Tạo Task Mới', body, footer);
-    bindTaskAssigneeDropdown(taskAssigneeIds.slice());
+    bindTaskAssigneeChips(taskAssigneeIds.slice());
   }
 
-  // Dropdown tuỳ chỉnh (không phải <select multiple> — người dùng thấy xấu) cho
-  // phép chọn nhiều người phụ trách, trông giống hệt các dropdown 1-lựa-chọn
-  // khác trong form (dùng chung class .form-select cho ô đóng).
+  // Lưới chip chọn nhiều người phụ trách (đồng bộ với .member-multi ở
+  // projects.js/projects.html — xem GHI_CHU_DU_AN.md §6.6, không dùng
+  // dropdown-phải-mở-mới-thấy-hết-người nữa).
   var taskModalAssigneeIds = [];
-  function bindTaskAssigneeDropdown(initialIds) {
+  function bindTaskAssigneeChips(initialIds) {
     taskModalAssigneeIds = initialIds || [];
-    var dd = document.getElementById('taskAssigneeDd');
-    if (!dd) return;
-    var trigger = dd.querySelector('.assignee-dd-trigger');
-    var triggerText = dd.querySelector('.assignee-dd-trigger-text');
-    var panel = dd.querySelector('.assignee-dd-panel');
-
-    panel.querySelectorAll('.assignee-dd-item').forEach(function (item) {
-      item.addEventListener('click', function () {
-        var id = item.dataset.memberId;
+    var container = document.getElementById('taskAssigneeChips');
+    if (!container) return;
+    container.querySelectorAll('.member-multi-item').forEach(function (item) {
+      item.addEventListener('click', function (e) {
+        e.preventDefault();
+        var input = item.querySelector('input');
+        if (!input) return;
+        var id = input.value;
         var idx = taskModalAssigneeIds.indexOf(id);
         if (idx === -1) taskModalAssigneeIds.push(id); else taskModalAssigneeIds.splice(idx, 1);
-        item.classList.toggle('selected', idx === -1);
-        var names = Array.from(panel.querySelectorAll('.assignee-dd-item.selected')).map(function (el) { return el.dataset.memberName; });
-        if (names.length) {
-          triggerText.textContent = names.join(', ');
-          triggerText.classList.remove('placeholder');
-        } else {
-          triggerText.textContent = 'Chọn người...';
-          triggerText.classList.add('placeholder');
-        }
+        input.checked = idx === -1;
+        item.classList.toggle('active', idx === -1);
       });
-    });
-
-    trigger.addEventListener('click', function (e) {
-      e.stopPropagation();
-      var isOpen = dd.classList.toggle('open');
-      panel.hidden = !isOpen;
-    });
-    document.addEventListener('click', function (e) {
-      if (!dd.contains(e.target)) {
-        dd.classList.remove('open');
-        panel.hidden = true;
-      }
     });
   }
 

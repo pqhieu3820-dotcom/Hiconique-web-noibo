@@ -361,14 +361,18 @@ const VALUE_MAP = {
   ]
 };
 
-// Đơn giá 34 tỉnh — đọc trực tiếp từ 46 sheet "Bản sao của <tên gốc>" migrate
-// sang ngày 2026-09-09 (xem GHI_CHU_DU_AN.md). Đây là dữ liệu tham khảo nhiều
+// Đơn giá 34 tỉnh — đọc trực tiếp từ 46 sheet "DGXD-<tên gốc>" migrate sang
+// ngày 2026-09-09 (xem GHI_CHU_DU_AN.md). Đây là dữ liệu tham khảo nhiều
 // bảng xếp chồng trong 1 sheet (nhân công, phần thô/hoàn thiện, vật tư/thiết
 // bị theo tỉnh...), không phải 1 bảng đơn giản như các SHEETS khác nên KHÔNG
 // đi qua FIELD_MAP — trả thẳng lưới giá trị thô (displayValues, giữ nguyên
 // định dạng số như trên Sheet), pricing.html tự dựng bảng hiển thị theo cấu
 // trúc "dòng chỉ có cột A = tiêu đề mục, dòng ngay sau = header cột".
-var PROVINCE_SHEET_PREFIX = 'B' + String.fromCharCode(7843) + 'n sao c' + String.fromCharCode(7911) + 'a ';
+// 2026-09-16: đổi từ "Bản sao của " sang "DGXD-" — theo đúng đợt đổi tên
+// hàng loạt 46 sheet tham khảo này (renameCopySheets(), xem GHI_CHU_DU_AN.md
+// §6.5). QUÊN sửa hằng số này khi đổi tên là NGUYÊN NHÂN cả tab "Đơn giá
+// theo tỉnh"/"Hướng dẫn"/"Nguồn" ở pricing.html bị gãy ngay sau lần rename đó.
+var PROVINCE_SHEET_PREFIX = 'DGXD-';
 var HUB_SHEET_NAME = PROVINCE_SHEET_PREFIX + 'M' + String.fromCharCode(7909) + 'c l' + String.fromCharCode(7909) + 'c';
 
 // Danh sách 34 tỉnh lấy từ đúng cột "Tỉnh/thành" của sheet "Mục lục" (hàng 10
