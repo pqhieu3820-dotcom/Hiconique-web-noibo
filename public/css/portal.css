@@ -1601,6 +1601,9 @@ main { flex: 1; }
   display: flex;
   flex-direction: column;
   gap: 10px;
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 .task-list-mini li {
   display: grid;

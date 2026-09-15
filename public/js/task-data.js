@@ -304,7 +304,8 @@ var TaskManager = (function() {
       documents: 'getDocuments', payslips: 'getPayslips',
       commissions: 'getCommissions', commissionRates: 'getCommissionRates',
       priceCatalog: 'getPriceCatalog', financeEntries: 'getFinanceEntries',
-      receivables: 'getReceivables', bsSnapshots: 'getBsSnapshots', orders: 'getOrders'
+      receivables: 'getReceivables', bsSnapshots: 'getBsSnapshots', orders: 'getOrders',
+      attendanceLocations: 'getAttendanceLocations'
     };
     var action = apiReadActions[type];
     if (!action) { callback([]); return; }
@@ -1174,6 +1175,15 @@ var TaskManager = (function() {
     return newEntry;
   }
 
+  // Địa điểm GPS + IP hợp lệ để chấm công — sống hẳn trên sheet "Địa điểm
+  // chấm công" (không cache vào localStorage như các sheet khác, vì đây là
+  // dữ liệu cấu hình đọc trực tiếp mỗi lần check-in/out, cần luôn mới nhất;
+  // getFromGSheets() đã tự cache 30s ở tầng dưới nên không gọi API dồn dập).
+  function getAttendanceLocations(callback) {
+    if (!isUsingGSheets()) { callback([]); return; }
+    getFromGSheets('attendanceLocations', callback);
+  }
+
   function updateTimesheetEntry(id, updates) {
     var updated = update(STORAGE_KEYS.timesheet, id, updates);
     if (updated) syncToGSheets('timesheet', 'update', updates, id);
@@ -1613,6 +1623,7 @@ var TaskManager = (function() {
     formatShortDate: formatShortDate,
     addTimesheetEntry: addTimesheetEntry,
     updateTimesheetEntry: updateTimesheetEntry,
+    getAttendanceLocations: getAttendanceLocations,
 
     // Notifications
     getNotifications: getNotifications,

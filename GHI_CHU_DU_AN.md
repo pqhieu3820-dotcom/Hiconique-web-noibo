@@ -9,10 +9,14 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 - **Đổi 1 field/quy tắc hiển thị dùng chung ở nhiều trang → phải tự rà + sửa HẾT mọi trang dùng field đó, không chỉ sửa đúng trang người dùng đang nói tới.** (Thêm 2026-09-11 sau khi `shortCode` (mã dự án viết tắt làm avatar) chỉ được cập nhật ở `projects.js` mà quên mất `task-manager-app.js` cũng render y hệt project card đó — người dùng phải tự phát hiện bug này.) Cách làm: `grep` toàn bộ `public/js/*.js`, `public/pages/*.html`, `public/css/*.css` tìm pattern CŨ trước khi coi là xong, không chỉ sửa 1 chỗ rồi dừng.
 - **Avatar (người HOẶC dự án) toàn hệ thống LUÔN là hình VUÔNG BO GÓC, KHÔNG BAO GIỜ hình tròn.** (Chốt cứng 2026-09-11 theo yêu cầu người dùng, xem chi tiết mục "Trạng thái hiện tại — 2026-09-11 (g)".) Chuẩn được ép toàn cục qua 1 block CSS trong `portal.css` (nạp ở mọi trang) — thêm avatar mới ở đâu cũng phải dùng lại 1 trong các class avatar đã có sẵn (không tự bịa class mới với `border-radius: 50%`), nếu thật sự cần class mới thì thêm luôn vào danh sách override trong `portal.css`.
 
-## ⏳ VIỆC CÒN TỒN ĐỌNG (đọc mục này đầu tiên — cập nhật 2026-09-12 cuối phiên)
+## ⏳ VIỆC CÒN TỒN ĐỌNG (đọc mục này đầu tiên — cập nhật 2026-09-15 giữa phiên)
 
-Không có việc gì đang dở dang — mọi thay đổi trong phiên này đều đã commit (chờ lệnh push cuối phiên).
+**ĐANG DỞ DANG — Chrome extension (Claude in Chrome) mất kết nối giữa phiên 2026-09-15:**
+- Đã viết xong code cho sheet "Địa điểm chấm công" (GPS/IP chấm công không giới hạn số lượng) — xem mục "Trạng thái hiện tại — 2026-09-15 (a)" ngay dưới. **CHƯA deploy Apps Script** (bản mới nhất trên live vẫn là phiên bản 50, chưa có action `getAttendanceLocations`/`addAttendanceLocation`/...) và **CHƯA chạy `seedAttendanceLocations()`** để seed sheet + 3 dòng dữ liệu ban đầu (1 GPS văn phòng + 2 IP đang hard-code cũ). Việc chấm công vẫn dùng đường code CŨ cho tới khi deploy xong vì `checkGeoStatus()`/`checkIpStatus()` trong timesheet.html ĐÃ đổi sang gọi `TaskManager.getAttendanceLocations()` — nếu sheet chưa tồn tại/chưa deploy, hàm trả về mảng rỗng → GPS/IP tự động coi là "Chưa cấu hình" (skip, không chặn chấm công, chỉ không tính vào 3 điều kiện).
+- Đã sửa xong bug "Tasks của tôi" ở Dashboard hiện tràn/hiện tới 91 việc của cả công ty thay vì chỉ của người đăng nhập — xem mục "Trạng thái hiện tại — 2026-09-15 (b)" ngay dưới. Cần mở lại `/` (Dashboard) và bấm panel Tasks để xác nhận bằng mắt sau khi Chrome nối lại.
+- **Việc cần làm khi Chrome nối lại**: (1) paste/save/redeploy `gsheets-api-v2.js` phiên bản mới → (2) chạy TAY `seedAttendanceLocations()` 1 lần từ Apps Script editor → (3) mở trang Chấm công, xác nhận panel GPS/Wifi vẫn hoạt động đúng (đang ở gần văn phòng / đúng mạng) → (4) mở Dashboard, bấm "Tasks của tôi", xác nhận chỉ hiện việc của tài khoản đang đăng nhập, không tràn trang → (5) commit các bước xác nhận rồi hỏi push.
 
+- Sheet "Địa điểm chấm công" (GPS + IP không giới hạn số lượng) + fix "Tasks của tôi" tràn/hiện việc cả công ty — xem mục "Trạng thái hiện tại — 2026-09-15 (a)/(b)" ngay dưới. **CHƯA deploy/verify — Chrome extension mất kết nối giữa phiên, xem mục VIỆC CÒN TỒN ĐỌNG ở trên.**
 - Tự động check-out khi quên chấm công (qua 0h) + thông báo CEO/Manager và chính nhân viên đó; nút "Xuất báo cáo chấm công" (Excel nhiều sheet) cho CEO ở trang Chấm công — xem mục "Trạng thái hiện tại — 2026-09-12 (a)" ngay dưới.
 - Cột Kanban trang Dự án co giãn lấp đầy màn hình rộng (trước đó cố định 280px, màn 27" thừa nhiều khoảng trắng bên phải) — xem mục "Trạng thái hiện tại — 2026-09-11 (h)" ngay dưới.
 - Đồng bộ hình dạng avatar toàn hệ thống (vuông bo góc, xoá hết hình tròn) — xem mục "Trạng thái hiện tại — 2026-09-11 (g)" ngay dưới.
@@ -22,6 +26,26 @@ Không có việc gì đang dở dang — mọi thay đổi trong phiên này đ
 - Cột "Tên dự án" tra cứu (VLOOKUP) — đã xong đủ 12/12 sheet (xem mục "Trạng thái hiện tại — 2026-09-11 (a)" ngay dưới).
 - Chấm công Check In/Check Out — nâng lên bắt buộc đủ 3/3 điều kiện (GPS/Wifi/Thiết bị), thiếu bất kỳ điều kiện nào đều chặn hẳn + hiện bảng thông báo (xem mục "Trạng thái hiện tại — 2026-09-11 (b)" ngay dưới).
 - FIELD_MAP/VALUE_MAP 3 cột phụ Thành viên (lastActiveAt/theme/deviceIds) — người dùng tự đổi header sang tiếng Việt trên Sheet, đã map lại + deploy Apps Script phiên bản 48.
+
+## Trạng thái hiện tại (cập nhật lần cuối: 2026-09-15 (b) — fix "Tasks của tôi" ở Dashboard hiện tràn/hiện việc cả công ty, đọc kỹ mục này trước)
+
+**Bug người dùng báo qua ảnh chụp Dashboard**: panel "Tasks của tôi" (mở từ Dashboard `/`, `index.html` → `#panel-tasks`) hiện tới 91 việc/67 quá hạn — thực chất là TOÀN BỘ task của cả công ty, không lọc theo người đang đăng nhập, khiến danh sách dài tràn cả trang.
+
+- **Nguyên nhân**: `renderTasksPanel()` trong `public/js/portal.js` có logic fallback sai: `var displayTasks = mine.length > 0 ? mine : tasks;` — hễ lọc theo user hiện tại ra 0 kết quả (rất dễ xảy ra: mỗi CEO/admin thường chỉ được giao rất ít task trực tiếp) thì lại HIỆN TOÀN BỘ task công ty thay vì danh sách rỗng. Không phải bug parse `assigneeIds` (đã kiểm tra qua API thật — server trả về đúng mảng JSON `["id"]`, không phải chuỗi).
+- **Đã sửa**: bỏ hẳn fallback sai đó — giờ chỉ hiện đúng task có `assigneeIds` chứa id người đang đăng nhập, rỗng thì hiện rỗng (không hiện của người khác). Thêm hàm `getPanelTaskAssigneeIds()` chuẩn hoá `assigneeIds` (mảng thật/chuỗi JSON/chuỗi đơn) trước khi so khớp, phòng trường hợp dữ liệu cũ/hỏng.
+- **Đã thêm phòng ngừa tràn lần sau**: `.task-list-mini` (CSS `portal.css`) thêm `max-height: 520px; overflow-y: auto;` — dù sau này 1 người có thật nhiều task cũng chỉ cuộn trong khung, không tràn hết trang.
+- **CHƯA xác nhận trên trình duyệt** — Chrome extension mất kết nối giữa phiên, xem mục VIỆC CÒN TỒN ĐỌNG ở đầu file. Cần mở `/`, bấm panel Tasks, xác nhận số liệu đúng bằng số task thật của tài khoản đang đăng nhập.
+
+## Trạng thái hiện tại (cập nhật lần cuối: 2026-09-15 (a) — sheet "Địa điểm chấm công" (GPS/IP không giới hạn số lượng), đọc kỹ mục này trước)
+
+**Yêu cầu người dùng**: trước đó GPS văn phòng (1 điểm) và IP wifi hợp lệ (mảng IP) đều hard-code cứng trong `timesheet.html` — sửa/thêm phải đụng code + redeploy. Người dùng muốn 1 sheet cạnh sheet "Chấm công" để tự thêm/sửa/xoá bao nhiêu địa điểm GPS hoặc IP tuỳ ý, không cần code.
+
+- **Sheet mới `SHEETS.attendanceLocations = 'Địa điểm chấm công'`** (`gsheets-api-v2.js`) — cột: Mã, Tên địa điểm/mạng, Vĩ độ (lat), Kinh độ (lng), Bán kính (m), Địa chỉ IP, Đang dùng (true/false), Ghi chú, Ngày tạo. Mỗi DÒNG là 1 điều kiện độc lập — dòng có `lat`+`lng` là 1 điểm GPS (bán kính riêng từng dòng, mặc định 50m nếu bỏ trống), dòng có `ip` là 1 địa chỉ IP hợp lệ; 1 dòng có thể set cả 2 nếu muốn. Đặt `Đang dùng` = FALSE để tắt tạm 1 dòng mà không phải xoá.
+- **API mới**: `getAttendanceLocations`/`addAttendanceLocation`/`updateAttendanceLocation`/`deleteAttendanceLocation` trong `handleRequest()` — theo đúng pattern CRUD chung (`getAllData`/`addData`/`updateData`/`deleteData`) như mọi sheet khác, tự tạo sheet + header nếu chưa có khi gọi `addData` lần đầu.
+- **`seedAttendanceLocations()`** (hàm 1 lần, chạy TAY từ Apps Script editor) — tạo sheet ngay CẠNH sheet "Chấm công" (dùng `tsSheet.getIndex()`) nếu chưa có, seed sẵn 3 dòng = đúng dữ liệu hard-code cũ (1 GPS văn phòng 167 Trường Chinh + 2 IP `14.171.113.174`/`172.225.56.21`) để không mất cấu hình đang chạy. An toàn chạy lại nhiều lần — chỉ seed khi sheet đang trống.
+- **Client**: `TaskManager.getAttendanceLocations(callback)` (`task-data.js`) — gọi thẳng qua `getFromGSheets` (cache 30s ở tầng dưới), KHÔNG cache vào localStorage như các sheet khác vì cần luôn mới khi check-in/out.
+- **`timesheet.html`**: `checkGeoStatus()`/`checkIpStatus()` đổi từ so khớp 1 GPS/mảng IP cứng sang tải danh sách từ `TaskManager.getAttendanceLocations()` (cache lại trong biến module, tải 1 lần/phiên trang), lọc dòng `active !== false`. GPS: so khớp với TỪNG điểm đang bật, lấy điểm GẦN NHẤT, đạt nếu nằm trong bán kính CỦA ĐIỂM ĐÓ (không phải cộng dồn) — thông báo tên địa điểm gần nhất thay vì luôn nói "văn phòng". IP: đạt nếu khớp BẤT KỲ IP nào trong danh sách đang bật. Sheet rỗng/tải lỗi → coi như "Chưa cấu hình" (skip, không chặn chấm công, chỉ không tính vào 3 điều kiện) thay vì chặn cứng toàn bộ nhân viên.
+- **CHƯA deploy Apps Script, CHƯA chạy `seedAttendanceLocations()`, CHƯA xác nhận trên trình duyệt** — Chrome extension mất kết nối giữa phiên làm việc này, xem mục VIỆC CÒN TỒN ĐỌNG ở đầu file để biết đúng 5 bước cần làm tiếp khi Chrome nối lại.
 
 ## Trạng thái hiện tại (cập nhật lần cuối: 2026-09-12 (a) — tự động check-out quên chấm công + xuất báo cáo Excel chấm công, đọc kỹ mục này trước)
 

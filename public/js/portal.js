@@ -567,6 +567,19 @@
     return 'Thấp';
   }
 
+  // assigneeIds đến từ Google Sheets có thể là mảng JS hoặc chuỗi JSON
+  // (tuỳ đường load) — phải chuẩn hoá trước khi so sánh, không chỉ check
+  // Array.isArray(), nếu không sẽ luôn khớp 0 kết quả và lọt vào fallback sai.
+  function getPanelTaskAssigneeIds(task) {
+    if (!task || !task.assigneeIds) return [];
+    if (Array.isArray(task.assigneeIds)) return task.assigneeIds;
+    if (typeof task.assigneeIds === 'string') {
+      try { var arr = JSON.parse(task.assigneeIds); if (Array.isArray(arr)) return arr; } catch (e) {}
+      if (task.assigneeIds.trim()) return [task.assigneeIds.trim()];
+    }
+    return [];
+  }
+
   function renderTasksPanel() {
     var list = document.getElementById('panelTasksList');
     if (!list) return;
@@ -574,9 +587,10 @@
     var tasks = (typeof TaskManager !== 'undefined' && TaskManager.getTasks) ? TaskManager.getTasks() : [];
     var user = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
 
-    // Show user's tasks, fall back to all tasks if none assigned
-    var mine = user ? tasks.filter(function (t) { return Array.isArray(t.assigneeIds) && t.assigneeIds.indexOf(user.id) !== -1; }) : tasks;
-    var displayTasks = mine.length > 0 ? mine : tasks;
+    // Chỉ hiển thị việc của CHÍNH người đang đăng nhập — không fallback
+    // sang toàn bộ task công ty khi rỗng (trước đó bị lệch do bug parse
+    // assigneeIds ở trên, khiến "Tasks của tôi" hiện tới 91 việc của cả team).
+    var displayTasks = user ? tasks.filter(function (t) { return getPanelTaskAssigneeIds(t).indexOf(user.id) !== -1; }) : [];
 
     var inProgress = displayTasks.filter(function (t) { return t.status === 'in-progress'; }).length;
     var overdue = displayTasks.filter(isOverdue).length;

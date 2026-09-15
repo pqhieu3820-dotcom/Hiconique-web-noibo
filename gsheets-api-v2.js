@@ -9,6 +9,10 @@ const SHEETS = {
   members: 'Thành viên',
   proposals: 'Đề xuất',
   timesheet: 'Chấm công',
+  // Cạnh sheet Chấm công (2026-09-15) — danh sách địa điểm GPS + IP mạng
+  // hợp lệ để chấm công, thêm/sửa/xoá thoải mái trên Sheet, không cần đụng
+  // code hay redeploy. Xem checkGeoStatus()/checkIpStatus() trong timesheet.html.
+  attendanceLocations: 'Địa điểm chấm công',
   notifications: 'Thông báo',
   notices: 'Bảng tin',
   documents: 'Tài liệu',
@@ -110,6 +114,11 @@ const FIELD_MAP = {
     ['Trạng thái', 'status'], ['Ghi chú', 'note'], ['Vĩ độ checkin', 'checkinLat'], ['Kinh độ checkin', 'checkinLng'],
     ['Khoảng cách checkin', 'checkinDistance'], ['IP Checkin', 'checkinIp'], ['Trạng thái đạt vị trí', 'geoPass'],
     ['Trạng thái đạt IP', 'ipPass'], ['Số điều kiện đạt', 'verifyPassCount'], ['Trạng thái xác thực', 'verifyStatus']
+  ],
+  attendanceLocations: [
+    ['Mã', 'id'], ['Tên địa điểm / mạng', 'name'], ['Vĩ độ (lat)', 'lat'], ['Kinh độ (lng)', 'lng'],
+    ['Bán kính (m)', 'radiusMeters'], ['Địa chỉ IP', 'ip'], ['Đang dùng', 'active'], ['Ghi chú', 'note'],
+    ['Ngày tạo', 'createdAt']
   ],
   notifications: [
     ['Mã TB', 'id'], ['Tiêu đề', 'title'], ['Nội dung', 'message'], ['Loại', 'type'], ['Phạm vi', 'scope'],
@@ -477,6 +486,14 @@ function handleRequest(e) {
       result = addData(ss, SHEETS.timesheet, JSON.parse(params.data));
     } else if (action === 'updateTimesheet') {
       result = updateData(ss, SHEETS.timesheet, params.id, JSON.parse(params.data));
+    } else if (action === 'getAttendanceLocations') {
+      result = getAllData(ss, SHEETS.attendanceLocations);
+    } else if (action === 'addAttendanceLocation') {
+      result = addData(ss, SHEETS.attendanceLocations, JSON.parse(params.data));
+    } else if (action === 'updateAttendanceLocation') {
+      result = updateData(ss, SHEETS.attendanceLocations, params.id, JSON.parse(params.data));
+    } else if (action === 'deleteAttendanceLocation') {
+      result = deleteData(ss, SHEETS.attendanceLocations, params.id);
     } else if (action === 'getNotifications') {
       result = getAllData(ss, SHEETS.notifications);
     } else if (action === 'addNotification') {
@@ -1357,6 +1374,32 @@ function setupAutoCheckoutTrigger() {
     .nearMinute(5)
     .create();
   Logger.log('Đã cài trigger tự động đóng ca — chạy hàng ngày lúc ~0h05.');
+}
+
+// Tạo sheet "Địa điểm chấm công" ngay CẠNH sheet "Chấm công" (nếu chưa có) và
+// seed sẵn 1 điểm GPS + 2 IP đang hard-code trong timesheet.html (GEO_RESTRICTION/
+// IP_RESTRICTION), để chuyển hẳn qua quản lý bằng Sheet — thêm/sửa/xoá GPS hoặc
+// IP mới chỉ cần thêm dòng trên Sheet, không cần sửa code/redeploy nữa.
+// Chạy TAY hàm này ĐÚNG 1 LẦN từ trình chỉnh sửa Apps Script. An toàn chạy lại
+// nhiều lần: chỉ seed khi sheet đang trống, không tạo trùng dữ liệu.
+function seedAttendanceLocations() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const tsSheet = findSheet(ss, SHEETS.timesheet);
+  let sheet = findSheet(ss, SHEETS.attendanceLocations);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEETS.attendanceLocations, tsSheet ? tsSheet.getIndex() : ss.getSheets().length);
+  }
+  if (sheet.getLastRow() >= 2) {
+    Logger.log('Sheet "' + SHEETS.attendanceLocations + '" đã có dữ liệu — không seed lại.');
+    return;
+  }
+  const seedRows = [
+    { name: 'Văn phòng — 167 Trường Chinh, Lê Thanh Nghị, Hải Phòng', lat: 20.926738, lng: 106.301584, radiusMeters: 50, ip: '', active: true, note: 'GPS văn phòng chính' },
+    { name: 'Wifi văn phòng (IP 1)', lat: '', lng: '', radiusMeters: '', ip: '14.171.113.174', active: true, note: '' },
+    { name: 'Wifi văn phòng (IP 2)', lat: '', lng: '', radiusMeters: '', ip: '172.225.56.21', active: true, note: 'Thêm 2026-09-11 theo report thực tế' }
+  ];
+  seedRows.forEach(function (row) { addData(ss, SHEETS.attendanceLocations, row); });
+  Logger.log('Đã seed ' + seedRows.length + ' dòng vào sheet "' + SHEETS.attendanceLocations + '".');
 }
 
 function replaceIdInListColumn(ss, sheetName, headerNameEn, oldId, newId) {

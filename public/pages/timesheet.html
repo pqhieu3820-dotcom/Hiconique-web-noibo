@@ -719,22 +719,34 @@
     var TS_AUTO_CHECKOUT_TAG = '[TỰ ĐỘNG ĐÓNG CA — QUÊN CHECK-OUT]';
 
     // ====== CẤU HÌNH GIỚI HẠN CHECK-IN (IP văn phòng + vị trí GPS) ======
-    // Bảo mật 2 lớp: chỉ cần 1 trong 2 điều kiện thoả (GPS gần văn phòng HOẶC đang
-    // dùng mạng Wifi công ty) là được chấm công; nếu chỉ có 1/2 thoả sẽ hỏi xác nhận.
-    var GEO_RESTRICTION = {
-      enabled: true,
-      lat: 20.926738,      // 167 Trường Chinh, Lê Thanh Nghị, Hải Phòng
-      lng: 106.301584,
-      radiusMeters: 50     // bán kính cho phép chấm công (mét)
-    };
-    var IP_RESTRICTION = {
-      enabled: true,
-      // IP công khai của mạng Wifi văn phòng — ISP có thể đổi IP này theo thời
-      // gian (IP động), nên để MẢNG nhiều IP thay vì 1 IP cố định, thêm dần khi
-      // phát hiện IP mới thay vì thay thế IP cũ (đề phòng IP cũ vẫn còn dùng ở
-      // đường truyền khác). 172.225.56.21 thêm 2026-09-11 theo report thực tế.
-      allowedIPs: ['14.171.113.174', '172.225.56.21']
-    };
+    // Bảo mật 2 lớp: chỉ cần 1 trong 2 điều kiện thoả (GPS gần MỘT trong các
+    // địa điểm HOẶC đang dùng MỘT trong các IP Wifi công ty) là được chấm công.
+    // Danh sách địa điểm/IP giờ sống trên sheet "Địa điểm chấm công" (KHÔNG còn
+    // hard-code trong file này) — CEO/admin thêm/sửa/xoá GPS hoặc IP trực tiếp
+    // trên Sheet, muốn thêm bao nhiêu điểm cũng được, không cần sửa code/deploy.
+    // Xem TaskManager.getAttendanceLocations() (task-data.js) + FIELD_MAP.attendanceLocations
+    // (gsheets-api-v2.js). GEO_RESTRICTION.enabled/IP_RESTRICTION.enabled vẫn là
+    // công tắc bật/tắt CẢ NHÓM (không phải để cấu hình từng điểm — việc đó nằm ở Sheet).
+    var GEO_RESTRICTION = { enabled: true, radiusMetersDefault: 50 };
+    var IP_RESTRICTION = { enabled: true };
+
+    var attendanceLocationsCache = null; // mảng thô từ Sheet, load 1 lần/phiên trang rồi tái dùng
+    function loadAttendanceLocations() {
+      if (attendanceLocationsCache) return Promise.resolve(attendanceLocationsCache);
+      return new Promise(function (resolve) {
+        if (typeof TaskManager === 'undefined' || !TaskManager.getAttendanceLocations) { resolve([]); return; }
+        TaskManager.getAttendanceLocations(function (rows) {
+          attendanceLocationsCache = Array.isArray(rows) ? rows : [];
+          resolve(attendanceLocationsCache);
+        });
+      });
+    }
+    function activeGeoLocations(rows) {
+      return rows.filter(function (r) { return r.active !== false && r.lat !== '' && r.lat != null && r.lng !== '' && r.lng != null; });
+    }
+    function activeIps(rows) {
+      return rows.filter(function (r) { return r.active !== false && r.ip; }).map(function (r) { return String(r.ip).trim(); });
+    }
 
     function haversineMeters(lat1, lng1, lat2, lng2) {
       var R = 6371000;
@@ -763,15 +775,19 @@
     // VPN hoặc app giả lập GPS — đây là lớp bảo vệ phụ, không phải tuyệt đối.
     function checkIpStatus() {
       if (!IP_RESTRICTION.enabled) return Promise.resolve({ ok: false, skip: true, message: 'Đang tắt', ip: '' });
-      return fetch('https://api.ipify.org?format=json')
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-          var ok = IP_RESTRICTION.allowedIPs.indexOf(data.ip) !== -1;
-          return { ok: ok, skip: false, message: ok ? 'Đúng mạng Wifi công ty' : 'Không phải mạng Wifi công ty', ip: data.ip };
-        })
-        .catch(function () {
-          return { ok: false, skip: false, message: 'Không kiểm tra được kết nối mạng', ip: '' };
-        });
+      return loadAttendanceLocations().then(function (rows) {
+        var validIPs = activeIps(rows);
+        if (validIPs.length === 0) return { ok: false, skip: true, message: 'Chưa cấu hình IP', ip: '' };
+        return fetch('https://api.ipify.org?format=json')
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            var ok = validIPs.indexOf(data.ip) !== -1;
+            return { ok: ok, skip: false, message: ok ? 'Đúng mạng Wifi công ty' : 'Không phải mạng Wifi công ty', ip: data.ip };
+          })
+          .catch(function () {
+            return { ok: false, skip: false, message: 'Không kiểm tra được kết nối mạng', ip: '' };
+          });
+      });
     }
 
     function checkGeoStatus() {
@@ -779,22 +795,34 @@
       if (!navigator.geolocation) {
         return Promise.resolve({ ok: false, skip: false, message: 'Thiết bị không hỗ trợ định vị GPS', lat: '', lng: '', distance: '' });
       }
-      return new Promise(function (resolve) {
-        navigator.geolocation.getCurrentPosition(function (pos) {
-          var lat = pos.coords.latitude, lng = pos.coords.longitude;
-          var dist = Math.round(haversineMeters(lat, lng, GEO_RESTRICTION.lat, GEO_RESTRICTION.lng));
-          if (dist <= GEO_RESTRICTION.radiusMeters) {
-            resolve({ ok: true, skip: false, message: 'Đang ở gần văn phòng', lat: lat, lng: lng, distance: dist });
-          } else {
-            resolve({ ok: false, skip: false, message: 'Cách văn phòng ' + dist + 'm', lat: lat, lng: lng, distance: dist });
-          }
-        }, function (err) {
-          var msg = 'Không lấy được vị trí';
-          if (err && err.code === 1) msg = 'Trang web chưa được cấp quyền vị trí';
-          else if (err && err.code === 2) msg = 'Không xác định được vị trí (kiểm tra Location/Vị trí đã bật trong Windows chưa)';
-          else if (err && err.code === 3) msg = 'Định vị quá thời gian chờ, thử lại';
-          resolve({ ok: false, skip: false, message: msg, lat: '', lng: '', distance: '' });
-        }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+      return loadAttendanceLocations().then(function (rows) {
+        var geoLocations = activeGeoLocations(rows);
+        if (geoLocations.length === 0) return { ok: false, skip: true, message: 'Chưa cấu hình địa điểm', lat: '', lng: '', distance: '' };
+        return new Promise(function (resolve) {
+          navigator.geolocation.getCurrentPosition(function (pos) {
+            var lat = pos.coords.latitude, lng = pos.coords.longitude;
+            // So khớp với TỪNG địa điểm đang bật, lấy điểm gần nhất — chỉ cần
+            // nằm trong bán kính của MỘT điểm bất kỳ là đạt (nhiều công trình/
+            // văn phòng cùng lúc), không cộng dồn khoảng cách các điểm khác.
+            var best = null;
+            geoLocations.forEach(function (loc) {
+              var radius = Number(loc.radiusMeters) || GEO_RESTRICTION.radiusMetersDefault;
+              var dist = Math.round(haversineMeters(lat, lng, Number(loc.lat), Number(loc.lng)));
+              if (!best || dist < best.dist) best = { dist: dist, radius: radius, name: loc.name || '' };
+            });
+            if (best.dist <= best.radius) {
+              resolve({ ok: true, skip: false, message: 'Đang ở gần ' + (best.name || 'địa điểm cho phép'), lat: lat, lng: lng, distance: best.dist });
+            } else {
+              resolve({ ok: false, skip: false, message: 'Cách ' + (best.name || 'địa điểm gần nhất') + ' ' + best.dist + 'm', lat: lat, lng: lng, distance: best.dist });
+            }
+          }, function (err) {
+            var msg = 'Không lấy được vị trí';
+            if (err && err.code === 1) msg = 'Trang web chưa được cấp quyền vị trí';
+            else if (err && err.code === 2) msg = 'Không xác định được vị trí (kiểm tra Location/Vị trí đã bật trong Windows chưa)';
+            else if (err && err.code === 3) msg = 'Định vị quá thời gian chờ, thử lại';
+            resolve({ ok: false, skip: false, message: msg, lat: '', lng: '', distance: '' });
+          }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+        });
       });
     }
 
