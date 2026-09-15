@@ -3,45 +3,49 @@ const SPREADSHEET_ID = '1usLh4pt5F7r1XY-SLbWPfajYuZ5mDNGaaa4neYG84nY';
 // Tab names on the live Sheet are Vietnamese (renamed by hand). Code below
 // always reads/writes through FIELD_MAP so client JS keeps using English
 // keys (m.title, m.status...) no matter what the Sheet's header text says.
+// Tên sheet có tiền tố nhóm/trang (2026-09-15, theo yêu cầu gom cho dễ quản
+// lý màu tab) — NS- nhân sự, TLCC- tiền lương chấm công, DA- dự án, BIM-,
+// TC- tài chính, TT- truyền thông. Đổi tên tab thật SAU (renameRealSheets())
+// phải khớp CHÍNH XÁC các giá trị dưới đây, và phải deploy bản mới ngay sau
+// khi đổi tên (xem GHI_CHU_DU_AN.md) — lệch nhau 1 bước là findSheet() trả
+// về null, các hàm write sẽ tạo nhầm sheet rỗng trùng tên cũ.
 const SHEETS = {
-  projects: 'Dự án',
-  tasks: 'Công việc',
-  members: 'Thành viên',
-  proposals: 'Đề xuất',
-  timesheet: 'Chấm công',
+  projects: 'DA-Dự án',
+  tasks: 'DA-Công việc',
+  members: 'NS-Thành viên',
+  proposals: 'DA-Đề xuất',
+  timesheet: 'TLCC-Chấm công',
   // Cạnh sheet Chấm công (2026-09-15) — danh sách địa điểm GPS + IP mạng
   // hợp lệ để chấm công, thêm/sửa/xoá thoải mái trên Sheet, không cần đụng
   // code hay redeploy. Xem checkGeoStatus()/checkIpStatus() trong timesheet.html.
-  attendanceLocations: 'Địa điểm chấm công',
-  notifications: 'Thông báo',
-  notices: 'Bảng tin',
-  documents: 'Tài liệu',
-  payslips: 'Phiếu lương',
-  commissions: 'Hoa hồng dự án',
-  commissionRates: 'Mức hoa hồng',
-  priceCatalog: 'Bảng giá dịch vụ',
-  financeEntries: 'Tài chính công ty',
-  receivables: 'Công nợ khách hàng',
-  bsSnapshots: 'Chỉ số cân đối kế toán',
-  orders: 'Đơn hàng',
+  attendanceLocations: 'TLCC-Địa điểm chấm công',
+  notifications: 'TT-Thông báo',
+  notices: 'TT-Bảng tin',
+  documents: 'TT-Tài liệu',
+  payslips: 'TLCC-Phiếu lương',
+  commissions: 'TLCC-Hoa hồng dự án',
+  commissionRates: 'TLCC-Mức hoa hồng',
+  priceCatalog: 'TC-Bảng giá dịch vụ',
+  financeEntries: 'TC-Tài chính công ty',
+  receivables: 'TC-Công nợ khách hàng',
+  bsSnapshots: 'TC-Chỉ số cân đối kế toán',
+  orders: 'TC-Đơn hàng',
   // 6 sheet mới (2026-09-09) — công cụ theo dự án đi kèm database đơn giá 34
-  // tỉnh, xem GHI_CHU_DU_AN.md. Tên KHÔNG có tiền tố "Bản sao của " nên không
-  // đụng tới 46 sheet tham khảo read-only đã copy trước đó (VD "Bản sao của
-  // Dòng tiền" khác hẳn "Dòng tiền" ở đây).
-  contractorComparisons: 'So sánh nhà thầu',
-  cashFlowPlans: 'Dòng tiền',
-  changeOrders: 'Phát sinh',
-  scheduleItems: 'Tiến độ',
-  acceptanceChecks: 'Nghiệm thu',
-  projectDocuments: 'Hồ sơ công trình',
+  // tỉnh, xem GHI_CHU_DU_AN.md. Nhóm DA- nên không đụng 46 sheet tham khảo
+  // (đã đổi tiền tố "DGXD-" — VD "DGXD-Dòng tiền" khác hẳn "DA-Dòng tiền").
+  contractorComparisons: 'DA-So sánh nhà thầu',
+  cashFlowPlans: 'DA-Dòng tiền',
+  changeOrders: 'DA-Phát sinh',
+  scheduleItems: 'DA-Tiến độ',
+  acceptanceChecks: 'DA-Nghiệm thu',
+  projectDocuments: 'DA-Hồ sơ công trình',
   // HICON-BIM (2026-09-09) — danh mục Sản phẩm/Vật liệu/Nhà cung cấp dùng
-  // chung toàn tổ chức, và Issue/BOQ theo dự án. Tên sheet có tiền tố "BIM"
-  // để không đụng "Sản phẩm"/"Vật liệu" nếu sau này có sheet khác cùng tên.
-  bimProducts: 'Sản phẩm BIM',
-  bimMaterials: 'Vật liệu BIM',
-  bimSuppliers: 'Nhà cung cấp BIM',
-  bimIssues: 'Issue BIM',
-  bimBoqItems: 'BOQ BIM'
+  // chung toàn tổ chức, và Issue/BOQ theo dự án.
+  bimProducts: 'BIM-Sản phẩm',
+  bimMaterials: 'BIM-Vật liệu',
+  bimSuppliers: 'BIM-Nhà cung cấp',
+  bimIssues: 'BIM-Issue',
+  bimBoqItems: 'BIM-BOQ'
 };
 
 // [Vietnamese header on the Sheet, internal English key used by client JS].
@@ -290,11 +294,12 @@ const VALUE_MAP = {
     ['Ngưng công tác', 'inactive']
   ],
   // roleLevel gates permissions everywhere in the client (isAdmin(), PERMISSIONS
-  // matrix...) via the literal string 'admin' — only the Sheet's display value
-  // changed to "CEO", the internal key must stay 'admin' or the CEO silently
-  // loses every admin-only feature.
+  // matrix...) via the literal string 'admin'/'manager'/'member' — CHỈ nhãn
+  // hiển thị trên Sheet đổi (2026-09-15 thêm 2 dòng dưới, trước đó chỉ có
+  // 'CEO'/'admin' nên manager/member vẫn hiện tiếng Anh thô), key nội bộ giữ
+  // nguyên hay đổi thành thứ khác đều KHÔNG được.
   'members.roleLevel': [
-    ['CEO', 'admin']
+    ['CEO', 'admin'], ['Quản lý', 'manager'], ['Nhân viên', 'member']
   ],
   // 2026-09-10: Việt hoá các cột enum tiếng Anh (priority/status) trên Sheet để
   // CEO chọn dropdown bằng tiếng Việt — client vẫn dùng key tiếng Anh như cũ.
@@ -342,6 +347,15 @@ const VALUE_MAP = {
   // đổi NHÃN hiển thị trên Sheet, key nội bộ phải giữ nguyên 'light'/'dark'.
   'members.theme': [
     ['Nền sáng', 'light'], ['Nền tối', 'dark']
+  ],
+  // 2026-09-15: thêm dropdown cho sheet Thông báo (trước đó cột "Loại" là
+  // text tự do payroll/attendance, không có validation) — key khớp đúng
+  // 'type' dùng trong addSystemNotificationsBatch() (task-data.js) và
+  // autoCheckoutForgottenEntries()/registerMemberDevice() (chỗ khác trong
+  // file này). 'general' là mục dự phòng cho ai tạo thông báo thủ công
+  // ngay trên Sheet, không khớp payroll/attendance.
+  'notifications.type': [
+    ['Lương thưởng', 'payroll'], ['Chấm công', 'attendance'], ['Chung', 'general']
   ]
 };
 
@@ -1550,4 +1564,316 @@ function migrateProjectMembersToCommaFormat() {
   if (changed) range.setValues(values);
   Logger.log('Đã chuyển ' + changed + ' dòng sang chuỗi phẩy');
   return 'Đã chuyển ' + changed + ' dòng sang chuỗi phẩy';
+}
+
+// Kiểm tra toàn bộ cột enum có trong VALUE_MAP (2026-09-15, theo yêu cầu
+// người dùng "kiểm tra lại toàn bộ các sheet xem đúng thông tin dropdown
+// chưa"): với mỗi field, so khớp (1) danh sách dropdown đang đặt trên Sheet
+// so với nhãn đúng trong VALUE_MAP, và (2) quét toàn bộ dữ liệu cột đó tìm
+// giá trị KHÔNG khớp nhãn nào (dữ liệu lạ/hỏng, VD giá trị tiếng Anh thô lọt
+// vào do ghi tay/import ngoài luồng addData()). Chạy TAY 1 lần từ Apps
+// Script editor, đọc kết quả trong Logger — KHÔNG tự sửa gì, chỉ báo cáo.
+function auditDropdowns() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const lines = [];
+  Object.keys(VALUE_MAP).forEach(function (key) {
+    const dot = key.indexOf('.');
+    const sheetKey = key.slice(0, dot);
+    const enKey = key.slice(dot + 1);
+    const sheetName = SHEETS[sheetKey];
+    if (!sheetName) { lines.push(key + ': SHEETS.' + sheetKey + ' không tồn tại'); return; }
+    const sheet = findSheet(ss, sheetName);
+    if (!sheet) { lines.push(key + ' [' + sheetName + ']: KHÔNG TÌM THẤY SHEET'); return; }
+    const headers = getHeaders(sheet);
+    const viHeader = enToViHeader(sheetName, enKey);
+    const colIdx = headers.indexOf(viHeader);
+    if (colIdx === -1) { lines.push(key + ' [' + sheetName + ']: KHÔNG TÌM THẤY CỘT "' + viHeader + '"'); return; }
+    const validLabels = VALUE_MAP[key].map(function (p) { return p[0]; });
+
+    let dvStatus = 'CHƯA CÓ dropdown';
+    const rule = sheet.getRange(2, colIdx + 1).getDataValidation();
+    if (rule) {
+      let listed = null;
+      try { listed = rule.getCriteriaValues()[0]; } catch (e) { /* không phải kiểu danh sách */ }
+      if (Array.isArray(listed)) {
+        const a = listed.slice().sort().join('|');
+        const b = validLabels.slice().sort().join('|');
+        dvStatus = a === b ? 'OK' : 'SAI — đang là [' + listed.join(', ') + ']';
+      } else {
+        dvStatus = 'có dropdown nhưng không đọc được danh sách (có thể theo dải ô)';
+      }
+    }
+
+    const lastRow = sheet.getLastRow();
+    const badCounts = {};
+    if (lastRow >= 2) {
+      sheet.getRange(2, colIdx + 1, lastRow - 1, 1).getValues().forEach(function (r) {
+        const v = String(r[0] == null ? '' : r[0]).trim();
+        if (v && validLabels.indexOf(v) === -1) badCounts[v] = (badCounts[v] || 0) + 1;
+      });
+    }
+    const badList = Object.keys(badCounts).map(function (v) { return v + ' x' + badCounts[v]; }).join(', ');
+
+    lines.push(key + ' [' + sheetName + '!' + viHeader + ']: dropdown ' + dvStatus +
+      (badList ? '; DỮ LIỆU LẠ: ' + badList : '; dữ liệu OK'));
+  });
+  const report = lines.join('\n');
+  Logger.log(report);
+  return report;
+}
+
+// Việt hoá dữ liệu CŨ (ghi trước khi VALUE_MAP có field này, hoặc ghi tay/
+// import ngoài luồng addData()/updateData() — 2 hàm đó mới tự dịch VI↔EN):
+// quét mỗi cột trong VALUE_MAP, cell nào đang là ĐÚNG key tiếng Anh thô
+// (p[1]) thì đổi thành nhãn tiếng Việt tương ứng (p[0]). Bỏ qua cell đã
+// đúng nhãn VI hoặc giá trị lạ không khớp key nào (VD "pending" ở
+// orders.status — xem fixOrdersPendingStatus() riêng bên dưới, giá trị đó
+// không phải 1 trong 4 trạng thái hợp lệ nên hàm này không tự đoán được).
+// Idempotent — chạy lại nhiều lần không sao, KHÔNG đụng dữ liệu đã đúng.
+function backfillValueMapLabels() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const lines = [];
+  Object.keys(VALUE_MAP).forEach(function (key) {
+    const dot = key.indexOf('.');
+    const sheetKey = key.slice(0, dot);
+    const enKey = key.slice(dot + 1);
+    const sheetName = SHEETS[sheetKey];
+    if (!sheetName) return;
+    const sheet = findSheet(ss, sheetName);
+    if (!sheet) return;
+    const headers = getHeaders(sheet);
+    const viHeader = enToViHeader(sheetName, enKey);
+    const colIdx = headers.indexOf(viHeader);
+    if (colIdx === -1) return;
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return;
+    const range = sheet.getRange(2, colIdx + 1, lastRow - 1, 1);
+    const values = range.getValues();
+    const pairs = VALUE_MAP[key];
+    let changed = 0;
+    for (let i = 0; i < values.length; i++) {
+      const raw = String(values[i][0] == null ? '' : values[i][0]).trim();
+      if (!raw) continue;
+      const hit = pairs.filter(function (p) { return p[1] === raw; })[0];
+      if (hit) { values[i][0] = hit[0]; changed++; }
+    }
+    if (changed) range.setValues(values);
+    if (changed) lines.push(key + ' [' + sheetName + '!' + viHeader + ']: đã Việt hoá ' + changed + ' dòng');
+  });
+  const report = lines.length ? lines.join('\n') : 'Không có dòng nào cần Việt hoá.';
+  Logger.log(report);
+  return report;
+}
+
+// 1 lần duy nhất (2026-09-15, theo xác nhận người dùng): 7 đơn hàng ghi
+// trạng thái "pending" thô — KHÔNG khớp bất kỳ trạng thái hợp lệ nào của
+// orders.status (draft/confirmed/paid/cancelled) nên backfillValueMapLabels()
+// ở trên không tự sửa được. Những đơn này đã chốt với khách (ghi chú "Tạm
+// ứng 50%"), chỉ chưa nhận khoản tạm ứng → map sang 'confirmed' (Đã xác
+// nhận), không phải 'draft' (Nháp).
+function fixOrdersPendingStatus() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = findSheet(ss, SHEETS.orders);
+  if (!sheet) return 'Không tìm thấy sheet Đơn hàng';
+  const headers = getHeaders(sheet);
+  const colIdx = headers.indexOf(enToViHeader(SHEETS.orders, 'status'));
+  if (colIdx === -1) return 'Không tìm thấy cột Trạng thái';
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return 'Sheet trống';
+  const range = sheet.getRange(2, colIdx + 1, lastRow - 1, 1);
+  const values = range.getValues();
+  let changed = 0;
+  for (let i = 0; i < values.length; i++) {
+    if (String(values[i][0]).trim() === 'pending') { values[i][0] = 'Đã xác nhận'; changed++; }
+  }
+  if (changed) range.setValues(values);
+  Logger.log('Đã sửa ' + changed + ' đơn hàng "pending" thành "Đã xác nhận"');
+  return 'Đã sửa ' + changed + ' đơn hàng "pending" thành "Đã xác nhận"';
+}
+
+// Gộp cả 3 bước trên thành 1 lệnh chạy duy nhất (2026-09-15) — tránh phải
+// đổi hàm đang chọn trong dropdown "Chọn hàm để chạy" nhiều lần liên tiếp
+// (từng bị chọn nhầm hàm cũ do dropdown đó không tin cậy khi đổi lựa chọn
+// liên tục, xem GHI_CHU_DU_AN.md). Chạy hàm NÀY một lần duy nhất là đủ.
+function runDropdownCleanupAll() {
+  const a = backfillValueMapLabels();
+  const b = fixOrdersPendingStatus();
+  const c = applyStandardDropdowns();
+  const report = a + '\n\n' + b + '\n\n' + c;
+  Logger.log(report);
+  return report;
+}
+
+// Chẩn đoán: applyStandardDropdowns() báo lỗi "không được phép ở các ô
+// trong các cột đã nhập" cho 1 số cột dù dòng 2 không có dropdown-màu (kiểu
+// "Dropdown" mới của Sheets) — nghĩa là có dòng KHÁC trong cột đó đang bị
+// gắn dropdown-màu, chặn cả vùng ghi. Hàm này quét TỪNG DÒNG của các cột bị
+// lỗi để tìm đúng dòng thủ phạm (chỉ chạy 1 lần để tra cứu, không sửa gì).
+function findBlockingValidationRows() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const targets = ['members.roleLevel', 'tasks.status', 'projects.status', 'notifications.type'];
+  const lines = [];
+  targets.forEach(function (key) {
+    const dot = key.indexOf('.');
+    const sheetKey = key.slice(0, dot);
+    const enKey = key.slice(dot + 1);
+    const sheetName = SHEETS[sheetKey];
+    const sheet = findSheet(ss, sheetName);
+    if (!sheet) { lines.push(key + ': không tìm thấy sheet'); return; }
+    const headers = getHeaders(sheet);
+    const viHeader = enToViHeader(sheetName, enKey);
+    const colIdx = headers.indexOf(viHeader);
+    if (colIdx === -1) { lines.push(key + ': không tìm thấy cột'); return; }
+    // Quét TOÀN BỘ lưới (đến maxRows, không chỉ lastRow) — dòng thủ phạm có
+    // thể nằm ngoài vùng dữ liệu thật (ai đó lỡ gắn dropdown-màu vào 1 ô
+    // trống xa bên dưới). getDataValidations() đọc cả vùng 1 lần cho nhanh
+    // thay vì gọi từng ô (rất chậm nếu maxRows lớn).
+    const maxRows = sheet.getMaxRows();
+    const dvs = sheet.getRange(2, colIdx + 1, maxRows - 1, 1).getDataValidations();
+    let firstRow = -1, lastRowFound = -1, count = 0;
+    for (let i = 0; i < dvs.length; i++) {
+      if (dvs[i][0]) {
+        if (firstRow === -1) firstRow = i + 2;
+        lastRowFound = i + 2;
+        count++;
+      }
+    }
+    lines.push(key + ' [' + sheetName + '!' + viHeader + ', dòng 2-' + maxRows + ']: ' +
+      (count ? count + ' dòng có validation, từ dòng ' + firstRow + ' đến dòng ' + lastRowFound : 'không có dòng nào có validation'));
+  });
+  const report = lines.join('\n');
+  Logger.log(report);
+  return report;
+}
+
+// Đặt dropdown ĐÚNG nhãn VALUE_MAP cho mọi field trong VALUE_MAP, áp dụng
+// cho 999 dòng kể từ dòng 2 (đủ rộng cho mọi sheet hiện tại, giống cách
+// dropdown thành viên ở Đề xuất đang dùng $A$2:$A$499). Chạy SAU
+// backfillValueMapLabels()/fixOrdersPendingStatus() ở trên (thứ tự không
+// bắt buộc — Sheets không xoá dữ liệu cũ không khớp dropdown mới, chỉ gạch
+// đỏ cảnh báo — nhưng chạy sau thì sạch ngay, không thấy cảnh báo thừa).
+// Chạy TAY 1 lần, an toàn chạy lại nhiều lần (ghi đè cùng 1 rule).
+
+// Đổi tên 26 sheet NGHIỆP VỤ THẬT sang tên có tiền tố nhóm (khớp CHÍNH XÁC
+// với SHEETS map ở đầu file — sửa map trước, chạy hàm này ngay sau, rồi
+// TRIỂN KHAI PHIÊN BẢN MỚI ngay lập tức, không để hở). Map cũ->mới viết tay
+// (không dựa vào SHEETS vì SHEETS lúc chạy hàm này đã là tên MỚI rồi).
+function renameRealSheets() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const map = {
+    'Dự án': 'DA-Dự án',
+    'Công việc': 'DA-Công việc',
+    'Thành viên': 'NS-Thành viên',
+    'Đề xuất': 'DA-Đề xuất',
+    'Chấm công': 'TLCC-Chấm công',
+    'Địa điểm chấm công': 'TLCC-Địa điểm chấm công',
+    'Thông báo': 'TT-Thông báo',
+    'Bảng tin': 'TT-Bảng tin',
+    'Tài liệu': 'TT-Tài liệu',
+    'Phiếu lương': 'TLCC-Phiếu lương',
+    'Hoa hồng dự án': 'TLCC-Hoa hồng dự án',
+    'Mức hoa hồng': 'TLCC-Mức hoa hồng',
+    'Bảng giá dịch vụ': 'TC-Bảng giá dịch vụ',
+    'Tài chính công ty': 'TC-Tài chính công ty',
+    'Công nợ khách hàng': 'TC-Công nợ khách hàng',
+    'Chỉ số cân đối kế toán': 'TC-Chỉ số cân đối kế toán',
+    'Đơn hàng': 'TC-Đơn hàng',
+    'So sánh nhà thầu': 'DA-So sánh nhà thầu',
+    'Dòng tiền': 'DA-Dòng tiền',
+    'Phát sinh': 'DA-Phát sinh',
+    'Tiến độ': 'DA-Tiến độ',
+    'Nghiệm thu': 'DA-Nghiệm thu',
+    'Hồ sơ công trình': 'DA-Hồ sơ công trình',
+    'Sản phẩm BIM': 'BIM-Sản phẩm',
+    'Vật liệu BIM': 'BIM-Vật liệu',
+    'Nhà cung cấp BIM': 'BIM-Nhà cung cấp',
+    'Issue BIM': 'BIM-Issue',
+    'BOQ BIM': 'BIM-BOQ'
+  };
+  const lines = [];
+  Object.keys(map).forEach(function (oldName) {
+    const sheet = ss.getSheetByName(oldName);
+    if (!sheet) { lines.push(oldName + ': không tìm thấy (bỏ qua)'); return; }
+    sheet.setName(map[oldName]);
+    lines.push(oldName + ' -> ' + map[oldName]);
+  });
+  const report = lines.join('\n');
+  Logger.log(report);
+  return report;
+}
+
+// Liệt kê TOÀN BỘ tên sheet hiện có trong file, theo đúng thứ tự tab trên
+// Sheet — dùng để lên kế hoạch đổi tên hàng loạt (thêm tiền tố theo nhóm,
+// bỏ "Bản sao của "...) mà không phải đoán từ ảnh chụp màn hình.
+// Đổi tên hàng loạt 46 sheet tham khảo (bảng đơn giá xây dựng 34 tỉnh + vài
+// sheet công cụ đi kèm) — bỏ tiền tố "Bản sao của " và thay bằng "DGXD-"
+// (Đơn giá xây dựng) để gọn, dễ phân biệt với các sheet nghiệp vụ thật.
+// AN TOÀN 100% với web app: các sheet này KHÔNG có trong SHEETS map
+// (gsheets-api-v2.js dòng 6-45) nên code không tham chiếu theo tên, đổi tên
+// không cần redeploy. Idempotent — sheet nào đã đổi tên rồi (không còn bắt
+// đầu bằng "Bản sao của ") thì bỏ qua.
+function renameCopySheets() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const prefix = 'Bản sao của ';
+  const sheets = ss.getSheets();
+  const lines = [];
+  sheets.forEach(function (sh) {
+    const name = sh.getName();
+    if (name.indexOf(prefix) === 0) {
+      const newName = 'DGXD-' + name.slice(prefix.length);
+      sh.setName(newName);
+      lines.push(name + ' -> ' + newName);
+    }
+  });
+  const report = lines.length ? lines.join('\n') : 'Không có sheet nào tên bắt đầu bằng "Bản sao của ".';
+  Logger.log(report);
+  return report;
+}
+
+function listAllSheetNames() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheets = ss.getSheets();
+  const lines = sheets.map(function (sh, i) { return (i + 1) + '. ' + sh.getName(); });
+  const report = lines.join('\n');
+  Logger.log(report);
+  return report;
+}
+
+function applyStandardDropdowns() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const lines = [];
+  Object.keys(VALUE_MAP).forEach(function (key) {
+    try {
+      const dot = key.indexOf('.');
+      const sheetKey = key.slice(0, dot);
+      const enKey = key.slice(dot + 1);
+      const sheetName = SHEETS[sheetKey];
+      if (!sheetName) return;
+      const sheet = findSheet(ss, sheetName);
+      if (!sheet) { lines.push(key + ': không tìm thấy sheet ' + sheetName); return; }
+      const headers = getHeaders(sheet);
+      const viHeader = enToViHeader(sheetName, enKey);
+      const colIdx = headers.indexOf(viHeader);
+      if (colIdx === -1) { lines.push(key + ': không tìm thấy cột ' + viHeader); return; }
+      const labels = VALUE_MAP[key].map(function (p) { return p[0]; });
+      const rule = SpreadsheetApp.newDataValidation().requireValueInList(labels, true).setAllowInvalid(false).build();
+      // Chỉ áp dụng cho vùng dữ liệu thật + đệm 50 dòng cho tăng trưởng gần
+      // (KHÔNG dùng toàn bộ maxRows) — nhiều cột (roleLevel, status, loại
+      // thông báo...) có 1 khối lớn dropdown-màu (kiểu "Dropdown" mới của
+      // Sheets, chỉ set/xoá được qua UI, xem GHI_CHU_DU_AN.md) bám từ ~dòng
+      // 280 tới hết lưới — ghi đè cả vùng đó luôn bị chặn với lỗi "không
+      // được phép ở các ô trong các cột đã nhập", nên tránh đụng tới nó.
+      const lastRow = sheet.getLastRow();
+      const numRows = Math.min(Math.max(lastRow - 1, 0) + 50, sheet.getMaxRows() - 1);
+      const targetRange = sheet.getRange(2, colIdx + 1, numRows, 1);
+      targetRange.clearDataValidations();
+      targetRange.setDataValidation(rule);
+      lines.push(key + ' [' + sheetName + '!' + viHeader + ']: đã đặt dropdown (' + labels.join(', ') + ')');
+    } catch (e) {
+      lines.push(key + ': LỖI — ' + e.message);
+    }
+  });
+  const report = lines.join('\n');
+  Logger.log(report);
+  return report;
 }
