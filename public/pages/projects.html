@@ -348,23 +348,15 @@
           <label for="task-name">Tên việc *</label>
           <input type="text" id="task-name" placeholder="Nhập tên việc..." required>
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label for="task-project">Dự án</label>
-            <select id="task-project">
-              <option value="">Chọn dự án...</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Người phụ trách</label>
-            <div id="task-assignee-dd" class="assignee-dd">
-              <button type="button" class="assignee-dd-trigger">
-                <span class="assignee-dd-trigger-text placeholder">Chọn người...</span>
-                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="#9AA0A6" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
-              </button>
-              <div class="assignee-dd-panel" hidden></div>
-            </div>
-          </div>
+        <div class="form-group">
+          <label for="task-project">Dự án</label>
+          <select id="task-project">
+            <option value="">Chọn dự án...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Người phụ trách</label>
+          <div class="member-multi" id="taskAssignees"></div>
         </div>
         <div class="form-row">
           <div class="form-group">

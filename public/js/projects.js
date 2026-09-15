@@ -862,59 +862,38 @@
     renderTaskAssigneeDropdown();
   }
 
+  // "Người phụ trách" ở form tạo/sửa việc — kiểu lưới chip bấm chọn (giống
+  // "Thành viên tham gia" ở form dự án, .member-multi) thay vì dropdown thả
+  // xuống phải cuộn, để thấy hết người ngay không cần mở/cuộn danh sách.
   function renderTaskAssigneeDropdown() {
-    var dd = document.getElementById('task-assignee-dd');
-    if (!dd) return;
-    var panel = dd.querySelector('.assignee-dd-panel');
-    var trigger = dd.querySelector('.assignee-dd-trigger');
-    var triggerText = dd.querySelector('.assignee-dd-trigger-text');
+    var container = document.getElementById('taskAssignees');
+    if (!container) return;
     var members = getMembers();
-
-    panel.innerHTML = members.map(function (m) {
+    if (members.length === 0) {
+      container.innerHTML = '<p style="color:var(--color-text-muted);font-size:0.8125rem;">Chưa có thành viên nào.</p>';
+      return;
+    }
+    container.innerHTML = members.map(function (m) {
       var checked = taskAssigneeSelectedIds.indexOf(m.id) !== -1;
-      return '<div class="assignee-dd-item' + (checked ? ' selected' : '') + '" data-member-id="' + escapeHtml(m.id) + '">'
-        + '<svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>'
+      return '<label class="member-multi-item' + (checked ? ' active' : '') + '">'
+        + '<input type="checkbox" value="' + escapeHtml(m.id) + '"' + (checked ? ' checked' : '') + '>'
         + '<span class="avatar-xs" style="background:' + (m.color || '#6B7280') + '">' + escapeHtml(m.avatar || (m.name || '?').substring(0, 2).toUpperCase()) + '</span>'
         + '<span>' + escapeHtml(m.name || '') + '</span>'
-        + '</div>';
+        + '</label>';
     }).join('');
 
-    function updateTriggerText() {
-      var names = members.filter(function (m) { return taskAssigneeSelectedIds.indexOf(m.id) !== -1; }).map(function (m) { return m.name; });
-      if (names.length) {
-        triggerText.textContent = names.join(', ');
-        triggerText.classList.remove('placeholder');
-      } else {
-        triggerText.textContent = 'Chọn người...';
-        triggerText.classList.add('placeholder');
-      }
-    }
-    updateTriggerText();
-
-    panel.querySelectorAll('.assignee-dd-item').forEach(function (item) {
-      item.addEventListener('click', function () {
-        var id = item.dataset.memberId;
+    container.querySelectorAll('.member-multi-item').forEach(function (item) {
+      item.addEventListener('click', function (e) {
+        e.preventDefault();
+        var input = item.querySelector('input');
+        if (!input) return;
+        var id = input.value;
         var idx = taskAssigneeSelectedIds.indexOf(id);
         if (idx === -1) taskAssigneeSelectedIds.push(id); else taskAssigneeSelectedIds.splice(idx, 1);
-        item.classList.toggle('selected', idx === -1);
-        updateTriggerText();
+        input.checked = idx === -1;
+        item.classList.toggle('active', idx === -1);
       });
     });
-
-    if (!trigger.dataset.bound) {
-      trigger.dataset.bound = '1';
-      trigger.addEventListener('click', function (e) {
-        e.stopPropagation();
-        var isOpen = dd.classList.toggle('open');
-        panel.hidden = !isOpen;
-      });
-      document.addEventListener('click', function (e) {
-        if (!dd.contains(e.target)) {
-          dd.classList.remove('open');
-          panel.hidden = true;
-        }
-      });
-    }
   }
 
   function setSelectedAssignees(ids) {
