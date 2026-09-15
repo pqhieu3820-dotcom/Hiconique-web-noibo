@@ -63,22 +63,24 @@
   // Danh sách đầy đủ Hạng mục (khớp với các thẻ .type-card trong
   // projects.html/pricing.html) — docCode dùng để tự sinh số hồ sơ/hợp đồng
   // dạng "HĐ" + docCode, VD Thi công -> HĐTC. Giữ đồng bộ 1-1 với data-type
-  // của từng .type-card khi thêm/sửa hạng mục.
+  // của từng .type-card khi thêm/sửa hạng mục. `icon` = y hệt SVG trong
+  // .type-icon của thẻ tương ứng — dùng chung để tự sinh sidebar (xem
+  // renderProjectNav()), không viết trùng icon ở 2 nơi.
   var HANG_MUC_LIST = [
-    { slug: 'design', label: 'Thiết kế', docCode: 'TK' },
-    { slug: 'construction', label: 'Thi công', docCode: 'TC' },
-    { slug: 'interior', label: 'Nội thất', docCode: 'NT' },
-    { slug: 'consulting', label: 'Tư vấn', docCode: 'TV' },
-    { slug: 'admin', label: 'Hành chính', docCode: 'HC' },
-    { slug: 'marketing', label: 'Marketing', docCode: 'MK' },
-    { slug: 'supervision', label: 'Giám sát thi công', docCode: 'GS' },
-    { slug: 'pm', label: 'Quản lý dự án', docCode: 'QL' },
-    { slug: 'general-contractor', label: 'Tổng thầu', docCode: 'TT' },
-    { slug: 'structural', label: 'Kết cấu', docCode: 'KC' },
-    { slug: 'mep', label: 'Cơ điện (M&E)', docCode: 'CD' },
-    { slug: 'landscape', label: 'Cảnh quan', docCode: 'CQ' },
-    { slug: 'bidding', label: 'Đấu thầu', docCode: 'DT' },
-    { slug: 'maintenance', label: 'Bảo trì & bảo hành', docCode: 'BH' }
+    { slug: 'design', label: 'Thiết kế', docCode: 'TK', icon: '<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>' },
+    { slug: 'construction', label: 'Thi công', docCode: 'TC', icon: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>' },
+    { slug: 'interior', label: 'Nội thất', docCode: 'NT', icon: '<path d="M3 9l9-7 9 7"/><path d="M9 22V12h6v10"/><path d="M21 22V9"/><path d="M3 22V9"/>' },
+    { slug: 'consulting', label: 'Tư vấn', docCode: 'TV', icon: '<path d="M9 18h6M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.6c.6.5 1 1.2 1 2.4h6c0-1.2.4-1.9 1-2.4A7 7 0 0 0 12 2z"/>' },
+    { slug: 'admin', label: 'Hành chính', docCode: 'HC', icon: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>' },
+    { slug: 'marketing', label: 'Marketing', docCode: 'MK', icon: '<path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>' },
+    { slug: 'supervision', label: 'Giám sát thi công', docCode: 'GS', icon: '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>' },
+    { slug: 'pm', label: 'Quản lý dự án', docCode: 'QL', icon: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>' },
+    { slug: 'general-contractor', label: 'Tổng thầu', docCode: 'TT', icon: '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4M10 10h4M10 14h4M10 18h4"/>' },
+    { slug: 'structural', label: 'Kết cấu', docCode: 'KC', icon: '<path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/>' },
+    { slug: 'mep', label: 'Cơ điện (M&E)', docCode: 'CD', icon: '<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/>' },
+    { slug: 'landscape', label: 'Cảnh quan', docCode: 'CQ', icon: '<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>' },
+    { slug: 'bidding', label: 'Đấu thầu', docCode: 'DT', icon: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8.5"/><path d="M14 2v6h6"/><circle cx="15.5" cy="15.5" r="2.5"/><path d="m18 18 2 2"/>' },
+    { slug: 'maintenance', label: 'Bảo trì & bảo hành', docCode: 'BH', icon: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/>' }
   ];
 
   // Khớp CHÍNH XÁC hạng mục đã lưu (category) với 1 trong 14 thẻ hạng mục để
@@ -94,6 +96,27 @@
     var partial = HANG_MUC_LIST.find(function (h) { return t.indexOf(h.label.toLowerCase()) !== -1; });
     if (partial) return partial.slug;
     return projectType({ category: category });
+  }
+
+  // Danh sách TẤT CẢ hạng mục khớp trong 1 chuỗi category tự do (khác
+  // matchHangMucCard — chỉ trả về 1 mục ĐẦU TIÊN khớp, dùng cho việc tô sáng
+  // radio card đơn lẻ trong modal sửa dự án). Category trong dữ liệu thật
+  // thường là cụm ghép nhiều hạng mục 1 lúc (VD "Thiết kế & thi công",
+  // "Thiết kế nội thất văn phòng") — 1 dự án như vậy hợp lý thuộc về NHIỀU
+  // mục cùng lúc (Thiết kế VÀ Thi công VÀ Nội thất), nên sidebar/lọc phải
+  // đếm/lọc theo TẤT CẢ hạng mục khớp, không chỉ 1 mục đầu tiên trong mảng
+  // (nếu chỉ lấy mục đầu, gần như mọi dự án đều rơi hết vào "Thiết kế" vì
+  // hạng mục đó đứng đầu HANG_MUC_LIST và hầu hết category đều chứa chữ
+  // "thiết kế" — bug thật đã gặp khi thêm sidebar 14 hạng mục 2026-09-15).
+  // Không khớp mục nào (category rỗng/hoàn toàn lạ) → mảng rỗng, KHÔNG mặc
+  // định vào "Thiết kế" (khác matchHangMucCard, vì ở đây sai sẽ hiện sai số
+  // đếm cho người dùng thấy trực tiếp, còn matchHangMucCard chỉ ảnh hưởng 1
+  // radio mặc định không quan trọng bằng).
+  function getHangMucSlugs(category) {
+    if (!category) return [];
+    var t = String(category).trim().toLowerCase();
+    return HANG_MUC_LIST.filter(function (h) { return t.indexOf(h.label.toLowerCase()) !== -1; })
+      .map(function (h) { return h.slug; });
   }
 
   // Số hồ sơ/hợp đồng tự sinh: {ngày}{tháng}HĐ{mã hạng mục}/{mã dự án}-HICON{năm}
@@ -166,7 +189,7 @@
     if (state.projectFilter !== 'all') {
       var allowedIds = {};
       projects.forEach(function (p) {
-        if (projectType(p) === state.projectFilter) allowedIds[p.id] = true;
+        if (getHangMucSlugs(p.category || p.type).indexOf(state.projectFilter) !== -1) allowedIds[p.id] = true;
       });
       tasks = tasks.filter(function (t) { return allowedIds[t.projectId]; });
     }
@@ -218,15 +241,40 @@
   }
 
   // ----- Sidebar -----
+  // Sinh sẵn 1 lần — 14 mục hạng mục (icon lấy từ HANG_MUC_LIST.icon, y hệt
+  // icon dùng trong modal "Thêm dự án") + "Tất cả dự án" ở đầu. Người dùng
+  // yêu cầu bổ sung đủ hạng mục vào sidebar để lọc cho tiện (trước đó chỉ có
+  // 3 mục thô Thiết kế/Thi công/Hành chính, ẩn mất 11 hạng mục còn lại).
+  function renderProjectNav() {
+    var nav = document.querySelector('.project-nav');
+    if (!nav) return;
+    var allItem = nav.querySelector('[data-project="all"]');
+    if (!allItem) return;
+    var extraHtml = HANG_MUC_LIST.map(function (h) {
+      return '<a href="#" class="project-nav-item" data-project="' + h.slug + '">' +
+        '<span class="project-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">' + h.icon + '</svg></span>' +
+        '<span>' + escapeHtml(h.label) + '</span>' +
+        '<span class="project-count" id="count-' + h.slug + '">0</span>' +
+      '</a>';
+    }).join('');
+    // Xoá các mục cũ (nếu render lại) rồi chèn lại, giữ nguyên "Tất cả dự án" đầu tiên.
+    nav.querySelectorAll('.project-nav-item:not([data-project="all"])').forEach(function (el) { el.remove(); });
+    allItem.insertAdjacentHTML('afterend', extraHtml);
+  }
+
   function renderSidebarCounts() {
     var projects = getProjects();
     var tasks = getTasks();
-    var byType = { design: 0, construction: 0, admin: 0 };
-    projects.forEach(function (p) { byType[projectType(p)]++; });
+    var byType = {};
+    HANG_MUC_LIST.forEach(function (h) { byType[h.slug] = 0; });
+    projects.forEach(function (p) {
+      getHangMucSlugs(p.category || p.type).forEach(function (slug) { byType[slug]++; });
+    });
     document.getElementById('countAll').textContent = projects.length;
-    document.getElementById('countDesign').textContent = byType.design;
-    document.getElementById('countConstruction').textContent = byType.construction;
-    document.getElementById('countAdmin').textContent = byType.admin;
+    HANG_MUC_LIST.forEach(function (h) {
+      var el = document.getElementById('count-' + h.slug);
+      if (el) el.textContent = byType[h.slug] || 0;
+    });
 
     var members = getMembers();
     var memberList = document.getElementById('memberList');
@@ -1616,6 +1664,7 @@
     var addProjectBtn = document.getElementById('btnAddProject');
     if (addProjectBtn && !canManageProjects) addProjectBtn.style.display = 'none';
     bindViewTabs();
+    renderProjectNav();
     bindProjectNav();
     bindQuickFilters();
     bindStatCards();
