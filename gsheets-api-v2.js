@@ -68,11 +68,13 @@ const FIELD_MAP = {
     // ở đây từ giờ, không thì round-trip vỡ (header không khớp key tiếng Anh
     // nữa, addData/updateData sẽ không tìm thấy cột để ghi).
     ['Lần hoạt động cuối', 'lastActiveAt'], ['Màu nền trình duyệt', 'theme'],
-    // Header thật trên Sheet dùng "kí" (không dấu ý dài) chứ không phải "ký" —
-    // đã verify qua API (getMembers trả nguyên header này làm key khi không
-    // khớp FIELD_MAP thay vì "deviceIds"), sửa lại đúng chính tả người dùng
-    // đã gõ trên Sheet.
-    ['Thiết bị đăng kí để chấm công', 'deviceIds']
+    // 2026-09-16: tách cột "Thiết bị đăng kí để chấm công" (1 cột gộp cả 2
+    // thiết bị dạng "id1::tên1::trạng1,id2::tên2::trạng2") thành 2 cột riêng
+    // "Thiết bị 1"/"Thiết bị 2" (mỗi cột 1 thiết bị "id::tên::trạng") — theo
+    // yêu cầu người dùng, dễ nhìn/lọc trực tiếp trên Sheet hơn. Xem
+    // splitDeviceColumns() (đã chạy 1 lần, xoá khỏi code) và task-data.js
+    // parseDeviceIds()/stringifyDeviceEntries().
+    ['Thiết bị 1', 'device1'], ['Thiết bị 2', 'device2']
   ],
   // 2026-09-09: "Loại dự án" đổi nghĩa thành LOẠI CÔNG TRÌNH thật (Nhà phố,
   // Biệt thự, Căn hộ chung cư...), giá trị cũ (Thiết kế/Thi công/Nội thất...)
@@ -1874,6 +1876,52 @@ function applyStandardDropdowns() {
     }
   });
   const report = lines.join('\n');
+  Logger.log(report);
+  return report;
+}
+
+// Tách cột "Thiết bị đăng kí để chấm công" (1 cột gộp "id1::tên1::trạng1,
+// id2::tên2::trạng2") thành 2 cột riêng "Thiết bị 1"/"Thiết bị 2" (mỗi cột
+// 1 thiết bị "id::tên::trạng") — theo yêu cầu người dùng 2026-09-16, dễ
+// nhìn/lọc trực tiếp trên Sheet hơn khi có ai đó cần tra cứu tay. Chạy TAY
+// ĐÚNG 1 LẦN rồi xoá hàm này khỏi code (đã cập nhật FIELD_MAP sang
+// device1/device2 — chạy hàm này SAU khi paste bản FIELD_MAP mới, rồi
+// redeploy ngay, không để hở như applyStandardDropdowns() lúc trước).
+function splitDeviceColumns() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = findSheet(ss, SHEETS.members);
+  if (!sheet) return 'Không tìm thấy sheet Thành viên';
+  const headers = getHeaders(sheet);
+  const oldColIdx = headers.indexOf('Thiết bị đăng kí để chấm công');
+  if (oldColIdx === -1) return 'Không tìm thấy cột "Thiết bị đăng kí để chấm công" (có thể đã tách rồi)';
+
+  const lastRow = sheet.getLastRow();
+  const oldValues = lastRow >= 2 ? sheet.getRange(2, oldColIdx + 1, lastRow - 1, 1).getValues() : [];
+
+  // Chèn 2 cột mới ngay sau cột cũ, rồi xoá cột cũ — insertColumnAfter giữ
+  // nguyên định dạng/dropdown của các cột khác, không ảnh hưởng dữ liệu.
+  sheet.insertColumnAfter(oldColIdx + 1);
+  sheet.insertColumnAfter(oldColIdx + 2);
+  sheet.getRange(1, oldColIdx + 2).setValue('Thiết bị 1');
+  sheet.getRange(1, oldColIdx + 3).setValue('Thiết bị 2');
+
+  let migrated = 0;
+  if (oldValues.length) {
+    const col1Values = [], col2Values = [];
+    oldValues.forEach(function (row) {
+      const raw = String(row[0] || '').trim();
+      const parts = raw ? raw.split(',').map(function (s) { return s.trim(); }).filter(Boolean) : [];
+      col1Values.push([parts[0] || '']);
+      col2Values.push([parts[1] || '']);
+      if (raw) migrated++;
+    });
+    sheet.getRange(2, oldColIdx + 2, col1Values.length, 1).setValues(col1Values);
+    sheet.getRange(2, oldColIdx + 3, col2Values.length, 1).setValues(col2Values);
+  }
+
+  sheet.deleteColumn(oldColIdx + 1);
+
+  const report = 'Đã tách cột thành "Thiết bị 1"/"Thiết bị 2", di trú ' + migrated + ' dòng có dữ liệu thiết bị.';
   Logger.log(report);
   return report;
 }

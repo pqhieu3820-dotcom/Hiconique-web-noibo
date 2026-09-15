@@ -739,7 +739,7 @@ var TaskManager = (function() {
   // - theme: nhớ giao diện sáng/tối THEO TÀI KHOẢN (không chỉ theo trình
   //   duyệt/máy) — đăng nhập lại ở máy khác vẫn ra đúng theme đã chọn lần
   //   cuối, xem initTheme()/setTheme() trong portal.js.
-  var MEMBER_SELF_EDIT_FIELDS = ['dob', 'gender', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount', 'password', 'deviceIds', 'lastActiveAt', 'theme'];
+  var MEMBER_SELF_EDIT_FIELDS = ['dob', 'gender', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount', 'password', 'device1', 'device2', 'lastActiveAt', 'theme'];
   function updateMember(id, updates, user) {
     if (!user) return null;
     var isSelf = user.id === id;
@@ -756,13 +756,15 @@ var TaskManager = (function() {
   // Chống chấm công hộ (kiểu 2) — mỗi thành viên tự "đăng ký" tối đa 2 thiết
   // bị (deviceId sinh ngẫu nhiên, lưu ở localStorage của trình duyệt, xem
   // getOrCreateDeviceId() trong timesheet.html — web không có cách nào đọc
-  // ID phần cứng thật). Lưu dạng chuỗi "id1::tên1,id2::tên2" trong 1 cột
-  // `deviceIds` của Members (cần tự thêm cột này vào Sheet mới đồng bộ được,
-  // xem GHI_CHU_DU_AN.md — code vẫn hoạt động cache-only nếu chưa có cột).
+  // ID phần cứng thật). Mỗi thiết bị lưu "id::tên::trạng" trong 1 CỘT RIÊNG
+  // `device1`/`device2` của Members (2026-09-16: trước đó gộp cả 2 vào 1 cột
+  // `deviceIds` dạng "id1::tên1,id2::tên2" — tách ra cho dễ nhìn/lọc trên
+  // Sheet, xem splitDeviceColumns() trong gsheets-api-v2.js, đã chạy 1 lần).
   // Tên thiết bị (VD "iPhone · Safari") tự rút ra từ User-Agent phía
   // timesheet.html, giống kiểu "lịch sử đăng nhập thiết bị" của Facebook/Zalo
   // — entry cũ (chưa có "::tên") vẫn parse được bình thường, chỉ thiếu name.
   var MAX_MEMBER_DEVICES = 2;
+  var DEVICE_SLOT_FIELDS = ['device1', 'device2'];
   // 2026-09-15: thêm "status" (pending/approved/rejected) — thiết bị đăng ký
   // MỚI phải chờ CEO/Manager duyệt mới tính là "quen dùng" trong 3 điều kiện
   // chấm công (xem checkDeviceStatus() ở timesheet.html). Entry cũ trước khi
@@ -770,16 +772,27 @@ var TaskManager = (function() {
   // 'approved' — không đột ngột khoá thiết bị đang hoạt động bình thường của
   // người dùng hiện tại.
   function parseDeviceIds(member) {
-    var raw = String((member && member.deviceIds) || '');
-    if (!raw) return [];
-    return raw.split(',').map(function (s) { return s.trim(); }).filter(Boolean).map(function (entry) {
-      var parts = entry.split('::');
-      return { id: parts[0], name: parts[1] || '', status: parts[2] || 'approved' };
+    var out = [];
+    DEVICE_SLOT_FIELDS.forEach(function (field) {
+      var raw = String((member && member[field]) || '').trim();
+      if (!raw) return;
+      var parts = raw.split('::');
+      out.push({ id: parts[0], name: parts[1] || '', status: parts[2] || 'approved' });
     });
+    return out;
   }
 
+  // entries[0] -> device1, entries[1] -> device2 (thứ tự theo lúc đăng ký,
+  // không quan trọng thiết bị nào ở slot nào). Trả về OBJECT 2 field để
+  // spread thẳng vào updateMember() — slot trống ghi '' để xoá dữ liệu cũ
+  // trên Sheet khi gỡ thiết bị (không để sót giá trị thừa).
   function stringifyDeviceEntries(entries) {
-    return entries.map(function (e) { return [e.id, e.name || '', e.status || 'approved'].join('::'); }).join(',');
+    var out = {};
+    DEVICE_SLOT_FIELDS.forEach(function (field, i) {
+      var e = entries[i];
+      out[field] = e ? [e.id, e.name || '', e.status || 'approved'].join('::') : '';
+    });
+    return out;
   }
 
   // Ghi thông báo hệ thống (không do người dùng tự soạn) — VD sự kiện đăng
@@ -840,7 +853,7 @@ var TaskManager = (function() {
       // Tự vá lại tên cho entry cũ (đăng ký trước khi có tính năng tên thiết bị).
       if (deviceName && existing.name !== deviceName) {
         existing.name = deviceName;
-        updateMember(memberId, { deviceIds: stringifyDeviceEntries(entries) }, user);
+        updateMember(memberId, stringifyDeviceEntries(entries), user);
       }
       return { ok: true, isNew: false, full: false, status: existing.status };
     }
@@ -848,7 +861,7 @@ var TaskManager = (function() {
     var isSelfAdmin = canManageMembers(user) && user.id === memberId;
     var status = isSelfAdmin ? 'approved' : 'pending';
     entries.push({ id: deviceId, name: deviceName || '', status: status });
-    updateMember(memberId, { deviceIds: stringifyDeviceEntries(entries) }, user);
+    updateMember(memberId, stringifyDeviceEntries(entries), user);
     if (!isSelfAdmin) {
       var msg = (member.name || memberId) + ' vừa đăng ký thiết bị chấm công mới (' + (deviceName || 'không rõ tên') + ') — đang chờ duyệt.';
       addSystemNotificationsBatch(adminAndManagerMembers(user && user.id).map(function (mgr) {
@@ -864,7 +877,7 @@ var TaskManager = (function() {
     var entries = parseDeviceIds(member);
     var removed = entries.filter(function (e) { return e.id === deviceId; })[0];
     entries = entries.filter(function (e) { return e.id !== deviceId; });
-    var updated = updateMember(memberId, { deviceIds: stringifyDeviceEntries(entries) }, user);
+    var updated = updateMember(memberId, stringifyDeviceEntries(entries), user);
     if (updated && removed) {
       var msg = (member.name || memberId) + ' đã gỡ thiết bị chấm công (' + (removed.name || 'không rõ tên') + ').';
       addSystemNotificationsBatch(adminAndManagerMembers(user && user.id).map(function (mgr) {
@@ -898,7 +911,7 @@ var TaskManager = (function() {
     var entry = entries.filter(function (e) { return e.id === deviceId; })[0];
     if (!entry) return null;
     entry.status = 'approved';
-    var updated = updateMember(memberId, { deviceIds: stringifyDeviceEntries(entries) }, user);
+    var updated = updateMember(memberId, stringifyDeviceEntries(entries), user);
     addSystemNotificationsBatch([{
       title: 'Thiết bị chấm công đã được duyệt',
       message: 'Thiết bị "' + (entry.name || deviceId) + '" của bạn đã được ' + (user.name || 'quản lý') + ' duyệt — có thể dùng để chấm công.',
@@ -915,7 +928,7 @@ var TaskManager = (function() {
     var entry = entries.filter(function (e) { return e.id === deviceId; })[0];
     if (!entry) return null;
     entries = entries.filter(function (e) { return e.id !== deviceId; });
-    var updated = updateMember(memberId, { deviceIds: stringifyDeviceEntries(entries) }, user);
+    var updated = updateMember(memberId, stringifyDeviceEntries(entries), user);
     addSystemNotificationsBatch([{
       title: 'Thiết bị chấm công bị từ chối',
       message: 'Thiết bị "' + (entry.name || deviceId) + '" của bạn bị ' + (user.name || 'quản lý') + ' từ chối — vui lòng đăng ký lại hoặc liên hệ để biết thêm.',
