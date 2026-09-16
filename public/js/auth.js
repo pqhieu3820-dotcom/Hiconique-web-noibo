@@ -247,7 +247,7 @@ const Auth = (function() {
       <div id="authLoginModal" style="position: fixed; inset: 0; background: rgba(11,13,16,0.85); backdrop-filter: blur(8px); z-index: 100000; display: flex; align-items: center; justify-content: center; padding: 20px;">
         <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 16px; max-width: 440px; width: 100%; max-height: calc(100vh - 40px); overflow-y: auto; padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.4);">
           <div style="text-align: center; margin-bottom: 32px;">
-            <img src="/apple-touch-icon.png" alt="HICONIQUE" style="width: 56px; height: 56px; margin: 0 auto 16px; border-radius: 14px; display: block; box-shadow: 0 8px 20px rgba(0,0,0,0.35);" />
+            <img src="/logo-mark.png" alt="HICONIQUE" style="width: 48px; height: 48px; margin: 0 auto 16px; display: block; object-fit: contain;" />
             <h2 style="font-family: 'Cormorant Garamond', serif; font-size: 1.75rem; font-weight: 600; color: var(--color-text); margin: 0 0 4px;">HICONIQUE Internal Hub</h2>
             <p style="font-size: 0.875rem; color: var(--color-text-muted); margin: 0;">Đăng nhập hoặc đăng ký tài khoản</p>
           </div>
@@ -354,7 +354,7 @@ const Auth = (function() {
       <div id="authLoginModal" style="position: fixed; inset: 0; background: rgba(11,13,16,0.85); backdrop-filter: blur(8px); z-index: 100000; display: flex; align-items: center; justify-content: center; padding: 20px;">
         <div class="auth-card" style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 16px; max-width: 520px; width: 100%; max-height: calc(100vh - 40px); overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.4);">
           <div style="text-align: center; margin-bottom: 32px;">
-            <img src="/apple-touch-icon.png" alt="HICONIQUE" style="width: 56px; height: 56px; margin: 0 auto 16px; border-radius: 14px; display: block; box-shadow: 0 8px 20px rgba(0,0,0,0.35);" />
+            <img src="/logo-mark.png" alt="HICONIQUE" style="width: 48px; height: 48px; margin: 0 auto 16px; display: block; object-fit: contain;" />
             <h2 style="font-family: 'Cormorant Garamond', serif; font-size: 1.75rem; font-weight: 600; color: var(--color-text); margin: 0 0 4px;">Đăng ký tài khoản</h2>
             <p style="font-size: 0.875rem; color: var(--color-text-muted); margin: 0;">Nhập thông tin để đăng ký</p>
           </div>
