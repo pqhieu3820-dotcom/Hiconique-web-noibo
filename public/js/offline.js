@@ -291,6 +291,23 @@ var Offline = (function () {
     });
   }
 
+  // 2026-09-17: BỎ hẳn việc reload cả trang định kỳ (bản trước gọi
+  // reloadIfStale() mỗi 15s — 1-2 lần đầu vô hại, nhưng vì mỗi reload tự đặt
+  // lại mốc "vừa đồng bộ" nên ~20-30s sau lại "cũ" và reload tiếp, lặp vô hạn
+  // → nháy màn hình liên tục, cắt ngang thao tác đang làm dở, người dùng
+  // phản ánh thật). Giờ CHỈ reload cả trang đúng 1 tình huống: vừa mở lại app
+  // từ bfcache sau khi bị đưa ra nền (event.persisted trong 'pageshow') — đây
+  // mới là ca DOM đứng yên hoàn toàn, không có cách nào khác ngoài reload.
+  // Mọi lúc còn lại (đang mở app liên tục, chuyển tab ngắn rồi quay lại...)
+  // chỉ làm mới dữ liệu NGẦM qua TaskManager.silentRefresh() — không reload,
+  // không giật màn hình, không mất trạng thái form/modal đang mở.
+  var SILENT_REFRESH_MS = 20000;
+  function silentRefresh() {
+    if (!online) return;
+    if (typeof TaskManager === 'undefined' || !TaskManager.silentRefresh) return;
+    TaskManager.silentRefresh();
+  }
+
   function init() {
     renderBanner(); // ẩn sẵn nếu đang online, không giật màn hình lúc load
     window.addEventListener('online', pingCheck);
@@ -298,19 +315,20 @@ var Offline = (function () {
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'visible') {
         pingCheck();
-        reloadIfStale();
+        silentRefresh();
       }
     });
     // 'pageshow' bắn cả lúc load bình thường LẪN lúc trình duyệt phục hồi
     // trang từ bfcache (event.persisted = true) — chính là lúc mở lại app đã
     // "Thêm vào Màn hình chính" từ nền ra. Đây là điểm mấu chốt để bắt đúng
     // ca bfcache mà 'visibilitychange' một mình không chắc bắt được ở mọi
-    // trình duyệt di động.
+    // trình duyệt di động — TRƯỜNG HỢP DUY NHẤT còn reload cả trang.
     window.addEventListener('pageshow', function (e) {
       if (e.persisted) reloadIfStale();
     });
     pingCheck();
-    pingTimer = setInterval(function () { pingCheck(); reloadIfStale(); }, PING_INTERVAL_MS);
+    pingTimer = setInterval(pingCheck, PING_INTERVAL_MS);
+    setInterval(silentRefresh, SILENT_REFRESH_MS);
     registerServiceWorker();
     initPullToRefresh();
   }

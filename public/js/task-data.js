@@ -405,13 +405,16 @@ var TaskManager = (function() {
     return DEFAULT_MEMBERS[0];
   }
 
-  // Initialize data from localStorage or Google Sheets
-  function initData() {
-    // Danh mục tài liệu chỉ sống trong localStorage của từng máy (không qua Sheets).
-    if (!localStorage.getItem(STORAGE_KEYS.docCategories)) {
-      localStorage.setItem(STORAGE_KEYS.docCategories, JSON.stringify(DEFAULT_DOC_CATEGORIES));
-    }
-    if (isUsingGSheets()) {
+  // 2026-09-17: tách phần tải dữ liệu từ Sheet ra khỏi initData() để dùng lại
+  // được cho "làm mới ngầm" định kỳ (silentRefresh(), gọi từ offline.js) — CHỈ
+  // ghi đè localStorage, KHÔNG tự vẽ lại UI của từng trang (mỗi trang render
+  // khác nhau, không có cách chung để ép vẽ lại an toàn). Trang nào tự đọc lại
+  // localStorage ở lần tương tác tiếp theo (mở modal, chuyển tab con...) sẽ tự
+  // thấy dữ liệu mới — đây là lý do KHÔNG cần reload cả trang định kỳ nữa
+  // (trước đó đã dùng cách reload cả trang mỗi ~20-30s, gây nháy màn hình liên
+  // tục làm gián đoạn thao tác đang làm dở — người dùng phản ánh 2026-09-17).
+  function refreshFromGSheets() {
+    if (!isUsingGSheets()) return;
       // Chỉ ghi vào localStorage khi thật sự lấy được dữ liệu từ Google Sheet.
       // KHÔNG BAO GIỜ tự động chèn dữ liệu mẫu (DEFAULT_*) đè lên cache khi
       // sheet trống hoặc lần fetch bị lỗi/timeout — giữ nguyên cache thật cũ
@@ -469,6 +472,18 @@ var TaskManager = (function() {
       getFromGSheets('orders', function(list) {
         localStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(list));
       });
+  }
+
+  // Initialize data from localStorage or Google Sheets — chạy 1 lần lúc trang
+  // load. Với Sheets, gọi refreshFromGSheets() (dùng lại được cho làm mới
+  // ngầm định kỳ); không dùng Sheets thì seed dữ liệu mẫu localStorage như cũ.
+  function initData() {
+    // Danh mục tài liệu chỉ sống trong localStorage của từng máy (không qua Sheets).
+    if (!localStorage.getItem(STORAGE_KEYS.docCategories)) {
+      localStorage.setItem(STORAGE_KEYS.docCategories, JSON.stringify(DEFAULT_DOC_CATEGORIES));
+    }
+    if (isUsingGSheets()) {
+      refreshFromGSheets();
     } else {
       // Use localStorage
       if (!localStorage.getItem(STORAGE_KEYS.projects)) {
@@ -1816,6 +1831,12 @@ var TaskManager = (function() {
 
   // Public API
   return {
+    // Làm mới dữ liệu ngầm (không reload trang) — gọi định kỳ từ offline.js.
+    // Chỉ ghi đè localStorage, KHÔNG tự vẽ lại UI — trang nào cần cập nhật
+    // ngay khi có dữ liệu mới tự lắng nghe sự kiện 'hiconique:data-refreshed'
+    // trên window (bắn ra ở offline.js sau khi gọi xong).
+    silentRefresh: refreshFromGSheets,
+
     // User
     getCurrentUser: getCurrentUser,
 
