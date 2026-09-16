@@ -198,6 +198,7 @@ var TaskManager = (function() {
     timesheet: 'hiconique_timesheet',
     notifications: 'hiconique_notifications',
     readNotifications: 'hiconique_read_notifications',
+    dismissedNotifications: 'hiconique_dismissed_notifications',
     notices: 'hiconique_notices',
     documents: 'hiconique_documents',
     docCategories: 'hiconique_doc_categories',
@@ -1220,6 +1221,27 @@ var TaskManager = (function() {
     return getReadIds().indexOf(id) !== -1;
   }
 
+  // 2026-09-17: "Xoá tất cả thông báo" — CHỈ ẩn khỏi danh sách của CHÍNH
+  // người dùng đó trên MÁY này (per-device, giống cơ chế đã đọc/chưa đọc ở
+  // trên, không đồng bộ Sheet). KHÔNG xoá dữ liệu thông báo thật (deleteNotification()
+  // đòi quyền canManageNotifications, nhân viên thường không có) — 1 thông
+  // báo scope='all' vẫn phải còn nguyên cho người khác thấy, chỉ người bấm
+  // xoá mới không thấy nó nữa từ nay.
+  function getDismissedIds() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.dismissedNotifications) || '[]'); }
+    catch (e) { return []; }
+  }
+
+  function dismissAllNotifications(ids) {
+    var dismissed = getDismissedIds();
+    ids.forEach(function(id) { if (dismissed.indexOf(id) === -1) dismissed.push(id); });
+    localStorage.setItem(STORAGE_KEYS.dismissedNotifications, JSON.stringify(dismissed));
+  }
+
+  function isNotificationDismissed(id) {
+    return getDismissedIds().indexOf(id) !== -1;
+  }
+
   // Live alerts derived from current data — never persisted.
   function getComputedAlerts(user) {
     if (!user) return [];
@@ -1918,6 +1940,8 @@ var TaskManager = (function() {
     markNotificationRead: markNotificationRead,
     markAllNotificationsRead: markAllNotificationsRead,
     isNotificationRead: isNotificationRead,
+    dismissAllNotifications: dismissAllNotifications,
+    isNotificationDismissed: isNotificationDismissed,
 
     // Notice board
     getNotices: getNotices,

@@ -1026,6 +1026,7 @@
 
     function collect() {
       var items = TaskManager.getNotifications(user).concat(TaskManager.getComputedAlerts(user));
+      items = items.filter(function (n) { return !TaskManager.isNotificationDismissed(n.id); });
       items.sort(function (a, b) { return new Date(b.createdAt || 0) - new Date(a.createdAt || 0); });
       return items;
     }
@@ -1076,6 +1077,14 @@
         }
       }
 
+      // 2026-09-17: nút xoá TOÀN BỘ thông báo — mỗi người tự xoá danh sách
+      // CỦA RIÊNG MÌNH trên máy này (không đụng dữ liệu chung trên Sheet, xem
+      // dismissAllNotifications() trong task-data.js), nên không cần quyền
+      // canManage gì cả — ai cũng bấm được, chỉ ẩn khỏi mắt người bấm.
+      if (items.length > 0) {
+        html += '<div class="notif-footer"><button type="button" class="notif-link danger" id="notifDismissAll">Xoá tất cả thông báo</button></div>';
+      }
+
       panel.innerHTML = html;
 
       panel.querySelectorAll('.notif-item').forEach(function (row) {
@@ -1088,8 +1097,22 @@
 
       var markAllBtn = panel.querySelector('#notifMarkAll');
       if (markAllBtn) markAllBtn.addEventListener('click', function () {
+        // Bug 2026-09-17: thiếu updateBadge() ở đây khiến chấm đỏ trên
+        // chuông không bao giờ tắt sau khi bấm — người dùng tưởng nút này
+        // hỏng vì không thấy phản hồi gì trên giao diện (dữ liệu vẫn lưu
+        // đúng, chỉ là không có gì hiển thị đổi).
         TaskManager.markAllNotificationsRead(items.map(function (n) { return n.id; }));
+        updateBadge();
         render();
+      });
+
+      var dismissAllBtn = panel.querySelector('#notifDismissAll');
+      if (dismissAllBtn) dismissAllBtn.addEventListener('click', function () {
+        showConfirmDialog('Xoá tất cả thông báo đang hiện? Chỉ ẩn khỏi danh sách của bạn, không ảnh hưởng người khác.', function () {
+          TaskManager.dismissAllNotifications(items.map(function (n) { return n.id; }));
+          updateBadge();
+          render();
+        }, 'Xoá tất cả');
       });
 
       panel.querySelectorAll('.notif-rule-active').forEach(function (cb) {
