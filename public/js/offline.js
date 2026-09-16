@@ -199,6 +199,89 @@ var Offline = (function () {
     }, 3200);
   }
 
+  // 2026-09-16: kéo xuống ở đầu trang (trên điện thoại) = tải lại TOÀN BỘ
+  // trang (window.location.reload()) — y hệt hiệu ứng đăng xuất/đăng nhập
+  // lại đã dùng để ép dữ liệu mới trước đây, giờ người dùng có thể tự làm
+  // bất cứ lúc nào mà không cần đăng xuất thật. CHỈ bắt gesture khi trang
+  // đang ở ĐỈNH (scrollTop = 0) và đang kéo XUỐNG — nếu không sẽ cản trở
+  // cuộn trang bình thường. Không dùng thư viện ngoài, tự vẽ icon mũi tên
+  // xoay tối giản bằng SVG inline.
+  var PULL_THRESHOLD = 70;
+  var PULL_MAX = 110;
+  function initPullToRefresh() {
+    var startY = 0;
+    var pulling = false;
+    var indicator = null;
+
+    function ensureIndicator() {
+      if (indicator) return indicator;
+      if (!document.getElementById('hiconiquePullSpinStyle')) {
+        var style = document.createElement('style');
+        style.id = 'hiconiquePullSpinStyle';
+        style.textContent = '@keyframes hiconiquePullSpin { to { transform: rotate(360deg); } }';
+        document.head.appendChild(style);
+      }
+      indicator = document.createElement('div');
+      indicator.id = 'hiconiquePullRefresh';
+      indicator.style.cssText = [
+        'position:fixed', 'top:0', 'left:0', 'right:0', 'z-index:100045',
+        'display:flex', 'align-items:center', 'justify-content:center',
+        'height:56px', 'transform:translateY(-56px)', 'opacity:0',
+        'pointer-events:none'
+      ].join(';');
+      indicator.innerHTML = '<div style="width:34px;height:34px;border-radius:50%;background:var(--color-surface,#1A1D21);border:1px solid var(--color-border,rgba(255,255,255,0.12));display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,0.25);">' +
+        '<svg id="hiconiquePullIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B08D57" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 11-3-6.7"/><path d="M21 3v6h-6"/></svg>' +
+      '</div>';
+      document.body.appendChild(indicator);
+      return indicator;
+    }
+
+    function atTop() {
+      return (window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0) <= 0;
+    }
+
+    document.addEventListener('touchstart', function (e) {
+      if (!atTop() || e.touches.length !== 1) { pulling = false; return; }
+      startY = e.touches[0].clientY;
+      pulling = true;
+    }, { passive: true });
+
+    document.addEventListener('touchmove', function (e) {
+      if (!pulling) return;
+      var dy = e.touches[0].clientY - startY;
+      if (dy <= 0 || !atTop()) { pulling = false; return; }
+      e.preventDefault();
+      var pull = Math.min(dy * 0.5, PULL_MAX);
+      var el = ensureIndicator();
+      el.style.transform = 'translateY(' + (pull - 56) + 'px)';
+      el.style.opacity = Math.min(pull / PULL_THRESHOLD, 1);
+      var icon = document.getElementById('hiconiquePullIcon');
+      if (icon) icon.style.transform = 'rotate(' + Math.round((pull / PULL_MAX) * 360) + 'deg)';
+      el.setAttribute('data-pull', pull);
+    }, { passive: false });
+
+    function endPull() {
+      if (!pulling) return;
+      pulling = false;
+      var el = indicator;
+      if (!el) return;
+      var pull = parseFloat(el.getAttribute('data-pull') || '0');
+      if (pull >= PULL_THRESHOLD) {
+        el.style.transition = 'transform .15s ease-out';
+        el.style.transform = 'translateY(12px)';
+        var icon = document.getElementById('hiconiquePullIcon');
+        if (icon) icon.style.animation = 'hiconiquePullSpin .6s linear infinite';
+        window.location.reload();
+      } else {
+        el.style.transition = 'transform .2s ease-out, opacity .2s ease-out';
+        el.style.transform = 'translateY(-56px)';
+        el.style.opacity = '0';
+      }
+    }
+    document.addEventListener('touchend', endPull, { passive: true });
+    document.addEventListener('touchcancel', endPull, { passive: true });
+  }
+
   function registerServiceWorker() {
     if (!('serviceWorker' in navigator)) return; // Safari cũ/WebView nội bộ không hỗ trợ — bỏ qua êm, không lỗi
     window.addEventListener('load', function () {
@@ -229,6 +312,7 @@ var Offline = (function () {
     pingCheck();
     pingTimer = setInterval(function () { pingCheck(); reloadIfStale(); }, PING_INTERVAL_MS);
     registerServiceWorker();
+    initPullToRefresh();
   }
 
   if (document.readyState === 'loading') {
