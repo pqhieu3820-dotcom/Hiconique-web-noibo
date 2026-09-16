@@ -30,6 +30,32 @@ var Offline = (function () {
   var PING_INTERVAL_MS = 15000;
   var PING_TIMEOUT_MS = 15000; // Apps Script có lúc chậm thật (cold start/nhiều người dùng cùng lúc) — không siết quá tay kẻo báo mất mạng oan
   var CONSECUTIVE_FAILS_TO_GO_OFFLINE = 3; // 1-2 lần ping trượt có thể chỉ là chậm nhất thời, KHÔNG kết luận mất mạng ngay — phải trượt liên tiếp mới chắc là thật sự mất mạng
+  // 2026-09-16: app "Thêm vào Màn hình chính" (iOS Safari/Android Chrome) mở
+  // ra ở chế độ standalone thường bị trình duyệt đưa vào bfcache khi chuyển
+  // sang app khác — quay lại thì trang KHÔNG chạy lại JS/initData(), chỉ hiện
+  // nguyên DOM cũ đứng yên (khác hẳn 1 tab Chrome desktop bình thường hay bị
+  // load lại tự nhiên khi chuyển qua lại trang). Trước đây chỉ có cách thoát
+  // ra đăng nhập lại mới ép initData() chạy lại. Sửa bằng cách tự RELOAD
+  // trang khi phát hiện dữ liệu đã cũ quá ngưỡng — đơn giản, chắc chắn đúng
+  // hơn tự vá lại state từng trang (mỗi trang render khác nhau).
+  var STALE_RELOAD_MS = 20000; // dữ liệu cũ quá 20s (khi trang đang hiển thị) thì coi là cần tải lại
+
+  function dataAgeMs() {
+    var ts = null;
+    try { ts = localStorage.getItem(LAST_SYNC_KEY); } catch (e) {}
+    if (!ts) return 0; // chưa từng sync lần nào — để trang tự initData() lần đầu, không reload
+    var t = new Date(ts).getTime();
+    return isNaN(t) ? 0 : (Date.now() - t);
+  }
+
+  // Chỉ reload khi: có mạng (reload lúc mất mạng chỉ tải lại y hệt bản cũ,
+  // vô nghĩa) + trang đang thật sự hiển thị (không reload ngầm lúc app đang
+  // ở nền, phí pin/dữ liệu di động vô ích) + dữ liệu đã cũ quá ngưỡng.
+  function reloadIfStale() {
+    if (!online) return;
+    if (document.visibilityState !== 'visible') return;
+    if (dataAgeMs() > STALE_RELOAD_MS) window.location.reload();
+  }
 
   // Bắt đầu bằng đúng những gì trình duyệt báo — chỉnh lại ngay sau ping đầu.
   var online = navigator.onLine !== false;
@@ -187,10 +213,21 @@ var Offline = (function () {
     window.addEventListener('online', pingCheck);
     window.addEventListener('offline', function () { setOnline(false); });
     document.addEventListener('visibilitychange', function () {
-      if (document.visibilityState === 'visible') pingCheck();
+      if (document.visibilityState === 'visible') {
+        pingCheck();
+        reloadIfStale();
+      }
+    });
+    // 'pageshow' bắn cả lúc load bình thường LẪN lúc trình duyệt phục hồi
+    // trang từ bfcache (event.persisted = true) — chính là lúc mở lại app đã
+    // "Thêm vào Màn hình chính" từ nền ra. Đây là điểm mấu chốt để bắt đúng
+    // ca bfcache mà 'visibilitychange' một mình không chắc bắt được ở mọi
+    // trình duyệt di động.
+    window.addEventListener('pageshow', function (e) {
+      if (e.persisted) reloadIfStale();
     });
     pingCheck();
-    pingTimer = setInterval(pingCheck, PING_INTERVAL_MS);
+    pingTimer = setInterval(function () { pingCheck(); reloadIfStale(); }, PING_INTERVAL_MS);
     registerServiceWorker();
   }
 
