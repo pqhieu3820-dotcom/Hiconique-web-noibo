@@ -925,7 +925,15 @@ function makeId(prefix) {
 // all-digit string gets auto-coerced to a Number on write, which silently
 // drops any leading "0" (e.g. phone "0334828489" -> 334828489). These fields
 // are never used arithmetically, so force them to text too.
-var FORCE_TEXT_FIELDS = { phone: true, cccd: true, bankAccount: true };
+// 2026-09-18: `lat`/`lng` (Sheet "Địa điểm chấm công") gặp ĐÚNG bug y hệt IP
+// đã ghi chú bên dưới — client gửi lên dạng CHUỖI (`<input>.value` luôn là
+// string), Apps Script ghi thẳng chuỗi "20.926738" vào ô KHÔNG ép định dạng
+// Text trước, Sheet ở locale VN đọc "." là dấu phân cách hàng nghìn nên tự
+// biến thành SỐ 20926738 (mất hết phần thập phân) — hậu quả thật: tính
+// khoảng cách GPS ra sai lệch hàng nghìn km khiến chấm công báo "cách văn
+// phòng 9942450m", tưởng nhầm là lỗi định vị của thiết bị/trình duyệt trong
+// khi bản chất là toạ độ ĐÍCH lưu trên Sheet đã bị hỏng ngay từ lúc ghi.
+var FORCE_TEXT_FIELDS = { phone: true, cccd: true, bankAccount: true, lat: true, lng: true };
 function forceTextIfDateLike(val, enKey) {
   if (typeof val === 'string' && /^\d{4}-\d{1,2}$/.test(val)) return "'" + val;
   if (enKey && FORCE_TEXT_FIELDS[enKey] && typeof val === 'string' && /^\d+$/.test(val)) return "'" + val;

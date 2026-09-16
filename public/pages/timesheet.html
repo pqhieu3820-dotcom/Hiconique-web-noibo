@@ -187,6 +187,13 @@
     .ts-verify-body { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
     .ts-verify-label { color: var(--ts-muted); }
     .ts-verify-state { color: var(--ts-text); font-weight: 500; line-height: 1.45; word-break: break-word; }
+    .ts-verify-retry {
+      flex-shrink: 0; align-self: center; background: none; border: 1px solid var(--ts-border);
+      border-radius: 6px; padding: 3px 10px; font-size: 0.6875rem; font-weight: 600;
+      color: var(--ts-bronze); cursor: pointer; font-family: inherit;
+    }
+    .ts-verify-retry:hover { border-color: var(--ts-bronze); }
+    .ts-verify-retry[hidden] { display: none; }
     .ts-verify-state.ok { color: var(--ts-success); }
     .ts-verify-state.fail { color: var(--ts-danger); }
 
@@ -815,6 +822,7 @@
               <span class="ts-verify-label">Vị trí GPS</span>
               <span class="ts-verify-state" id="tsVerifyGeoState">Đang kiểm tra…</span>
             </span>
+            <button type="button" class="ts-verify-retry" id="tsGeoRetryBtn" hidden>Thử lại</button>
           </div>
           <div class="ts-verify-row" id="tsVerifyIpRow">
             <span class="ts-verify-dot" id="tsVerifyIpDot"></span>
@@ -957,6 +965,10 @@
     // công tắc bật/tắt CẢ NHÓM (không phải để cấu hình từng điểm — việc đó nằm ở Sheet).
     var GEO_RESTRICTION = { enabled: true, radiusMetersDefault: 50 };
     var IP_RESTRICTION = { enabled: true };
+    // Ngưỡng "vô lý" — quá con số này thì chắc chắn là lỗi định vị (không có
+    // công trình/văn phòng nào cách xa vậy) chứ không phải nhân viên thật sự
+    // đang cách xa đến thế, xem checkGeoStatus().
+    var GEO_MAX_PLAUSIBLE_DISTANCE_M = 20000;
 
     var attendanceLocationsCache = null; // mảng thô từ Sheet, load 1 lần/phiên trang rồi tái dùng
     function loadAttendanceLocations() {
@@ -1018,6 +1030,36 @@
       });
     }
 
+    // 2026-09-18: sửa lỗi "GPS thỉnh thoảng nhảy" (người dùng phản ánh thật —
+    // hiện cách văn phòng gần 10.000km!) — 1 lần gọi getCurrentPosition() DUY
+    // NHẤT đôi khi trả về vị trí lấy từ nguồn định vị thô (Wi-Fi/cell/IP,
+    // đặc biệt hay gặp trên Windows Location Service khi GPS thật chưa kịp
+    // khoá tín hiệu) thay vì GPS thật, sai lệch có thể tới hàng nghìn km dù
+    // `enableHighAccuracy: true`. Trình duyệt KHÔNG có cách nào yêu cầu thẳng
+    // "chỉ dùng GPS thật" — cách duy nhất đáng tin cậy là gọi lại vài lần và
+    // GIỮ LẠI kết quả có `coords.accuracy` (bán kính sai số, đơn vị mét) THẤP
+    // NHẤT, dừng sớm ngay khi đã đủ chính xác (<=50m) để không làm chậm lúc
+    // GPS thật đã khoá ngay từ lần đầu.
+    function getBestGeoPosition(maxAttempts, timeoutMs) {
+      return new Promise(function (resolve, reject) {
+        var attemptsLeft = maxAttempts;
+        var best = null;
+        function tryOnce() {
+          navigator.geolocation.getCurrentPosition(function (pos) {
+            if (!best || pos.coords.accuracy < best.coords.accuracy) best = pos;
+            attemptsLeft--;
+            if (attemptsLeft <= 0 || best.coords.accuracy <= 50) resolve(best);
+            else tryOnce();
+          }, function (err) {
+            attemptsLeft--;
+            if (attemptsLeft <= 0) { if (best) resolve(best); else reject(err); }
+            else tryOnce();
+          }, { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 0 });
+        }
+        tryOnce();
+      });
+    }
+
     function checkGeoStatus() {
       if (!GEO_RESTRICTION.enabled) return Promise.resolve({ ok: false, skip: true, message: 'Đang tắt', lat: '', lng: '', distance: '' });
       if (!navigator.geolocation) {
@@ -1027,7 +1069,7 @@
         var geoLocations = activeGeoLocations(rows);
         if (geoLocations.length === 0) return { ok: false, skip: true, message: 'Chưa cấu hình địa điểm', lat: '', lng: '', distance: '' };
         return new Promise(function (resolve) {
-          navigator.geolocation.getCurrentPosition(function (pos) {
+          getBestGeoPosition(3, 7000).then(function (pos) {
             var lat = pos.coords.latitude, lng = pos.coords.longitude;
             // So khớp với TỪNG địa điểm đang bật, lấy điểm gần nhất — chỉ cần
             // nằm trong bán kính của MỘT điểm bất kỳ là đạt (nhiều công trình/
@@ -1040,33 +1082,56 @@
             });
             if (best.dist <= best.radius) {
               resolve({ ok: true, skip: false, message: 'Đang ở gần ' + (best.name || 'địa điểm cho phép'), lat: lat, lng: lng, distance: best.dist });
+            } else if (best.dist > GEO_MAX_PLAUSIBLE_DISTANCE_M) {
+              // Thỉnh thoảng trình duyệt/Windows Location Service trả về 1 vị
+              // trí mạng sai lệch cực lớn (có lúc cách xa cả chục nghìn km,
+              // người dùng phản ánh thật) dù đã lấy vị trí có accuracy tốt
+              // nhất trong vài lần thử (getBestGeoPosition) — bản thân nguồn
+              // định vị đó tự báo "tin cậy" (accuracy thấp) trong khi tọa độ
+              // lại sai, retry tự động không lọc được. Hiện số đo mét cực lớn
+              // ra thẳng dễ gây hoang mang ("GPS nhảy đi đâu mất") — thay bằng
+              // thông báo rõ + nút "Thử lại" thủ công cạnh dòng Vị trí GPS.
+              resolve({ ok: false, skip: false, unreliable: true, message: 'Định vị không chính xác, bấm "Thử lại"', lat: lat, lng: lng, distance: best.dist });
             } else {
               resolve({ ok: false, skip: false, message: 'Cách ' + (best.name || 'địa điểm gần nhất') + ' ' + best.dist + 'm', lat: lat, lng: lng, distance: best.dist });
             }
           }, function (err) {
             var msg = 'Không lấy được vị trí';
-            if (err && err.code === 1) msg = 'Trang web chưa được cấp quyền vị trí';
+            var permissionDenied = false;
+            if (err && err.code === 1) { msg = 'Trang web chưa được cấp quyền vị trí'; permissionDenied = true; }
             else if (err && err.code === 2) msg = 'Không xác định được vị trí (kiểm tra Location/Vị trí đã bật trong Windows chưa)';
             else if (err && err.code === 3) msg = 'Định vị quá thời gian chờ, thử lại';
-            resolve({ ok: false, skip: false, message: msg, lat: '', lng: '', distance: '' });
-          }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+            resolve({ ok: false, skip: false, permissionDenied: permissionDenied, message: msg, lat: '', lng: '', distance: '' });
+          });
         });
       });
     }
 
-    function renderVerifyRow(dotId, stateId, result) {
+    function renderVerifyRow(dotId, stateId, result, retryBtnId) {
       var dot = document.getElementById(dotId);
       var state = document.getElementById(stateId);
+      var retryBtn = retryBtnId ? document.getElementById(retryBtnId) : null;
       if (!dot || !state) return;
       if (result.skip) {
         dot.className = 'ts-verify-dot';
         state.className = 'ts-verify-state';
         state.textContent = 'Đang tắt';
+        if (retryBtn) retryBtn.hidden = true;
         return;
       }
       dot.className = 'ts-verify-dot ' + (result.ok ? 'ok' : 'fail');
       state.className = 'ts-verify-state ' + (result.ok ? 'ok' : 'fail');
       state.textContent = result.message;
+      // Nút gọi lại getCurrentPosition() thủ công — hiện bất cứ khi nào định
+      // vị chưa đạt (không tính lúc đang tắt): permissionDenied → nhãn "Cấp
+      // quyền vị trí" (bấm nút này CHÍNH LÀ cách web yêu cầu lại quyền định vị
+      // với nền tảng/thiết bị, trình duyệt tự hiện hộp thoại xin quyền nếu
+      // chưa từng bị chặn cứng); còn lại (timeout/không xác định được/kết quả
+      // vô lý) → nhãn "Thử lại".
+      if (retryBtn) {
+        retryBtn.hidden = result.ok;
+        retryBtn.textContent = result.permissionDenied ? 'Cấp quyền vị trí' : 'Thử lại';
+      }
     }
 
     function runLiveStatusCheck() {
@@ -1077,12 +1142,30 @@
       panel.hidden = false;
       return Promise.all([checkGeoStatus(), checkIpStatus()]).then(function (results) {
         var deviceResult = checkDeviceStatus();
-        renderVerifyRow('tsVerifyGeoDot', 'tsVerifyGeoState', results[0]);
+        renderVerifyRow('tsVerifyGeoDot', 'tsVerifyGeoState', results[0], 'tsGeoRetryBtn');
         renderVerifyRow('tsVerifyIpDot', 'tsVerifyIpState', results[1]);
         renderVerifyRow('tsVerifyDeviceDot', 'tsVerifyDeviceState', deviceResult);
         return { geo: results[0], ip: results[1], device: deviceResult };
       });
     }
+
+    // Nút "Thử lại"/"Cấp quyền vị trí" — hiện khi định vị chưa đạt, gọi lại
+    // đúng 1 mình checkGeoStatus() (không đụng Wifi/Thiết bị). Bấm nút này
+    // CHÍNH LÀ cách gọi lại navigator.geolocation.getCurrentPosition() — với
+    // nền tảng web, đó là thao tác "yêu cầu quyền vị trí": nếu chưa từng bị
+    // chặn cứng, trình duyệt tự hiện lại hộp thoại xin quyền của thiết bị.
+    (function initGeoRetryBtn() {
+      var retryBtn = document.getElementById('tsGeoRetryBtn');
+      if (!retryBtn) return;
+      retryBtn.addEventListener('click', function () {
+        retryBtn.disabled = true;
+        retryBtn.textContent = 'Đang thử...';
+        checkGeoStatus().then(function (result) {
+          renderVerifyRow('tsVerifyGeoDot', 'tsVerifyGeoState', result, 'tsGeoRetryBtn');
+          retryBtn.disabled = false;
+        });
+      });
+    })();
 
     function verifyRowHtml(label, result) {
       var cls = result.skip ? '' : (result.ok ? 'ok' : 'fail');
@@ -1670,7 +1753,7 @@
       Promise.all([checkGeoStatus(), checkIpStatus()]).then(function (results) {
         var geoResult = results[0], ipResult = results[1];
         var deviceResult = checkDeviceStatus();
-        renderVerifyRow('tsVerifyGeoDot', 'tsVerifyGeoState', geoResult);
+        renderVerifyRow('tsVerifyGeoDot', 'tsVerifyGeoState', geoResult, 'tsGeoRetryBtn');
         renderVerifyRow('tsVerifyIpDot', 'tsVerifyIpState', ipResult);
         renderVerifyRow('tsVerifyDeviceDot', 'tsVerifyDeviceState', deviceResult);
         btn.disabled = false;
