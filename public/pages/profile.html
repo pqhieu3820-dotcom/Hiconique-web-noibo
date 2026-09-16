@@ -171,11 +171,18 @@
               <div class="pf-field-label">Chức vụ</div>
               <div class="pf-field-value" id="profileRoleField">--</div>
             </div>
+            <div class="pf-field" data-field="divisionCode">
+              <div class="pf-field-label">Bộ phận</div>
+              <div class="pf-field-value" id="profileDivision">--</div>
+              <select class="pf-field-input" id="profileDivisionInput" hidden>
+                <option value="">-- Chọn bộ phận --</option>
+              </select>
+            </div>
             <div class="pf-field" data-field="departmentCode">
               <div class="pf-field-label">Phòng ban</div>
               <div class="pf-field-value" id="profileDepartment">--</div>
               <select class="pf-field-input" id="profileDepartmentInput" hidden>
-                <option value="">-- Chọn phòng ban --</option>
+                <option value="">-- Chọn bộ phận trước --</option>
               </select>
             </div>
             <div class="pf-field" data-field="dob">
@@ -265,29 +272,40 @@
     var session = Auth.getCurrentUser();
     if (!session) { Auth.showLoginModal(); return; }
 
-    var EDITABLE = ['dob', 'gender', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount', 'departmentCode'];
+    var EDITABLE = ['dob', 'gender', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount', 'divisionCode', 'departmentCode'];
     var user;
 
     function fmtDob(v) { return v ? new Date(v).toLocaleDateString('vi-VN') : '--'; }
     function isoDob(v) { return v ? new Date(v).toISOString().split('T')[0] : ''; }
     function fmtGender(v) { return v === 'male' ? 'Nam' : v === 'female' ? 'Nữ' : v === 'other' ? 'Khác' : '--'; }
 
-    // Danh mục phòng ban cố định (TaskManager.getDepartments(), xem task-data.js)
-    // — build 1 lần, gộp theo "group" cho dễ tìm trong dropdown dài.
-    (function populateDepartmentSelect() {
-      var sel = document.getElementById('profileDepartmentInput');
-      if (!sel || typeof TaskManager === 'undefined' || !TaskManager.getDepartments) return;
-      var byGroup = {}, groupOrder = [];
-      TaskManager.getDepartments().forEach(function (d) {
-        if (!byGroup[d.group]) { byGroup[d.group] = []; groupOrder.push(d.group); }
-        byGroup[d.group].push(d);
+    // Bộ phận là cấp CHA của Phòng ban — chọn Bộ phận trước sẽ thu hẹp
+    // Phòng ban chỉ còn các phòng thuộc khối đó (TaskManager.getDivisions()/
+    // getDepartmentsByDivision(), xem task-data.js, danh mục CỐ ĐỊNH theo SOP).
+    var divisionSel = document.getElementById('profileDivisionInput');
+    var departmentSel = document.getElementById('profileDepartmentInput');
+    function renderDepartmentOptions(divisionCode, selectedCode) {
+      if (!departmentSel) return;
+      if (!divisionCode) {
+        departmentSel.innerHTML = '<option value="">-- Chọn bộ phận trước --</option>';
+        departmentSel.disabled = true;
+        return;
+      }
+      departmentSel.disabled = false;
+      var depts = (typeof TaskManager !== 'undefined' && TaskManager.getDepartmentsByDivision) ? TaskManager.getDepartmentsByDivision(divisionCode) : [];
+      departmentSel.innerHTML = '<option value="">-- Chọn phòng ban --</option>' +
+        depts.map(function (d) { return '<option value="' + d.code + '">' + d.code + ' — ' + d.name + '</option>'; }).join('');
+      if (selectedCode) departmentSel.value = selectedCode;
+    }
+    (function populateDivisionSelect() {
+      if (!divisionSel || typeof TaskManager === 'undefined' || !TaskManager.getDivisions) return;
+      TaskManager.getDivisions().forEach(function (dv) {
+        var opt = document.createElement('option');
+        opt.value = dv.code;
+        opt.textContent = dv.code + ' — ' + dv.name;
+        divisionSel.appendChild(opt);
       });
-      sel.innerHTML = '<option value="">-- Chọn phòng ban --</option>' +
-        groupOrder.map(function (g) {
-          return '<optgroup label="' + g + '">' +
-            byGroup[g].map(function (d) { return '<option value="' + d.code + '">' + d.code + ' — ' + d.name + '</option>'; }).join('') +
-          '</optgroup>';
-        }).join('');
+      divisionSel.addEventListener('change', function () { renderDepartmentOptions(divisionSel.value, ''); });
     })();
 
     function render() {
@@ -301,6 +319,16 @@
       document.getElementById('profileRole').textContent = user.role || '--';
       document.getElementById('profileEmail').textContent = user.email || '--';
       document.getElementById('profileRoleField').textContent = user.role || '--';
+      // Thành viên gán Phòng ban TRƯỚC khi có Bộ phận (2026-09-16) sẽ chưa có
+      // divisionCode — suy ra ngược từ departmentCode (Phòng ban) qua quan hệ
+      // cha/con để không hiện "--" sai và để dropdown Phòng ban không bị khoá.
+      var effectiveDivisionCode = user.divisionCode;
+      if (!effectiveDivisionCode && user.departmentCode && typeof TaskManager !== 'undefined' && TaskManager.getDepartmentByCode) {
+        var deptForDivision = TaskManager.getDepartmentByCode(user.departmentCode);
+        effectiveDivisionCode = deptForDivision ? deptForDivision.divisionCode : '';
+      }
+      var effectiveDivisionInfo = effectiveDivisionCode && typeof TaskManager !== 'undefined' && TaskManager.getDivisionByCode ? TaskManager.getDivisionByCode(effectiveDivisionCode) : null;
+      document.getElementById('profileDivision').textContent = effectiveDivisionCode ? (effectiveDivisionCode + ' — ' + (user.division || (effectiveDivisionInfo ? effectiveDivisionInfo.name : ''))) : '--';
       document.getElementById('profileDepartment').textContent = user.departmentCode ? (user.departmentCode + ' — ' + (user.department || '')) : '--';
       document.getElementById('profileDob').textContent = fmtDob(user.dob);
       document.getElementById('profileGender').textContent = fmtGender(user.gender);
@@ -310,7 +338,8 @@
       document.getElementById('profileBankName').textContent = user.bank || '--';
       document.getElementById('profileBank').textContent = user.bankAccount || '--';
 
-      document.getElementById('profileDepartmentInput').value = user.departmentCode || '';
+      if (divisionSel) divisionSel.value = effectiveDivisionCode || '';
+      renderDepartmentOptions(effectiveDivisionCode || '', user.departmentCode || '');
       document.getElementById('profileDobInput').value = isoDob(user.dob);
       document.getElementById('profileGenderInput').value = user.gender || '';
       document.getElementById('profileCccdInput').value = user.cccd || '';
@@ -343,6 +372,8 @@
     document.getElementById('pfSaveBtn').addEventListener('click', function () {
       var deptCode = document.getElementById('profileDepartmentInput').value;
       var deptInfo = (typeof TaskManager !== 'undefined' && TaskManager.getDepartmentByCode) ? TaskManager.getDepartmentByCode(deptCode) : null;
+      var divCode = divisionSel ? divisionSel.value : '';
+      var divInfo = (typeof TaskManager !== 'undefined' && TaskManager.getDivisionByCode) ? TaskManager.getDivisionByCode(divCode) : null;
       var updates = {
         dob: document.getElementById('profileDobInput').value,
         gender: document.getElementById('profileGenderInput').value,
@@ -352,7 +383,9 @@
         bank: document.getElementById('profileBankNameInput').value.trim(),
         bankAccount: document.getElementById('profileBankInput').value.trim(),
         departmentCode: deptInfo ? deptInfo.code : '',
-        department: deptInfo ? deptInfo.name : ''
+        department: deptInfo ? deptInfo.name : '',
+        divisionCode: divInfo ? divInfo.code : '',
+        division: divInfo ? divInfo.name : ''
       };
       TaskManager.updateMember(session.id, updates, session);
       render();

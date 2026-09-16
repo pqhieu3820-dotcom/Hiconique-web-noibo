@@ -78,7 +78,11 @@ const FIELD_MAP = {
     // 2026-09-16: thêm phòng ban — 2 cột riêng (tên đầy đủ + mã 3 ký tự
     // dùng để đánh số văn bản, xem TaskManager.getDepartments() trong
     // task-data.js — danh mục CỐ ĐỊNH theo SOP nội bộ, không tự thêm/sửa).
-    ['Phòng ban', 'department'], ['Mã phòng ban', 'departmentCode']
+    ['Phòng ban', 'department'], ['Mã phòng ban', 'departmentCode'],
+    // 2026-09-16 (b): thêm Bộ phận — cấp CHA của Phòng ban (4 khối theo SOP,
+    // xem TaskManager.getDivisions() trong task-data.js). Quan hệ cha/con:
+    // mỗi Phòng ban thuộc đúng 1 Bộ phận (department.divisionCode).
+    ['Bộ phận', 'division'], ['Mã bộ phận', 'divisionCode']
   ],
   // 2026-09-09: "Loại dự án" đổi nghĩa thành LOẠI CÔNG TRÌNH thật (Nhà phố,
   // Biệt thự, Căn hộ chung cư...), giá trị cũ (Thiết kế/Thi công/Nội thất...)
@@ -1952,6 +1956,82 @@ function addDepartmentColumns() {
     sheet.getRange(1, col).setValue(header);
     headers.push(header);
     lines.push(header + ': đã thêm ở cột ' + col);
+  });
+  const report = lines.join('\n');
+  Logger.log(report);
+  return report;
+}
+
+// Thêm 2 cột "Bộ phận"/"Mã bộ phận" (cấp CHA của Phòng ban) vào cuối sheet
+// Thành viên — chạy TAY ĐÚNG 1 LẦN, cùng kiểu addDepartmentColumns() ở trên.
+function addDivisionColumns() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = findSheet(ss, SHEETS.members);
+  if (!sheet) return 'Không tìm thấy sheet Thành viên';
+  const headers = getHeaders(sheet);
+  const lines = [];
+  [['Bộ phận'], ['Mã bộ phận']].forEach(function (pair) {
+    const header = pair[0];
+    if (headers.indexOf(header) !== -1) { lines.push(header + ': đã có sẵn, bỏ qua'); return; }
+    const col = sheet.getLastColumn() + 1;
+    sheet.getRange(1, col).setValue(header);
+    headers.push(header);
+    lines.push(header + ': đã thêm ở cột ' + col);
+  });
+  const report = lines.join('\n');
+  Logger.log(report);
+  return report;
+}
+
+// Danh sách Bộ phận/Phòng ban CỐ ĐỊNH — CHỈ dùng để dựng dropdown data
+// validation trên Sheet (setDataValidation không đọc được task-data.js phía
+// client). PHẢI khớp đúng TaskManager.getDivisions()/getDepartments() trong
+// public/js/task-data.js — đổi 1 bên thì phải đổi bên kia theo, không có
+// cách nào tự đồng bộ 2 runtime khác nhau (giống VALUE_MAP ở đầu file).
+const DIVISION_NAMES = [
+  'Khối Quản trị & Vận hành chung', 'Khối Kinh doanh & Trải nghiệm Khách hàng',
+  'Khối Chuyên môn Thiết kế & Số hóa', 'Khối Kỹ thuật Xây dựng & Sản xuất'
+];
+const DIVISION_CODES = ['BO', 'FO', 'DDC', 'CPC'];
+const DEPARTMENT_NAMES = [
+  'Ban Giám đốc', 'Nhân sự', 'Kế toán & Tài chính', 'Hành chính & Công nghệ', 'Pháp chế & Hợp đồng',
+  'Kinh doanh', 'Truyền thông', 'Chăm sóc Khách hàng',
+  'Thiết kế Kiến trúc & Nội thất', 'Quản lý Dữ liệu số', 'Nghiên cứu Kỹ thuật',
+  'Dự toán & Bóc tách', 'Cung ứng & Mua hàng', 'Kho bãi & Vận tải', 'Xưởng sản xuất',
+  'Quản lý Thi công', 'An toàn & Môi trường', 'Chất lượng'
+];
+const DEPARTMENT_CODES = [
+  'BOD', 'HRM', 'ACC', 'ADM', 'LEG', 'BIZ', 'MKT', 'CUS', 'DES', 'BIM', 'RND',
+  'EST', 'PUR', 'WHS', 'MFG', 'CON', 'HSE', 'QAS'
+];
+
+// Đặt dropdown (data validation, danh sách CỐ ĐỊNH) cho 4 cột Bộ phận/Mã bộ
+// phận/Phòng ban/Mã phòng ban trên sheet Thành viên — chạy TAY, an toàn chạy
+// lại nhiều lần (ghi đè rule cũ). Theo đúng yêu cầu người dùng 2026-09-16:
+// các cột này phải là dropdown chọn từ danh sách cố định, không gõ tay tự do.
+function applyDepartmentDropdowns() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = findSheet(ss, SHEETS.members);
+  if (!sheet) return 'Không tìm thấy sheet Thành viên';
+  const headers = getHeaders(sheet);
+  const lastRow = sheet.getLastRow();
+  const numRows = Math.min(Math.max(lastRow - 1, 0) + 50, sheet.getMaxRows() - 1);
+  const lines = [];
+  [
+    ['Bộ phận', DIVISION_NAMES],
+    ['Mã bộ phận', DIVISION_CODES],
+    ['Phòng ban', DEPARTMENT_NAMES],
+    ['Mã phòng ban', DEPARTMENT_CODES]
+  ].forEach(function (pair) {
+    const header = pair[0];
+    const list = pair[1];
+    const colIdx = headers.indexOf(header);
+    if (colIdx === -1) { lines.push(header + ': không tìm thấy cột'); return; }
+    const rule = SpreadsheetApp.newDataValidation().requireValueInList(list, true).setAllowInvalid(false).build();
+    const targetRange = sheet.getRange(2, colIdx + 1, numRows, 1);
+    targetRange.clearDataValidations();
+    targetRange.setDataValidation(rule);
+    lines.push(header + ': đã đặt dropdown (' + list.length + ' lựa chọn)');
   });
   const report = lines.join('\n');
   Logger.log(report);

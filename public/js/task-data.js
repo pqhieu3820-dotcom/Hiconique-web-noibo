@@ -85,34 +85,52 @@ var TaskManager = (function() {
     { id: 'MEM2', name: 'Lê Thành', role: 'Kỹ sư nội thất', roleLevel: 'member', email: 'thanh@hiconique.vn', password: '123456', dob: '1993-11-08', cccd: '012345678905', hometown: 'Hải Phòng', bankAccount: '1234567894', color: '#B8725A', avatar: 'LT', createdAt: '2026-01-01' }
   ];
 
+  // Danh mục BỘ PHẬN (khối) CỐ ĐỊNH (2026-09-16) — cấp cha của Phòng ban,
+  // theo đúng 4 nhóm trong "Standard Operating Procedure" nội bộ. Mã viết
+  // tắt lấy từ tên tiếng Anh trong ngoặc của SOP (Back-Office -> BO,
+  // Front-Office -> FO, Design & Data Core -> DDC, Construct & Product
+  // Core -> CPC) — cùng quy ước với mã Phòng ban bên dưới.
+  var DIVISIONS = [
+    { code: 'BO', name: 'Khối Quản trị & Vận hành chung' },
+    { code: 'FO', name: 'Khối Kinh doanh & Trải nghiệm Khách hàng' },
+    { code: 'DDC', name: 'Khối Chuyên môn Thiết kế & Số hóa' },
+    { code: 'CPC', name: 'Khối Kỹ thuật Xây dựng & Sản xuất' }
+  ];
+  function getDivisions() { return DIVISIONS.slice(); }
+  function getDivisionByCode(code) { return DIVISIONS.find(function (d) { return d.code === code; }) || null; }
+
   // Danh mục phòng ban CỐ ĐỊNH (2026-09-16) — theo đúng "Standard Operating
   // Procedure" nội bộ (mã phòng ban dùng trong đánh số văn bản), dùng chung
   // cho form đăng ký (auth.js), trang cá nhân (profile.html) và trang quản
   // lý thành viên (team.html) — 1 nguồn duy nhất, không viết trùng 3 nơi.
   // Không tự thêm/sửa danh sách này khi không có yêu cầu — đây là danh mục
   // chuẩn hoá dùng cho đánh số văn bản/hồ sơ, đổi tuỳ tiện sẽ lệch với SOP.
+  // `divisionCode` = mã Bộ phận cha (xem DIVISIONS ở trên) — quan hệ cha/con
+  // dùng để lọc dropdown Phòng ban theo Bộ phận đã chọn ở form đăng ký/trang
+  // cá nhân (chọn Bộ phận trước sẽ thu hẹp danh sách Phòng ban tương ứng).
   var DEPARTMENTS = [
-    { code: 'BOD', name: 'Ban Giám đốc', group: 'Khối Quản trị & Vận hành chung' },
-    { code: 'HRM', name: 'Nhân sự', group: 'Khối Quản trị & Vận hành chung' },
-    { code: 'ACC', name: 'Kế toán & Tài chính', group: 'Khối Quản trị & Vận hành chung' },
-    { code: 'ADM', name: 'Hành chính & Công nghệ', group: 'Khối Quản trị & Vận hành chung' },
-    { code: 'LEG', name: 'Pháp chế & Hợp đồng', group: 'Khối Quản trị & Vận hành chung' },
-    { code: 'BIZ', name: 'Kinh doanh', group: 'Khối Kinh doanh & Trải nghiệm Khách hàng' },
-    { code: 'MKT', name: 'Truyền thông', group: 'Khối Kinh doanh & Trải nghiệm Khách hàng' },
-    { code: 'CUS', name: 'Chăm sóc Khách hàng', group: 'Khối Kinh doanh & Trải nghiệm Khách hàng' },
-    { code: 'DES', name: 'Thiết kế Kiến trúc & Nội thất', group: 'Khối Chuyên môn Thiết kế & Số hóa' },
-    { code: 'BIM', name: 'Quản lý Dữ liệu số', group: 'Khối Chuyên môn Thiết kế & Số hóa' },
-    { code: 'RND', name: 'Nghiên cứu Kỹ thuật', group: 'Khối Chuyên môn Thiết kế & Số hóa' },
-    { code: 'EST', name: 'Dự toán & Bóc tách', group: 'Khối Kỹ thuật Xây dựng & Sản xuất' },
-    { code: 'PUR', name: 'Cung ứng & Mua hàng', group: 'Khối Kỹ thuật Xây dựng & Sản xuất' },
-    { code: 'WHS', name: 'Kho bãi & Vận tải', group: 'Khối Kỹ thuật Xây dựng & Sản xuất' },
-    { code: 'MFG', name: 'Xưởng sản xuất', group: 'Khối Kỹ thuật Xây dựng & Sản xuất' },
-    { code: 'CON', name: 'Quản lý Thi công', group: 'Khối Kỹ thuật Xây dựng & Sản xuất' },
-    { code: 'HSE', name: 'An toàn & Môi trường', group: 'Khối Kỹ thuật Xây dựng & Sản xuất' },
-    { code: 'QAS', name: 'Chất lượng', group: 'Khối Kỹ thuật Xây dựng & Sản xuất' }
+    { code: 'BOD', name: 'Ban Giám đốc', group: 'Khối Quản trị & Vận hành chung', divisionCode: 'BO' },
+    { code: 'HRM', name: 'Nhân sự', group: 'Khối Quản trị & Vận hành chung', divisionCode: 'BO' },
+    { code: 'ACC', name: 'Kế toán & Tài chính', group: 'Khối Quản trị & Vận hành chung', divisionCode: 'BO' },
+    { code: 'ADM', name: 'Hành chính & Công nghệ', group: 'Khối Quản trị & Vận hành chung', divisionCode: 'BO' },
+    { code: 'LEG', name: 'Pháp chế & Hợp đồng', group: 'Khối Quản trị & Vận hành chung', divisionCode: 'BO' },
+    { code: 'BIZ', name: 'Kinh doanh', group: 'Khối Kinh doanh & Trải nghiệm Khách hàng', divisionCode: 'FO' },
+    { code: 'MKT', name: 'Truyền thông', group: 'Khối Kinh doanh & Trải nghiệm Khách hàng', divisionCode: 'FO' },
+    { code: 'CUS', name: 'Chăm sóc Khách hàng', group: 'Khối Kinh doanh & Trải nghiệm Khách hàng', divisionCode: 'FO' },
+    { code: 'DES', name: 'Thiết kế Kiến trúc & Nội thất', group: 'Khối Chuyên môn Thiết kế & Số hóa', divisionCode: 'DDC' },
+    { code: 'BIM', name: 'Quản lý Dữ liệu số', group: 'Khối Chuyên môn Thiết kế & Số hóa', divisionCode: 'DDC' },
+    { code: 'RND', name: 'Nghiên cứu Kỹ thuật', group: 'Khối Chuyên môn Thiết kế & Số hóa', divisionCode: 'DDC' },
+    { code: 'EST', name: 'Dự toán & Bóc tách', group: 'Khối Kỹ thuật Xây dựng & Sản xuất', divisionCode: 'CPC' },
+    { code: 'PUR', name: 'Cung ứng & Mua hàng', group: 'Khối Kỹ thuật Xây dựng & Sản xuất', divisionCode: 'CPC' },
+    { code: 'WHS', name: 'Kho bãi & Vận tải', group: 'Khối Kỹ thuật Xây dựng & Sản xuất', divisionCode: 'CPC' },
+    { code: 'MFG', name: 'Xưởng sản xuất', group: 'Khối Kỹ thuật Xây dựng & Sản xuất', divisionCode: 'CPC' },
+    { code: 'CON', name: 'Quản lý Thi công', group: 'Khối Kỹ thuật Xây dựng & Sản xuất', divisionCode: 'CPC' },
+    { code: 'HSE', name: 'An toàn & Môi trường', group: 'Khối Kỹ thuật Xây dựng & Sản xuất', divisionCode: 'CPC' },
+    { code: 'QAS', name: 'Chất lượng', group: 'Khối Kỹ thuật Xây dựng & Sản xuất', divisionCode: 'CPC' }
   ];
   function getDepartments() { return DEPARTMENTS.slice(); }
   function getDepartmentByCode(code) { return DEPARTMENTS.find(function (d) { return d.code === code; }) || null; }
+  function getDepartmentsByDivision(divisionCode) { return DEPARTMENTS.filter(function (d) { return d.divisionCode === divisionCode; }); }
 
   // Default projects
   var DEFAULT_PROJECTS = [
@@ -768,7 +786,7 @@ var TaskManager = (function() {
   // - theme: nhớ giao diện sáng/tối THEO TÀI KHOẢN (không chỉ theo trình
   //   duyệt/máy) — đăng nhập lại ở máy khác vẫn ra đúng theme đã chọn lần
   //   cuối, xem initTheme()/setTheme() trong portal.js.
-  var MEMBER_SELF_EDIT_FIELDS = ['dob', 'gender', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount', 'password', 'device1', 'device2', 'lastActiveAt', 'theme', 'department', 'departmentCode'];
+  var MEMBER_SELF_EDIT_FIELDS = ['dob', 'gender', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount', 'password', 'device1', 'device2', 'lastActiveAt', 'theme', 'department', 'departmentCode', 'division', 'divisionCode'];
   function updateMember(id, updates, user) {
     if (!user) return null;
     var isSelf = user.id === id;
@@ -1753,9 +1771,12 @@ var TaskManager = (function() {
     // User
     getCurrentUser: getCurrentUser,
 
-    // Phòng ban (danh mục cố định, xem DEPARTMENTS ở trên)
+    // Bộ phận/Phòng ban (danh mục cố định, xem DIVISIONS/DEPARTMENTS ở trên)
+    getDivisions: getDivisions,
+    getDivisionByCode: getDivisionByCode,
     getDepartments: getDepartments,
     getDepartmentByCode: getDepartmentByCode,
+    getDepartmentsByDivision: getDepartmentsByDivision,
 
     // Projects
     getProjects: getProjects,

@@ -465,6 +465,21 @@
       '</div>' +
       '<div class="team-modal-body">' +
         '<div class="team-modal-row">' + ICON.mail + '<span>' + escapeHtml(m.email || '—') + '</span></div>' +
+        // Thành viên gán Phòng ban TRƯỚC khi có Bộ phận (2026-09-16) sẽ chưa có
+        // divisionCode — suy ra ngược từ departmentCode qua quan hệ cha/con.
+        (function () {
+          var divCode = m.divisionCode;
+          var divName = m.division;
+          if (!divCode && m.departmentCode && typeof TaskManager !== 'undefined' && TaskManager.getDepartmentByCode) {
+            var deptInfo = TaskManager.getDepartmentByCode(m.departmentCode);
+            if (deptInfo) {
+              divCode = deptInfo.divisionCode;
+              var divInfo = TaskManager.getDivisionByCode ? TaskManager.getDivisionByCode(divCode) : null;
+              divName = divInfo ? divInfo.name : '';
+            }
+          }
+          return divCode ? '<div class="team-modal-row">' + ICON.building + '<span>' + escapeHtml(divCode) + (divName ? ' — ' + escapeHtml(divName) : '') + '</span></div>' : '';
+        })() +
         (m.departmentCode ? '<div class="team-modal-row">' + ICON.building + '<span>' + escapeHtml(m.departmentCode) + (m.department ? ' — ' + escapeHtml(m.department) : '') + '</span></div>' : '') +
         (m.phone ? '<div class="team-modal-row">' + ICON.phone + '<span>' + escapeHtml(m.phone) + '</span></div>' : '') +
         (m.hometown ? '<div class="team-modal-row">' + ICON.pin + '<span>' + escapeHtml(m.hometown) + '</span></div>' : '') +

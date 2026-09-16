@@ -382,11 +382,19 @@ const Auth = (function() {
               </div>
             </div>
 
-            <div>
-              <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Phòng ban</label>
-              <select id="regDepartmentInput">
-                <option value="">-- Chọn phòng ban --</option>
-              </select>
+            <div class="auth-grid-2">
+              <div>
+                <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Bộ phận</label>
+                <select id="regDivisionInput">
+                  <option value="">-- Chọn bộ phận --</option>
+                </select>
+              </div>
+              <div>
+                <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Phòng ban</label>
+                <select id="regDepartmentInput">
+                  <option value="">-- Chọn bộ phận trước --</option>
+                </select>
+              </div>
             </div>
 
             <div class="auth-grid-2">
@@ -463,27 +471,35 @@ const Auth = (function() {
     var hometownInput = document.getElementById('regHometownInput');
     var bankNameInput = document.getElementById('regBankNameInput');
     var bankAccountInput = document.getElementById('regBankAccountInput');
+    var divisionInput = document.getElementById('regDivisionInput');
     var departmentInput = document.getElementById('regDepartmentInput');
     var errorEl = document.getElementById('authError');
     var successEl = document.getElementById('authSuccess');
     var loginBtn = document.getElementById('showLoginBtn');
 
-    // Danh mục phòng ban cố định — xem TaskManager.getDepartments() trong
-    // task-data.js, gộp theo "group" (khối) cho dễ tìm trong dropdown dài.
-    if (departmentInput && typeof TaskManager !== 'undefined' && TaskManager.getDepartments) {
-      var depts = TaskManager.getDepartments();
-      var byGroup = {};
-      var groupOrder = [];
-      depts.forEach(function (d) {
-        if (!byGroup[d.group]) { byGroup[d.group] = []; groupOrder.push(d.group); }
-        byGroup[d.group].push(d);
+    // Bộ phận (khối) là cấp CHA của Phòng ban — chọn Bộ phận trước sẽ thu
+    // hẹp Phòng ban chỉ còn các phòng thuộc khối đó (TaskManager.getDivisions()/
+    // getDepartmentsByDivision() trong task-data.js, danh mục CỐ ĐỊNH theo SOP).
+    if (divisionInput && departmentInput && typeof TaskManager !== 'undefined' && TaskManager.getDivisions) {
+      TaskManager.getDivisions().forEach(function (dv) {
+        var opt = document.createElement('option');
+        opt.value = dv.code;
+        opt.textContent = dv.code + ' — ' + dv.name;
+        divisionInput.appendChild(opt);
       });
-      departmentInput.innerHTML = '<option value="">-- Chọn phòng ban --</option>' +
-        groupOrder.map(function (g) {
-          return '<optgroup label="' + g + '">' +
-            byGroup[g].map(function (d) { return '<option value="' + d.code + '">' + d.code + ' — ' + d.name + '</option>'; }).join('') +
-          '</optgroup>';
-        }).join('');
+      function renderDepartmentOptions(divisionCode) {
+        if (!divisionCode) {
+          departmentInput.innerHTML = '<option value="">-- Chọn bộ phận trước --</option>';
+          departmentInput.disabled = true;
+          return;
+        }
+        departmentInput.disabled = false;
+        var depts = TaskManager.getDepartmentsByDivision(divisionCode);
+        departmentInput.innerHTML = '<option value="">-- Chọn phòng ban --</option>' +
+          depts.map(function (d) { return '<option value="' + d.code + '">' + d.code + ' — ' + d.name + '</option>'; }).join('');
+      }
+      renderDepartmentOptions('');
+      divisionInput.addEventListener('change', function () { renderDepartmentOptions(divisionInput.value); });
     }
 
     nameInput.focus();
@@ -503,6 +519,7 @@ const Auth = (function() {
       var bankName = bankNameInput.value.trim();
       var bankAccount = bankAccountInput.value.trim();
       var departmentCode = departmentInput ? departmentInput.value : '';
+      var divisionCode = divisionInput ? divisionInput.value : '';
       errorEl.style.display = 'none';
       successEl.style.display = 'none';
 
@@ -512,7 +529,7 @@ const Auth = (function() {
         return;
       }
 
-      register(name, email, role, password, dob, cccd, phone, hometown, bankName, bankAccount, gender, departmentCode, function(result) {
+      register(name, email, role, password, dob, cccd, phone, hometown, bankName, bankAccount, gender, departmentCode, divisionCode, function(result) {
         if (result.success) {
           successEl.textContent = '✓ Đăng ký thành công! Đang chuyển sang đăng nhập...';
           successEl.style.display = 'block';
@@ -535,11 +552,13 @@ const Auth = (function() {
   }
 
   // Register new member
-  function register(name, email, role, password, dob, cccd, phone, hometown, bankName, bankAccount, gender, departmentCode, callback) {
-    // Cho phép gọi cũ (không có departmentCode) không vỡ — 1 trong 2 tham
-    // số cuối là function thì đó chính là callback, dịch departmentCode='' .
-    if (typeof departmentCode === 'function') { callback = departmentCode; departmentCode = ''; }
+  function register(name, email, role, password, dob, cccd, phone, hometown, bankName, bankAccount, gender, departmentCode, divisionCode, callback) {
+    // Cho phép gọi cũ (không có departmentCode/divisionCode) không vỡ — tham
+    // số cuối là function thì đó chính là callback, dịch phần thiếu về ''.
+    if (typeof divisionCode === 'function') { callback = divisionCode; divisionCode = ''; }
+    if (typeof departmentCode === 'function') { callback = departmentCode; departmentCode = ''; divisionCode = ''; }
     var departmentInfo = (typeof TaskManager !== 'undefined' && TaskManager.getDepartmentByCode) ? TaskManager.getDepartmentByCode(departmentCode) : null;
+    var divisionInfo = (typeof TaskManager !== 'undefined' && TaskManager.getDivisionByCode) ? TaskManager.getDivisionByCode(divisionCode) : null;
     if (!isAllowedEmail(email)) {
       if (callback) callback({ success: false, error: 'Email không hợp lệ' });
       return;
@@ -608,6 +627,8 @@ const Auth = (function() {
       gender: gender || '',
       departmentCode: departmentInfo ? departmentInfo.code : '',
       department: departmentInfo ? departmentInfo.name : '',
+      divisionCode: divisionInfo ? divisionInfo.code : '',
+      division: divisionInfo ? divisionInfo.name : '',
       color: color,
       avatar: avatar,
       createdAt: new Date().toISOString().split('T')[0],
