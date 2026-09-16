@@ -461,6 +461,17 @@ function handleRequest(e) {
   try {
     const params = e.parameter || {};
     const action = params.action;
+
+    // "ping" (Offline.pingCheck() trong offline.js — kiểm tra thật sự có mạng
+    // tới Apps Script hay không, chạy định kỳ mỗi 15s) PHẢI trả lời NGAY, trước
+    // khi đụng tới SpreadsheetApp.openById() — mở Spreadsheet là thao tác CHẬM
+    // nhất trong cả file này (có thể mất vài giây, đặc biệt khi nhiều người
+    // dùng cùng lúc), dùng chung đường đi với các action đọc/ghi thật sẽ khiến
+    // ping bị timeout giả, offline.js hiểu nhầm thành mất mạng dù mạng vẫn tốt.
+    if (action === 'ping') {
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, ts: Date.now() })).setMimeType(ContentService.MimeType.JSON);
+    }
+
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     let result;
 

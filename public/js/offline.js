@@ -28,13 +28,15 @@ var Offline = (function () {
 
   var LAST_SYNC_KEY = 'hiconique_last_sync';
   var PING_INTERVAL_MS = 15000;
-  var PING_TIMEOUT_MS = 6000;
+  var PING_TIMEOUT_MS = 10000; // Apps Script có lúc chậm thật (cold start/nhiều người dùng cùng lúc) — không siết quá tay kẻo báo mất mạng oan
+  var CONSECUTIVE_FAILS_TO_GO_OFFLINE = 2; // 1 lần ping trượt có thể chỉ là chậm nhất thời, KHÔNG kết luận mất mạng ngay — phải trượt liên tiếp mới chắc là thật sự mất mạng
 
   // Bắt đầu bằng đúng những gì trình duyệt báo — chỉnh lại ngay sau ping đầu.
   var online = navigator.onLine !== false;
   var wasOffline = !online;
   var banner = null;
   var pingTimer = null;
+  var consecutiveFails = 0;
 
   function apiBaseUrl() {
     return (typeof GSHEETS_CONFIG !== 'undefined' && GSHEETS_CONFIG.API_URL) ? GSHEETS_CONFIG.API_URL : null;
@@ -106,8 +108,15 @@ var Offline = (function () {
     var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
     var timeoutId = controller ? setTimeout(function () { controller.abort(); }, PING_TIMEOUT_MS) : null;
     fetch(url + '?action=ping', { method: 'GET', redirect: 'follow', cache: 'no-store', signal: controller ? controller.signal : undefined })
-      .then(function () { if (timeoutId) clearTimeout(timeoutId); setOnline(true); })
-      .catch(function () { if (timeoutId) clearTimeout(timeoutId); setOnline(false); });
+      .then(function () { if (timeoutId) clearTimeout(timeoutId); consecutiveFails = 0; setOnline(true); })
+      .catch(function () {
+        if (timeoutId) clearTimeout(timeoutId);
+        consecutiveFails++;
+        // Chỉ kết luận mất mạng sau khi trượt liên tiếp đủ số lần — 1 lần
+        // trượt đơn lẻ (mạng chập chờn 1 nhịp, Apps Script phản hồi chậm) chưa
+        // đủ để hiện banner, tránh báo động giả gây khó chịu.
+        if (consecutiveFails >= CONSECUTIVE_FAILS_TO_GO_OFFLINE) setOnline(false);
+      });
   }
 
   function setOnline(next) {
