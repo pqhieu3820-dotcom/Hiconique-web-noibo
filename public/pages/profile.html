@@ -104,6 +104,7 @@
     .pf-color-value { display: flex; align-items: center; gap: 8px; }
     .pf-color-dot { width: 16px; height: 16px; border-radius: 28%; flex-shrink: 0; background: var(--color-bronze); }
     .pf-color-edit { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .pf-color-edit .color-input-wrap { width: 26px; height: 26px; }
     .pf-color-edit input[type="color"] { width: 26px; height: 26px; border: 1.5px dashed var(--color-border-strong); border-radius: 50%; background: transparent; cursor: pointer; padding: 0; }
     .pf-color-edit input[type="color"]:hover { border-color: var(--color-bronze); }
     .pf-color-presets { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -229,13 +230,21 @@
               <div class="pf-field-value" id="profileHometown">--</div>
               <input class="pf-field-input" id="profileHometownInput" type="text" hidden>
             </div>
+            <div class="pf-field" data-field="avatar">
+              <div class="pf-field-label">Tên viết tắt đại diện</div>
+              <div class="pf-field-value" id="profileAvatarText">--</div>
+              <input class="pf-field-input" id="profileAvatarTextInput" type="text" maxlength="3" placeholder="VD: HQ" hidden>
+            </div>
             <div class="pf-field" data-field="color">
               <div class="pf-field-label">Màu sắc đại diện</div>
               <div class="pf-field-value pf-color-value" id="profileColorValue">
                 <span class="pf-color-dot" id="profileColorDot"></span><span id="profileColorText">--</span>
               </div>
               <div class="pf-field-input pf-color-edit" id="profileColorEdit" hidden>
-                <input type="color" id="profileColorInput" value="#B08D57">
+                <span class="color-input-wrap">
+                  <input type="color" id="profileColorInput" value="#B08D57">
+                  <svg class="color-input-pencil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                </span>
                 <div class="pf-color-presets" id="profileColorPresets"></div>
               </div>
             </div>
@@ -296,7 +305,7 @@
     var session = Auth.getCurrentUser();
     if (!session) { Auth.showLoginModal(); return; }
 
-    var EDITABLE = ['dob', 'gender', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount', 'divisionCode', 'departmentCode', 'color'];
+    var EDITABLE = ['dob', 'gender', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount', 'divisionCode', 'departmentCode', 'avatar', 'color'];
     var user;
 
     // Màu sắc đại diện — cùng bộ preset đã dùng cho màu dự án (projects.js)
@@ -316,6 +325,16 @@
         });
       });
     })();
+
+    // Rỗng thì tự suy lại 2 chữ đầu từ tên (đúng cách avatar được sinh mặc
+    // định ở nơi khác, VD getInitials() trong portal.js) — tránh avatar hiện
+    // "--" trống trơn nếu ai đó lỡ xoá trắng ô này rồi lưu.
+    function autoInitials(name) {
+      if (!name) return '??';
+      var parts = name.trim().split(/\s+/);
+      if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+      return ((parts[parts.length - 2] || '').charAt(0) + (parts[parts.length - 1] || '').charAt(0)).toUpperCase();
+    }
 
     function fmtDob(v) { return v ? new Date(v).toLocaleDateString('vi-VN') : '--'; }
     function isoDob(v) { return v ? new Date(v).toISOString().split('T')[0] : ''; }
@@ -386,6 +405,8 @@
       document.getElementById('profileHometown').textContent = user.hometown || '--';
       document.getElementById('profileBankName').textContent = user.bank || '--';
       document.getElementById('profileBank').textContent = user.bankAccount || '--';
+      document.getElementById('profileAvatarText').textContent = user.avatar || '--';
+      document.getElementById('profileAvatarTextInput').value = user.avatar || '';
       document.getElementById('profileColorDot').style.background = user.color || 'var(--color-bronze)';
       document.getElementById('profileColorText').textContent = user.color || 'Mặc định';
       document.getElementById('profileColorInput').value = user.color || '#B08D57';
@@ -440,12 +461,13 @@
         department: deptInfo ? deptInfo.name : '',
         divisionCode: divInfo ? divInfo.code : '',
         division: divInfo ? divInfo.name : '',
+        avatar: document.getElementById('profileAvatarTextInput').value.trim().toUpperCase() || autoInitials(user.name),
         color: document.getElementById('profileColorInput').value
       };
       TaskManager.updateMember(session.id, updates, session);
-      // Vá ngay session đang cache để avatar header/dropdown đổi màu tức thì
-      // trên MỌI trang từ giờ, không cần đăng xuất/đăng nhập lại mới thấy.
-      Auth.updateSessionFields({ color: updates.color });
+      // Vá ngay session đang cache để avatar header/dropdown đổi chữ/màu tức
+      // thì trên MỌI trang từ giờ, không cần đăng xuất/đăng nhập lại mới thấy.
+      Auth.updateSessionFields({ avatar: updates.avatar, color: updates.color });
       render();
       setEditing(false);
       var msg = document.getElementById('pfSaveMsg');

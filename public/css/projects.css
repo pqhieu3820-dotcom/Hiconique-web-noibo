@@ -1932,6 +1932,7 @@
   gap: 10px;
   flex-wrap: wrap;
 }
+.color-picker .color-input-wrap { width: 26px; height: 26px; order: 1; }
 .color-picker input[type="color"] {
   width: 26px;
   height: 26px;
@@ -1940,7 +1941,6 @@
   background: transparent;
   cursor: pointer;
   padding: 0;
-  order: 1;
 }
 .color-picker input[type="color"]:hover { border-color: var(--color-bronze); }
 .color-presets {

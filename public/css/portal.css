@@ -508,6 +508,20 @@ main { flex: 1; }
 .w-rep-avatar {
   border-radius: 28% !important;
 }
+
+/* Nút "chọn màu tuỳ ý" (input[type=color] gốc) dùng chung ở "Màu sắc đại
+   diện" (profile.html) VÀ "Màu nhận diện" dự án (projects.html) — chốt
+   2026-09-18 sau khi người dùng phản ánh nút này lẫn với các ô màu preset
+   bên cạnh, không phân biệt được đâu là nút "tự chọn màu khác". Icon bút
+   trắng + đổ bóng đen nhẹ để luôn nổi rõ bất kể màu nền của input đang là gì.
+   `pointer-events:none` trên icon để click vẫn xuyên xuống mở được color
+   picker gốc của trình duyệt. */
+.color-input-wrap { position: relative; display: inline-flex; flex-shrink: 0; }
+.color-input-wrap .color-input-pencil {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 12px; height: 12px; color: #fff; pointer-events: none;
+  filter: drop-shadow(0 0 1.5px rgba(0,0,0,0.85)) drop-shadow(0 0 1px rgba(0,0,0,0.85));
+}
 /* Fallback kích thước cho .avatar-xs/.avatar-xxs ở những nơi trước đây
    CHƯA từng định nghĩa base rule riêng (VD chip trong panel chọn người phụ
    trách, chip trong Timeline trang Dự án) nên trước đây hiện ra không đúng
