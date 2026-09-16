@@ -1025,9 +1025,13 @@ var TaskManager = (function() {
     return updated;
   }
 
-  // Duyệt/từ chối thành viên đăng ký mới: CEO hoặc Manager.
+  // Duyệt/từ chối thành viên đăng ký mới: CHỈ Founder/CEO/Giám đốc Bộ phận
+  // (roleLevel 'admin' — cả 3 level này đều suy ra 'admin', xem
+  // LEVEL_TO_ROLELEVEL trong gsheets-api-v2.js). Chốt lại 2026-09-16 theo yêu
+  // cầu người dùng — trước đó "Quản lý" (level manager) cũng duyệt được,
+  // giờ thu hẹp lại đúng 3 cấp cao nhất.
   function canManageMembers(user) {
-    return !!user && (user.roleLevel === 'admin' || user.roleLevel === 'manager');
+    return !!user && user.roleLevel === 'admin';
   }
 
   // Ngưng công tác / khôi phục thành viên: chỉ CEO.

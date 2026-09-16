@@ -91,7 +91,14 @@ const FIELD_MAP = {
     // 2026-09-16 (b): thêm Bộ phận — cấp CHA của Phòng ban (4 khối theo SOP,
     // xem TaskManager.getDivisions() trong task-data.js). Quan hệ cha/con:
     // mỗi Phòng ban thuộc đúng 1 Bộ phận (department.divisionCode).
-    ['Bộ phận', 'division'], ['Mã bộ phận', 'divisionCode']
+    ['Bộ phận', 'division'], ['Mã bộ phận', 'divisionCode'],
+    // 2026-09-16 (c): mốc thời điểm bị Từ chối — nguồn xác định 48h đếm ngược
+    // trước khi bị XOÁ VĨNH VIỄN (xem stampMemberRejection()/
+    // deleteExpiredRejectedMembers() phía dưới). "Sẽ xoá lúc"/"Đếm ngược" là 2
+    // cột CHỈ để người xem trực tiếp trên Sheet biết, không cần map field vào
+    // đây — client tự tính deleteAt = rejectedAt + 48h (xem portal.js), không
+    // đọc lại 2 cột đó qua API.
+    ['Thời điểm từ chối', 'rejectedAt']
   ],
   // 2026-09-09: "Loại dự án" đổi nghĩa thành LOẠI CÔNG TRÌNH thật (Nhà phố,
   // Biệt thự, Căn hộ chung cư...), giá trị cũ (Thiết kế/Thi công/Nội thất...)
@@ -1101,6 +1108,20 @@ function updateData(ss, sheetName, id, updates) {
       }
     }
   });
+  // 2026-09-16: chuyển sang 'rejected' (từ trạng thái khác) qua chính API này
+  // (nút "Từ chối" trên web) — stamp mốc 48h + báo Founder. Chuyển RA KHỎI
+  // 'rejected' (được duyệt lại) — xoá mốc cũ để lần từ chối sau (nếu có) tính
+  // lại đủ 48h mới, không kế thừa đồng hồ cũ. Cùng cơ chế với việc admin sửa
+  // tay cột "Trạng thái" thẳng trên Sheet — xem onEdit()/stampMemberRejection().
+  if (sheetName === SHEETS.members && updates.status !== undefined) {
+    const oldStatus = data[index].status;
+    const newStatus = updates.status;
+    if (newStatus === 'rejected' && oldStatus !== 'rejected') {
+      stampMemberRejection(ss, sheet, headers, rowNum, id, data[index].name);
+    } else if (oldStatus === 'rejected' && newStatus !== 'rejected') {
+      clearMemberRejection(sheet, headers, rowNum);
+    }
+  }
   return Object.assign({}, data[index], updates);
 }
 
@@ -1118,24 +1139,206 @@ function deleteData(ss, sheetName, id) {
 // When a Member's id cell is edited by hand in the Sheet, cascades the change to every
 // other sheet that references that member id, so tasks/projects/timesheet/proposals
 // stay linked instead of silently pointing at a now-nonexistent id.
+// 2026-09-16: mở rộng thêm — sửa tay cột "Trạng thái" thành "Từ chối" ngay
+// trên Sheet (không qua nút Từ chối trên web) cũng phải kích hoạt đúng cơ
+// chế 48h đếm ngược + báo Founder y hệt, theo đúng yêu cầu người dùng.
 function onEdit(e) {
   try {
     if (!e || !e.range) return;
     const sheet = e.range.getSheet();
     if (normalizeName(sheet.getName()) !== normalizeName(SHEETS.members)) return;
+    if (e.range.getRow() === 1) return; // header row itself
     const headers = getHeaders(sheet);
     const col = e.range.getColumn();
-    if (headers[col - 1] !== enToViHeader(SHEETS.members, 'id')) return;
-    if (e.range.getRow() === 1) return; // header row itself
+    const header = headers[col - 1];
 
-    const oldId = e.oldValue;
-    const newId = e.value;
-    if (!oldId || !newId || oldId === newId) return;
+    if (header === enToViHeader(SHEETS.members, 'id')) {
+      const oldId = e.oldValue;
+      const newId = e.value;
+      if (oldId && newId && oldId !== newId) cascadeMemberIdChange(oldId, newId);
+      return;
+    }
 
-    cascadeMemberIdChange(oldId, newId);
+    if (header === enToViHeader(SHEETS.members, 'status')) {
+      const oldStatusVi = e.oldValue;
+      const newStatusVi = e.value;
+      if (newStatusVi === oldStatusVi) return;
+      const row = e.range.getRow();
+      const ss = sheet.getParent();
+      const idColIdx = headers.indexOf(enToViHeader(SHEETS.members, 'id'));
+      const nameColIdx = headers.indexOf(enToViHeader(SHEETS.members, 'name'));
+      const memberId = idColIdx !== -1 ? sheet.getRange(row, idColIdx + 1).getValue() : null;
+      const memberName = nameColIdx !== -1 ? sheet.getRange(row, nameColIdx + 1).getValue() : memberId;
+      if (!memberId) return;
+      if (newStatusVi === 'Từ chối') {
+        stampMemberRejection(ss, sheet, headers, row, memberId, memberName);
+      } else if (oldStatusVi === 'Từ chối') {
+        clearMemberRejection(sheet, headers, row);
+      }
+      return;
+    }
   } catch (err) {
-    // Never let a cascade failure block the user's manual edit.
+    // Never let a cascade/side-effect failure block the user's manual edit.
   }
+}
+
+// Ghi mốc "Thời điểm từ chối" (nếu chưa có — giữ nguyên mốc cũ nếu bị từ
+// chối lại lần 2 mà chưa từng được duyệt lại giữa 2 lần đó), điền cột hiển
+// thị "Sẽ xoá lúc"/"Đếm ngược" cho người xem trực tiếp trên Sheet, và báo
+// cho Founder (ưu tiên đúng level 'founder'; nếu chưa gán ai làm Founder thì
+// báo tạm cho mọi roleLevel='admin' để không rơi vào im lặng không ai biết).
+function stampMemberRejection(ss, sheet, headers, row, memberId, memberName) {
+  const rejColIdx = headers.indexOf('Thời điểm từ chối');
+  if (rejColIdx === -1) return; // chưa chạy addMemberRejectionColumns() — bỏ qua êm, không lỗi
+  const existing = sheet.getRange(row, rejColIdx + 1).getValue();
+  if (existing) return;
+
+  const now = new Date();
+  const deleteAt = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+  sheet.getRange(row, rejColIdx + 1).setValue(now.toISOString());
+
+  const delColIdx = headers.indexOf('Sẽ xoá lúc');
+  if (delColIdx !== -1) {
+    const delCell = sheet.getRange(row, delColIdx + 1);
+    delCell.setValue(deleteAt);
+    delCell.setNumberFormat('dd/mm/yyyy hh:mm');
+    const cdColIdx = headers.indexOf('Đếm ngược');
+    if (cdColIdx !== -1) {
+      const a1 = delCell.getA1Notation();
+      sheet.getRange(row, cdColIdx + 1).setFormula(
+        // 2026-09-16: bảng tính này ở locale VN — Apps Script setFormula() vẫn bị
+        // phân tích theo locale sheet (dấu ";" thay ",") giống công thức gõ tay,
+        // dùng "," sẽ báo "Lỗi phân tích cú pháp công thức" (đã kiểm chứng thật).
+        '=IF(' + a1 + '="";"";IF(' + a1 + '<=NOW();"Đã tới hạn — chờ hệ thống xoá";TEXT(' + a1 + '-NOW();"[h]:mm:ss")))'
+      );
+    }
+    try { ss.setRecalculationInterval(SpreadsheetApp.RecalculationInterval.MINUTE); } catch (e2) { /* không chặn nếu không đổi được */ }
+  }
+
+  notifyFounderMemberRejected(ss, memberId, memberName);
+}
+
+// Được duyệt lại trước khi hết 48h — xoá sạch mốc cũ để nếu có bị từ chối
+// lần sau thì tính lại đủ 48h mới, không kế thừa đồng hồ cũ.
+function clearMemberRejection(sheet, headers, row) {
+  const rejColIdx = headers.indexOf('Thời điểm từ chối');
+  const delColIdx = headers.indexOf('Sẽ xoá lúc');
+  const cdColIdx = headers.indexOf('Đếm ngược');
+  if (rejColIdx !== -1) sheet.getRange(row, rejColIdx + 1).clearContent();
+  if (delColIdx !== -1) sheet.getRange(row, delColIdx + 1).clearContent();
+  if (cdColIdx !== -1) sheet.getRange(row, cdColIdx + 1).clearContent();
+}
+
+function notifyFounderMemberRejected(ss, memberId, memberName) {
+  const members = getAllData(ss, SHEETS.members);
+  const founders = members.filter(function (m) { return m.level === 'founder'; });
+  const targets = founders.length ? founders : members.filter(function (m) { return m.roleLevel === 'admin'; });
+  const name = memberName || memberId;
+  targets.forEach(function (f) {
+    if (f.id === memberId) return;
+    addData(ss, SHEETS.notifications, {
+      title: 'Đăng ký bị từ chối: ' + name,
+      message: name + ' đã bị từ chối đăng ký tài khoản. Nếu không được duyệt lại, dữ liệu sẽ TỰ ĐỘNG XOÁ VĨNH VIỄN sau 48 giờ.',
+      type: 'member',
+      scope: f.id,
+      recurring: false,
+      active: true,
+      createdBy: 'SYSTEM'
+    });
+  });
+}
+
+// Thêm 3 cột "Thời điểm từ chối"/"Sẽ xoá lúc"/"Đếm ngược" vào Sheet Thành
+// viên nếu chưa có — chạy TAY 1 lần từ trình chỉnh sửa Apps Script trước khi
+// tính năng 48h này hoạt động được (giống pattern addDivisionColumns()).
+function addMemberRejectionColumns() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = findSheet(ss, SHEETS.members);
+  if (!sheet) return 'Không tìm thấy sheet Thành viên';
+  const headers = getHeaders(sheet);
+  const lines = [];
+  ['Thời điểm từ chối', 'Sẽ xoá lúc', 'Đếm ngược'].forEach(function (header) {
+    if (headers.indexOf(header) !== -1) { lines.push(header + ': đã có sẵn, bỏ qua'); return; }
+    const col = sheet.getLastColumn() + 1;
+    sheet.getRange(1, col).setValue(header);
+    headers.push(header);
+    lines.push(header + ': đã thêm ở cột ' + col);
+  });
+  const report = lines.join('\n');
+  Logger.log(report);
+  return report;
+}
+
+// ===== Tự động xoá vĩnh viễn tài khoản bị Từ chối quá 48h (2026-09-16) =====
+// Chạy định kỳ qua time-driven trigger (cài 1 LẦN bằng
+// setupAutoDeleteRejectedMembersTrigger()). Chỉ xoá khi status HIỆN TẠI vẫn
+// là 'rejected' (nếu ai đó đã duyệt lại trước hạn thì status đổi khác rồi,
+// tự động bỏ qua — không cần logic huỷ lịch riêng). Xoá từ DƯỚI LÊN để
+// index các dòng phía trên không bị lệch sau mỗi lần xoá.
+function deleteExpiredRejectedMembers() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = findSheet(ss, SHEETS.members);
+  if (!sheet) return 'Không tìm thấy sheet Thành viên';
+  const data = getAllData(ss, SHEETS.members);
+  const now = Date.now();
+  const toDelete = [];
+  data.forEach(function (m, i) {
+    if (m.status !== 'rejected' || !m.rejectedAt) return;
+    const t = new Date(m.rejectedAt).getTime();
+    if (!isNaN(t) && now - t >= 48 * 60 * 60 * 1000) toDelete.push({ id: m.id, name: m.name, rowIndex: i });
+  });
+  toDelete.sort(function (a, b) { return b.rowIndex - a.rowIndex; });
+  toDelete.forEach(function (t) { sheet.deleteRow(t.rowIndex + 2); });
+  const report = 'deleteExpiredRejectedMembers: đã xoá vĩnh viễn ' + toDelete.length + ' tài khoản bị từ chối quá 48h' +
+    (toDelete.length ? ' (' + toDelete.map(function (t) { return t.name; }).join(', ') + ')' : '') + '.';
+  Logger.log(report);
+  return report;
+}
+
+// Cài time-driven trigger chạy deleteExpiredRejectedMembers() mỗi 30 phút —
+// chạy TAY hàm này ĐÚNG 1 LẦN từ trình chỉnh sửa Apps Script để cài đặt.
+// An toàn chạy lại nhiều lần: tự xoá trigger cũ của đúng hàm này trước.
+function setupAutoDeleteRejectedMembersTrigger() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'deleteExpiredRejectedMembers') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('deleteExpiredRejectedMembers')
+    .timeBased()
+    .everyMinutes(30)
+    .create();
+  Logger.log('Đã cài trigger tự động xoá tài khoản bị từ chối quá 48h — chạy mỗi 30 phút.');
+}
+
+// Sửa lỗi 1 lần: công thức "Đếm ngược" ban đầu dùng dấu "," làm phân cách
+// đối số bị Sheet (locale VN) báo lỗi cú pháp — đã đổi sang ";" trong
+// stampMemberRejection(), nhưng dòng nào đã bị Từ chối TRƯỚC lúc sửa vẫn còn
+// giữ công thức cũ hỏng. Chạy TAY 1 lần để ghi lại đúng công thức cho các
+// dòng đó — an toàn chạy lại nhiều lần (chỉ đụng dòng đang status='rejected'
+// và đã có 'Sẽ xoá lúc').
+function fixRejectionCountdownFormulas() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = findSheet(ss, SHEETS.members);
+  if (!sheet) return 'Không tìm thấy sheet Thành viên';
+  const headers = getHeaders(sheet);
+  const delColIdx = headers.indexOf('Sẽ xoá lúc');
+  const cdColIdx = headers.indexOf('Đếm ngược');
+  if (delColIdx === -1 || cdColIdx === -1) return 'Chưa có cột "Sẽ xoá lúc"/"Đếm ngược" — chạy addMemberRejectionColumns() trước';
+  const data = getAllData(ss, SHEETS.members);
+  let fixed = 0;
+  data.forEach(function (m, i) {
+    if (m.status !== 'rejected' || !m.rejectedAt) return;
+    const row = i + 2;
+    const delCell = sheet.getRange(row, delColIdx + 1);
+    if (!delCell.getValue()) return;
+    const a1 = delCell.getA1Notation();
+    sheet.getRange(row, cdColIdx + 1).setFormula(
+      '=IF(' + a1 + '="";"";IF(' + a1 + '<=NOW();"Đã tới hạn — chờ hệ thống xoá";TEXT(' + a1 + '-NOW();"[h]:mm:ss")))'
+    );
+    fixed++;
+  });
+  const report = 'Đã sửa lại công thức Đếm ngược cho ' + fixed + ' dòng.';
+  Logger.log(report);
+  return report;
 }
 
 function cascadeMemberIdChange(oldId, newId) {

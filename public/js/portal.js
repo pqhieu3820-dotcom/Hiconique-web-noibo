@@ -322,6 +322,38 @@
   };
 
   // ----- Team directory (from Google Sheets via TaskManager) -----
+  // KHÔNG dùng alert()/confirm() gốc của trình duyệt (chốt cứng 2026-09-15 —
+  // dialog native chặn hẳn main thread, làm treo cứng tab thật khi test bằng
+  // Claude in Chrome, phát hiện lại lần nữa khi test luồng Từ chối/Duyệt lại
+  // ở đây). Copy y hệt pattern showConfirmDialog()/showToast() đã có sẵn
+  // trong timesheet.html — cùng tên hàm/class CSS để nhất quán.
+  function showToast(message, ok) {
+    var el = document.createElement('div');
+    el.style.cssText = 'position:fixed; top:20px; left:50%; transform:translateX(-50%); z-index:10001; max-width:420px; padding:14px 18px; background:var(--color-surface); border:1px solid var(--color-border); border-left:4px solid ' + (ok === false ? '#A04848' : 'var(--color-bronze)') + '; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.25); font-size:0.875rem; color:var(--color-text);';
+    el.textContent = message;
+    document.body.appendChild(el);
+    setTimeout(function () { el.remove(); }, 4000);
+  }
+
+  function showConfirmDialog(title, onConfirm, confirmLabel) {
+    var overlay = document.createElement('div');
+    overlay.className = 'ts-confirm-overlay';
+    overlay.innerHTML =
+      '<div class="ts-confirm-box">' +
+        '<div class="ts-confirm-title">' + title + '</div>' +
+        '<div class="ts-confirm-actions">' +
+          '<button type="button" class="ts-confirm-cancel">Huỷ</button>' +
+          '<button type="button" class="ts-confirm-ok">' + (confirmLabel || 'Xác nhận') + '</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    overlay.querySelector('.ts-confirm-cancel').addEventListener('click', function () { overlay.remove(); });
+    overlay.querySelector('.ts-confirm-ok').addEventListener('click', function () {
+      overlay.remove();
+      onConfirm();
+    });
+  }
+
   function getInitials(name) {
     if (!name) return '??';
     var parts = name.trim().split(/\s+/);
@@ -350,6 +382,48 @@
     if (isNaN(d.getTime())) return '';
     return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
   }
+
+  // Tài khoản bị Từ chối tự động XOÁ VĨNH VIỄN sau đúng 48h kể từ lúc bị từ
+  // chối (server tự stamp `rejectedAt` — xem stampMemberRejection() trong
+  // gsheets-api-v2.js). Client chỉ cần cộng thêm 48h để biết mốc xoá, không
+  // cần đọc thêm field nào khác qua API — tính lại y hệt logic server dùng
+  // để quyết định có xoá hay không (deleteExpiredRejectedMembers()).
+  var REJECTION_DELETE_AFTER_MS = 48 * 60 * 60 * 1000;
+  function rejectionDeleteAt(rejectedAt) {
+    if (!rejectedAt) return null;
+    var t = new Date(rejectedAt).getTime();
+    return isNaN(t) ? null : t + REJECTION_DELETE_AFTER_MS;
+  }
+
+  function formatCountdown(deleteAt) {
+    var remain = deleteAt - Date.now();
+    if (remain <= 0) return 'Đã tới hạn — chờ hệ thống xoá';
+    var totalSec = Math.floor(remain / 1000);
+    var h = Math.floor(totalSec / 3600);
+    var m = Math.floor((totalSec % 3600) / 60);
+    var s = totalSec % 60;
+    function pad2(n) { return (n < 10 ? '0' : '') + n; }
+    return 'Còn ' + h + ':' + pad2(m) + ':' + pad2(s) + ' trước khi bị xoá vĩnh viễn';
+  }
+
+  function formatAbsoluteDeleteTime(deleteAt) {
+    var d = new Date(deleteAt);
+    function pad2(n) { return (n < 10 ? '0' : '') + n; }
+    return pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ' ngày ' + d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear();
+  }
+
+  // 1 vòng lặp DUY NHẤT (không phải mỗi thẻ 1 setInterval riêng — tốn tài
+  // nguyên nếu team có nhiều người bị từ chối cùng lúc) tự cập nhật MỌI phần
+  // tử đang gắn [data-reject-countdown] hiện có trên trang, mỗi giây 1 lần.
+  // An toàn nếu không có phần tử nào (team-card bị gỡ khỏi DOM khi loadTeam()
+  // render lại) — querySelectorAll trả rỗng, vòng lặp không làm gì.
+  setInterval(function () {
+    document.querySelectorAll('[data-reject-countdown]').forEach(function (el) {
+      var deleteAt = parseInt(el.getAttribute('data-reject-countdown'), 10);
+      if (!deleteAt) return;
+      el.textContent = formatCountdown(deleteAt);
+    });
+  }, 1000);
 
   function renderTeamGrid(members) {
     var grid = document.getElementById('team-grid');
@@ -382,6 +456,11 @@
         : m.status === 'on-leave' ? '<span class="team-status-badge on-leave">Tạm nghỉ việc</span>'
         : '';
 
+      var deleteAt = m.status === 'rejected' ? rejectionDeleteAt(m.rejectedAt) : null;
+      var countdownRow = deleteAt
+        ? '<div class="team-reject-countdown" title="Xoá lúc ' + formatAbsoluteDeleteTime(deleteAt) + '" data-reject-countdown="' + deleteAt + '">' + formatCountdown(deleteAt) + '</div>'
+        : '';
+
       return ''
         + '<article class="team-card" data-idx="' + i + '" tabindex="0" role="button" aria-haspopup="dialog">'
         +   (statusBadge ? '<div class="team-card-flag">' + statusBadge + '</div>' : '')
@@ -392,6 +471,7 @@
         +   '<div class="team-meta-row">'
         +     (joinDate ? '<span class="team-tenure" title="Gia nhập từ ' + joinDate + '">' + ICON.calendar + '<span>' + joinDate + (days !== null ? ' · ' + days + ' ngày' : '') + '</span></span>' : '')
         +   '</div>'
+        +   countdownRow
         + '</article>';
     }).join('');
 
@@ -449,6 +529,11 @@
     if (m.status === 'pending' && canManage) {
       actionButtons += '<button type="button" class="team-modal-action approve" data-action="approve">✓ Duyệt tài khoản</button>';
       actionButtons += '<button type="button" class="team-modal-action reject" data-action="reject">✕ Từ chối</button>';
+    } else if (m.status === 'rejected' && canManage) {
+      // Duyệt lại TRƯỚC KHI hết 48h sẽ huỷ luôn lịch xoá — xem
+      // stampMemberRejection()/clearMemberRejection() trong gsheets-api-v2.js
+      // (chuyển status ra khỏi 'rejected' tự xoá mốc rejectedAt).
+      actionButtons += '<button type="button" class="team-modal-action approve" data-action="approve">✓ Duyệt lại tài khoản</button>';
     } else if (m.status === 'inactive' && canTerminate) {
       actionButtons += '<button type="button" class="team-modal-action approve" data-action="reinstate">↺ Khôi phục công tác</button>';
     } else if (m.status === 'on-leave') {
@@ -491,6 +576,12 @@
         (dobDate ? '<div class="team-modal-row">' + ICON.cake + '<span>Sinh ngày ' + dobDate + '</span></div>' : '') +
         (joinDate ? '<div class="team-modal-row">' + ICON.calendar + '<span>Vào làm từ ' + joinDate + (days !== null ? ' · ' + days + ' ngày' : '') + '</span></div>' : '') +
         (statusLabel ? '<div class="team-modal-row team-modal-status-row">' + escapeHtml(statusLabel) + '</div>' : '') +
+        (function () {
+          if (m.status !== 'rejected') return '';
+          var deleteAt = rejectionDeleteAt(m.rejectedAt);
+          if (!deleteAt) return '';
+          return '<div class="team-modal-row team-reject-countdown" title="Xoá lúc ' + formatAbsoluteDeleteTime(deleteAt) + '" data-reject-countdown="' + deleteAt + '">' + formatCountdown(deleteAt) + '</div>';
+        })() +
       '</div>' +
       (actionButtons ? '<div class="team-modal-actions">' + actionButtons + '</div>' : '');
 
@@ -504,18 +595,20 @@
           : action === 'leave' ? 'on-leave'
           : action === 'return' ? 'active'
           : 'inactive';
-        var confirmMsg = action === 'approve' ? 'Duyệt tài khoản này? Thành viên sẽ đăng nhập được ngay.'
-          : action === 'reject' ? 'Từ chối đăng ký này?'
+        var confirmMsg = action === 'approve' && m.status === 'rejected' ? 'Duyệt lại tài khoản này? Sẽ HUỶ lịch tự động xoá còn lại.'
+          : action === 'approve' ? 'Duyệt tài khoản này? Thành viên sẽ đăng nhập được ngay.'
+          : action === 'reject' ? 'Từ chối đăng ký này? Nếu không được duyệt lại, dữ liệu sẽ TỰ ĐỘNG XOÁ VĨNH VIỄN sau 48 giờ.'
           : action === 'reinstate' ? 'Khôi phục công tác cho thành viên này?'
           : action === 'leave' ? 'Đánh dấu thành viên này đang tạm nghỉ việc?'
           : action === 'return' ? 'Đánh dấu thành viên này đã trở lại làm việc?'
           : 'Đánh dấu thành viên này đã ngưng công tác? Họ sẽ không đăng nhập được nữa.';
-        if (!window.confirm(confirmMsg)) return;
-        var result = TaskManager.updateMemberStatus(m.id, newStatus, currentUser);
-        if (!result) { alert('Bạn không có quyền thực hiện thao tác này.'); return; }
-        m.status = newStatus;
-        overlay.hidden = true;
-        loadTeam();
+        showConfirmDialog(confirmMsg, function () {
+          var result = TaskManager.updateMemberStatus(m.id, newStatus, currentUser);
+          if (!result) { showToast('Bạn không có quyền thực hiện thao tác này.', false); return; }
+          m.status = newStatus;
+          overlay.hidden = true;
+          loadTeam();
+        }, action === 'reject' ? 'Từ chối' : 'Xác nhận');
       });
     });
 

@@ -1205,6 +1205,41 @@ main { flex: 1; }
 .team-status-badge.rejected { background: rgba(160, 72, 72, 0.14); color: #A04848; }
 .team-status-badge.on-leave { background: rgba(217, 149, 40, 0.16); color: #D99528; }
 
+/* 2026-09-16: đếm ngược 48h trước khi tài khoản Từ chối bị xoá vĩnh viễn —
+   dùng cùng tông đỏ với .team-status-badge.rejected để người xem hiểu ngay
+   đây là hệ quả của việc bị từ chối, không phải trạng thái trung tính. */
+.team-reject-countdown {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #A04848;
+  margin-top: var(--space-xs, 4px);
+}
+.team-card .team-reject-countdown {
+  margin-top: auto;
+  padding-top: var(--space-xs, 4px);
+}
+
+/* Dialog xác nhận dùng chung thay cho confirm()/alert() gốc trình duyệt
+   (chốt cứng 2026-09-15) — y hệt class name/kiểu dáng đã có trong
+   timesheet.html, portal.js copy sang dùng cho modal team. */
+.ts-confirm-overlay {
+  position: fixed; inset: 0; background: rgba(11,13,16,0.7);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100070; padding: 20px;
+}
+.ts-confirm-box {
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: 14px; padding: 24px; max-width: 360px; width: 100%;
+}
+.ts-confirm-title { font-size: 1rem; font-weight: 600; color: var(--color-text); margin-bottom: 20px; }
+.ts-confirm-actions { display: flex; gap: 10px; }
+.ts-confirm-actions button {
+  flex: 1; padding: 10px; border-radius: 8px; font-size: 0.875rem; font-weight: 600;
+  cursor: pointer; border: none; font-family: inherit;
+}
+.ts-confirm-cancel { background: var(--color-bg); color: var(--color-text); border: 1px solid var(--color-border) !important; }
+.ts-confirm-ok { background: var(--color-bronze); color: #0B0D10; }
+
 /* Team member detail modal */
 .team-modal-overlay {
   position: fixed;
