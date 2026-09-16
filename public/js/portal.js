@@ -443,11 +443,18 @@
       var initials = m.avatar || getInitials(m.name);
       var color = m.color || '#6B7280';
       var role = m.role || m.position || '';
-      // Hiện đúng nhãn Cấp bậc 5 mức (Founder/CEO/Giám đốc Bộ phận/Quản lý/
-      // Nhân viên) thay vì chỉ 3 mức roleLevel cũ — class CSS badge vẫn dùng
-      // roleLevel (đã suy sẵn từ level) để giữ đúng 3 màu sắc đã có.
-      var levelInfo = (m.level && typeof TaskManager !== 'undefined' && TaskManager.getLevelByCode) ? TaskManager.getLevelByCode(m.level) : null;
-      var status = levelInfo ? levelInfo.label : (m.roleLevel ? m.roleLevel.charAt(0).toUpperCase() + m.roleLevel.slice(1) : '—');
+      // 2026-09-18: thẻ Team bỏ hẳn badge Cấp bậc (Founder/CEO/Quản lý/...) —
+      // người dùng thấy thừa vì chức danh (role) đã đủ nói lên vai trò, chỗ
+      // này đổi sang hiện Bộ phận · Phòng ban cho hữu ích hơn. Suy ngược
+      // divisionCode từ departmentCode nếu thiếu (thành viên gán Phòng ban
+      // TRƯỚC khi có field Bộ phận, 2026-09-16) — cùng cách profile.html làm.
+      var effDivisionCode = m.divisionCode;
+      if (!effDivisionCode && m.departmentCode && typeof TaskManager !== 'undefined' && TaskManager.getDepartmentByCode) {
+        var deptInfoForDiv = TaskManager.getDepartmentByCode(m.departmentCode);
+        effDivisionCode = deptInfoForDiv ? deptInfoForDiv.divisionCode : '';
+      }
+      var deptLabel = [effDivisionCode, m.departmentCode].filter(Boolean).join(' · ');
+      var deptTitle = [m.division, m.department].filter(Boolean).join(' · ');
       var days = daysAtCompany(m.createdAt);
       var joinDate = formatJoinDate(m.createdAt);
       var statusBadge = m.status === 'pending' ? '<span class="team-status-badge pending">Chờ duyệt</span>'
@@ -466,8 +473,8 @@
         +   (statusBadge ? '<div class="team-card-flag">' + statusBadge + '</div>' : '')
         +   '<div class="team-avatar" style="background:' + color + '">' + initials + '</div>'
         +   '<h3 class="team-name">' + (m.name || '—') + '</h3>'
-        +   '<p class="team-role">' + role + (m.departmentCode ? ' · ' + m.departmentCode : '') + '</p>'
-        +   '<span class="team-rolelevel-badge ' + (m.roleLevel || 'member') + '">' + status + '</span>'
+        +   '<p class="team-role">' + role + '</p>'
+        +   (deptLabel ? '<span class="team-rolelevel-badge member"' + (deptTitle ? ' title="' + escapeHtml(deptTitle) + '"' : '') + '>' + deptLabel + '</span>' : '')
         +   '<div class="team-meta-row">'
         +     (joinDate ? '<span class="team-tenure" title="Gia nhập từ ' + joinDate + '">' + ICON.calendar + '<span>' + joinDate + (days !== null ? ' · ' + days + ' ngày' : '') + '</span></span>' : '')
         +   '</div>'
