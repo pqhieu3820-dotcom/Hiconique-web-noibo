@@ -149,11 +149,14 @@ var Offline = (function () {
     var was = online;
     online = next;
     if (was === false && next === true) {
-      // Vừa có mạng lại sau khi mất mạng — tự tải lại trang để lấy dữ liệu
-      // mới nhất thay vì tự vá UI từng trang (mỗi trang render khác nhau).
+      // 2026-09-17: TRƯỚC ĐÂY reload cả trang lúc có mạng lại — xoá mất y
+      // nguyên form/dữ liệu người dùng đang gõ dở nếu đúng lúc đó mạng chập
+      // chờn 1 nhịp rồi có lại ngay (rất hay xảy ra, không phải mất mạng
+      // thật). Giờ chỉ âm thầm làm mới dữ liệu (không reload) + báo 1 toast
+      // ngắn, y hệt cơ chế silentRefresh() định kỳ đã có.
       renderBanner();
-      showToast('Đã có mạng trở lại — đang tải dữ liệu mới nhất...', true);
-      setTimeout(function () { window.location.reload(); }, 900);
+      showToast('Đã có mạng trở lại — đang cập nhật dữ liệu mới nhất.', true);
+      if (typeof TaskManager !== 'undefined' && TaskManager.silentRefresh) TaskManager.silentRefresh();
       return;
     }
     if (was !== next) renderBanner();
@@ -163,8 +166,17 @@ var Offline = (function () {
 
   // Chặn 1 thao tác GHI khi mất mạng. Trả về true nếu ĐÃ CHẶN (caller phải
   // return ngay, không tiếp tục ghi localStorage/gọi API).
+  // 2026-09-17: chỉ chặn khi CẢ HAI tín hiệu đều nói mất mạng (ping tới Apps
+  // Script trượt liên tiếp VÀ navigator.onLine cũng báo mất mạng) — trước đó
+  // chỉ dựa vào ping 1 mình, nên 1 lần Apps Script phản hồi chậm/trượt (cold
+  // start, quá tải) dù mạng máy vẫn tốt 100% cũng đủ khoá hết thao tác ghi,
+  // người dùng phải tự reload trang mới hết — rất khó chịu, đã phản ánh thật.
+  // navigator.onLine gần như luôn đúng khi máy THẬT SỰ có kết nối (chỉ sai
+  // chiều ngược lại — báo online dù không có Internet thật — nên dùng nó làm
+  // "phiếu phủ quyết" cho false positive là hợp lý, không làm mất tác dụng
+  // phát hiện mất mạng thật của ping).
   function guard(actionLabel) {
-    if (online) return false;
+    if (online || navigator.onLine !== false) return false;
     showToast('Đang không có kết nối mạng — chưa thể ' + (actionLabel || 'thực hiện thao tác này') + '. Vui lòng thử lại khi có mạng.', false);
     return true;
   }

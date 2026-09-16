@@ -406,7 +406,9 @@
   // Open task creation/edit modal
   function openTaskModal(task = null) {
     const isEdit = !!task;
-    const members = TaskManager.getMembers();
+    // 2026-09-17: chỉ cho chọn thành viên CÒN LÀM VIỆC — không cho giao việc
+    // cho người đang chờ duyệt/bị từ chối (họ chưa đăng nhập được).
+    const members = TaskManager.getActiveMembers();
     const projects = TaskManager.getProjects();
     const currentUser = TaskManager.getCurrentUser();
 
@@ -692,7 +694,9 @@
   // Open project modal
   function openProjectModal(project = null) {
     const isEdit = !!project;
-    const members = TaskManager.getMembers();
+    // 2026-09-17: chỉ cho chọn thành viên CÒN LÀM VIỆC vào dự án — không cho
+    // thêm người đang chờ duyệt/bị từ chối (họ chưa đăng nhập được).
+    const members = TaskManager.getActiveMembers();
     const currentUser = TaskManager.getCurrentUser();
 
     const body = `

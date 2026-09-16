@@ -820,6 +820,17 @@ var TaskManager = (function() {
     return getAll(STORAGE_KEYS.members);
   }
 
+  // 2026-09-17: danh sách thành viên CÒN LÀM VIỆC — dùng cho MỌI nơi chọn
+  // người (giao việc, thêm vào dự án...), KHÔNG dùng getMembers() thô ở
+  // những chỗ đó nữa. getMembers() vẫn giữ nguyên trả về TẤT CẢ (kể cả đang
+  // chờ duyệt/bị từ chối/tạm nghỉ/ngưng công tác) vì trang Team cần hiển thị
+  // đủ để CEO/Manager duyệt — CHỈ nơi chọn người để giao việc/thêm dự án mới
+  // cần lọc, người dùng phát hiện tài khoản "bot" chưa duyệt vẫn chọn được
+  // để giao việc là sai (họ còn chưa đăng nhập được).
+  function getActiveMembers() {
+    return getAll(STORAGE_KEYS.members).filter(function (m) { return !m.status || m.status === 'active'; });
+  }
+
   function getMember(id) {
     return getById(STORAGE_KEYS.members, id);
   }
@@ -1861,6 +1872,7 @@ var TaskManager = (function() {
 
     // User
     getCurrentUser: getCurrentUser,
+    getActiveMembers: getActiveMembers,
 
     // Phân tầng Cấp bậc (danh mục cố định, xem LEVELS ở trên)
     getLevels: getLevels,

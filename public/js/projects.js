@@ -30,6 +30,12 @@
     return null;
   }
   function getMembers() { return (typeof TaskManager !== 'undefined' && TaskManager.getMembers) ? TaskManager.getMembers() : []; }
+  // 2026-09-17: CHỈ dùng ở nơi CHỌN người để giao việc/thêm vào dự án — loại
+  // hẳn thành viên đang chờ duyệt/bị từ chối/tạm nghỉ/ngưng công tác (họ còn
+  // chưa đăng nhập được, không nên giao được việc). getMembers() (tất cả)
+  // vẫn giữ nguyên cho những chỗ khác (VD tra tên/avatar của người ĐÃ được
+  // gán từ trước trên thẻ dự án/việc cũ).
+  function getActiveMembers() { return (typeof TaskManager !== 'undefined' && TaskManager.getActiveMembers) ? TaskManager.getActiveMembers() : getMembers(); }
   function getProjects() { return (typeof TaskManager !== 'undefined' && TaskManager.getProjects) ? TaskManager.getProjects() : []; }
   function getTasks() { return (typeof TaskManager !== 'undefined' && TaskManager.getTasks) ? TaskManager.getTasks() : []; }
   function getProjectById(id) { return (typeof TaskManager !== 'undefined' && TaskManager.getProject) ? TaskManager.getProject(id) : null; }
@@ -305,7 +311,10 @@
       if (el) el.textContent = byType[h.slug] || 0;
     });
 
-    var members = getMembers();
+    // 2026-09-17: sidebar lọc theo người cũng chỉ nên liệt kê người CÒN LÀM
+    // VIỆC — người đang chờ duyệt/bị từ chối không thể có việc nào (chưa
+    // đăng nhập được), hiện họ ra chỉ gây nhầm lẫn.
+    var members = getActiveMembers();
     var memberList = document.getElementById('memberList');
     if (memberList) {
       memberList.innerHTML = '<div class="member-chip member-chip-all' + (!state.memberFilter ? ' active' : '') + '" data-member-filter="">' +
@@ -936,7 +945,7 @@
   function renderTaskAssigneeDropdown() {
     var container = document.getElementById('taskAssignees');
     if (!container) return;
-    var members = getMembers();
+    var members = getActiveMembers();
     if (members.length === 0) {
       container.innerHTML = '<p style="color:var(--color-text-muted);font-size:0.8125rem;">Chưa có thành viên nào.</p>';
       return;
@@ -1176,18 +1185,39 @@
     }
 
     // Tỉnh/Thành — cùng danh sách 34 tỉnh thật dùng ở tab "Đơn giá theo tỉnh"
-    // (pricing.html), gọi thẳng action có sẵn getProvinceList, load 1 lần.
+    // (pricing.html), gọi thẳng action có sẵn getProvinceList.
+    // 2026-09-17: TRƯỚC ĐÂY chỉ fetch 1 lần mỗi lúc mở modal, không cache —
+    // 1 lần fetch chậm/trượt (mạng chập chờn, Apps Script cold start) là
+    // dropdown trống trơn vĩnh viễn cho lần mở đó, người dùng phản ánh "bị
+    // mất". Giờ điền NGAY từ cache localStorage (nếu có) trước — không bao
+    // giờ trống khi đã từng tải thành công ít nhất 1 lần — rồi mới âm thầm
+    // tải bản mới nhất ở nền để cập nhật nếu có tỉnh mới.
     var provinceSel = document.getElementById('project-province');
     if (provinceSel && typeof GSHEETS_CONFIG !== 'undefined' && GSHEETS_CONFIG.USE_GSHEETS && GSHEETS_CONFIG.API_URL) {
+      var PROVINCE_CACHE_KEY = 'hiconique_province_list';
+      var fillProvinces = function (list) {
+        if (!Array.isArray(list) || !list.length) return;
+        var current = provinceSel.value;
+        while (provinceSel.options.length > 1) provinceSel.remove(1);
+        list.forEach(function (name) {
+          var opt = document.createElement('option');
+          opt.value = name;
+          opt.textContent = name;
+          provinceSel.appendChild(opt);
+        });
+        if (current) provinceSel.value = current;
+      };
+      try {
+        var cachedProvinces = JSON.parse(localStorage.getItem(PROVINCE_CACHE_KEY) || 'null');
+        if (Array.isArray(cachedProvinces) && cachedProvinces.length) fillProvinces(cachedProvinces);
+      } catch (e) { /* cache hỏng thì bỏ qua, vẫn fetch mới bên dưới */ }
       fetch(GSHEETS_CONFIG.API_URL + '?action=getProvinceList', { redirect: 'follow' })
         .then(function (r) { return r.json(); })
         .then(function (list) {
-          (Array.isArray(list) ? list : []).forEach(function (name) {
-            var opt = document.createElement('option');
-            opt.value = name;
-            opt.textContent = name;
-            provinceSel.appendChild(opt);
-          });
+          if (Array.isArray(list) && list.length) {
+            fillProvinces(list);
+            try { localStorage.setItem(PROVINCE_CACHE_KEY, JSON.stringify(list)); } catch (e) {}
+          }
         })
         .catch(function (e) { console.error('Không tải được danh sách tỉnh:', e); });
     }
@@ -1196,19 +1226,30 @@
     // thêm giá trị mới ở cột đó thì web cũng tự thấy, không cần sửa code.
     var buildingTypeSel = document.getElementById('project-building-type');
     if (buildingTypeSel && typeof GSHEETS_CONFIG !== 'undefined' && GSHEETS_CONFIG.USE_GSHEETS && GSHEETS_CONFIG.API_URL) {
+      var BUILDING_TYPE_CACHE_KEY = 'hiconique_building_type_list';
+      var fillBuildingTypes = function (list) {
+        if (!Array.isArray(list) || !list.length) return;
+        var currentVal = buildingTypeSel.value;
+        buildingTypeSel.innerHTML = '<option value="">— Chọn loại công trình —</option>';
+        list.forEach(function (name) {
+          var opt = document.createElement('option');
+          opt.value = name;
+          opt.textContent = name;
+          buildingTypeSel.appendChild(opt);
+        });
+        if (currentVal) buildingTypeSel.value = currentVal;
+      };
+      try {
+        var cachedTypes = JSON.parse(localStorage.getItem(BUILDING_TYPE_CACHE_KEY) || 'null');
+        if (Array.isArray(cachedTypes) && cachedTypes.length) fillBuildingTypes(cachedTypes);
+      } catch (e) { /* cache hỏng thì bỏ qua, vẫn fetch mới bên dưới */ }
       fetch(GSHEETS_CONFIG.API_URL + '?action=getProjectTypes', { redirect: 'follow' })
         .then(function (r) { return r.json(); })
         .then(function (list) {
-          if (!Array.isArray(list) || !list.length) return;
-          var currentVal = buildingTypeSel.value;
-          buildingTypeSel.innerHTML = '<option value="">— Chọn loại công trình —</option>';
-          list.forEach(function (name) {
-            var opt = document.createElement('option');
-            opt.value = name;
-            opt.textContent = name;
-            buildingTypeSel.appendChild(opt);
-          });
-          if (currentVal) buildingTypeSel.value = currentVal;
+          if (Array.isArray(list) && list.length) {
+            fillBuildingTypes(list);
+            try { localStorage.setItem(BUILDING_TYPE_CACHE_KEY, JSON.stringify(list)); } catch (e) {}
+          }
         })
         .catch(function (e) { console.error('Không tải được danh sách loại dự án:', e); });
     }
@@ -1492,7 +1533,7 @@
   function renderProjectMembers(selectedIds) {
     var container = document.getElementById('projectMembers');
     if (!container) return;
-    var members = getMembers();
+    var members = getActiveMembers();
     if (members.length === 0) {
       container.innerHTML = '<p style="color:var(--color-text-muted);font-size:0.8125rem;">Chưa có thành viên nào.</p>';
       return;
@@ -1534,7 +1575,7 @@
   // (không phải số liệu tĩnh) — nút refresh còn ép tải lại từ Google Sheets
   // trước khi tính, để chắc chắn "theo thời gian thực tế ngay lúc đó".
   function reportActiveMembers() {
-    return getMembers().filter(function (m) { return !m.status || m.status === 'active'; });
+    return getActiveMembers();
   }
 
   function populateReportFilters() {
