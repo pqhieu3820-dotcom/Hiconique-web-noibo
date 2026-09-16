@@ -559,6 +559,12 @@ const Auth = (function() {
     if (typeof departmentCode === 'function') { callback = departmentCode; departmentCode = ''; divisionCode = ''; }
     var departmentInfo = (typeof TaskManager !== 'undefined' && TaskManager.getDepartmentByCode) ? TaskManager.getDepartmentByCode(departmentCode) : null;
     var divisionInfo = (typeof TaskManager !== 'undefined' && TaskManager.getDivisionByCode) ? TaskManager.getDivisionByCode(divisionCode) : null;
+    // Đăng ký tài khoản mới cần ghi lên Sheet ngay — không cho tạo "ảo" chỉ
+    // sống trong localStorage của máy này rồi mất khi mất mạng thật sự.
+    if (typeof Offline !== 'undefined' && Offline.guard('đăng ký tài khoản')) {
+      if (callback) callback({ success: false, error: 'Không có kết nối mạng, vui lòng thử lại sau.' });
+      return;
+    }
     if (!isAllowedEmail(email)) {
       if (callback) callback({ success: false, error: 'Email không hợp lệ' });
       return;

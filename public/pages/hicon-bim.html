@@ -14,6 +14,7 @@
   <link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon-152.png" />
   <meta name="apple-mobile-web-app-title" content="HICONIQUE" />
   <link rel="manifest" href="/manifest.json" />
+  <script src="/js/offline.js"></script>
   <script src="/js/gsheets-config.js"></script>
   <script src="/js/task-data.js"></script>
   <script src="/js/auth.js"></script>
@@ -697,6 +698,7 @@
         .catch(function (e) { console.error(action, e); callback([]); });
     }
     function gsWrite(action, data, id) {
+      if (typeof Offline !== 'undefined' && Offline.guard('lưu thay đổi')) return Promise.resolve({ error: 'offline' });
       var params = '?action=' + encodeURIComponent(action);
       if (id) params += '&id=' + encodeURIComponent(id);
       if (data) params += '&data=' + encodeURIComponent(JSON.stringify(data));

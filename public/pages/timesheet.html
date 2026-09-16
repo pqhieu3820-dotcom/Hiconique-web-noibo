@@ -16,6 +16,7 @@
   <link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon-152.png" />
   <meta name="apple-mobile-web-app-title" content="HICONIQUE" />
   <link rel="manifest" href="/manifest.json" />
+  <script src="/js/offline.js"></script>
   <script src="/js/gsheets-config.js"></script>
   <script src="/js/task-data.js"></script>
   <script src="/js/auth.js"></script>
@@ -2299,6 +2300,9 @@
 
     // Init
     document.getElementById('tsCheckinBtn').addEventListener('click', function() {
+      // Chặn ngay từ đầu, trước khi tốn thời gian dò GPS/Wifi/Thiết bị — mất
+      // mạng thì dò xong cũng không ghi được, chặn sớm cho gọn trải nghiệm.
+      if (typeof Offline !== 'undefined' && Offline.guard('chấm công')) return;
       var record = getEntryByDate(getToday());
       var isCheckout = !!(record && !record.checkoutTime);
 

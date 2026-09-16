@@ -11,6 +11,10 @@ function isUsingGSheets() {
 // Google Sheets API functions (synchronous wrapper)
 function callGSheetsAPI(action, data, id) {
   if (!isUsingGSheets() || !GSHEETS_CONFIG.API_URL) return;
+  // Bẫy phòng hờ: bản thân add()/update()/remove() đã chặn từ trước khi gọi
+  // tới đây, nhưng vài hàm ghi đặc biệt gọi callGSheetsAPI() trực tiếp — chặn
+  // luôn ở đây để không bao giờ có request ghi nào lọt ra ngoài lúc mất mạng.
+  if (typeof Offline !== 'undefined' && !Offline.isOnline()) return;
 
   try {
     var params = '?action=' + encodeURIComponent(action);
@@ -69,7 +73,12 @@ function fetchFromAPI(action, callback) {
   if (!isUsingGSheets() || !GSHEETS_CONFIG.API_URL) { callback([]); return; }
   fetch(GSHEETS_CONFIG.API_URL + '?action=' + encodeURIComponent(action), { redirect: 'follow' })
     .then(function (r) { return r.json(); })
-    .then(function (data) { callback(Array.isArray(data) ? data : []); })
+    .then(function (data) {
+      // Đọc thành công = mốc "dữ liệu mới nhất" cho banner offline — đánh dấu
+      // TRƯỚC khi trả callback để mọi trang đều thấy mốc giờ cập nhật đúng.
+      if (typeof Offline !== 'undefined') Offline.markSynced();
+      callback(Array.isArray(data) ? data : []);
+    })
     .catch(function (e) { console.error('GSheets API read failed:', e); callback([]); });
 }
 
@@ -513,7 +522,14 @@ var TaskManager = (function() {
     return prefix + '_' + yy + mm + dd + '_' + Date.now();
   }
 
+  // Chặn TẤT CẢ ghi dữ liệu (thêm/sửa/xoá) khi mất mạng — đây là 3 hàm dùng
+  // chung cho gần như mọi loại dữ liệu (task/project/proposal/...), chặn ở
+  // đây là chặn được phần lớn thao tác ghi của cả app cùng lúc. Các luồng ghi
+  // KHÔNG đi qua 3 hàm này (vài hàm gọi thẳng API — attendanceLocations,
+  // addSystemNotificationsBatch, Auth.register, gsWrite trong hicon-bim.html/
+  // pricing.html) tự gọi Offline.guard() riêng, xem GHI_CHU_DU_AN.md.
   function add(key, item) {
+    if (typeof Offline !== 'undefined' && Offline.guard('thêm dữ liệu')) return null;
     var items = getAll(key);
     var prefix = key.replace('hiconique_', '').replace(/s$/, '');
     item.id = makeId(prefix);
@@ -524,6 +540,7 @@ var TaskManager = (function() {
   }
 
   function update(key, id, updates) {
+    if (typeof Offline !== 'undefined' && Offline.guard('cập nhật dữ liệu')) return null;
     var items = getAll(key);
     var index = items.findIndex(function(item) { return item.id === id; });
     if (index !== -1) {
@@ -536,6 +553,7 @@ var TaskManager = (function() {
 
   function remove(key, id) {
     var items = getAll(key);
+    if (typeof Offline !== 'undefined' && Offline.guard('xoá dữ liệu')) return items;
     var filtered = items.filter(function(item) { return item.id !== id; });
     save(key, filtered);
     return filtered;
@@ -859,6 +877,7 @@ var TaskManager = (function() {
   // nhận được vì thông báo này luôn dành cho NGƯỜI KHÁC, không phải người gửi.
   function addSystemNotificationsBatch(dataList) {
     if (!dataList || !dataList.length || !isUsingGSheets() || !GSHEETS_CONFIG.API_URL) return;
+    if (typeof Offline !== 'undefined' && !Offline.isOnline()) return;
     dataList.forEach(function (d) { d.active = d.active !== false; d.createdBy = 'SYSTEM'; });
     try {
       var params = '?action=addNotificationsBatch&data=' + encodeURIComponent(JSON.stringify(dataList));
@@ -1360,6 +1379,7 @@ var TaskManager = (function() {
   // 30s để lần đọc kế tiếp lấy đúng dữ liệu mới nhất, không phải chờ hết cache.
   function addAttendanceLocation(data, callback) {
     if (!isUsingGSheets()) { callback && callback(null); return; }
+    if (typeof Offline !== 'undefined' && Offline.guard('thêm địa điểm')) { callback && callback(null); return; }
     fetch(GSHEETS_CONFIG.API_URL + '?action=addAttendanceLocation&data=' + encodeURIComponent(JSON.stringify(data)), { redirect: 'follow' })
       .then(function (r) { return r.json(); })
       .then(function (result) { gsCache.lastFetch = 0; callback && callback(result); })
@@ -1367,6 +1387,7 @@ var TaskManager = (function() {
   }
   function updateAttendanceLocation(id, updates, callback) {
     if (!isUsingGSheets()) { callback && callback(null); return; }
+    if (typeof Offline !== 'undefined' && Offline.guard('sửa địa điểm')) { callback && callback(null); return; }
     fetch(GSHEETS_CONFIG.API_URL + '?action=updateAttendanceLocation&id=' + encodeURIComponent(id) + '&data=' + encodeURIComponent(JSON.stringify(updates)), { redirect: 'follow' })
       .then(function (r) { return r.json(); })
       .then(function (result) { gsCache.lastFetch = 0; callback && callback(result); })
@@ -1374,6 +1395,7 @@ var TaskManager = (function() {
   }
   function deleteAttendanceLocation(id, callback) {
     if (!isUsingGSheets()) { callback && callback(null); return; }
+    if (typeof Offline !== 'undefined' && Offline.guard('xoá địa điểm')) { callback && callback(null); return; }
     fetch(GSHEETS_CONFIG.API_URL + '?action=deleteAttendanceLocation&id=' + encodeURIComponent(id), { redirect: 'follow' })
       .then(function (r) { return r.json(); })
       .then(function (result) { gsCache.lastFetch = 0; callback && callback(result); })
