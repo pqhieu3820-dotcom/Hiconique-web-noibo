@@ -86,9 +86,11 @@
            (TaskManager.canManageRecurringRules(), siết hơn cả canManageNotifications). -->
       <div id="recurRuleAdminBar" style="margin-top:var(--space-xl);display:none;">
         <h2 class="pf-section-title" style="margin-bottom:10px;">Quản lý nhắc định kỳ</h2>
-        <div class="notice-form" style="max-width:600px;">
-          <div id="recurRuleList"></div>
-          <form id="recurRuleForm" class="notif-form" style="border-top:1px solid var(--color-border); padding-top:14px; margin-top:4px;">
+        <div class="recur-rule-layout">
+          <div class="recur-rule-list-card">
+            <div id="recurRuleList"></div>
+          </div>
+          <form id="recurRuleForm" class="notif-form recur-rule-form-card">
             <input type="text" id="recurTitleInput" placeholder="Tiêu đề nhắc nhở" required>
             <textarea id="recurMessageInput" placeholder="Nội dung" rows="2"></textarea>
             <div class="notif-form-row">
@@ -111,6 +113,18 @@
     .notice-card-actions { margin-top: 8px; }
     .notice-card-actions button { background: none; border: none; color: var(--color-text-faint); font-size: 0.75rem; cursor: pointer; padding: 0; }
     .notice-card-actions button:hover { color: var(--color-destructive); }
+
+    /* "Quản lý nhắc định kỳ" — danh sách bên trái, form thêm/sửa bên phải
+       (2026-09-18, trước đó xếp chồng dọc 1 cột + chữ tiêu đề đè lên
+       "monthly:1-2 · nội dung" do .notice-date dùng inline-block dùng
+       chung với notice board, giờ ép xuống dòng riêng chỉ trong danh sách
+       này). Rớt xuống 1 cột khi màn hẹp (mobile / thu nhỏ cửa sổ). */
+    .recur-rule-layout { display: flex; align-items: flex-start; gap: 20px; margin-top: 14px; flex-wrap: wrap; }
+    .recur-rule-list-card { flex: 1 1 360px; min-width: 280px; padding: 4px 16px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 8px; }
+    .recur-rule-form-card { flex: 0 1 320px; min-width: 260px; margin-top: 0 !important; }
+    .notif-rule-row { flex-wrap: wrap; }
+    .notif-rule-row .notice-date { display: block; margin-top: 2px; white-space: normal; }
+    .notif-rule-actions { display: flex; align-items: center; gap: 12px; margin-left: auto; }
   </style>
 
   <script>
@@ -214,9 +228,11 @@
       listEl.innerHTML = rules.length ? rules.map(function (r) {
         return '<div class="notif-rule-row" data-id="' + escapeHtml(r.id) + '">' +
           '<div><strong>' + escapeHtml(r.title) + '</strong><div class="notice-date">' + escapeHtml(r.recurRule || '') + (r.message ? ' · ' + escapeHtml(r.message) : '') + '</div></div>' +
-          '<label class="notif-rule-toggle"><input type="checkbox" class="recur-rule-active" ' + (r.active !== false ? 'checked' : '') + '> Bật</label>' +
-          '<button type="button" class="notice-del-btn recur-rule-edit">Sửa</button>' +
-          '<button type="button" class="notice-del-btn recur-rule-del">Xoá</button>' +
+          '<div class="notif-rule-actions">' +
+            '<label class="notif-rule-toggle"><input type="checkbox" class="recur-rule-active" ' + (r.active !== false ? 'checked' : '') + '> Bật</label>' +
+            '<button type="button" class="notice-del-btn recur-rule-edit">Sửa</button>' +
+            '<button type="button" class="notice-del-btn recur-rule-del">Xoá</button>' +
+          '</div>' +
         '</div>';
       }).join('') : '<p style="color:var(--color-text-faint);font-size:0.8125rem;padding:8px 0;">Chưa có nhắc định kỳ nào.</p>';
 
