@@ -1426,7 +1426,7 @@ main { flex: 1; }
   color: var(--color-bronze);
   background: var(--color-bg);
 }
-.brand-logo { width: 22px; height: 22px; display: block; }
+.brand-logo { width: 20px; height: 20px; object-fit: contain; display: block; }
 
 /* ---------- Expand panels (Tasks / Dự án) ---------- */
 .expand-panel[hidden] { display: none; }
