@@ -853,7 +853,7 @@ var TaskManager = (function() {
   // - theme: nhớ giao diện sáng/tối THEO TÀI KHOẢN (không chỉ theo trình
   //   duyệt/máy) — đăng nhập lại ở máy khác vẫn ra đúng theme đã chọn lần
   //   cuối, xem initTheme()/setTheme() trong portal.js.
-  var MEMBER_SELF_EDIT_FIELDS = ['dob', 'gender', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount', 'password', 'device1', 'device2', 'lastActiveAt', 'theme', 'department', 'departmentCode', 'division', 'divisionCode'];
+  var MEMBER_SELF_EDIT_FIELDS = ['dob', 'gender', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount', 'password', 'device1', 'device2', 'lastActiveAt', 'theme', 'department', 'departmentCode', 'division', 'divisionCode', 'color'];
   function updateMember(id, updates, user) {
     if (!user) return null;
     var isSelf = user.id === id;

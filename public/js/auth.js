@@ -215,6 +215,19 @@ const Auth = (function() {
     return null;
   }
 
+  // Vá nhanh vài field vào session đang cache (localStorage + biến module)
+  // sau khi tự sửa hồ sơ (VD đổi Màu sắc đại diện ở profile.html) — để avatar
+  // header/dropdown đổi màu ngay trên trang hiện tại, không phải đăng
+  // xuất/đăng nhập lại hay đợi sang trang khác mới thấy đúng.
+  function updateSessionFields(fields) {
+    var session = getCurrentUser();
+    if (!session) return null;
+    Object.keys(fields || {}).forEach(function (k) { session[k] = fields[k]; });
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    currentUser = session;
+    return session;
+  }
+
   // Check if user has permission
   function hasPermission(perm) {
     var user = getCurrentUser();
@@ -740,7 +753,8 @@ const Auth = (function() {
     ALLOWED_DOMAINS: ALLOWED_DOMAINS,
     loginWithPassword: loginWithPassword,
     register: register,
-    isAllowedEmail: isAllowedEmail
+    isAllowedEmail: isAllowedEmail,
+    updateSessionFields: updateSessionFields
   };
 })();
 

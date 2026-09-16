@@ -78,6 +78,30 @@
       <section class="notice-grid" id="noticeGrid" style="margin-top:var(--space-xl);">
         <p style="color:var(--color-text-faint);">Đang tải thông báo…</p>
       </section>
+
+      <!-- 2026-09-18: chuyển "Nhắc định kỳ" (payroll reminder, v.v.) từ panel
+           chuông thông báo (trước đây gọn nhưng lẫn với thông báo cá nhân,
+           lại chỉ hiện khi admin mở chuông) sang hẳn trang Thông báo — quản
+           lý tập trung 1 chỗ, CHỈ Founder/CEO/GĐ Bộ phận thấy được
+           (TaskManager.canManageRecurringRules(), siết hơn cả canManageNotifications). -->
+      <div id="recurRuleAdminBar" style="margin-top:var(--space-xl);display:none;">
+        <h2 class="pf-section-title" style="margin-bottom:10px;">Quản lý nhắc định kỳ</h2>
+        <div class="notice-form" style="max-width:600px;">
+          <div id="recurRuleList"></div>
+          <form id="recurRuleForm" class="notif-form" style="border-top:1px solid var(--color-border); padding-top:14px; margin-top:4px;">
+            <input type="text" id="recurTitleInput" placeholder="Tiêu đề nhắc nhở" required>
+            <textarea id="recurMessageInput" placeholder="Nội dung" rows="2"></textarea>
+            <div class="notif-form-row">
+              <input type="number" id="recurFromDayInput" min="1" max="31" placeholder="Từ ngày (VD 1)" required>
+              <input type="number" id="recurToDayInput" min="1" max="31" placeholder="Đến ngày (VD 5)" required>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button type="submit" class="btn-primary" id="recurFormSubmitBtn" style="align-self:flex-start;">+ Thêm nhắc định kỳ</button>
+              <button type="button" class="btn-secondary" id="recurFormCancelBtn" hidden>Hủy sửa</button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   </main>
 
@@ -101,6 +125,36 @@
       var d = new Date(dateStr);
       if (isNaN(d.getTime())) return '';
       return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear();
+    }
+
+    // KHÔNG dùng confirm()/alert() gốc (chốt cứng 2026-09-15 — treo cứng tab
+    // khi test bằng Claude in Chrome). Copy y hệt pattern đã có ở portal.js/
+    // timesheet.html, dùng chung CSS .ts-confirm-* đã có sẵn trong portal.css.
+    function showToast(message, ok) {
+      var el = document.createElement('div');
+      el.style.cssText = 'position:fixed; top:20px; left:50%; transform:translateX(-50%); z-index:10001; max-width:420px; padding:14px 18px; background:var(--color-surface); border:1px solid var(--color-border); border-left:4px solid ' + (ok === false ? '#A04848' : 'var(--color-bronze)') + '; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.25); font-size:0.875rem; color:var(--color-text);';
+      el.textContent = message;
+      document.body.appendChild(el);
+      setTimeout(function () { el.remove(); }, 4000);
+    }
+
+    function showConfirmDialog(title, onConfirm, confirmLabel) {
+      var overlay = document.createElement('div');
+      overlay.className = 'ts-confirm-overlay';
+      overlay.innerHTML =
+        '<div class="ts-confirm-box">' +
+          '<div class="ts-confirm-title">' + escapeHtml(title) + '</div>' +
+          '<div class="ts-confirm-actions">' +
+            '<button type="button" class="ts-confirm-cancel">Huỷ</button>' +
+            '<button type="button" class="ts-confirm-ok">' + (confirmLabel || 'Xác nhận') + '</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(overlay);
+      overlay.querySelector('.ts-confirm-cancel').addEventListener('click', function () { overlay.remove(); });
+      overlay.querySelector('.ts-confirm-ok').addEventListener('click', function () {
+        overlay.remove();
+        onConfirm();
+      });
     }
 
     function render() {
@@ -130,10 +184,112 @@
       grid.querySelectorAll('.notice-del-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
           var id = btn.closest('.notice').dataset.id;
-          if (!confirm('Xoá thông báo này?')) return;
-          TaskManager.deleteNotice(id, user);
-          render();
+          showConfirmDialog('Xoá thông báo này?', function () {
+            TaskManager.deleteNotice(id, user);
+            render();
+          }, 'Xoá');
         });
+      });
+    }
+
+    // ----- Quản lý "Nhắc định kỳ" (payroll reminder, v.v.) — chuyển từ panel
+    // chuông thông báo (portal.js) sang đây 2026-09-18, xem GHI_CHU_DU_AN.md.
+    // recurRule hiện chỉ hỗ trợ đúng 1 dạng "monthly:D1-D2" (khớp
+    // parseRecurWindow() trong task-data.js) — đủ dùng cho nhắc nhở lặp lại
+    // theo khoảng ngày trong tháng, không cần dạng phức tạp hơn.
+    var editingRuleId = null; // null = form đang ở chế độ "Thêm mới"
+
+    function exitRuleEditMode() {
+      editingRuleId = null;
+      document.getElementById('recurRuleForm').reset();
+      document.getElementById('recurFormSubmitBtn').textContent = '+ Thêm nhắc định kỳ';
+      document.getElementById('recurFormCancelBtn').hidden = true;
+    }
+
+    function renderRules() {
+      var listEl = document.getElementById('recurRuleList');
+      if (!listEl || typeof TaskManager === 'undefined') return;
+      var user = Auth.getCurrentUser();
+      var rules = TaskManager.getNotificationRules().filter(function (n) { return n.recurring; });
+      listEl.innerHTML = rules.length ? rules.map(function (r) {
+        return '<div class="notif-rule-row" data-id="' + escapeHtml(r.id) + '">' +
+          '<div><strong>' + escapeHtml(r.title) + '</strong><div class="notice-date">' + escapeHtml(r.recurRule || '') + (r.message ? ' · ' + escapeHtml(r.message) : '') + '</div></div>' +
+          '<label class="notif-rule-toggle"><input type="checkbox" class="recur-rule-active" ' + (r.active !== false ? 'checked' : '') + '> Bật</label>' +
+          '<button type="button" class="notice-del-btn recur-rule-edit">Sửa</button>' +
+          '<button type="button" class="notice-del-btn recur-rule-del">Xoá</button>' +
+        '</div>';
+      }).join('') : '<p style="color:var(--color-text-faint);font-size:0.8125rem;padding:8px 0;">Chưa có nhắc định kỳ nào.</p>';
+
+      listEl.querySelectorAll('.recur-rule-active').forEach(function (cb) {
+        cb.addEventListener('change', function () {
+          var id = cb.closest('.notif-rule-row').dataset.id;
+          TaskManager.updateNotification(id, { active: cb.checked }, user);
+        });
+      });
+      listEl.querySelectorAll('.recur-rule-edit').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var id = btn.closest('.notif-rule-row').dataset.id;
+          var rule = rules.filter(function (r) { return r.id === id; })[0];
+          if (!rule) return;
+          var win = /^monthly:(\d+)-(\d+)$/.exec(rule.recurRule || '');
+          editingRuleId = id;
+          document.getElementById('recurTitleInput').value = rule.title || '';
+          document.getElementById('recurMessageInput').value = rule.message || '';
+          document.getElementById('recurFromDayInput').value = win ? win[1] : '';
+          document.getElementById('recurToDayInput').value = win ? win[2] : '';
+          document.getElementById('recurFormSubmitBtn').textContent = 'Lưu thay đổi';
+          document.getElementById('recurFormCancelBtn').hidden = false;
+          document.getElementById('recurTitleInput').scrollIntoView({ block: 'center', behavior: 'smooth' });
+        });
+      });
+      listEl.querySelectorAll('.recur-rule-del').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var id = btn.closest('.notif-rule-row').dataset.id;
+          showConfirmDialog('Xoá nhắc định kỳ này?', function () {
+            TaskManager.deleteNotification(id, user);
+            if (editingRuleId === id) exitRuleEditMode();
+            renderRules();
+          }, 'Xoá');
+        });
+      });
+    }
+
+    function initRecurAdmin() {
+      var user = Auth.getCurrentUser();
+      var canRules = user && TaskManager.canManageRecurringRules && TaskManager.canManageRecurringRules(user);
+      var bar = document.getElementById('recurRuleAdminBar');
+      if (!bar) return;
+      bar.style.display = canRules ? 'block' : 'none';
+      if (!canRules) return;
+
+      renderRules();
+
+      document.getElementById('recurFormCancelBtn').addEventListener('click', exitRuleEditMode);
+
+      document.getElementById('recurRuleForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var title = document.getElementById('recurTitleInput').value.trim();
+        var from = parseInt(document.getElementById('recurFromDayInput').value, 10);
+        var to = parseInt(document.getElementById('recurToDayInput').value, 10);
+        if (!title || !from || !to) return;
+        var payload = {
+          title: title,
+          message: document.getElementById('recurMessageInput').value.trim(),
+          recurRule: 'monthly:' + from + '-' + to
+        };
+        if (editingRuleId) {
+          TaskManager.updateNotification(editingRuleId, payload, user);
+          showToast('Đã lưu thay đổi nhắc định kỳ.');
+        } else {
+          payload.type = 'system';
+          payload.scope = 'all';
+          payload.recurring = true;
+          payload.active = true;
+          TaskManager.createNotification(payload, user);
+          showToast('Đã thêm nhắc định kỳ.');
+        }
+        exitRuleEditMode();
+        renderRules();
       });
     }
 
@@ -162,8 +318,10 @@
       if (typeof TaskManager === 'undefined') { setTimeout(boot, 150); return; }
       render();
       initAdmin();
+      initRecurAdmin();
       // Google Sheets fetch resolves async after initData() — re-render once it lands
       setTimeout(render, 1200);
+      setTimeout(renderRules, 1200);
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
     else boot();

@@ -1104,7 +1104,13 @@ function updateData(ss, sheetName, id, updates) {
       } else if (typeof val === 'string' && val && needsPlainTextFormat(enKey)) {
         writeTextForcedCell(cell, val);
       } else {
-        cell.setValue(forceTextIfDateLike(val, enKey) || '');
+        // Bẫy 2026-09-18: `forceTextIfDateLike(val, enKey) || ''` biến `false`
+        // (VD tắt 1 "Nhắc định kỳ", field `active`) thành CHUỖI RỖNG khi ghi —
+        // `false` là falsy nên `|| ''` nuốt mất, đọc lại KHÔNG BAO GIỜ ra lại
+        // đúng `false` (chỉ ra `""`), làm hỏng mọi so sánh `=== false` ở phía
+        // client. Coalesce đúng kiểu: chỉ thay bằng '' khi thật sự undefined/null.
+        const forced = forceTextIfDateLike(val, enKey);
+        cell.setValue(forced !== undefined && forced !== null ? forced : '');
       }
     }
   });

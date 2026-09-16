@@ -1051,8 +1051,6 @@
 
     function render() {
       var items = collect();
-      var canManage = TaskManager.canManageNotifications(user);
-      var canRules = TaskManager.canManageRecurringRules(user);
 
       var html = '<div class="notif-panel-header">' +
         '<span>Thông báo</span>' +
@@ -1060,22 +1058,6 @@
         '</div>';
 
       html += '<div class="notif-list">' + (items.length ? items.map(itemRow).join('') : '<div class="notif-empty">Không có thông báo nào.</div>') + '</div>';
-
-      if (canManage) {
-        if (canRules) {
-          var rules = TaskManager.getNotificationRules().filter(function (n) { return n.recurring; });
-          html += '<div class="notif-rules">' +
-            '<div class="notif-panel-header"><span>Nhắc định kỳ hiện có</span></div>' +
-            (rules.length ? rules.map(function (r) {
-              return '<div class="notif-rule-row" data-id="' + escapeHtml(r.id) + '">' +
-                '<div><strong>' + escapeHtml(r.title) + '</strong><div class="notif-meta">' + escapeHtml(r.recurRule || '') + '</div></div>' +
-                '<label class="notif-rule-toggle"><input type="checkbox" class="notif-rule-active" ' + (r.active !== false ? 'checked' : '') + '> Bật</label>' +
-                '<button type="button" class="notif-link notif-rule-del">Xoá</button>' +
-              '</div>';
-            }).join('') : '<div class="notif-empty">Chưa có nhắc định kỳ nào.</div>') +
-          '</div>';
-        }
-      }
 
       // 2026-09-17: nút xoá TOÀN BỘ thông báo — mỗi người tự xoá danh sách
       // CỦA RIÊNG MÌNH trên máy này (không đụng dữ liệu chung trên Sheet, xem
@@ -1115,19 +1097,6 @@
         }, 'Xoá tất cả');
       });
 
-      panel.querySelectorAll('.notif-rule-active').forEach(function (cb) {
-        cb.addEventListener('change', function () {
-          var id = cb.closest('.notif-rule-row').dataset.id;
-          TaskManager.updateNotification(id, { active: cb.checked }, user);
-        });
-      });
-      panel.querySelectorAll('.notif-rule-del').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          var id = btn.closest('.notif-rule-row').dataset.id;
-          TaskManager.deleteNotification(id, user);
-          render();
-        });
-      });
     }
   }
 
@@ -1156,14 +1125,28 @@
       return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear();
     }
 
-    function render() {
-      var full = (typeof TaskManager !== 'undefined' ? TaskManager.getMembers() : [])
+    // Đồng bộ "Màu sắc đại diện" (cột Sheet NS-Thành viên, field `color`,
+    // người dùng tự sửa ở profile.html) vào avatar header + dropdown, thay vì
+    // luôn dùng màu CSS cố định như trước — không có màu tuỳ chỉnh thì bỏ
+    // trống style để avatar rơi về đúng màu mặc định cũ của từng nơi.
+    function getFullMember() {
+      return (typeof TaskManager !== 'undefined' ? TaskManager.getMembers() : [])
         .find(function (m) { return m.id === session.id; }) || session;
+    }
+    function applyAvatarColor() {
+      avatarBtn.style.background = getFullMember().color || '';
+    }
+    applyAvatarColor();
+    setTimeout(applyAvatarColor, 1200); // dữ liệu Sheet fetch async, khớp pattern render() lặp lại ở nơi khác
+
+    function render() {
+      var full = getFullMember();
       var joined = fmtJoined(full.createdAt);
+      applyAvatarColor();
 
       menu.innerHTML =
         '<div class="user-menu-header">' +
-          '<div class="user-menu-avatar">' + escapeHtml(full.avatar || '--') + '</div>' +
+          '<div class="user-menu-avatar" style="background:' + escapeHtml(full.color || '') + '">' + escapeHtml(full.avatar || '--') + '</div>' +
           '<div class="user-menu-id">' +
             '<div class="user-menu-name">' + escapeHtml(full.name || '--') + '</div>' +
             '<div class="user-menu-role">' + escapeHtml(full.role || '--') + '</div>' +

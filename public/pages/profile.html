@@ -101,6 +101,15 @@
     .pf-save-msg { font-size: 0.8125rem; color: var(--color-success); margin-top: -12px; margin-bottom: 20px; display: none; }
     .pf-save-msg.show { display: block; }
 
+    .pf-color-value { display: flex; align-items: center; gap: 8px; }
+    .pf-color-dot { width: 16px; height: 16px; border-radius: 28%; flex-shrink: 0; background: var(--color-bronze); }
+    .pf-color-edit { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .pf-color-edit input[type="color"] { width: 26px; height: 26px; border: 1.5px dashed var(--color-border-strong); border-radius: 50%; background: transparent; cursor: pointer; padding: 0; }
+    .pf-color-edit input[type="color"]:hover { border-color: var(--color-bronze); }
+    .pf-color-presets { display: flex; gap: 6px; flex-wrap: wrap; }
+    .pf-color-swatch { width: 20px; height: 20px; border-radius: 28%; border: 2px solid var(--color-border); cursor: pointer; padding: 0; transition: transform .15s, border-color .15s; }
+    .pf-color-swatch:hover { transform: scale(1.15); border-color: var(--color-text); }
+
     @media (max-width: 600px) {
       .pf-grid { grid-template-columns: 1fr; }
       .pf-field.full { grid-column: span 1; }
@@ -220,6 +229,16 @@
               <div class="pf-field-value" id="profileHometown">--</div>
               <input class="pf-field-input" id="profileHometownInput" type="text" hidden>
             </div>
+            <div class="pf-field" data-field="color">
+              <div class="pf-field-label">Màu sắc đại diện</div>
+              <div class="pf-field-value pf-color-value" id="profileColorValue">
+                <span class="pf-color-dot" id="profileColorDot"></span><span id="profileColorText">--</span>
+              </div>
+              <div class="pf-field-input pf-color-edit" id="profileColorEdit" hidden>
+                <input type="color" id="profileColorInput" value="#B08D57">
+                <div class="pf-color-presets" id="profileColorPresets"></div>
+              </div>
+            </div>
           </div>
 
           <div class="pf-section-title">Thông tin tài khoản</div>
@@ -277,8 +296,26 @@
     var session = Auth.getCurrentUser();
     if (!session) { Auth.showLoginModal(); return; }
 
-    var EDITABLE = ['dob', 'gender', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount', 'divisionCode', 'departmentCode'];
+    var EDITABLE = ['dob', 'gender', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount', 'divisionCode', 'departmentCode', 'color'];
     var user;
+
+    // Màu sắc đại diện — cùng bộ preset đã dùng cho màu dự án (projects.js)
+    // để nhất quán bảng màu toàn hệ thống, người dùng vẫn có thể chọn màu
+    // tuỳ ý qua ô color-picker cạnh bên.
+    var COLOR_PRESETS = ['#B08D57', '#C7A464', '#3B6B8C', '#4F6F52', '#8E7CC3', '#A04848', '#C77A40', '#475569', '#6B7280'];
+    (function initColorPresets() {
+      var wrap = document.getElementById('profileColorPresets');
+      if (!wrap) return;
+      wrap.innerHTML = COLOR_PRESETS.map(function (c) {
+        return '<button type="button" class="pf-color-swatch" data-color="' + c + '" style="background:' + c + '" aria-label="Màu ' + c + '"></button>';
+      }).join('');
+      wrap.querySelectorAll('.pf-color-swatch').forEach(function (sw) {
+        sw.addEventListener('click', function () {
+          var input = document.getElementById('profileColorInput');
+          if (input) input.value = sw.dataset.color;
+        });
+      });
+    })();
 
     function fmtDob(v) { return v ? new Date(v).toLocaleDateString('vi-VN') : '--'; }
     function isoDob(v) { return v ? new Date(v).toISOString().split('T')[0] : ''; }
@@ -320,6 +357,13 @@
 
       document.getElementById('headerAvatarText').textContent = user.avatar || '--';
       document.getElementById('profileAvatar').textContent = user.avatar || '--';
+      // Đồng bộ "Màu sắc đại diện" (Sheet NS-Thành viên, field `color`) vào cả
+      // avatar lớn ở đây LẪN avatar header/dropdown (portal.js đọc lại đúng
+      // field này) — không có màu tuỳ chỉnh thì bỏ trống style để rơi về
+      // đúng màu mặc định CSS cũ (bronze/navy), không ép ai cũng phải có màu.
+      document.getElementById('profileAvatar').style.background = user.color || '';
+      var headerAvatarBtn = document.querySelector('.header-actions .avatar');
+      if (headerAvatarBtn) headerAvatarBtn.style.background = user.color || '';
       document.getElementById('profileName').textContent = user.name || '--';
       document.getElementById('profileRole').textContent = user.role || '--';
       document.getElementById('profileEmail').textContent = user.email || '--';
@@ -342,6 +386,9 @@
       document.getElementById('profileHometown').textContent = user.hometown || '--';
       document.getElementById('profileBankName').textContent = user.bank || '--';
       document.getElementById('profileBank').textContent = user.bankAccount || '--';
+      document.getElementById('profileColorDot').style.background = user.color || 'var(--color-bronze)';
+      document.getElementById('profileColorText').textContent = user.color || 'Mặc định';
+      document.getElementById('profileColorInput').value = user.color || '#B08D57';
 
       if (divisionSel) divisionSel.value = effectiveDivisionCode || '';
       renderDepartmentOptions(effectiveDivisionCode || '', user.departmentCode || '');
@@ -392,9 +439,13 @@
         departmentCode: deptInfo ? deptInfo.code : '',
         department: deptInfo ? deptInfo.name : '',
         divisionCode: divInfo ? divInfo.code : '',
-        division: divInfo ? divInfo.name : ''
+        division: divInfo ? divInfo.name : '',
+        color: document.getElementById('profileColorInput').value
       };
       TaskManager.updateMember(session.id, updates, session);
+      // Vá ngay session đang cache để avatar header/dropdown đổi màu tức thì
+      // trên MỌI trang từ giờ, không cần đăng xuất/đăng nhập lại mới thấy.
+      Auth.updateSessionFields({ color: updates.color });
       render();
       setEditing(false);
       var msg = document.getElementById('pfSaveMsg');
