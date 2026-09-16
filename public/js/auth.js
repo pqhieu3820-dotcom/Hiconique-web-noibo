@@ -621,7 +621,12 @@ const Auth = (function() {
       id: id,
       name: name,
       role: role,
-      roleLevel: 'member',
+      // 2026-09-16: Sheet đổi cột "Cấp bậc" sang field 'level' (5 mức
+      // Founder/CEO/Giám đốc Bộ phận/Quản lý/Nhân viên) — 'roleLevel' (3 mức
+      // CŨ) giờ server TỰ SUY từ 'level', không lưu trực tiếp trên Sheet nữa
+      // (xem LEVEL_TO_ROLELEVEL trong gsheets-api-v2.js). Đăng ký mới LUÔN ở
+      // mức thấp nhất, admin tự nâng cấp tay qua Sheet/trang quản lý sau.
+      level: 'member',
       email: email,
       password: password,
       dob: dob || '',

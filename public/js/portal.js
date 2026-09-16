@@ -369,7 +369,11 @@
       var initials = m.avatar || getInitials(m.name);
       var color = m.color || '#6B7280';
       var role = m.role || m.position || '';
-      var status = m.roleLevel ? m.roleLevel.charAt(0).toUpperCase() + m.roleLevel.slice(1) : '—';
+      // Hiện đúng nhãn Cấp bậc 5 mức (Founder/CEO/Giám đốc Bộ phận/Quản lý/
+      // Nhân viên) thay vì chỉ 3 mức roleLevel cũ — class CSS badge vẫn dùng
+      // roleLevel (đã suy sẵn từ level) để giữ đúng 3 màu sắc đã có.
+      var levelInfo = (m.level && typeof TaskManager !== 'undefined' && TaskManager.getLevelByCode) ? TaskManager.getLevelByCode(m.level) : null;
+      var status = levelInfo ? levelInfo.label : (m.roleLevel ? m.roleLevel.charAt(0).toUpperCase() + m.roleLevel.slice(1) : '—');
       var days = daysAtCompany(m.createdAt);
       var joinDate = formatJoinDate(m.createdAt);
       var statusBadge = m.status === 'pending' ? '<span class="team-status-badge pending">Chờ duyệt</span>'
@@ -425,7 +429,8 @@
 
     var initials = m.avatar || getInitials(m.name);
     var color = m.color || '#6B7280';
-    var roleLevelLabel = m.roleLevel === 'admin' ? 'Quản trị viên' : m.roleLevel === 'manager' ? 'Quản lý' : 'Nhân viên';
+    var modalLevelInfo = (m.level && typeof TaskManager !== 'undefined' && TaskManager.getLevelByCode) ? TaskManager.getLevelByCode(m.level) : null;
+    var roleLevelLabel = modalLevelInfo ? modalLevelInfo.label : (m.roleLevel === 'admin' ? 'Quản trị viên' : m.roleLevel === 'manager' ? 'Quản lý' : 'Nhân viên');
     var days = daysAtCompany(m.createdAt);
     var joinDate = formatJoinDate(m.createdAt);
     var dobDate = m.dob ? new Date(m.dob).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';

@@ -57,7 +57,16 @@ const SHEETS = {
 // alias, so existing client code (which never looks for it) is unaffected.
 const FIELD_MAP = {
   members: [
-    ['Mã NV', 'id'], ['Họ tên', 'name'], ['Chức vụ', 'role'], ['Cấp bậc', 'roleLevel'],
+    ['Mã NV', 'id'], ['Họ tên', 'name'], ['Chức vụ', 'role'],
+    // 2026-09-16: "Cấp bậc" đổi từ 3 mức phẳng (CEO/Quản lý/Nhân viên) sang
+    // PHÂN TẦNG 5 mức (Founder/CEO/Giám đốc Bộ phận/Quản lý/Nhân viên) — xem
+    // LEVELS/LEVEL_TO_ROLELEVEL phía dưới. Cột Sheet đổi tên KEY nội bộ từ
+    // 'roleLevel' sang 'level' (giá trị mới: founder/ceo/dept_director/
+    // manager/member) — 'roleLevel' (admin/manager/member, 3 mức CŨ) giờ là
+    // field TỰ SUY RA (không lưu trên Sheet nữa) trong getAllData(), để toàn
+    // bộ ~25 chỗ check `roleLevel === 'admin'/'manager'` rải khắp client
+    // KHÔNG phải sửa — founder/ceo/dept_director đều suy ra 'admin'.
+    ['Cấp bậc', 'level'],
     ['Giới tính', 'gender'], ['Mail', 'email'], ['Mật khẩu', 'password'], ['Ngày sinh', 'dob'],
     ['SĐT', 'phone'], ['CCCD', 'cccd'], ['Quê quán', 'hometown'], ['Số tài khoản ngân hàng', 'bankAccount'],
     ['Ngân hàng thụ hưởng', 'bank'], ['Màu sắc đại diện', 'color'], ['Tên viết tắt đại diện', 'avatar'],
@@ -305,11 +314,13 @@ const VALUE_MAP = {
   ],
   // roleLevel gates permissions everywhere in the client (isAdmin(), PERMISSIONS
   // matrix...) via the literal string 'admin'/'manager'/'member' — CHỈ nhãn
-  // hiển thị trên Sheet đổi (2026-09-15 thêm 2 dòng dưới, trước đó chỉ có
-  // 'CEO'/'admin' nên manager/member vẫn hiện tiếng Anh thô), key nội bộ giữ
-  // nguyên hay đổi thành thứ khác đều KHÔNG được.
-  'members.roleLevel': [
-    ['CEO', 'admin'], ['Quản lý', 'manager'], ['Nhân viên', 'member']
+  // hiển thị trên Sheet đổi — key nội bộ (founder/ceo/dept_director/manager/
+  // member) đổi hay thêm bớt PHẢI đồng bộ với LEVELS/LEVEL_TO_ROLELEVEL và
+  // với TaskManager.getLevels() (task-data.js) — 1 nguồn duy nhất, lệch 1 bên
+  // là dropdown Sheet với dropdown web hiện khác danh sách nhau ngay.
+  'members.level': [
+    ['Founder', 'founder'], ['CEO', 'ceo'], ['Giám đốc Bộ phận', 'dept_director'],
+    ['Quản lý', 'manager'], ['Nhân viên', 'member']
   ],
   // 2026-09-10: Việt hoá các cột enum tiếng Anh (priority/status) trên Sheet để
   // CEO chọn dropdown bằng tiếng Việt — client vẫn dùng key tiếng Anh như cũ.
@@ -368,6 +379,33 @@ const VALUE_MAP = {
     ['Lương thưởng', 'payroll'], ['Chấm công', 'attendance'], ['Chung', 'general']
   ]
 };
+
+// Phân tầng Cấp bậc (Level) — 2026-09-16, theo yêu cầu người dùng:
+//   Level 0 Founder — toàn quyền tối thượng (xem/sửa/xoá mọi dữ liệu, cấu
+//     hình app, cấp quyền người khác).
+//   Level 1 CEO — quản lý vận hành chung, xem báo cáo tổng hợp mọi khối,
+//     điều chỉnh tiến độ dự án chung.
+//   Level 2 Giám đốc Bộ phận — toàn quyền thêm/sửa/xoá dữ liệu (hiện CHƯA
+//     giới hạn theo đúng bộ phận của họ — codebase chưa có cơ chế phân
+//     quyền theo phạm vi bộ phận/dự án, đây là đơn giản hoá có chủ đích).
+//   Level 3 Quản lý — quản lý/giao việc/duyệt dữ liệu dự án hoặc nhân sự.
+//   Level 4 Nhân viên — chỉ xem không gian làm việc của mình, cập nhật task
+//     được giao, tạo đề xuất/báo cáo cá nhân.
+// TOÀN BỘ code cũ (client lẫn file này) kiểm tra quyền qua field 'roleLevel'
+// CŨ (chỉ 3 giá trị admin/manager/member, ~25 chỗ rải rác nhiều file) — thay
+// vì sửa hết ngần ấy chỗ (rủi ro cao), 'level' (5 mức) là field MỚI, còn
+// 'roleLevel' giờ được SUY RA từ 'level' ở getAllData() (không lưu trên
+// Sheet nữa) qua bảng dưới đây, nên mọi chỗ check roleLevel cũ tiếp tục chạy
+// đúng như trước — founder/ceo/dept_director đều suy ra 'admin' (chưa phân
+// biệt được 3 cấp cao này ở tầng quyền cũ, chỉ khác nhau ở NHÃN hiển thị).
+const LEVELS = [
+  { code: 'founder', label: 'Founder', order: 0, roleLevel: 'admin' },
+  { code: 'ceo', label: 'CEO', order: 1, roleLevel: 'admin' },
+  { code: 'dept_director', label: 'Giám đốc Bộ phận', order: 2, roleLevel: 'admin' },
+  { code: 'manager', label: 'Quản lý', order: 3, roleLevel: 'manager' },
+  { code: 'member', label: 'Nhân viên', order: 4, roleLevel: 'member' }
+];
+const LEVEL_TO_ROLELEVEL = LEVELS.reduce(function (acc, l) { acc[l.code] = l.roleLevel; return acc; }, {});
 
 // Đơn giá 34 tỉnh — đọc trực tiếp từ 46 sheet "DGXD-<tên gốc>" migrate sang
 // ngày 2026-09-09 (xem GHI_CHU_DU_AN.md). Đây là dữ liệu tham khảo nhiều
@@ -834,6 +872,13 @@ function getAllData(ss, sheetName) {
       }
       obj[key] = typeof val === 'string' ? viToEnValue(sheetName, key, val) : val;
     });
+    // Sheet Thành viên: suy 'roleLevel' (3 mức CŨ — admin/manager/member,
+    // toàn bộ ~25 chỗ check quyền rải rác trong client vẫn dùng field này)
+    // từ 'level' (5 mức MỚI) — xem LEVEL_TO_ROLELEVEL phía trên. Field chưa
+    // gán 'level' hợp lệ (dữ liệu cũ/trống) mặc định 'member' (an toàn nhất).
+    if (sheetName === SHEETS.members) {
+      obj.roleLevel = LEVEL_TO_ROLELEVEL[obj.level] || 'member';
+    }
     return obj;
   });
 }
@@ -1736,7 +1781,7 @@ function runDropdownCleanupAll() {
 // lỗi để tìm đúng dòng thủ phạm (chỉ chạy 1 lần để tra cứu, không sửa gì).
 function findBlockingValidationRows() {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const targets = ['members.roleLevel', 'tasks.status', 'projects.status', 'notifications.type'];
+  const targets = ['members.level', 'tasks.status', 'projects.status', 'notifications.type'];
   const lines = [];
   targets.forEach(function (key) {
     const dot = key.indexOf('.');
@@ -2045,6 +2090,80 @@ function applyDepartmentDropdowns() {
     lines.push(header + ': đã đặt dropdown (' + list.length + ' lựa chọn)');
   });
   const report = lines.join('\n');
+  Logger.log(report);
+  return report;
+}
+
+// Dọn dữ liệu CŨ trong cột "Cấp bậc" trước khi đổi sang phân tầng 5 mức —
+// dữ liệu thật trên Sheet đang LẪN LỘN tiếng Anh thô ("manager"/"member",
+// dropdown cũ hỏng ghi thẳng key nội bộ thay vì nhãn Việt) và tiếng Việt
+// đúng ("Quản lý"/"Nhân viên") tuỳ dòng tạo trước/sau lúc Việt hoá — người
+// dùng phát hiện qua ảnh chụp Sheet thật. Hàm này chuẩn hoá MỌI ô về đúng 1
+// trong 5 nhãn mới, KHÔNG tự suy đoán ai là Founder/Giám đốc Bộ phận (2 cấp
+// hoàn toàn mới, không có tương đương cũ) — "CEO" cũ giữ nguyên "CEO", CEO
+// thật (Phạm Quang Hiếu) tự đổi tay thành "Founder" qua dropdown nếu muốn,
+// tránh hàm này tự ý thăng cấp ai. Chạy TAY 1 lần, an toàn chạy lại nhiều lần.
+function normalizeMemberLevels() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = findSheet(ss, SHEETS.members);
+  if (!sheet) return 'Không tìm thấy sheet Thành viên';
+  const headers = getHeaders(sheet);
+  const colIdx = headers.indexOf('Cấp bậc');
+  if (colIdx === -1) return 'Không tìm thấy cột "Cấp bậc"';
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return 'Sheet chưa có dữ liệu';
+  const range = sheet.getRange(2, colIdx + 1, lastRow - 1, 1);
+  const values = range.getValues();
+  // [giá trị cũ có thể gặp trên Sheet thật (tiếng Anh thô lẫn tiếng Việt), nhãn mới]
+  const OLD_TO_NEW = {
+    'CEO': 'CEO', 'admin': 'CEO',
+    'manager': 'Quản lý', 'Quản lý': 'Quản lý',
+    'member': 'Nhân viên', 'Nhân viên': 'Nhân viên'
+  };
+  const lines = [];
+  let changed = 0;
+  const out = values.map(function (row, i) {
+    const raw = String(row[0] || '').trim();
+    if (!raw) return row; // trống thì bỏ qua, không tự gán mặc định
+    const mapped = OLD_TO_NEW[raw];
+    if (!mapped) { lines.push('Dòng ' + (i + 2) + ': giá trị lạ "' + raw + '", để nguyên'); return row; }
+    if (mapped !== raw) { changed++; return [mapped]; }
+    return row;
+  });
+  range.setValues(out);
+  const report = 'Đã chuẩn hoá ' + changed + ' dòng.' + (lines.length ? '\n' + lines.join('\n') : '');
+  Logger.log(report);
+  return report;
+}
+
+// Đặt dropdown 5 mức MỚI cho cột "Cấp bậc" (thay hẳn dropdown 3 mức cũ) —
+// chạy SAU normalizeMemberLevels() để dữ liệu cũ hợp lệ trước khi khoá bằng
+// requireValueInList (không thì các ô còn giá trị lạ sẽ bị Sheet báo lỗi).
+function applyLevelDropdown() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = findSheet(ss, SHEETS.members);
+  if (!sheet) return 'Không tìm thấy sheet Thành viên';
+  const headers = getHeaders(sheet);
+  const colIdx = headers.indexOf('Cấp bậc');
+  if (colIdx === -1) return 'Không tìm thấy cột "Cấp bậc"';
+  const lastRow = sheet.getLastRow();
+  const labels = LEVELS.map(function (l) { return l.label; });
+  const rule = SpreadsheetApp.newDataValidation().requireValueInList(labels, true).setAllowInvalid(false).build();
+  // 2026-09-16: Sheets chặn ghi đè validation lên Ô ĐÃ CÓ GIÁ TRỊ (lỗi "Thao
+  // tác này không được phép ở các ô trong các cột đã nhập"), và việc xoá-ghi
+  // tạm giá trị để né lỗi đó KHÔNG an toàn — SpreadsheetApp gộp các lệnh ghi
+  // và chỉ commit khi script kết thúc; nếu bước cuối lỗi, các ghi ĐÃ LOG
+  // THÀNH CÔNG vẫn có thể bị mất (đã xảy ra thật, gây mất dữ liệu cột Cấp
+  // bậc, phải khôi phục thủ công). Do đó CHỈ áp dropdown mới lên các dòng
+  // TRỐNG phía dưới dữ liệu hiện có (dòng nhập tay mới sau này) — không đụng
+  // ô đã có giá trị. Dữ liệu ở các dòng cũ vẫn đọc/ghi đúng qua VALUE_MAP dù
+  // dropdown UI của chúng còn là kiểu cũ.
+  const startRow = lastRow + 1;
+  const numRows = 50;
+  const targetRange = sheet.getRange(startRow, colIdx + 1, numRows, 1);
+  targetRange.clearDataValidations();
+  targetRange.setDataValidation(rule);
+  const report = 'Cấp bậc: đã đặt dropdown mới cho ' + numRows + ' dòng trống từ dòng ' + startRow + ' trở đi (' + labels.join(', ') + '). Các dòng dữ liệu hiện có (2-' + lastRow + ') giữ nguyên, không đụng vào để tránh mất dữ liệu.';
   Logger.log(report);
   return report;
 }

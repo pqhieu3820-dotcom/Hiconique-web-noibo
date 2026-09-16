@@ -94,6 +94,28 @@ var TaskManager = (function() {
     { id: 'MEM2', name: 'Lê Thành', role: 'Kỹ sư nội thất', roleLevel: 'member', email: 'thanh@hiconique.vn', password: '123456', dob: '1993-11-08', cccd: '012345678905', hometown: 'Hải Phòng', bankAccount: '1234567894', color: '#B8725A', avatar: 'LT', createdAt: '2026-01-01' }
   ];
 
+  // Phân tầng Cấp bậc (Level) CỐ ĐỊNH (2026-09-16, theo yêu cầu người dùng) —
+  // 5 mức, PHẢI khớp đúng LEVELS trong gsheets-api-v2.js (đổi 1 bên phải đổi
+  // bên kia, không thì dropdown Sheet lệch dropdown web). `roleLevel` là
+  // field CŨ (3 mức admin/manager/member) mà ~25 chỗ check quyền rải khắp
+  // client vẫn dùng — server tự suy roleLevel từ level (xem
+  // LEVEL_TO_ROLELEVEL trong gsheets-api-v2.js), field `roleLevel` client
+  // nhận về đã là giá trị suy sẵn, không cần tự suy lại ở đây.
+  //   Level 0 Founder — toàn quyền tối thượng.
+  //   Level 1 CEO — quản lý vận hành chung, xem báo cáo tổng hợp mọi khối.
+  //   Level 2 Giám đốc Bộ phận — toàn quyền thêm/sửa/xoá dữ liệu.
+  //   Level 3 Quản lý — quản lý/giao việc/duyệt dữ liệu dự án hoặc nhân sự.
+  //   Level 4 Nhân viên — chỉ xem không gian làm việc của mình.
+  var LEVELS = [
+    { code: 'founder', label: 'Founder', order: 0, roleLevel: 'admin' },
+    { code: 'ceo', label: 'CEO', order: 1, roleLevel: 'admin' },
+    { code: 'dept_director', label: 'Giám đốc Bộ phận', order: 2, roleLevel: 'admin' },
+    { code: 'manager', label: 'Quản lý', order: 3, roleLevel: 'manager' },
+    { code: 'member', label: 'Nhân viên', order: 4, roleLevel: 'member' }
+  ];
+  function getLevels() { return LEVELS.slice(); }
+  function getLevelByCode(code) { return LEVELS.find(function (l) { return l.code === code; }) || null; }
+
   // Danh mục BỘ PHẬN (khối) CỐ ĐỊNH (2026-09-16) — cấp cha của Phòng ban,
   // theo đúng 4 nhóm trong "Standard Operating Procedure" nội bộ. Mã viết
   // tắt lấy từ tên tiếng Anh trong ngoặc của SOP (Back-Office -> BO,
@@ -1793,6 +1815,9 @@ var TaskManager = (function() {
     // User
     getCurrentUser: getCurrentUser,
 
+    // Phân tầng Cấp bậc (danh mục cố định, xem LEVELS ở trên)
+    getLevels: getLevels,
+    getLevelByCode: getLevelByCode,
     // Bộ phận/Phòng ban (danh mục cố định, xem DIVISIONS/DEPARTMENTS ở trên)
     getDivisions: getDivisions,
     getDivisionByCode: getDivisionByCode,

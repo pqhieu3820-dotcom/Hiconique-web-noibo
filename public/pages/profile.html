@@ -355,7 +355,9 @@
       document.getElementById('profileBankInput').value = user.bankAccount || '';
 
       var roleLevelBadge = document.getElementById('profileRoleLevel');
-      if (user.roleLevel === 'admin') roleLevelBadge.textContent = 'Quản trị viên';
+      var profileLevelInfo = (user.level && typeof TaskManager !== 'undefined' && TaskManager.getLevelByCode) ? TaskManager.getLevelByCode(user.level) : null;
+      if (profileLevelInfo) roleLevelBadge.textContent = profileLevelInfo.label;
+      else if (user.roleLevel === 'admin') roleLevelBadge.textContent = 'Quản trị viên';
       else if (user.roleLevel === 'manager') roleLevelBadge.textContent = 'Quản lý';
       else roleLevelBadge.textContent = 'Nhân viên';
     }
