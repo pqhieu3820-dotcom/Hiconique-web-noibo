@@ -29,7 +29,13 @@ var Offline = (function () {
   var LAST_SYNC_KEY = 'hiconique_last_sync';
   var PING_INTERVAL_MS = 15000;
   var PING_TIMEOUT_MS = 15000; // Apps Script có lúc chậm thật (cold start/nhiều người dùng cùng lúc) — không siết quá tay kẻo báo mất mạng oan
-  var CONSECUTIVE_FAILS_TO_GO_OFFLINE = 3; // 1-2 lần ping trượt có thể chỉ là chậm nhất thời, KHÔNG kết luận mất mạng ngay — phải trượt liên tiếp mới chắc là thật sự mất mạng
+  // 2026-09-17: nâng từ 3 lên 10 lần trượt LIÊN TIẾP mới kết luận mất mạng
+  // (10 * 15s ≈ 2.5 phút toàn trượt) — 3 lần trước đó vẫn còn báo động giả
+  // quá dễ (mạng yếu/Apps Script chậm 1 chút vài chục giây là đủ khoá thao
+  // tác, người dùng phản ánh rất khó chịu). Kết hợp với guard() đã chỉ chặn
+  // khi navigator.onLine CŨNG báo mất mạng (xem guard() dưới) — 2 lớp phòng
+  // báo động giả, cực kỳ hiếm khi chặn oan trong khi mạng vẫn dùng bình thường.
+  var CONSECUTIVE_FAILS_TO_GO_OFFLINE = 10;
   // 2026-09-16: app "Thêm vào Màn hình chính" (iOS Safari/Android Chrome) mở
   // ra ở chế độ standalone thường bị trình duyệt đưa vào bfcache khi chuyển
   // sang app khác — quay lại thì trang KHÔNG chạy lại JS/initData(), chỉ hiện
@@ -300,6 +306,21 @@ var Offline = (function () {
       navigator.serviceWorker.register('/sw.js').catch(function (e) {
         console.warn('[offline] đăng ký service worker thất bại:', e);
       });
+    });
+    // 2026-09-17: sw.js đổi chiến lược cache (xem CACHE_VERSION trong sw.js)
+    // nhưng bản Service Worker MỚI chỉ thật sự điều khiển trang sau khi
+    // 'activate' xong (đã có skipWaiting()+clients.claim() ở sw.js) — trang
+    // ĐANG MỞ vẫn còn script cũ đã load sẵn trong bộ nhớ, tự nó không có
+    // cách nào "tiêm" code mới vào giữa chừng được. 'controllerchange' bắn
+    // đúng lúc SW mới giành quyền kiểm soát — reload đúng 1 lần (cờ
+    // `refreshedForSW` chặn lặp vô hạn nếu trình duyệt bắn sự kiện này nhiều
+    // lần) để trang tải lại với code mới ngay, không cần người dùng tự thoát
+    // app/chờ như trước.
+    var refreshedForSW = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (refreshedForSW) return;
+      refreshedForSW = true;
+      window.location.reload();
     });
   }
 

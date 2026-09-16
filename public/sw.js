@@ -9,8 +9,19 @@
  *
  * Tăng CACHE_VERSION mỗi khi đổi danh sách PRECACHE_URLS hoặc muốn ép mọi
  * client tải lại toàn bộ shell (activate sẽ tự xoá cache phiên bản cũ).
+ *
+ * 2026-09-17: TRƯỚC ĐÂY css/js dùng "stale-while-revalidate" (trả bản cache
+ * cũ ngay, tải bản mới chạy ngầm cho LẦN SAU) — trên máy tính desktop hay tự
+ * fetch lại tự nhiên nên ít để ý, nhưng trên điện thoại (app "Thêm vào Màn
+ * hình chính") có thể đứng yên ở đúng 1 phiên bản cache rất lâu (nhiều phút,
+ * người dùng phản ánh phải thoát app/chờ ~5 phút mới thấy code mới, kéo
+ * xuống làm mới cũng không ăn thua vì SW vẫn trả cache cũ trước network).
+ * Đổi hẳn sang "network-first" cho MỌI request (kể cả css/js), ép bỏ qua
+ * HTTP cache của trình duyệt (`cache: 'no-store'`) — ưu tiên tuyệt đối lấy
+ * bản MỚI NHẤT, chỉ rơi về cache khi thật sự mất mạng. Đổi tên phiên bản để
+ * mọi client tự xoá sạch cache cũ ngay lần cài đặt SW mới này.
  */
-const CACHE_VERSION = 'hiconique-shell-v1';
+const CACHE_VERSION = 'hiconique-shell-v2';
 
 const PRECACHE_URLS = [
   '/',
@@ -100,7 +111,7 @@ self.addEventListener('fetch', function (event) {
   // trước cho dữ liệu mới nhất, hết mạng thì rơi về đúng trang đã cache.
   if (req.mode === 'navigate') {
     event.respondWith(
-      fetch(req).then(function (res) {
+      fetch(req, { cache: 'no-store' }).then(function (res) {
         const copy = res.clone();
         caches.open(CACHE_VERSION).then(function (cache) { cache.put(req, copy); });
         return res;
@@ -113,18 +124,19 @@ self.addEventListener('fetch', function (event) {
     return;
   }
 
-  // Tài nguyên tĩnh khác (css/js/icon...): cache trước cho tốc độ, network
-  // chạy song song để cập nhật cache ngầm — "stale-while-revalidate".
+  // Tài nguyên tĩnh khác (css/js/icon...): NETWORK-FIRST (ép bỏ qua HTTP
+  // cache bằng `no-store`) — chỉ rơi về bản đã cache khi fetch thật sự thất
+  // bại (mất mạng). Đổi từ stale-while-revalidate cũ vì bản cũ LUÔN trả cache
+  // trước, khiến code mới deploy không bao giờ hiện ngay được.
   event.respondWith(
-    caches.match(req).then(function (cached) {
-      const network = fetch(req).then(function (res) {
-        if (res && res.ok) {
-          const copy = res.clone();
-          caches.open(CACHE_VERSION).then(function (cache) { cache.put(req, copy); });
-        }
-        return res;
-      }).catch(function () { return cached; });
-      return cached || network;
+    fetch(req, { cache: 'no-store' }).then(function (res) {
+      if (res && res.ok) {
+        const copy = res.clone();
+        caches.open(CACHE_VERSION).then(function (cache) { cache.put(req, copy); });
+      }
+      return res;
+    }).catch(function () {
+      return caches.match(req);
     })
   );
 });
