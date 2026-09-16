@@ -382,19 +382,17 @@ const Auth = (function() {
               </div>
             </div>
 
-            <div class="auth-grid-2">
-              <div>
-                <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Bộ phận</label>
-                <select id="regDivisionInput">
-                  <option value="">-- Chọn bộ phận --</option>
-                </select>
-              </div>
-              <div>
-                <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Phòng ban</label>
-                <select id="regDepartmentInput">
-                  <option value="">-- Chọn bộ phận trước --</option>
-                </select>
-              </div>
+            <div>
+              <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Bộ phận</label>
+              <select id="regDivisionInput">
+                <option value="">-- Chọn bộ phận --</option>
+              </select>
+            </div>
+            <div>
+              <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Phòng ban</label>
+              <select id="regDepartmentInput">
+                <option value="">-- Chọn bộ phận trước --</option>
+              </select>
             </div>
 
             <div class="auth-grid-2">
@@ -408,7 +406,6 @@ const Auth = (function() {
                   <option value="">-- Chọn --</option>
                   <option value="male">Nam</option>
                   <option value="female">Nữ</option>
-                  <option value="other">Khác</option>
                 </select>
               </div>
             </div>

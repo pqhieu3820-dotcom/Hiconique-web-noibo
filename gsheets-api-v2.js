@@ -322,6 +322,13 @@ const VALUE_MAP = {
     ['Founder', 'founder'], ['CEO', 'ceo'], ['Giám đốc Bộ phận', 'dept_director'],
     ['Quản lý', 'manager'], ['Nhân viên', 'member']
   ],
+  // 2026-09-16: Sheet vẫn hiện "male"/"female" thô (chưa Việt hoá) — client
+  // luôn dùng key 'male'/'female' để so sánh (form đăng ký, badge...), chỉ
+  // đổi NHÃN hiển thị trên Sheet sang Nam/Nữ, không đổi key nội bộ. Bỏ hẳn
+  // 'other' theo yêu cầu — chỉ còn 2 lựa chọn Nam/Nữ.
+  'members.gender': [
+    ['Nam', 'male'], ['Nữ', 'female']
+  ],
   // 2026-09-10: Việt hoá các cột enum tiếng Anh (priority/status) trên Sheet để
   // CEO chọn dropdown bằng tiếng Việt — client vẫn dùng key tiếng Anh như cũ.
   // Nhãn khớp đúng chữ đã dùng sẵn trong UI (xem task-manager-app.js/projects.js)
@@ -2125,6 +2132,40 @@ function normalizeMemberLevels() {
   const out = values.map(function (row, i) {
     const raw = String(row[0] || '').trim();
     if (!raw) return row; // trống thì bỏ qua, không tự gán mặc định
+    const mapped = OLD_TO_NEW[raw];
+    if (!mapped) { lines.push('Dòng ' + (i + 2) + ': giá trị lạ "' + raw + '", để nguyên'); return row; }
+    if (mapped !== raw) { changed++; return [mapped]; }
+    return row;
+  });
+  range.setValues(out);
+  const report = 'Đã chuẩn hoá ' + changed + ' dòng.' + (lines.length ? '\n' + lines.join('\n') : '');
+  Logger.log(report);
+  return report;
+}
+
+// Cột "Giới tính" trên Sheet đang hiện "male"/"female" thô (VALUE_MAP mới
+// thêm 2026-09-16, dữ liệu CŨ tạo trước đó chưa qua dịch) — chuẩn hoá về
+// nhãn Việt "Nam"/"Nữ". Chỉ ĐỔI GIÁ TRỊ ô (setValues), không đụng tới
+// data-validation nên an toàn với cả ô đã có dữ liệu (không dính giới hạn
+// "không ghi đè validation lên ô đã nhập" như cột Cấp bậc). Chạy tay 1 lần,
+// an toàn chạy lại nhiều lần.
+function normalizeMemberGender() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = findSheet(ss, SHEETS.members);
+  if (!sheet) return 'Không tìm thấy sheet Thành viên';
+  const headers = getHeaders(sheet);
+  const colIdx = headers.indexOf('Giới tính');
+  if (colIdx === -1) return 'Không tìm thấy cột "Giới tính"';
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return 'Sheet chưa có dữ liệu';
+  const range = sheet.getRange(2, colIdx + 1, lastRow - 1, 1);
+  const values = range.getValues();
+  const OLD_TO_NEW = { 'male': 'Nam', 'female': 'Nữ', 'Nam': 'Nam', 'Nữ': 'Nữ' };
+  const lines = [];
+  let changed = 0;
+  const out = values.map(function (row, i) {
+    const raw = String(row[0] || '').trim();
+    if (!raw) return row;
     const mapped = OLD_TO_NEW[raw];
     if (!mapped) { lines.push('Dòng ' + (i + 2) + ': giá trị lạ "' + raw + '", để nguyên'); return row; }
     if (mapped !== raw) { changed++; return [mapped]; }
