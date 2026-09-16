@@ -74,7 +74,11 @@ const FIELD_MAP = {
     // yêu cầu người dùng, dễ nhìn/lọc trực tiếp trên Sheet hơn. Xem
     // splitDeviceColumns() (đã chạy 1 lần, xoá khỏi code) và task-data.js
     // parseDeviceIds()/stringifyDeviceEntries().
-    ['Thiết bị 1', 'device1'], ['Thiết bị 2', 'device2']
+    ['Thiết bị 1', 'device1'], ['Thiết bị 2', 'device2'],
+    // 2026-09-16: thêm phòng ban — 2 cột riêng (tên đầy đủ + mã 3 ký tự
+    // dùng để đánh số văn bản, xem TaskManager.getDepartments() trong
+    // task-data.js — danh mục CỐ ĐỊNH theo SOP nội bộ, không tự thêm/sửa).
+    ['Phòng ban', 'department'], ['Mã phòng ban', 'departmentCode']
   ],
   // 2026-09-09: "Loại dự án" đổi nghĩa thành LOẠI CÔNG TRÌNH thật (Nhà phố,
   // Biệt thự, Căn hộ chung cư...), giá trị cũ (Thiết kế/Thi công/Nội thất...)
@@ -1926,6 +1930,30 @@ function splitDeviceColumns() {
   sheet.deleteColumn(oldColIdx + 1);
 
   const report = 'Đã tách cột thành "Thiết bị 1"/"Thiết bị 2", di trú ' + migrated + ' dòng có dữ liệu thiết bị.';
+  Logger.log(report);
+  return report;
+}
+
+// Thêm 2 cột "Phòng ban"/"Mã phòng ban" vào cuối sheet Thành viên — chạy TAY
+// ĐÚNG 1 LẦN (khớp với FIELD_MAP mới thêm ở đầu file). Chỉ chèn header, dữ
+// liệu để trống (nhân viên hiện có chưa gán phòng ban, gán tay sau hoặc chờ
+// họ tự cập nhật ở trang cá nhân). An toàn chạy lại — nếu cột đã tồn tại thì
+// bỏ qua, không tạo trùng.
+function addDepartmentColumns() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = findSheet(ss, SHEETS.members);
+  if (!sheet) return 'Không tìm thấy sheet Thành viên';
+  const headers = getHeaders(sheet);
+  const lines = [];
+  [['Phòng ban'], ['Mã phòng ban']].forEach(function (pair) {
+    const header = pair[0];
+    if (headers.indexOf(header) !== -1) { lines.push(header + ': đã có sẵn, bỏ qua'); return; }
+    const col = sheet.getLastColumn() + 1;
+    sheet.getRange(1, col).setValue(header);
+    headers.push(header);
+    lines.push(header + ': đã thêm ở cột ' + col);
+  });
+  const report = lines.join('\n');
   Logger.log(report);
   return report;
 }

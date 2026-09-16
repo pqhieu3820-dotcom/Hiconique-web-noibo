@@ -521,6 +521,40 @@
       border-radius: 6px; color: var(--ts-muted); font-family: inherit;
     }
     .ts-report-month-nav button:hover { background: var(--ts-surface); color: var(--ts-text); }
+
+    /* Bảng chọn nhanh tháng/năm (đồng bộ kiểu với Timeline/Gantt ở
+       projects.css §6.6 — bấm thẳng vào "Tháng X/YYYY" thay vì bấm
+       trước/sau từng bước 1 khi cần nhảy xa). */
+    .timeline-month-picker { position: relative; }
+    .timeline-title-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 8px; border-radius: 6px; font-weight: 600; color: var(--ts-text);
+      transition: background 0.15s ease;
+    }
+    .timeline-title-btn:hover { background: var(--ts-surface); }
+    .timeline-title-btn svg { width: 14px; height: 14px; color: var(--ts-muted); transition: transform 0.15s; }
+    .timeline-month-picker.open .timeline-title-btn svg { transform: rotate(180deg); }
+    .timeline-month-panel {
+      position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+      z-index: 30; width: 220px; background: var(--ts-surface); border: 1px solid var(--ts-border);
+      border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.18); padding: 12px;
+    }
+    .timeline-year-nav {
+      display: flex; align-items: center; justify-content: center; gap: 16px;
+      margin-bottom: 10px; font-weight: 600; color: var(--ts-text);
+    }
+    .timeline-year-nav button {
+      width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 6px; color: var(--ts-muted); font-family: inherit;
+    }
+    .timeline-year-nav button:hover { background: var(--ts-bg); color: var(--ts-text); }
+    .timeline-month-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .timeline-month-cell {
+      padding: 8px 0; border-radius: 6px; font-size: 0.8125rem; color: var(--ts-text);
+      background: var(--ts-bg); border: 1px solid var(--ts-border); transition: all 0.15s ease; font-family: inherit;
+    }
+    .timeline-month-cell:hover { border-color: var(--ts-bronze); }
+    .timeline-month-cell.active { background: var(--ts-bronze); border-color: var(--ts-bronze); color: #fff; font-weight: 600; }
     .report-stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 20px 24px 0; }
     .report-stat {
       background: var(--ts-surface); border: 1px solid var(--ts-border); border-radius: 12px; padding: 14px 16px;
@@ -693,7 +727,20 @@
         </div>
         <div class="ts-report-month-nav">
           <button type="button" id="tsReportPrevMonth" aria-label="Tháng trước">&larr;</button>
-          <span id="tsReportMonthLabel">Tháng 9/2026</span>
+          <div class="timeline-month-picker" id="tsReportMonthPicker">
+            <button type="button" class="timeline-title-btn" id="tsReportMonthLabelBtn">
+              <span id="tsReportMonthLabel">Tháng 9/2026</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="timeline-month-panel" id="tsReportMonthPanel" hidden>
+              <div class="timeline-year-nav">
+                <button type="button" id="tsReportYearPrev" aria-label="Năm trước">&larr;</button>
+                <span id="tsReportYearLabel">2026</span>
+                <button type="button" id="tsReportYearNext" aria-label="Năm sau">&rarr;</button>
+              </div>
+              <div class="timeline-month-grid" id="tsReportMonthGrid"></div>
+            </div>
+          </div>
           <button type="button" id="tsReportNextMonth" aria-label="Tháng sau">&rarr;</button>
         </div>
         <div class="modal-body">
@@ -1996,6 +2043,55 @@
         reportMonth++;
         if (reportMonth > 12) { reportMonth = 1; reportYear++; }
         renderAttendanceReportModal();
+      });
+
+      bindReportMonthPicker();
+    }
+
+    // Bấm thẳng vào "Tháng X/YYYY" mở bảng chọn nhanh 12 tháng + điều hướng
+    // năm — cùng kiểu với Timeline/Gantt ở projects.js (xem GHI_CHU_DU_AN.md
+    // §6.6, đồng bộ UI dùng chung), tránh phải bấm mũi tên từng bước 1.
+    var reportPickerYear = null;
+    function bindReportMonthPicker() {
+      var picker = document.getElementById('tsReportMonthPicker');
+      var pbtn = document.getElementById('tsReportMonthLabelBtn');
+      var panel = document.getElementById('tsReportMonthPanel');
+      var yearLabel = document.getElementById('tsReportYearLabel');
+      var grid = document.getElementById('tsReportMonthGrid');
+      var yearPrev = document.getElementById('tsReportYearPrev');
+      var yearNext = document.getElementById('tsReportYearNext');
+      if (!picker || !pbtn || !panel || !grid) return;
+
+      var monthNames = ['Th1', 'Th2', 'Th3', 'Th4', 'Th5', 'Th6', 'Th7', 'Th8', 'Th9', 'Th10', 'Th11', 'Th12'];
+
+      function renderGrid() {
+        yearLabel.textContent = reportPickerYear;
+        grid.innerHTML = monthNames.map(function (label, i) {
+          var isCurrent = reportPickerYear === reportYear && (i + 1) === reportMonth;
+          return '<button type="button" class="timeline-month-cell' + (isCurrent ? ' active' : '') + '" data-month="' + i + '">' + label + '</button>';
+        }).join('');
+        grid.querySelectorAll('.timeline-month-cell').forEach(function (cell) {
+          cell.addEventListener('click', function () {
+            reportMonth = parseInt(cell.dataset.month, 10) + 1;
+            reportYear = reportPickerYear;
+            panel.hidden = true;
+            picker.classList.remove('open');
+            renderAttendanceReportModal();
+          });
+        });
+      }
+
+      pbtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var willOpen = panel.hidden;
+        panel.hidden = !willOpen;
+        picker.classList.toggle('open', willOpen);
+        if (willOpen) { reportPickerYear = reportYear; renderGrid(); }
+      });
+      yearPrev.addEventListener('click', function (e) { e.stopPropagation(); reportPickerYear--; renderGrid(); });
+      yearNext.addEventListener('click', function (e) { e.stopPropagation(); reportPickerYear++; renderGrid(); });
+      document.addEventListener('click', function (e) {
+        if (!picker.contains(e.target)) { panel.hidden = true; picker.classList.remove('open'); }
       });
     }
 

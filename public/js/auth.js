@@ -382,6 +382,13 @@ const Auth = (function() {
               </div>
             </div>
 
+            <div>
+              <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Phòng ban</label>
+              <select id="regDepartmentInput">
+                <option value="">-- Chọn phòng ban --</option>
+              </select>
+            </div>
+
             <div class="auth-grid-2">
               <div>
                 <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Ngày sinh</label>
@@ -456,9 +463,28 @@ const Auth = (function() {
     var hometownInput = document.getElementById('regHometownInput');
     var bankNameInput = document.getElementById('regBankNameInput');
     var bankAccountInput = document.getElementById('regBankAccountInput');
+    var departmentInput = document.getElementById('regDepartmentInput');
     var errorEl = document.getElementById('authError');
     var successEl = document.getElementById('authSuccess');
     var loginBtn = document.getElementById('showLoginBtn');
+
+    // Danh mục phòng ban cố định — xem TaskManager.getDepartments() trong
+    // task-data.js, gộp theo "group" (khối) cho dễ tìm trong dropdown dài.
+    if (departmentInput && typeof TaskManager !== 'undefined' && TaskManager.getDepartments) {
+      var depts = TaskManager.getDepartments();
+      var byGroup = {};
+      var groupOrder = [];
+      depts.forEach(function (d) {
+        if (!byGroup[d.group]) { byGroup[d.group] = []; groupOrder.push(d.group); }
+        byGroup[d.group].push(d);
+      });
+      departmentInput.innerHTML = '<option value="">-- Chọn phòng ban --</option>' +
+        groupOrder.map(function (g) {
+          return '<optgroup label="' + g + '">' +
+            byGroup[g].map(function (d) { return '<option value="' + d.code + '">' + d.code + ' — ' + d.name + '</option>'; }).join('') +
+          '</optgroup>';
+        }).join('');
+    }
 
     nameInput.focus();
 
@@ -476,6 +502,7 @@ const Auth = (function() {
       var hometown = hometownInput.value.trim();
       var bankName = bankNameInput.value.trim();
       var bankAccount = bankAccountInput.value.trim();
+      var departmentCode = departmentInput ? departmentInput.value : '';
       errorEl.style.display = 'none';
       successEl.style.display = 'none';
 
@@ -485,7 +512,7 @@ const Auth = (function() {
         return;
       }
 
-      register(name, email, role, password, dob, cccd, phone, hometown, bankName, bankAccount, gender, function(result) {
+      register(name, email, role, password, dob, cccd, phone, hometown, bankName, bankAccount, gender, departmentCode, function(result) {
         if (result.success) {
           successEl.textContent = '✓ Đăng ký thành công! Đang chuyển sang đăng nhập...';
           successEl.style.display = 'block';
@@ -508,7 +535,11 @@ const Auth = (function() {
   }
 
   // Register new member
-  function register(name, email, role, password, dob, cccd, phone, hometown, bankName, bankAccount, gender, callback) {
+  function register(name, email, role, password, dob, cccd, phone, hometown, bankName, bankAccount, gender, departmentCode, callback) {
+    // Cho phép gọi cũ (không có departmentCode) không vỡ — 1 trong 2 tham
+    // số cuối là function thì đó chính là callback, dịch departmentCode='' .
+    if (typeof departmentCode === 'function') { callback = departmentCode; departmentCode = ''; }
+    var departmentInfo = (typeof TaskManager !== 'undefined' && TaskManager.getDepartmentByCode) ? TaskManager.getDepartmentByCode(departmentCode) : null;
     if (!isAllowedEmail(email)) {
       if (callback) callback({ success: false, error: 'Email không hợp lệ' });
       return;
@@ -575,6 +606,8 @@ const Auth = (function() {
       bank: bankName || '',
       bankAccount: bankAccount || '',
       gender: gender || '',
+      departmentCode: departmentInfo ? departmentInfo.code : '',
+      department: departmentInfo ? departmentInfo.name : '',
       color: color,
       avatar: avatar,
       createdAt: new Date().toISOString().split('T')[0],

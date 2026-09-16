@@ -85,6 +85,35 @@ var TaskManager = (function() {
     { id: 'MEM2', name: 'Lê Thành', role: 'Kỹ sư nội thất', roleLevel: 'member', email: 'thanh@hiconique.vn', password: '123456', dob: '1993-11-08', cccd: '012345678905', hometown: 'Hải Phòng', bankAccount: '1234567894', color: '#B8725A', avatar: 'LT', createdAt: '2026-01-01' }
   ];
 
+  // Danh mục phòng ban CỐ ĐỊNH (2026-09-16) — theo đúng "Standard Operating
+  // Procedure" nội bộ (mã phòng ban dùng trong đánh số văn bản), dùng chung
+  // cho form đăng ký (auth.js), trang cá nhân (profile.html) và trang quản
+  // lý thành viên (team.html) — 1 nguồn duy nhất, không viết trùng 3 nơi.
+  // Không tự thêm/sửa danh sách này khi không có yêu cầu — đây là danh mục
+  // chuẩn hoá dùng cho đánh số văn bản/hồ sơ, đổi tuỳ tiện sẽ lệch với SOP.
+  var DEPARTMENTS = [
+    { code: 'BOD', name: 'Ban Giám đốc', group: 'Khối Quản trị & Vận hành chung' },
+    { code: 'HRM', name: 'Nhân sự', group: 'Khối Quản trị & Vận hành chung' },
+    { code: 'ACC', name: 'Kế toán & Tài chính', group: 'Khối Quản trị & Vận hành chung' },
+    { code: 'ADM', name: 'Hành chính & Công nghệ', group: 'Khối Quản trị & Vận hành chung' },
+    { code: 'LEG', name: 'Pháp chế & Hợp đồng', group: 'Khối Quản trị & Vận hành chung' },
+    { code: 'BIZ', name: 'Kinh doanh', group: 'Khối Kinh doanh & Trải nghiệm Khách hàng' },
+    { code: 'MKT', name: 'Truyền thông', group: 'Khối Kinh doanh & Trải nghiệm Khách hàng' },
+    { code: 'CUS', name: 'Chăm sóc Khách hàng', group: 'Khối Kinh doanh & Trải nghiệm Khách hàng' },
+    { code: 'DES', name: 'Thiết kế Kiến trúc & Nội thất', group: 'Khối Chuyên môn Thiết kế & Số hóa' },
+    { code: 'BIM', name: 'Quản lý Dữ liệu số', group: 'Khối Chuyên môn Thiết kế & Số hóa' },
+    { code: 'RND', name: 'Nghiên cứu Kỹ thuật', group: 'Khối Chuyên môn Thiết kế & Số hóa' },
+    { code: 'EST', name: 'Dự toán & Bóc tách', group: 'Khối Kỹ thuật Xây dựng & Sản xuất' },
+    { code: 'PUR', name: 'Cung ứng & Mua hàng', group: 'Khối Kỹ thuật Xây dựng & Sản xuất' },
+    { code: 'WHS', name: 'Kho bãi & Vận tải', group: 'Khối Kỹ thuật Xây dựng & Sản xuất' },
+    { code: 'MFG', name: 'Xưởng sản xuất', group: 'Khối Kỹ thuật Xây dựng & Sản xuất' },
+    { code: 'CON', name: 'Quản lý Thi công', group: 'Khối Kỹ thuật Xây dựng & Sản xuất' },
+    { code: 'HSE', name: 'An toàn & Môi trường', group: 'Khối Kỹ thuật Xây dựng & Sản xuất' },
+    { code: 'QAS', name: 'Chất lượng', group: 'Khối Kỹ thuật Xây dựng & Sản xuất' }
+  ];
+  function getDepartments() { return DEPARTMENTS.slice(); }
+  function getDepartmentByCode(code) { return DEPARTMENTS.find(function (d) { return d.code === code; }) || null; }
+
   // Default projects
   var DEFAULT_PROJECTS = [
     { id: 'prj_A', name: 'Dự án A', type: 'Thiết kế nội thất', progress: 50, status: 'on-track', members: ['CEO', 'MGR1', 'MEM1'], color: '#B08D57', createdAt: '2026-08-01' },
@@ -739,7 +768,7 @@ var TaskManager = (function() {
   // - theme: nhớ giao diện sáng/tối THEO TÀI KHOẢN (không chỉ theo trình
   //   duyệt/máy) — đăng nhập lại ở máy khác vẫn ra đúng theme đã chọn lần
   //   cuối, xem initTheme()/setTheme() trong portal.js.
-  var MEMBER_SELF_EDIT_FIELDS = ['dob', 'gender', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount', 'password', 'device1', 'device2', 'lastActiveAt', 'theme'];
+  var MEMBER_SELF_EDIT_FIELDS = ['dob', 'gender', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount', 'password', 'device1', 'device2', 'lastActiveAt', 'theme', 'department', 'departmentCode'];
   function updateMember(id, updates, user) {
     if (!user) return null;
     var isSelf = user.id === id;
@@ -1723,6 +1752,10 @@ var TaskManager = (function() {
   return {
     // User
     getCurrentUser: getCurrentUser,
+
+    // Phòng ban (danh mục cố định, xem DEPARTMENTS ở trên)
+    getDepartments: getDepartments,
+    getDepartmentByCode: getDepartmentByCode,
 
     // Projects
     getProjects: getProjects,
