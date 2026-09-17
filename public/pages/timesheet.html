@@ -998,12 +998,22 @@
           <div class="ts-checkin-status late" id="tsDetailLateEarly" style="margin:-4px 0 12px; display:inline-block;" hidden></div>
           <div class="ts-detail-row">
             <div class="ts-detail-field">
-              <div class="ts-detail-field-label">Check-in</div>
+              <div class="ts-detail-field-label">Check-in ca sáng</div>
               <div class="ts-detail-field-value" id="tsDetailIn">--:--</div>
             </div>
             <div class="ts-detail-field">
-              <div class="ts-detail-field-label">Check-out</div>
+              <div class="ts-detail-field-label">Check-out ca sáng</div>
               <div class="ts-detail-field-value" id="tsDetailOut">--:--</div>
+            </div>
+          </div>
+          <div class="ts-detail-row">
+            <div class="ts-detail-field">
+              <div class="ts-detail-field-label">Check-in ca chiều</div>
+              <div class="ts-detail-field-value" id="tsDetailAfternoonIn">--:--</div>
+            </div>
+            <div class="ts-detail-field">
+              <div class="ts-detail-field-label">Check-out ca chiều</div>
+              <div class="ts-detail-field-value" id="tsDetailAfternoonOut">--:--</div>
             </div>
           </div>
           <div class="ts-detail-row">
@@ -1248,9 +1258,14 @@
       var retryBtn = retryBtnId ? document.getElementById(retryBtnId) : null;
       if (!dot || !state) return;
       if (result.skip) {
+        // Bug đã sửa (2026-09-19): trước đây LUÔN hiện chữ "Đang tắt" bất kể
+        // lý do skip thật sự là gì (kể cả "Chưa cấu hình địa điểm"/"Chưa cấu
+        // hình IP" do Sheet thiếu cấu hình hoặc tạm thời tải lỗi) — gây hiểu
+        // lầm tưởng tính năng đang bị tắt hẳn dù GEO_RESTRICTION/IP_RESTRICTION
+        // vẫn bật. Giờ hiện đúng result.message thật sự.
         dot.className = 'ts-verify-dot';
         state.className = 'ts-verify-state';
-        state.textContent = 'Đang tắt';
+        state.textContent = result.message;
         if (retryBtn) retryBtn.hidden = true;
         return;
       }
@@ -1309,7 +1324,7 @@
       var cls = result.skip ? '' : (result.ok ? 'ok' : 'fail');
       return '<div class="ts-verify-row"><span class="ts-verify-dot ' + cls + '"></span><span class="ts-verify-body">' +
         '<span class="ts-verify-label">' + label + '</span>' +
-        '<span class="ts-verify-state ' + cls + '">' + (result.skip ? 'Đang tắt' : result.message) + '</span>' +
+        '<span class="ts-verify-state ' + cls + '">' + result.message + '</span>' +
       '</span></div>';
     }
 
@@ -1449,7 +1464,7 @@
       var deviceId = getOrCreateDeviceId();
       var userId = getUserId();
       if (!deviceId || !userId || typeof TaskManager === 'undefined' || !TaskManager.getMemberDevices) {
-        return { skip: true, ok: false, message: 'Đang tắt' };
+        return { skip: true, ok: false, message: 'Chưa xác định được thiết bị' };
       }
       renderDeviceTable();
       var devices = TaskManager.getMemberDevices(userId);
@@ -1690,14 +1705,19 @@
 
         var label = shiftVnLabel(shift);
         var inTime = record && record[shift + 'Checkin'];
+        // 2026-09-19 (b): nút chỉ còn hiện chữ "Chấm công" chung chung (không
+        // lộ ca/hành động cụ thể ra ngay trên nút nữa, theo phản hồi người
+        // dùng — chi tiết ca/giờ xem ở dòng trạng thái bên dưới VÀ ở bảng xác
+        // nhận trước khi ghi, xem bindCheckinButton()). Màu vẫn đổi theo hành
+        // động sắp thực hiện: vàng nâu đất (in) = sắp check-in, đỏ (out) = sắp
+        // check-out — giữ lại tín hiệu màu để không phải đọc chữ mới biết.
+        btn.textContent = 'Chấm công';
         if (inTime) {
-          btn.textContent = 'Check Out ' + label;
           btn.className = 'ts-checkin-btn out';
           btn.disabled = false;
           status.className = 'ts-checkin-status working' + (record.isLate ? ' late' : '');
           status.textContent = 'Đang làm ca ' + label.toLowerCase() + ' từ ' + inTime + (record.isLate ? ' (đi muộn)' : '');
         } else {
-          btn.textContent = 'Check In ' + label;
           btn.className = 'ts-checkin-btn in';
           btn.disabled = false;
           status.className = 'ts-checkin-status idle';
@@ -1911,6 +1931,8 @@
       var badge = document.getElementById('tsDetailBadge');
       var detailIn = document.getElementById('tsDetailIn');
       var detailOut = document.getElementById('tsDetailOut');
+      var detailAfternoonIn = document.getElementById('tsDetailAfternoonIn');
+      var detailAfternoonOut = document.getElementById('tsDetailAfternoonOut');
       var detailTotal = document.getElementById('tsDetailTotal');
       var detailOT = document.getElementById('tsDetailOT');
       var detailNote = document.getElementById('tsDetailNote');
@@ -1928,27 +1950,31 @@
         lateEarlyEl.hidden = true;
       }
 
+      // Hiện riêng từng ca (morningCheckin/morningCheckout/afternoonCheckin/
+      // afternoonCheckout) thay vì mirror checkinTime/checkoutTime cũ (chỉ
+      // phản ánh check-in ĐẦU TIÊN/check-out GẦN NHẤT trong ngày, gây hiểu
+      // lầm khi xem lại — VD "Tổng giờ" tính đúng theo từng ca nhưng khung
+      // Check-in/Check-out lại hiện giờ của ca khác, nhìn không khớp nhau).
+      detailIn.textContent = (record && record.morningCheckin) || '—';
+      detailOut.textContent = (record && record.morningCheckout) || '—';
+      detailAfternoonIn.textContent = (record && record.afternoonCheckin) || '—';
+      detailAfternoonOut.textContent = (record && record.afternoonCheckout) || '—';
+
       if (record && record.checkoutTime) {
         badge.className = 'ts-detail-badge full';
         badge.textContent = 'Đã chấm đủ';
-        detailIn.textContent = record.checkinTime;
-        detailOut.textContent = record.checkoutTime;
         detailTotal.textContent = record.totalHours + 'h';
         detailOT.textContent = record.overtimeHours > 0 ? record.overtimeHours + 'h' : '—';
         detailNote.textContent = record.note || '—';
       } else if (record) {
         badge.className = 'ts-detail-badge partial';
         badge.textContent = 'Chỉ check-in';
-        detailIn.textContent = record.checkinTime;
-        detailOut.textContent = '—';
         detailTotal.textContent = 'Đang làm';
         detailOT.textContent = '—';
         detailNote.textContent = record.note || '—';
       } else {
         badge.className = 'ts-detail-badge none';
         badge.textContent = 'Chưa chấm';
-        detailIn.textContent = '—';
-        detailOut.textContent = '—';
         detailTotal.textContent = '—';
         detailOT.textContent = '—';
         detailNote.textContent = '—';
@@ -2753,20 +2779,32 @@
           // Tính lại currentShift() ngay lúc bấm (không dùng lại giá trị lúc
           // render) — phòng trường hợp hiếm người dùng để trang mở lâu vắt
           // qua đúng mốc giữa trưa rồi mới bấm.
-          var shift = currentShift(record, ws);
+  var shift = currentShift(record, ws);
           if (!shift) return; // cả 2 ca đã xong — nút đang disabled, phòng hờ double-click
           var isCheckout = !!(record && record[shift + 'Checkin'] && !record[shift + 'Checkout']);
-          if (isCheckout) {
-            var early = isLateOrEarly(shift, 'out', time, ws);
-            if (early && !requireLateEarlyNote('early')) return;
-            verifyThenProceed(btn, function () { doShiftCheckOut(shift, time, early); });
-          } else {
-            var late = isLateOrEarly(shift, 'in', time, ws);
-            if (late && !requireLateEarlyNote('late')) return;
-            verifyThenProceed(btn, function (geoResult, ipResult, deviceResult) {
-              doShiftCheckIn(shift, time, late, geoResult, ipResult, deviceResult);
-            });
-          }
+          var label = shiftVnLabel(shift);
+          var now = new Date();
+          var dateLabel = String(now.getDate()).padStart(2, '0') + '/' + String(now.getMonth() + 1).padStart(2, '0') + '/' + now.getFullYear();
+          // 2026-09-19 (b): nút giờ chỉ hiện "Chấm công" chung chung (không lộ
+          // ca/hành động), nên bắt buộc xác nhận rõ ràng TRƯỚC KHI tốn công dò
+          // GPS/Wifi/Thiết bị — tránh chấm nhầm ca/nhầm hành động vì nút không
+          // còn tự nói lên nó đang làm gì. Dùng showConfirmDialog() tự dựng
+          // (KHÔNG dùng confirm() gốc — đã cấm, xem GHI_CHU_DU_AN.md).
+          var confirmTitle = 'Bạn đang chấm công <strong>' + (isCheckout ? 'CHECK OUT' : 'CHECK IN') +
+            '</strong> cho ca ' + label.toLowerCase() + ' vào lúc ' + time + ' ngày ' + dateLabel;
+          showConfirmDialog(confirmTitle, function () {
+            if (isCheckout) {
+              var early = isLateOrEarly(shift, 'out', time, ws);
+              if (early && !requireLateEarlyNote('early')) return;
+              verifyThenProceed(btn, function () { doShiftCheckOut(shift, time, early); });
+            } else {
+              var late = isLateOrEarly(shift, 'in', time, ws);
+              if (late && !requireLateEarlyNote('late')) return;
+              verifyThenProceed(btn, function (geoResult, ipResult, deviceResult) {
+                doShiftCheckIn(shift, time, late, geoResult, ipResult, deviceResult);
+              });
+            }
+          }, 'Xác nhận');
         });
       });
     }
