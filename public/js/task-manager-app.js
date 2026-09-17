@@ -38,6 +38,28 @@
     });
   }
 
+  // 2026-09-19: nút ẩn/hiện panel "Tiến độ hôm nay" — chỉ cần toggle 1 class
+  // trên .tm-main (CSS lo phần co giãn lưới + ẩn nội dung panel, xem
+  // task-manager.css). Nhớ trạng thái qua localStorage để lần mở trang sau
+  // vẫn giữ nguyên lựa chọn (VD ai đang cần bề ngang rộng cho Gantt/Lịch thì
+  // không phải tắt lại mỗi lần).
+  var TM_PANEL_COLLAPSED_KEY = 'hiconique_tm_panel_collapsed';
+  function bindRightPanelToggle() {
+    var toggleBtn = document.getElementById('tmPanelToggle');
+    var tmMain = document.querySelector('.tm-main');
+    if (!toggleBtn || !tmMain) return;
+
+    var collapsed = false;
+    try { collapsed = localStorage.getItem(TM_PANEL_COLLAPSED_KEY) === '1'; } catch (e) { /* bỏ qua */ }
+    tmMain.classList.toggle('tm-panel-collapsed', collapsed);
+
+    toggleBtn.addEventListener('click', function () {
+      collapsed = !collapsed;
+      tmMain.classList.toggle('tm-panel-collapsed', collapsed);
+      try { localStorage.setItem(TM_PANEL_COLLAPSED_KEY, collapsed ? '1' : '0'); } catch (e) { /* bỏ qua */ }
+    });
+  }
+
   // Normalize project.members from Google Sheets string to array
   function getProjectMembers(project) {
     if (!project || !project.members) return [];
@@ -100,6 +122,8 @@
         }
       });
     }
+
+    bindRightPanelToggle();
 
     // Update user info in UI
     if (currentUser) updateUserUIUI(currentUser);

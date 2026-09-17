@@ -541,6 +541,16 @@
       </div>
     </div>
 
+    <!-- 2026-09-19: nút ẩn/hiện panel "Tiến độ hôm nay" — đặt NGOÀI .tm-content
+         (không bị các hàm renderXxx() ghi đè innerHTML mỗi lần đổi view) và
+         NGOÀI .tm-right-panel (để bấm được kể cả lúc panel đang ẩn), để các
+         mục cần bề ngang rộng (VD Gantt, Calendar To Do List) co giãn hết cỡ.
+         Trạng thái nhớ theo localStorage, xem bindRightPanelToggle() trong
+         task-manager-app.js. -->
+    <button type="button" class="tm-panel-toggle" id="tmPanelToggle" title="Ẩn/hiện Tiến độ hôm nay" aria-label="Ẩn/hiện Tiến độ hôm nay">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+
     <!-- Right Panel: Daily Progress — dữ liệu thật của chính người đang đăng
          nhập, xem renderDailyProgressPanel() trong task-manager-app.js. -->
     <aside class="tm-right-panel">
