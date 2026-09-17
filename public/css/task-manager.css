@@ -1940,7 +1940,7 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 12px;
-  padding: var(--space-lg);
+  padding: var(--space-xl);
 }
 
 .todo-cal-header {
@@ -2019,17 +2019,20 @@
 .todo-cal-day-header {
   background: var(--color-surface-3);
   color: var(--color-text-muted);
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-align: center;
-  padding: 10px 4px;
+  padding: 14px 4px;
   border-bottom: 1px solid var(--color-border);
 }
 
 .todo-cal-day {
-  min-height: 92px;
-  padding: 8px;
+  min-height: 130px;
+  min-width: 0; /* cột lưới CSS Grid mặc định KHÔNG co dưới độ rộng nội dung
+    (VD tên task dài) dù đã đặt 1fr đều nhau — thiếu dòng này là lý do các
+    cột có task hiện rộng hơn hẳn cột trống, nhìn lệch hàng. */
+  padding: 10px;
   border-right: 1px solid var(--color-border);
   border-bottom: 1px solid var(--color-border);
   cursor: pointer;
@@ -2050,9 +2053,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 22px;
-  height: 22px;
-  font-size: 0.8125rem;
+  min-width: 26px;
+  height: 26px;
+  font-size: 0.9375rem;
   font-weight: 600;
   color: var(--color-text);
 }
@@ -2060,12 +2063,12 @@
 .todo-cal-pills { margin-top: 6px; display: flex; flex-direction: column; gap: 3px; }
 
 .todo-cal-pill {
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   color: var(--color-text-muted);
   background: var(--color-surface-2);
   border-left: 3px solid var(--color-bronze);
   border-radius: 3px;
-  padding: 2px 6px;
+  padding: 3px 7px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
