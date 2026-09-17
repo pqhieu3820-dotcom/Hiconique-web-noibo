@@ -122,6 +122,7 @@ const Auth = (function() {
       email: user.email,
       role: user.role,
       roleLevel: user.roleLevel,
+      level: user.level,
       color: user.color,
       avatar: user.avatar,
       hometown: user.hometown,
@@ -196,8 +197,15 @@ const Auth = (function() {
   function reconcileStaleSession(session) {
     if (!session || typeof TaskManager === 'undefined' || !TaskManager.getMembers) return session;
     var members = TaskManager.getMembers();
-    var stillExists = members.some(function(m) { return m.id === session.id; });
-    if (stillExists) return session;
+    var current = members.find(function(m) { return m.id === session.id; });
+    if (current) {
+      // Session lưu TRƯỚC khi saveSession() có field 'level' (2026-09-17) sẽ
+      // thiếu field này mãi tới khi đăng xuất/vào lại — vá thẳng vào session
+      // đang cache để các trang check `user.level` (VD Setup thời gian làm
+      // việc) chạy đúng ngay, không cần đợi hết hạn 24h.
+      if (session.level !== current.level) session.level = current.level;
+      return session;
+    }
     var fresh = session.email && members.find(function(m) {
       return m.email && m.email.toLowerCase() === session.email.toLowerCase();
     });
