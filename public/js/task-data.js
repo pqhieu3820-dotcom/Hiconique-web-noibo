@@ -1489,6 +1489,32 @@ var TaskManager = (function() {
   // vì chấm công cần luôn đọc đúng giờ chuẩn mới nhất; getFromGSheets() vẫn
   // tự cache 30s ở tầng dưới nên không gọi API dồn dập.
   var DEFAULT_WORK_SCHEDULE = { morningStart: '07:30', morningEnd: '11:30', afternoonStart: '13:30', afternoonEnd: '17:30' };
+
+  // Ngày nghỉ lễ chính thức theo lịch nhà nước — KHÔNG có API/thư viện âm
+  // lịch nào trong dự án để tự tính, nên liệt kê tay theo từng năm (thêm
+  // ngày mới vào đây mỗi khi có lịch nghỉ lễ năm sau, định dạng "YYYY-MM-DD").
+  // Dùng cùng với thứ Bảy/Chủ nhật để xác định ngày chấm công tính lương OT —
+  // xem isOtDay()/shiftCheckOut() bên dưới.
+  var VN_HOLIDAYS = [
+    // 2026
+    '2026-01-01', // Tết Dương lịch
+    '2026-02-16', '2026-02-17', '2026-02-18', '2026-02-19', '2026-02-20', // Tết Nguyên Đán Bính Ngọ
+    '2026-04-27', // Giỗ Tổ Hùng Vương (nghỉ bù, 10/3 âm rơi vào CN 26/4)
+    '2026-04-30', // Giải phóng miền Nam
+    '2026-05-01', // Quốc tế Lao động
+    '2026-09-01', '2026-09-02', // Quốc khánh
+    '2026-11-24' // Ngày Văn hoá Việt Nam (mới, lần đầu áp dụng 2026)
+  ];
+
+  // Thứ Bảy/Chủ nhật hoặc ngày lễ trong VN_HOLIDAYS — vẫn cho chấm công bình
+  // thường (không chặn gì cả), chỉ khác ở chỗ giờ làm được TÍNH TOÀN BỘ là
+  // giờ OT (x1.5 lương, xem OT_MULTIPLIER) thay vì chỉ phần vượt 8h/ngày như
+  // ngày thường.
+  function isOtDay(dateStr) {
+    var d = new Date(dateStr + 'T00:00:00');
+    var dow = d.getDay();
+    return dow === 0 || dow === 6 || VN_HOLIDAYS.indexOf(dateStr) !== -1;
+  }
   function getWorkSchedule(callback) {
     if (!isUsingGSheets()) { callback(DEFAULT_WORK_SCHEDULE); return; }
     getFromGSheets('workSchedule', function (rows) {
@@ -1579,7 +1605,11 @@ var TaskManager = (function() {
     }
     var totalHours = pairHours(merged.morningCheckin, merged.morningCheckout) + pairHours(merged.afternoonCheckin, merged.afternoonCheckout);
     patch.totalHours = parseFloat(totalHours.toFixed(1));
-    patch.overtimeHours = parseFloat(Math.max(0, totalHours - 8).toFixed(1));
+    // Thứ Bảy/Chủ nhật/ngày lễ: TOÀN BỘ giờ làm hôm đó tính là OT (x1.5
+    // lương) — không chỉ phần vượt 8h/ngày như ngày thường.
+    patch.overtimeHours = isOtDay(today)
+      ? parseFloat(totalHours.toFixed(1))
+      : parseFloat(Math.max(0, totalHours - 8).toFixed(1));
 
     var result = updateTimesheetEntry(record.id, patch);
     if (fields.isEarly) {
@@ -2054,6 +2084,7 @@ var TaskManager = (function() {
     saveWorkSchedule: saveWorkSchedule,
     shiftCheckIn: shiftCheckIn,
     shiftCheckOut: shiftCheckOut,
+    isOtDay: isOtDay,
 
     // Notifications
     getNotifications: getNotifications,

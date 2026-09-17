@@ -437,6 +437,12 @@
 
     .ts-cal-day.other-month { opacity: 0.25; cursor: default; }
     .ts-cal-day.empty { cursor: default; }
+    /* T7/CN trong tháng hiện tại — mờ nhẹ để phân biệt ngày làm việc thường,
+       nhưng KHÔNG dùng .other-month (opacity 0.25 + cursor:default) vì đây
+       vẫn là ngày có thể chấm công thật và cần click xem chi tiết được. */
+    .ts-cal-day.weekend { opacity: 0.55; }
+    .ts-cal-day.weekend.checked,
+    .ts-cal-day.weekend.partial-check { opacity: 1; }
     .ts-cal-day.today { border-color: var(--ts-bronze); }
     .ts-cal-day.today .ts-day-num { background: var(--ts-bronze); color: #0B0D10; border-radius: 50%; width: 28px; height: 28px; display: grid; place-items: center; }
 
@@ -1968,13 +1974,17 @@
             break;
           }
         }
-        var dayOfWeek = new Date(dateStr).getDay();
-        var isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+        // isOtDay() = T7/CN HOẶC ngày lễ trong VN_HOLIDAYS (xem task-data.js)
+        // — không chỉ thứ Bảy/Chủ nhật, để ngày lễ rơi vào giữa tuần (VD
+        // 30/4 là thứ Năm) cũng được đánh dấu mờ + hiểu là ngày tính OT.
+        var isWeekend = (typeof TaskManager !== 'undefined' && TaskManager.isOtDay)
+          ? TaskManager.isOtDay(dateStr)
+          : (new Date(dateStr).getDay() === 0 || new Date(dateStr).getDay() === 6);
 
         var cls = 'ts-cal-day';
         if (isToday) cls += ' today';
         if (record) cls += record.checkoutTime ? ' checked' : ' partial-check';
-        if (isWeekend) cls += ' other-month';
+        if (isWeekend) cls += ' weekend';
 
         var dot = '';
         if (record) {
@@ -1994,8 +2004,12 @@
 
       grid.innerHTML = html;
 
-      // Click to view day detail
-      grid.querySelectorAll('.ts-cal-day:not(.other-month)').forEach(function(cell) {
+      // Click to view day detail — dùng [data-date] thay vì :not(.other-month)
+      // vì "other-month" bị dùng chung cho CẢ 2 việc khác nhau: ô đệm tháng
+      // trước/sau (không có data-date, đúng là không click được) VÀ ô T7/CN
+      // trong tháng hiện tại (có data-date, chỉ mờ màu — vẫn phải click được
+      // để xem chi tiết công/OT đã chấm ngày đó).
+      grid.querySelectorAll('.ts-cal-day[data-date]').forEach(function(cell) {
         cell.addEventListener('click', function() {
           var dateStr = cell.dataset.date;
           showDayDetail(dateStr);
