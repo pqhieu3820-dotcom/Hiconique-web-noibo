@@ -185,10 +185,16 @@
     .ts-verify-dot.ok { background: var(--ts-success); }
     .ts-verify-dot.fail { background: var(--ts-danger); }
     .ts-verify-body { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+    /* 2026-09-19: nút "Thử lại" trước đây trôi nổi cạnh cả khối 3 dòng địa
+       chỉ (chữ dài xuống dòng làm nút lệch giữa trông rất lạc quẻ) — giờ gộp
+       chung 1 dòng đầu với nhãn "Vị trí GPS", 2 đầu dòng canh giữa theo chiều
+       dọc với nhau, dòng địa chỉ/thông báo xuống dòng riêng bên dưới full-width. */
+    .ts-verify-head { display: flex; align-items: center; gap: 8px; }
+    .ts-verify-head .ts-verify-label { flex: 1; text-align: center; }
     .ts-verify-label { color: var(--ts-muted); }
     .ts-verify-state { color: var(--ts-text); font-weight: 500; line-height: 1.45; word-break: break-word; }
     .ts-verify-retry {
-      flex-shrink: 0; align-self: center; background: none; border: 1px solid var(--ts-border);
+      flex-shrink: 0; background: none; border: 1px solid var(--ts-border);
       border-radius: 6px; padding: 3px 10px; font-size: 0.6875rem; font-weight: 600;
       color: var(--ts-bronze); cursor: pointer; font-family: inherit;
     }
@@ -848,10 +854,12 @@
           <div class="ts-verify-row" id="tsVerifyGeoRow">
             <span class="ts-verify-dot" id="tsVerifyGeoDot"></span>
             <span class="ts-verify-body">
-              <span class="ts-verify-label">Vị trí GPS</span>
+              <span class="ts-verify-head">
+                <span class="ts-verify-label">Vị trí GPS</span>
+                <button type="button" class="ts-verify-retry" id="tsGeoRetryBtn" hidden>Thử lại</button>
+              </span>
               <span class="ts-verify-state" id="tsVerifyGeoState">Đang kiểm tra…</span>
             </span>
-            <button type="button" class="ts-verify-retry" id="tsGeoRetryBtn" hidden>Thử lại</button>
           </div>
           <div class="ts-verify-row" id="tsVerifyIpRow">
             <span class="ts-verify-dot" id="tsVerifyIpDot"></span>
