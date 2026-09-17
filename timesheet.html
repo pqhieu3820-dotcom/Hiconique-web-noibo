@@ -1,0 +1,2792 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chấm công · HICONIQUE</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/reset.css">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/portal.css">
+  <link rel="stylesheet" href="/css/subpage.css">
+  <link rel="stylesheet" href="/css/task-manager.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="apple-touch-icon" sizes="167x167" href="/apple-touch-icon-167.png" />
+  <link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon-152.png" />
+  <meta name="apple-mobile-web-app-title" content="HICONIQUE" />
+  <link rel="manifest" href="/manifest.json" />
+  <script src="/js/offline.js"></script>
+  <script src="/js/gsheets-config.js"></script>
+  <script src="/js/task-data.js"></script>
+  <script src="/js/auth.js"></script>
+  <style>
+    :root {
+      --ts-bg: var(--color-bg);
+      --ts-surface: var(--color-surface);
+      --ts-border: var(--color-border);
+      --ts-text: var(--color-text);
+      --ts-muted: var(--color-text-muted);
+      --ts-bronze: var(--color-bronze);
+      --ts-success: #4F6F52;
+      --ts-success-light: rgba(79, 111, 82, 0.12);
+      --ts-danger: #A04848;
+    }
+
+    body {
+      background: var(--ts-bg);
+      color: var(--ts-text);
+      font-family: 'Inter', -apple-system, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* Main */
+    .ts-container { max-width: 1100px; }
+
+    /* Top Stats */
+    .ts-top-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .ts-stat-card {
+      background: var(--ts-surface);
+      border: 1px solid var(--ts-border);
+      border-radius: 14px;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .ts-stat-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+
+    .ts-stat-icon svg { width: 22px; height: 22px; }
+
+    .ts-stat-icon.green { background: rgba(79, 111, 82, 0.12); color: #4F6F52; }
+    .ts-stat-icon.bronze { background: rgba(176, 141, 87, 0.12); color: var(--ts-bronze); }
+    .ts-stat-icon.blue { background: rgba(59, 107, 140, 0.12); color: #3B6B8C; }
+    .ts-stat-icon.amber { background: rgba(184, 114, 90, 0.12); color: #B8725A; }
+
+    .ts-stat-value { font-size: 1.5rem; font-weight: 700; color: var(--ts-text); line-height: 1; }
+    .ts-stat-label { font-size: 0.8125rem; color: var(--ts-muted); margin-top: 4px; }
+
+    /* Grid: checkin + calendar */
+    .ts-grid { display: grid; grid-template-columns: 360px 1fr; gap: 24px; align-items: start; }
+
+    /* Checkin Panel */
+    .ts-checkin-card {
+      background: var(--ts-surface);
+      border: 1px solid var(--ts-border);
+      border-radius: 18px;
+      padding: 32px;
+      text-align: center;
+      position: sticky;
+      top: 90px;
+    }
+
+    .ts-checkin-eyebrow {
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ts-muted);
+      margin-bottom: 12px;
+    }
+
+    .ts-clock {
+      font-size: 3.5rem;
+      font-weight: 300;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--ts-text);
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .ts-date {
+      font-size: 0.875rem;
+      color: var(--ts-muted);
+      margin-bottom: 24px;
+    }
+
+    .ts-note-label {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--ts-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+    .ts-note-label[hidden] { display: none; }
+
+    .ts-note-input {
+      width: 100%;
+      resize: vertical;
+      min-height: 44px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--ts-border);
+      background: var(--color-bg);
+      color: var(--ts-text);
+      font-family: inherit;
+      font-size: 0.875rem;
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+
+    .ts-note-input:focus { outline: none; border-color: var(--ts-bronze); }
+    .ts-note-input::placeholder { color: var(--color-text-faint); }
+
+    .ts-geo-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      line-height: 1.4;
+      margin-bottom: 16px;
+      background: rgba(160, 72, 72, 0.12);
+      color: var(--ts-danger);
+    }
+    .ts-geo-status[hidden] { display: none; }
+    .ts-geo-status.ok { background: var(--ts-success-light); color: var(--ts-success); }
+    .ts-geo-status svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+    /* Live status of the two check-in verification factors — always visible so
+       staff can see beforehand whether they need to move closer / switch wifi. */
+    .ts-verify-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: var(--color-bg);
+      border: 1px solid var(--ts-border);
+      margin-bottom: 16px;
+    }
+    .ts-verify-panel[hidden] { display: none; }
+    /* 2026-09-19: đổi align-items từ flex-start sang center — dòng thông
+       báo dài (VD "Trang web chưa được cấp quyền vị trí") xuống 2 dòng trên
+       màn hẹp khiến chấm tròn trạng thái dính cứng ở mép trên, trông lệch
+       hẳn lên so với cả khối nội dung; giờ chấm tròn LUÔN nằm đúng giữa
+       chiều cao của khối, bất kể nhãn/thông báo dài ngắn thế nào. */
+    .ts-verify-row { display: flex; align-items: center; gap: 10px; font-size: 0.75rem; }
+    .ts-verify-row + .ts-verify-row { padding-top: 8px; border-top: 1px solid var(--ts-border); }
+    .ts-verify-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+      background: var(--ts-muted);
+    }
+    .ts-verify-dot.ok { background: var(--ts-success); }
+    .ts-verify-dot.fail { background: var(--ts-danger); }
+    .ts-verify-body { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+    .ts-verify-label { color: var(--ts-muted); }
+    .ts-verify-state { color: var(--ts-text); font-weight: 500; line-height: 1.45; word-break: break-word; }
+    /* 2026-09-19: `.ts-checkin-card` có `text-align:center` ở cấp cha (dùng
+       cho đồng hồ) nên `.ts-verify-label`/`.ts-verify-state` (là flex item
+       CON của `.ts-verify-body`, tự dãn full-width theo `align-items:stretch`
+       mặc định) vốn dĩ đã canh giữa ĐÚNG theo chiều rộng hàng. Icon "Thử lại"
+       nằm ngay cạnh nhãn trong `.ts-verify-label-row` — bọc bằng
+       `display:flex; justify-content:center` để cả CẶP "nhãn + icon" canh
+       giữa NHƯ 1 KHỐI (icon ẩn thì tự co về đúng vị trí canh giữa của riêng
+       nhãn, khớp lại 2 hàng Wifi/Thiết bị không có icon). */
+    .ts-verify-label-row { display: flex; align-items: center; justify-content: center; gap: 4px; }
+    .ts-verify-retry-icon {
+      flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+      width: 20px; height: 20px; padding: 0; background: none; border: none;
+      color: var(--ts-bronze); cursor: pointer;
+    }
+    .ts-verify-retry-icon svg { width: 14px; height: 14px; }
+    .ts-verify-retry-icon:hover { opacity: 0.75; }
+    .ts-verify-retry-icon[hidden] { display: none; }
+    .ts-verify-retry-icon.spinning svg { animation: ts-spin 0.8s linear infinite; }
+    @keyframes ts-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .ts-verify-state.ok { color: var(--ts-success); }
+    .ts-verify-state.fail { color: var(--ts-danger); }
+
+    /* Confirm dialog shown when only one of the two checks passes */
+    .ts-confirm-overlay {
+      position: fixed; inset: 0; background: rgba(11,13,16,0.7);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 10000; padding: 20px;
+    }
+    .ts-confirm-overlay[hidden] { display: none; }
+    .ts-confirm-box {
+      background: var(--ts-surface); border: 1px solid var(--ts-border);
+      border-radius: 14px; padding: 24px; max-width: 360px; width: 100%;
+    }
+    .ts-confirm-title { font-size: 1rem; font-weight: 600; color: var(--ts-text); margin-bottom: 12px; }
+    .ts-confirm-box .ts-verify-panel { margin-bottom: 20px; }
+    .ts-confirm-actions { display: flex; gap: 10px; }
+    .ts-confirm-actions button {
+      flex: 1; padding: 10px; border-radius: 8px; font-size: 0.875rem; font-weight: 600;
+      cursor: pointer; border: none; font-family: inherit;
+    }
+    .ts-confirm-cancel { background: var(--color-bg); color: var(--ts-text); border: 1px solid var(--ts-border) !important; }
+    .ts-confirm-ok { background: var(--ts-bronze); color: #0B0D10; }
+
+    /* Bảng thiết bị đã đăng ký chấm công (tối đa 2) */
+    .ts-device-table { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--ts-border); }
+    .ts-device-title { font-size: 0.6875rem; color: var(--ts-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .ts-device-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 10px; border-radius: 8px; background: var(--color-bg);
+      font-size: 0.8125rem; margin-bottom: 6px;
+    }
+    .ts-device-row.ts-device-empty { color: var(--ts-muted); font-style: italic; }
+    .ts-device-id { color: var(--ts-text); }
+    .ts-device-id em { color: var(--ts-bronze); font-style: normal; font-family: inherit; margin-left: 4px; }
+    .ts-device-remove {
+      border: 1px solid var(--ts-border); background: transparent; color: var(--ts-danger);
+      border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer; font-family: inherit;
+    }
+    .ts-device-remove:hover { border-color: var(--ts-danger); }
+    .ts-device-add {
+      border: 1px solid var(--ts-bronze); background: transparent; color: var(--ts-bronze);
+      border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer; font-family: inherit; font-style: normal;
+    }
+    .ts-device-add:hover { background: var(--ts-bronze); color: #0B0D10; }
+
+    /* "Đồng bộ mã thiết bị" — Safari và app "Thêm vào Màn hình chính" trên
+       cùng 1 điện thoại bị hệ điều hành coi là 2 nơi lưu trữ RIÊNG (iOS đặc
+       biệt hay gặp), nên tự sinh 2 deviceId khác nhau dù cùng 1 máy — không
+       có cách nào hợp nhất từ phía web, chỉ có thể cho người dùng tự dán mã
+       của "bên kia" sang để đồng bộ thủ công. Xem initDeviceSync().*/
+    .ts-device-sync { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--ts-border); }
+    .ts-device-sync-toggle {
+      background: none; border: none; color: var(--ts-muted); font-size: 0.75rem;
+      text-decoration: underline; cursor: pointer; padding: 0; font-family: inherit; text-align: left;
+    }
+    .ts-device-sync-toggle:hover { color: var(--ts-bronze); }
+    .ts-device-sync-body { margin-top: 10px; }
+    .ts-device-sync-body p { font-size: 0.75rem; color: var(--ts-muted); margin: 0 0 8px; line-height: 1.5; }
+    .ts-device-sync-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+    .ts-device-sync-row code {
+      background: var(--color-bg); border: 1px solid var(--ts-border); border-radius: 6px;
+      padding: 4px 8px; font-size: 0.75rem; word-break: break-all;
+    }
+    .ts-device-sync-row input {
+      flex: 1; min-width: 160px; padding: 6px 10px; background: var(--color-bg);
+      border: 1px solid var(--ts-border); border-radius: 6px; color: var(--ts-text);
+      font-size: 0.8125rem; font-family: inherit;
+    }
+    .ts-device-sync-row button {
+      border: 1px solid var(--ts-bronze); background: transparent; color: var(--ts-bronze);
+      border-radius: 6px; padding: 6px 12px; font-size: 0.75rem; cursor: pointer; font-family: inherit; white-space: nowrap;
+    }
+    .ts-device-sync-row button:hover { background: var(--ts-bronze); color: #0B0D10; }
+
+    .ts-checkin-btn {
+      width: 100%;
+      padding: 16px;
+      font-size: 1.0625rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+      margin-bottom: 16px;
+    }
+
+    .ts-checkin-btn.in { background: var(--ts-bronze); color: #0B0D10; }
+    .ts-checkin-btn.in:hover { background: #C7A464; transform: translateY(-1px); }
+    .ts-checkin-btn.out { background: #A04848; color: white; }
+    .ts-checkin-btn.out:hover { background: #B05555; transform: translateY(-1px); }
+    .ts-checkin-btn.done { background: var(--ts-success-light); color: var(--ts-success); cursor: default; }
+    .ts-checkin-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .ts-checkin-status {
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 0.8125rem;
+      line-height: 1.5;
+    }
+
+    .ts-checkin-status.working { background: var(--ts-success-light); color: var(--ts-success); }
+    .ts-checkin-status.idle { background: var(--color-bg); color: var(--ts-muted); }
+    .ts-checkin-status.late, .ts-checkin-status.early { background: rgba(160,72,72,0.12); color: #A04848; }
+
+    /* Chấm công theo ca sáng/chiều — mỗi ca 1 khối nút+trạng thái riêng, xem
+       shiftCheckIn()/shiftCheckOut() trong task-data.js. */
+    .ts-shift-block { margin-bottom: 14px; }
+    .ts-shift-block:last-of-type { margin-bottom: 0; }
+    .ts-shift-title {
+      font-size: 0.75rem; color: var(--ts-muted); text-transform: uppercase;
+      letter-spacing: 0.05em; margin-bottom: 8px; font-weight: 600;
+    }
+    .ts-shift-block .ts-checkin-btn { margin-bottom: 8px; padding: 13px; font-size: 0.9375rem; }
+
+    /* Modal "Setup thời gian làm việc" — chỉ Founder/CEO sửa được, người
+       khác mở lên chỉ xem (input readonly). */
+    #tsWorkScheduleModal .form-input[readonly] { background: var(--color-bg); color: var(--ts-muted); cursor: default; }
+
+    /* Calendar Card */
+    .ts-calendar-card {
+      background: var(--ts-surface);
+      border: 1px solid var(--ts-border);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .ts-cal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--ts-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--color-bg);
+    }
+
+    .ts-cal-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--ts-text);
+    }
+
+    .ts-cal-nav {
+      display: flex;
+      gap: 8px;
+    }
+
+    .ts-cal-nav button {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: 1px solid var(--ts-border);
+      background: var(--ts-surface);
+      color: var(--ts-muted);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+
+    .ts-cal-nav button:hover { border-color: var(--ts-bronze); color: var(--ts-text); }
+    .ts-cal-nav button svg { width: 16px; height: 16px; }
+
+    .ts-cal-legend {
+      padding: 12px 24px;
+      border-bottom: 1px solid var(--ts-border);
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .ts-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      color: var(--ts-muted);
+    }
+
+    .ts-legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+    }
+
+    .ts-cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      padding: 16px;
+      gap: 6px;
+    }
+
+    .ts-cal-day-header {
+      text-align: center;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      color: var(--ts-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 4px;
+    }
+
+    .ts-cal-day {
+      aspect-ratio: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      border: 1px solid transparent;
+      gap: 2px;
+      position: relative;
+    }
+
+    .ts-cal-day:hover:not(.empty):not(.other-month) {
+      background: var(--color-bg);
+      border-color: var(--ts-border);
+    }
+
+    .ts-cal-day.other-month { opacity: 0.25; cursor: default; }
+    .ts-cal-day.empty { cursor: default; }
+    .ts-cal-day.today { border-color: var(--ts-bronze); }
+    .ts-cal-day.today .ts-day-num { background: var(--ts-bronze); color: #0B0D10; border-radius: 50%; width: 28px; height: 28px; display: grid; place-items: center; }
+
+    .ts-cal-day.checked {
+      background: var(--ts-success-light);
+      border-color: rgba(79, 111, 82, 0.3);
+    }
+
+    .ts-cal-day.partial-check {
+      background: rgba(176, 141, 87, 0.08);
+      border-color: rgba(176, 141, 87, 0.25);
+    }
+
+    .ts-day-num { font-weight: 500; color: var(--ts-text); }
+    .ts-day-dot { font-size: 0.625rem; }
+
+    /* Day Detail Modal */
+    .ts-day-detail {
+      padding: 16px 24px 24px;
+      border-top: 1px solid var(--ts-border);
+    }
+
+    .ts-detail-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .ts-detail-date {
+      font-weight: 600;
+      color: var(--ts-text);
+    }
+
+    .ts-detail-badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+
+    .ts-detail-badge.full { background: var(--ts-success-light); color: var(--ts-success); }
+    .ts-detail-badge.partial { background: rgba(176, 141, 87, 0.12); color: var(--ts-bronze); }
+    .ts-detail-badge.none { background: var(--color-bg); color: var(--ts-muted); }
+
+    .ts-detail-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .ts-detail-field {
+      background: var(--color-bg);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+
+    .ts-detail-field-label {
+      font-size: 0.6875rem;
+      color: var(--ts-muted);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .ts-detail-field-value {
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: var(--ts-text);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .ts-detail-note {
+      background: var(--color-bg);
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+    }
+
+    .ts-detail-note-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .ts-detail-note-label {
+      font-size: 0.6875rem;
+      color: var(--ts-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .ts-detail-note-edit {
+      border: none;
+      background: transparent;
+      color: var(--ts-bronze);
+      font-size: 0.75rem;
+      cursor: pointer;
+      font-family: inherit;
+      padding: 0;
+    }
+    .ts-detail-note-edit:hover { text-decoration: underline; }
+    .ts-detail-note-edit[hidden] { display: none; }
+
+    .ts-detail-note-value {
+      font-size: 0.8125rem;
+      color: var(--ts-text);
+      line-height: 1.5;
+    }
+    .ts-detail-note-value[hidden] { display: none; }
+
+    .ts-detail-note-form { display: flex; flex-direction: column; gap: 8px; }
+    .ts-detail-note-form[hidden] { display: none; }
+    .ts-detail-note-textarea {
+      width: 100%;
+      border: 1px solid var(--ts-border);
+      border-radius: 6px;
+      background: var(--ts-surface);
+      color: var(--ts-text);
+      font-family: inherit;
+      font-size: 0.8125rem;
+      padding: 8px 10px;
+      resize: vertical;
+    }
+    .ts-detail-note-actions { display: flex; gap: 8px; }
+    .ts-detail-note-save {
+      border: none; background: var(--ts-bronze); color: #0B0D10;
+      border-radius: 6px; padding: 5px 12px; font-size: 0.75rem; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+    }
+    .ts-detail-note-discard {
+      border: 1px solid var(--ts-border); background: transparent; color: var(--ts-text);
+      border-radius: 6px; padding: 5px 12px; font-size: 0.75rem; cursor: pointer; font-family: inherit;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .ts-top-stats { grid-template-columns: repeat(2, 1fr); }
+      .ts-grid { grid-template-columns: 1fr; }
+      .ts-checkin-card { position: static; }
+    }
+
+    /* ─── Modal "Báo cáo chấm công" trực tiếp (CEO) — cùng bộ class .report-*
+       với modal "Báo cáo công việc" ở projects.css, chép lại vì trang này
+       không load projects.css. ─── */
+    .ts-report-modal { max-width: 900px; }
+    .ts-report-month-nav {
+      display: flex; align-items: center; justify-content: center; gap: 16px;
+      padding: 12px 24px; border-bottom: 1px solid var(--ts-border);
+      font-weight: 600; color: var(--ts-text);
+    }
+    .ts-report-month-nav button {
+      width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 6px; color: var(--ts-muted); font-family: inherit;
+    }
+    .ts-report-month-nav button:hover { background: var(--ts-surface); color: var(--ts-text); }
+
+    /* Bảng chọn nhanh tháng/năm (đồng bộ kiểu với Timeline/Gantt ở
+       projects.css §6.6 — bấm thẳng vào "Tháng X/YYYY" thay vì bấm
+       trước/sau từng bước 1 khi cần nhảy xa). */
+    .timeline-month-picker { position: relative; }
+    .timeline-title-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 8px; border-radius: 6px; font-weight: 600; color: var(--ts-text);
+      transition: background 0.15s ease;
+    }
+    .timeline-title-btn:hover { background: var(--ts-surface); }
+    .timeline-title-btn svg { width: 14px; height: 14px; color: var(--ts-muted); transition: transform 0.15s; }
+    .timeline-month-picker.open .timeline-title-btn svg { transform: rotate(180deg); }
+    .timeline-month-panel {
+      position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+      z-index: 30; width: 220px; background: var(--ts-surface); border: 1px solid var(--ts-border);
+      border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.18); padding: 12px;
+    }
+    .timeline-year-nav {
+      display: flex; align-items: center; justify-content: center; gap: 16px;
+      margin-bottom: 10px; font-weight: 600; color: var(--ts-text);
+    }
+    .timeline-year-nav button {
+      width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 6px; color: var(--ts-muted); font-family: inherit;
+    }
+    .timeline-year-nav button:hover { background: var(--ts-bg); color: var(--ts-text); }
+    .timeline-month-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .timeline-month-cell {
+      padding: 8px 0; border-radius: 6px; font-size: 0.8125rem; color: var(--ts-text);
+      background: var(--ts-bg); border: 1px solid var(--ts-border); transition: all 0.15s ease; font-family: inherit;
+    }
+    .timeline-month-cell:hover { border-color: var(--ts-bronze); }
+    .timeline-month-cell.active { background: var(--ts-bronze); border-color: var(--ts-bronze); color: #fff; font-weight: 600; }
+    .report-stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 20px 24px 0; }
+    .report-stat {
+      background: var(--ts-surface); border: 1px solid var(--ts-border); border-radius: 12px; padding: 14px 16px;
+    }
+    .report-stat-label {
+      font-size: 0.6875rem; color: var(--ts-muted); text-transform: uppercase; letter-spacing: 0.06em;
+      font-weight: 500; display: block; margin-bottom: 4px;
+    }
+    .report-stat-value { font-size: 1.75rem; font-weight: 700; color: var(--ts-text); line-height: 1; }
+    .report-charts-grid { display: grid; grid-template-columns: 1fr 1.6fr; gap: 16px; padding: 20px 24px 0; }
+    .report-chart-box {
+      background: var(--ts-surface); border: 1px solid var(--ts-border); border-radius: 12px; padding: 14px 16px 16px;
+    }
+    .report-chart-box-full { margin: 20px 24px 0; padding: 14px 16px 16px; }
+    .report-chart-box h4 { font-size: 0.8125rem; font-weight: 600; color: var(--ts-text); margin: 0 0 10px; }
+    .report-chart-canvas-wrap { position: relative; height: 190px; }
+    .report-chart-canvas-wrap-sm { height: 160px; }
+    .report-chart-canvas-wrap-bar { height: 190px; }
+    .report-row {
+      display: grid; grid-template-columns: minmax(0,1.4fr) auto; align-items: center; gap: 14px;
+      padding: 10px 0; border-bottom: 1px solid var(--ts-border); font-size: 0.8125rem;
+    }
+    .report-row:last-child { border-bottom: none; }
+    .report-row-name { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--ts-text); font-weight: 500; }
+    .report-row-meta { font-size: 0.75rem; color: var(--ts-muted); white-space: nowrap; font-family: 'SF Mono', monospace; }
+    .report-avatar {
+      width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+      color: #fff; font-size: 0.625rem; font-weight: 700; flex-shrink: 0;
+    }
+    .report-empty { text-align: center; padding: 24px; color: var(--ts-muted); font-size: 0.8125rem; }
+    @media (max-width: 768px) {
+      .report-stat-grid { grid-template-columns: repeat(2, 1fr); }
+      .report-charts-grid { grid-template-columns: 1fr; }
+      .report-chart-box-full { margin: 20px 16px 0; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/" class="brand">
+        <span class="brand-mark"><img class="brand-logo" src="/logo-mark.png" alt="HICONIQUE" /></span>
+        <span class="brand-name"><span class="brand-name-1">HICONIQUE</span></span>
+      </a>
+      <nav class="primary-nav">
+        <a href="/#tools" class="nav-link">Công cụ</a>
+        <a href="/pages/tasks-manager.html" class="nav-link">Tasks</a>
+        <a href="/pages/projects.html" class="nav-link">Dự án</a>
+        <a href="/pages/wiki.html" class="nav-link">Tài liệu</a>
+        <a href="/#ai" class="nav-link">AI</a>
+        <a href="/pages/notices.html" class="nav-link">Thông báo</a>
+        <a href="/pages/team.html" class="nav-link">Team</a>
+      </nav>
+      <div class="header-actions">
+        <button class="theme-toggle" aria-label="Chuyển đổi sáng/tối" data-theme-toggle>
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" stroke-linecap="round" />
+          </svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+        <span class="clock"><span class="clock-time" data-clock>15:01</span><span class="clock-meta">GMT+7</span></span>
+        <button class="avatar"><span>--</span></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="subpage">
+  <div class="subpage-inner ts-container">
+    <div>
+      <p class="eyebrow">— Chấm công</p>
+      <h1 class="subpage-title">Bảng <span class="subpage-title-italic">chấm công</span></h1>
+      <p class="subpage-lede" id="tsPageSub">Theo dõi giờ làm việc và tăng ca hàng ngày</p>
+      <!-- Chỉ CEO thấy 2 nút này — xuất báo cáo chấm công CẢ CÔNG TY và quản
+           lý địa điểm GPS/IP hợp lệ (không phải việc của riêng từng nhân
+           viên), xem bindExportAttendanceBtn()/bindLocationManagerBtn(). -->
+      <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:24px; margin-bottom:32px;">
+        <button class="quick-add-btn" id="tsExportBtn" hidden style="padding:10px 20px; font-size:0.875rem;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:17px;height:17px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Xuất báo cáo chấm công
+        </button>
+        <button class="btn btn-secondary" id="tsReportBtn" hidden style="padding:10px 20px; font-size:0.875rem;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:17px;height:17px;"><path d="M3 3v18h18"/><path d="M7 15l4-6 4 3 5-8"/></svg>
+          Xem báo cáo chấm công
+        </button>
+        <button class="btn btn-secondary" id="tsLocationManagerBtn" hidden style="padding:10px 20px; font-size:0.875rem;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:17px;height:17px;"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+          Quản lý địa điểm GPS/IP
+        </button>
+        <button class="btn btn-secondary" id="tsWorkScheduleBtn" hidden style="padding:10px 20px; font-size:0.875rem;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:17px;height:17px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Setup thời gian làm việc
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal "Setup thời gian làm việc" — giờ chuẩn ca sáng/chiều, làm mốc
+         tính đi muộn/về sớm khi chấm công theo ca. Mọi người đều xem được,
+         CHỈ Founder/CEO (user.level) mới sửa/lưu được (bindWorkScheduleBtn()),
+         sống trên sheet riêng "Giờ làm việc" (luôn đúng 1 dòng, upsert phía
+         server) qua TaskManager.getWorkSchedule()/saveWorkSchedule() — xem
+         GHI_CHU_DU_AN.md. Input giờ là TEXT (không dùng <input type="time">)
+         để luôn hiển thị 24h, không phụ thuộc định dạng 12h/24h của hệ điều
+         hành/trình duyệt người dùng. -->
+    <div class="modal-overlay" id="tsWorkScheduleModal">
+      <div class="modal" style="max-width:480px;">
+        <div class="modal-header">
+          <span class="modal-title">Setup thời gian làm việc</span>
+          <button class="modal-close" id="tsWorkScheduleModalClose" aria-label="Đóng">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p style="font-size:0.8125rem; color:var(--color-text-muted); margin:-8px 0 4px;">
+            Giờ chuẩn dùng làm mốc tính "Đi muộn"/"Về sớm" khi chấm công theo ca — áp dụng chung cho cả công ty. Định dạng 24h, VD: 07:30, 13:30.
+          </p>
+          <p id="tsWorkScheduleViewOnlyNote" style="font-size:0.8125rem; color:var(--ts-muted); margin:0 0 16px;" hidden>Chỉ Founder/CEO mới chỉnh sửa được — bạn đang xem.</p>
+          <form id="tsWorkScheduleForm">
+            <div class="form-group">
+              <label class="form-label">Ca sáng</label>
+              <div class="form-row">
+                <input type="text" class="form-input" id="tsWsMorningStart" inputmode="numeric" maxlength="5" placeholder="07:30" required>
+                <input type="text" class="form-input" id="tsWsMorningEnd" inputmode="numeric" maxlength="5" placeholder="11:30" required>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Ca chiều</label>
+              <div class="form-row">
+                <input type="text" class="form-input" id="tsWsAfternoonStart" inputmode="numeric" maxlength="5" placeholder="13:30" required>
+                <input type="text" class="form-input" id="tsWsAfternoonEnd" inputmode="numeric" maxlength="5" placeholder="17:30" required>
+              </div>
+            </div>
+            <div class="form-group" style="display:flex; justify-content:flex-end;">
+              <button type="submit" class="btn btn-primary" id="tsWorkScheduleSaveBtn">Lưu giờ làm việc</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal quản lý địa điểm GPS/IP hợp lệ để chấm công — CHỈ CEO/admin
+         thấy được nút mở (bindLocationManagerBtn()), toàn bộ CRUD ghi thẳng
+         xuống sheet "Địa điểm chấm công" qua TaskManager.*AttendanceLocation(). -->
+    <div class="modal-overlay" id="tsLocationModal">
+      <div class="modal" style="max-width:680px;">
+        <div class="modal-header">
+          <span class="modal-title">Địa điểm GPS &amp; IP chấm công</span>
+          <button class="modal-close" id="tsLocationModalClose" aria-label="Đóng">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p style="font-size:0.8125rem; color:var(--color-text-muted); margin:-8px 0 20px;">
+            Thêm bao nhiêu điểm GPS hoặc IP Wifi cũng được — nhân viên chỉ cần đạt GPS gần 1 điểm bất kỳ HOẶC đúng 1 IP bất kỳ đang bật là chấm công được. Bỏ tick "Đang dùng" để tắt tạm 1 dòng mà không cần xoá.
+          </p>
+
+          <form id="tsLocationForm">
+            <input type="hidden" id="tsLocEditId" value="">
+            <div class="form-group">
+              <label class="form-label">Tên địa điểm / mạng</label>
+              <input type="text" class="form-input" id="tsLocName" placeholder="VD: Văn phòng chính, Công trình Vũng Tàu..." required>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Vĩ độ (lat) — để trống nếu chỉ ép IP</label>
+                <input type="text" class="form-input" id="tsLocLat" placeholder="VD: 20.926738">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Kinh độ (lng)</label>
+                <input type="text" class="form-input" id="tsLocLng" placeholder="VD: 106.301584">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Bán kính cho phép (m)</label>
+                <input type="text" class="form-input" id="tsLocRadius" placeholder="Mặc định 50m">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Địa chỉ IP — để trống nếu chỉ ép GPS</label>
+                <input type="text" class="form-input" id="tsLocIp" placeholder="VD: 14.171.113.174">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Ghi chú (tuỳ chọn)</label>
+              <input type="text" class="form-input" id="tsLocNote" placeholder="VD: IP nhà mạng Viettel, đổi theo thời gian...">
+            </div>
+            <div class="form-group" style="display:flex; align-items:center; justify-content:space-between;">
+              <label class="form-checkbox"><input type="checkbox" id="tsLocActive" checked> Đang dùng</label>
+              <div style="display:flex; gap:8px;">
+                <button type="button" class="btn btn-secondary" id="tsLocCancelEdit" hidden>Huỷ sửa</button>
+                <button type="submit" class="btn btn-primary" id="tsLocSubmitBtn">Thêm thông tin</button>
+              </div>
+            </div>
+          </form>
+
+          <hr style="border:none; border-top:1px solid var(--color-border); margin:20px 0;">
+
+          <div id="tsLocationList" style="display:flex; flex-direction:column; gap:10px;"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" id="tsLocationModalCloseFooter">Đóng</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal báo cáo chấm công trực tiếp (CHỈ CEO) — tính lại ngay từ dữ
+         liệu TaskManager mỗi lần mở, giống kiểu modal "Báo cáo công việc" ở
+         projects.js (renderWorkReport), không cần xuất Excel mới xem được. -->
+    <div class="modal-overlay" id="tsReportModal">
+      <div class="modal ts-report-modal">
+        <div class="modal-header">
+          <span class="modal-title">Báo cáo chấm công</span>
+          <button class="modal-close" id="tsReportModalClose" aria-label="Đóng">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="ts-report-month-nav">
+          <button type="button" id="tsReportPrevMonth" aria-label="Tháng trước">&larr;</button>
+          <div class="timeline-month-picker" id="tsReportMonthPicker">
+            <button type="button" class="timeline-title-btn" id="tsReportMonthLabelBtn">
+              <span id="tsReportMonthLabel">Tháng 9/2026</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="timeline-month-panel" id="tsReportMonthPanel" hidden>
+              <div class="timeline-year-nav">
+                <button type="button" id="tsReportYearPrev" aria-label="Năm trước">&larr;</button>
+                <span id="tsReportYearLabel">2026</span>
+                <button type="button" id="tsReportYearNext" aria-label="Năm sau">&rarr;</button>
+              </div>
+              <div class="timeline-month-grid" id="tsReportMonthGrid"></div>
+            </div>
+          </div>
+          <button type="button" id="tsReportNextMonth" aria-label="Tháng sau">&rarr;</button>
+        </div>
+        <div class="modal-body">
+          <div class="report-stat-grid" id="tsReportStatGrid"></div>
+          <div class="report-charts-grid">
+            <div class="report-chart-box">
+              <h4>Trạng thái ngày công (cả công ty)</h4>
+              <div class="report-chart-canvas-wrap report-chart-canvas-wrap-sm"><canvas id="tsReportStatusChart"></canvas></div>
+            </div>
+            <div class="report-chart-box report-chart-box-wide">
+              <h4>Tổng giờ làm theo người</h4>
+              <div class="report-chart-canvas-wrap report-chart-canvas-wrap-bar" id="tsReportHoursWrap"><canvas id="tsReportHoursChart"></canvas></div>
+            </div>
+          </div>
+          <div class="report-chart-box report-chart-box-full">
+            <h4>Chi tiết theo người</h4>
+            <div id="tsReportByMember"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="ts-top-stats">
+      <div class="ts-stat-card">
+        <div class="ts-stat-icon green">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+        <div><div class="ts-stat-value" id="tsTotalDays">0</div><div class="ts-stat-label">Ngày làm việc</div></div>
+      </div>
+      <div class="ts-stat-card">
+        <div class="ts-stat-icon bronze">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div><div class="ts-stat-value" id="tsTotalHours">0h</div><div class="ts-stat-label">Tổng giờ làm</div></div>
+      </div>
+      <div class="ts-stat-card">
+        <div class="ts-stat-icon amber">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div><div class="ts-stat-value" id="tsOvertime">0h</div><div class="ts-stat-label">Giờ tăng ca</div></div>
+      </div>
+      <div class="ts-stat-card">
+        <div class="ts-stat-icon blue">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <div><div class="ts-stat-value" id="tsAvgHours">0h</div><div class="ts-stat-label">TB / ngày</div></div>
+      </div>
+    </div>
+
+    <!-- Checkin + Calendar -->
+    <div class="ts-grid">
+      <!-- Checkin -->
+      <div class="ts-checkin-card">
+        <div class="ts-checkin-eyebrow">Hôm nay</div>
+        <div class="ts-clock" id="tsClock">--:--</div>
+        <div class="ts-date" id="tsDate">--</div>
+
+        <label class="ts-note-label" for="tsCheckinNote" id="tsNoteLabel">Ghi chú (tuỳ chọn)</label>
+        <textarea class="ts-note-input" id="tsCheckinNote" rows="2" placeholder="Ví dụ: đi công trình, xin về sớm…"></textarea>
+
+        <div class="ts-verify-panel" id="tsVerifyPanel" hidden>
+          <div class="ts-verify-row" id="tsVerifyGeoRow">
+            <span class="ts-verify-dot" id="tsVerifyGeoDot"></span>
+            <span class="ts-verify-body">
+              <span class="ts-verify-label-row">
+                <span class="ts-verify-label">Vị trí GPS</span>
+                <button type="button" class="ts-verify-retry-icon" id="tsGeoRetryBtn" hidden title="Thử lại" aria-label="Thử lại định vị">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3.1-6.8"/><path d="M21 3v6h-6"/></svg>
+                </button>
+              </span>
+              <span class="ts-verify-state" id="tsVerifyGeoState">Đang kiểm tra…</span>
+            </span>
+          </div>
+          <div class="ts-verify-row" id="tsVerifyIpRow">
+            <span class="ts-verify-dot" id="tsVerifyIpDot"></span>
+            <span class="ts-verify-body">
+              <span class="ts-verify-label">Mạng Wifi công ty</span>
+              <span class="ts-verify-state" id="tsVerifyIpState">Đang kiểm tra…</span>
+            </span>
+          </div>
+          <div class="ts-verify-row" id="tsVerifyDeviceRow">
+            <span class="ts-verify-dot" id="tsVerifyDeviceDot"></span>
+            <span class="ts-verify-body">
+              <span class="ts-verify-label">Thiết bị đã đăng ký</span>
+              <span class="ts-verify-state" id="tsVerifyDeviceState">Đang kiểm tra…</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="ts-geo-status" id="tsGeoStatus" hidden></div>
+
+        <!-- 2026-09-19: chấm công theo ca sáng/chiều (Setup thời gian làm
+             việc) thay cho 1 nút Check In/Out chung cả ngày cũ — xem
+             shiftCheckIn()/shiftCheckOut() trong task-data.js. Ca chiều khoá
+             tới khi ca sáng xong (đủ vào+ra) — chấm công tuần tự theo đúng
+             mô tả yêu cầu, tránh chấm nhảy cóc ca chiều trước. -->
+        <div class="ts-shift-block">
+          <div class="ts-shift-title">Ca sáng</div>
+          <button class="ts-checkin-btn in" id="tsMorningBtn">Check In Sáng</button>
+          <div class="ts-checkin-status idle" id="tsMorningStatus">Chưa check-in ca sáng</div>
+        </div>
+        <div class="ts-shift-block">
+          <div class="ts-shift-title">Ca chiều</div>
+          <button class="ts-checkin-btn in" id="tsAfternoonBtn">Check In Chiều</button>
+          <div class="ts-checkin-status idle" id="tsAfternoonStatus">Chưa check-in ca chiều</div>
+        </div>
+
+        <div class="ts-device-table" id="tsDeviceTable"></div>
+      </div>
+
+      <!-- Calendar -->
+      <div class="ts-calendar-card">
+        <div class="ts-cal-header">
+          <div class="ts-cal-title" id="tsCalTitle">Tháng 9/2026</div>
+          <div class="ts-cal-nav">
+            <button id="tsPrevMonth" title="Tháng trước">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <button id="tsNextMonth" title="Tháng sau">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="ts-cal-legend">
+          <div class="ts-legend-item">
+            <div class="ts-legend-dot" style="background:#4F6F52; border-radius:50%"></div>
+            Đã chấm đủ
+          </div>
+          <div class="ts-legend-item">
+            <div class="ts-legend-dot" style="background:var(--ts-bronze); border-radius:50%"></div>
+            Check-in rồi
+          </div>
+          <div class="ts-legend-item">
+            <div class="ts-legend-dot" style="background:var(--ts-border); border-radius:50%"></div>
+            Chưa chấm
+          </div>
+        </div>
+
+        <div class="ts-cal-grid" id="tsCalGrid"></div>
+
+        <!-- Day detail (click to view) -->
+        <div class="ts-day-detail" id="tsDayDetail" style="display:none;">
+          <div class="ts-detail-header">
+            <span class="ts-detail-date" id="tsDetailDate">--</span>
+            <span class="ts-detail-badge none" id="tsDetailBadge">Chưa chấm</span>
+          </div>
+          <div class="ts-checkin-status late" id="tsDetailLateEarly" style="margin:-4px 0 12px; display:inline-block;" hidden></div>
+          <div class="ts-detail-row">
+            <div class="ts-detail-field">
+              <div class="ts-detail-field-label">Check-in</div>
+              <div class="ts-detail-field-value" id="tsDetailIn">--:--</div>
+            </div>
+            <div class="ts-detail-field">
+              <div class="ts-detail-field-label">Check-out</div>
+              <div class="ts-detail-field-value" id="tsDetailOut">--:--</div>
+            </div>
+          </div>
+          <div class="ts-detail-row">
+            <div class="ts-detail-field">
+              <div class="ts-detail-field-label">Tổng giờ</div>
+              <div class="ts-detail-field-value" id="tsDetailTotal">--</div>
+            </div>
+            <div class="ts-detail-field">
+              <div class="ts-detail-field-label">Tăng ca</div>
+              <div class="ts-detail-field-value" id="tsDetailOT">--</div>
+            </div>
+          </div>
+          <div class="ts-detail-note" id="tsDetailNoteBox">
+            <div class="ts-detail-note-head">
+              <div class="ts-detail-note-label">Ghi chú</div>
+              <button type="button" class="ts-detail-note-edit" id="tsDetailNoteEditBtn" hidden>Sửa</button>
+            </div>
+            <div class="ts-detail-note-value" id="tsDetailNote">--</div>
+            <div class="ts-detail-note-form" id="tsDetailNoteForm" hidden>
+              <textarea class="ts-detail-note-textarea" id="tsDetailNoteInput" rows="2" placeholder="Ví dụ: đi công trình, xin về sớm…"></textarea>
+              <div class="ts-detail-note-actions">
+                <button type="button" class="ts-detail-note-save" id="tsDetailNoteSaveBtn">Lưu</button>
+                <button type="button" class="ts-detail-note-discard" id="tsDetailNoteCancelBtn">Huỷ</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel duyệt thiết bị chấm công — CHỈ CEO/Manager thấy (canManageMembers),
+         xem bindPendingDevicesPanel(). Thiết bị nhân viên tự đăng ký nằm ở đây
+         chờ duyệt (approve/reject), khác với ts-device-table (chỉ hiện thiết
+         bị CỦA CHÍNH người đang đăng nhập). -->
+    <div class="ts-calendar-card" id="tsPendingDevicesCard" hidden style="margin-top:24px; padding:24px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+        <h3 style="font-size:1.0625rem; font-weight:600; margin:0;">Thiết bị chấm công chờ duyệt</h3>
+        <span class="ts-device-title" id="tsPendingDevicesCount" style="margin:0;"></span>
+      </div>
+      <div id="tsPendingDevicesList" style="display:flex; flex-direction:column; gap:10px;"></div>
+    </div>
+  </div>
+  </main>
+
+  <script src="/js/portal.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
+  <script>
+  (function() {
+    'use strict';
+
+    var calMonth = new Date().getMonth() + 1;
+    var calYear = new Date().getFullYear();
+    var selectedDayDate = null;
+
+    // Chuỗi đánh dấu ghi chú của bản ghi bị hệ thống TỰ ĐỘNG đóng ca do quên
+    // check-out — PHẢI khớp đúng AUTO_CHECKOUT_NOTE_TAG bên gsheets-api-v2.js
+    // (hàm autoCheckoutForgottenEntries), dùng để dò cột "Lỗi" khi xuất Excel.
+    var TS_AUTO_CHECKOUT_TAG = '[TỰ ĐỘNG ĐÓNG CA — QUÊN CHECK-OUT]';
+
+    // ====== CẤU HÌNH GIỚI HẠN CHECK-IN (IP văn phòng + vị trí GPS) ======
+    // Bảo mật 2 lớp: chỉ cần 1 trong 2 điều kiện thoả (GPS gần MỘT trong các
+    // địa điểm HOẶC đang dùng MỘT trong các IP Wifi công ty) là được chấm công.
+    // Danh sách địa điểm/IP giờ sống trên sheet "Địa điểm chấm công" (KHÔNG còn
+    // hard-code trong file này) — CEO/admin thêm/sửa/xoá GPS hoặc IP trực tiếp
+    // trên Sheet, muốn thêm bao nhiêu điểm cũng được, không cần sửa code/deploy.
+    // Xem TaskManager.getAttendanceLocations() (task-data.js) + FIELD_MAP.attendanceLocations
+    // (gsheets-api-v2.js). GEO_RESTRICTION.enabled/IP_RESTRICTION.enabled vẫn là
+    // công tắc bật/tắt CẢ NHÓM (không phải để cấu hình từng điểm — việc đó nằm ở Sheet).
+    var GEO_RESTRICTION = { enabled: true, radiusMetersDefault: 50 };
+    var IP_RESTRICTION = { enabled: true };
+    // Ngưỡng "vô lý" — quá con số này thì chắc chắn là lỗi định vị (không có
+    // công trình/văn phòng nào cách xa vậy) chứ không phải nhân viên thật sự
+    // đang cách xa đến thế, xem checkGeoStatus().
+    var GEO_MAX_PLAUSIBLE_DISTANCE_M = 20000;
+
+    var attendanceLocationsCache = null; // mảng thô từ Sheet, load 1 lần/phiên trang rồi tái dùng
+    // Bug 2026-09-19: trước đây cache 1 lần "mãi mãi" kể cả khi lần đọc đó
+    // THẤT BẠI (mạng chập chờn/timeout khiến TaskManager.getAttendanceLocations
+    // trả về [] rỗng, không phân biệt được với "Sheet thật sự trống") — mảng
+    // rỗng `[]` vẫn là giá trị "truthy" trong JS nên `if (attendanceLocationsCache)`
+    // coi là đã có cache, KHÔNG BAO GIỜ thử tải lại nữa trong suốt phiên mở
+    // trang, khiến GPS/Wifi báo nhầm "Đang tắt" (renderVerifyRow hiện chữ này
+    // cho MỌI lý do skip, kể cả "Chưa cấu hình địa điểm" do cache rỗng giả).
+    // Giờ chỉ coi là cache HỢP LỆ khi thật sự có dữ liệu — 1 lần lỗi/timeout
+    // sẽ tự thử lại ở lần gọi kế tiếp thay vì kẹt cứng cả phiên.
+    function loadAttendanceLocations() {
+      if (attendanceLocationsCache && attendanceLocationsCache.length > 0) return Promise.resolve(attendanceLocationsCache);
+      return new Promise(function (resolve) {
+        if (typeof TaskManager === 'undefined' || !TaskManager.getAttendanceLocations) { resolve(attendanceLocationsCache || []); return; }
+        TaskManager.getAttendanceLocations(function (rows) {
+          if (Array.isArray(rows) && rows.length > 0) attendanceLocationsCache = rows;
+          resolve(attendanceLocationsCache || []);
+        });
+      });
+    }
+    function activeGeoLocations(rows) {
+      return rows.filter(function (r) { return r.active !== false && r.lat !== '' && r.lat != null && r.lng !== '' && r.lng != null; });
+    }
+    function activeIps(rows) {
+      return rows.filter(function (r) { return r.active !== false && r.ip; }).map(function (r) { return String(r.ip).trim(); });
+    }
+
+    function haversineMeters(lat1, lng1, lat2, lng2) {
+      var R = 6371000;
+      function toRad(d) { return d * Math.PI / 180; }
+      var dLat = toRad(lat2 - lat1);
+      var dLng = toRad(lng2 - lng1);
+      var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+        Math.sin(dLng / 2) * Math.sin(dLng / 2);
+      var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    function setGeoStatus(msg, ok) {
+      var el = document.getElementById('tsGeoStatus');
+      if (!el) return;
+      if (!msg) { el.hidden = true; el.textContent = ''; return; }
+      el.hidden = false;
+      el.className = 'ts-geo-status' + (ok ? ' ok' : '');
+      el.textContent = msg;
+    }
+
+    // Mỗi hàm trả về { ok, message, skip } — skip = true khi điều kiện đó đang TẮT
+    // (không tính vào bảo mật 2 lớp). Cảnh báo: kiểm tra IP/GPS phía frontend chỉ
+    // mang tính chất hạn chế cơ bản, người rành công nghệ vẫn có thể qua mặt bằng
+    // VPN hoặc app giả lập GPS — đây là lớp bảo vệ phụ, không phải tuyệt đối.
+    function checkIpStatus() {
+      if (!IP_RESTRICTION.enabled) return Promise.resolve({ ok: false, skip: true, message: 'Đang tắt', ip: '' });
+      return loadAttendanceLocations().then(function (rows) {
+        var validIPs = activeIps(rows);
+        if (validIPs.length === 0) return { ok: false, skip: true, message: 'Chưa cấu hình IP', ip: '' };
+        // 2026-09-19: fetch() KHÔNG có timeout mặc định — mạng di động chập
+        // chờn có thể treo request này rất lâu (hàng chục giây tới cả phút,
+        // người dùng phản ánh thật "kiểm tra lâu hơn 1-2 phút"), làm cả nút
+        // Check In đứng im chờ theo vì đang Promise.all() cùng checkGeoStatus().
+        // Ép timeout cứng 6s bằng AbortController — quá giờ thì coi như lỗi
+        // mạng (message đã có sẵn), không để treo vô thời hạn.
+        var controller = new AbortController();
+        var timer = setTimeout(function () { controller.abort(); }, 6000);
+        return fetch('https://api.ipify.org?format=json', { signal: controller.signal })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            var ok = validIPs.indexOf(data.ip) !== -1;
+            return { ok: ok, skip: false, message: ok ? 'Đúng mạng Wifi công ty' : 'Không phải mạng Wifi công ty', ip: data.ip };
+          })
+          .catch(function () {
+            return { ok: false, skip: false, message: 'Không kiểm tra được kết nối mạng', ip: '' };
+          })
+          .finally(function () { clearTimeout(timer); });
+      });
+    }
+
+    // 2026-09-18: sửa lỗi "GPS thỉnh thoảng nhảy" (người dùng phản ánh thật —
+    // hiện cách văn phòng gần 10.000km!) — 1 lần gọi getCurrentPosition() DUY
+    // NHẤT đôi khi trả về vị trí lấy từ nguồn định vị thô (Wi-Fi/cell/IP,
+    // đặc biệt hay gặp trên Windows Location Service khi GPS thật chưa kịp
+    // khoá tín hiệu) thay vì GPS thật, sai lệch có thể tới hàng nghìn km dù
+    // `enableHighAccuracy: true`. Trình duyệt KHÔNG có cách nào yêu cầu thẳng
+    // "chỉ dùng GPS thật" — cách duy nhất đáng tin cậy là gọi lại vài lần và
+    // GIỮ LẠI kết quả có `coords.accuracy` (bán kính sai số, đơn vị mét) THẤP
+    // NHẤT, dừng sớm ngay khi đã đủ chính xác (<=50m) để không làm chậm lúc
+    // GPS thật đã khoá ngay từ lần đầu.
+    function getBestGeoPosition(maxAttempts, timeoutMs) {
+      return new Promise(function (resolve, reject) {
+        var attemptsLeft = maxAttempts;
+        var best = null;
+        function tryOnce() {
+          navigator.geolocation.getCurrentPosition(function (pos) {
+            if (!best || pos.coords.accuracy < best.coords.accuracy) best = pos;
+            attemptsLeft--;
+            if (attemptsLeft <= 0 || best.coords.accuracy <= 50) resolve(best);
+            else tryOnce();
+          }, function (err) {
+            attemptsLeft--;
+            if (attemptsLeft <= 0) { if (best) resolve(best); else reject(err); }
+            else tryOnce();
+          }, { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 0 });
+        }
+        tryOnce();
+      });
+    }
+
+    function checkGeoStatus() {
+      if (!GEO_RESTRICTION.enabled) return Promise.resolve({ ok: false, skip: true, message: 'Đang tắt', lat: '', lng: '', distance: '' });
+      if (!navigator.geolocation) {
+        return Promise.resolve({ ok: false, skip: false, message: 'Thiết bị không hỗ trợ định vị GPS', lat: '', lng: '', distance: '' });
+      }
+      return loadAttendanceLocations().then(function (rows) {
+        var geoLocations = activeGeoLocations(rows);
+        if (geoLocations.length === 0) return { ok: false, skip: true, message: 'Chưa cấu hình địa điểm', lat: '', lng: '', distance: '' };
+        return new Promise(function (resolve) {
+          // 2026-09-19: giảm từ 3 lần/7s xuống 2 lần/5s — nguyên nhân gốc gây
+          // sai lệch km đã fix ở toạ độ Sheet (xem GHI_CHU_DU_AN.md), lớp
+          // retry này giờ chỉ còn là bảo vệ phụ nên không cần thử nhiều/lâu
+          // đến mức làm chậm hẳn quá trình kiểm tra (người dùng phản ánh
+          // "kiểm tra lâu hơn 1-2 phút" — cộng dồn với checkIpStatus() không
+          // timeout ở trên mới là nguyên nhân chính, nhưng vẫn giảm luôn cho
+          // chắc). Tối đa ~10s thay vì ~21s trước đó.
+          getBestGeoPosition(2, 5000).then(function (pos) {
+            var lat = pos.coords.latitude, lng = pos.coords.longitude;
+            // So khớp với TỪNG địa điểm đang bật, lấy điểm gần nhất — chỉ cần
+            // nằm trong bán kính của MỘT điểm bất kỳ là đạt (nhiều công trình/
+            // văn phòng cùng lúc), không cộng dồn khoảng cách các điểm khác.
+            var best = null;
+            geoLocations.forEach(function (loc) {
+              var radius = Number(loc.radiusMeters) || GEO_RESTRICTION.radiusMetersDefault;
+              var dist = Math.round(haversineMeters(lat, lng, Number(loc.lat), Number(loc.lng)));
+              if (!best || dist < best.dist) best = { dist: dist, radius: radius, name: loc.name || '' };
+            });
+            if (best.dist <= best.radius) {
+              resolve({ ok: true, skip: false, message: 'Đang ở gần ' + (best.name || 'địa điểm cho phép'), lat: lat, lng: lng, distance: best.dist });
+            } else if (best.dist > GEO_MAX_PLAUSIBLE_DISTANCE_M) {
+              // Thỉnh thoảng trình duyệt/Windows Location Service trả về 1 vị
+              // trí mạng sai lệch cực lớn (có lúc cách xa cả chục nghìn km,
+              // người dùng phản ánh thật) dù đã lấy vị trí có accuracy tốt
+              // nhất trong vài lần thử (getBestGeoPosition) — bản thân nguồn
+              // định vị đó tự báo "tin cậy" (accuracy thấp) trong khi tọa độ
+              // lại sai, retry tự động không lọc được. Hiện số đo mét cực lớn
+              // ra thẳng dễ gây hoang mang ("GPS nhảy đi đâu mất") — thay bằng
+              // thông báo rõ + nút "Thử lại" thủ công cạnh dòng Vị trí GPS.
+              resolve({ ok: false, skip: false, unreliable: true, message: 'Định vị không chính xác, bấm "Thử lại"', lat: lat, lng: lng, distance: best.dist });
+            } else {
+              resolve({ ok: false, skip: false, message: 'Cách ' + (best.name || 'địa điểm gần nhất') + ' ' + best.dist + 'm', lat: lat, lng: lng, distance: best.dist });
+            }
+          }, function (err) {
+            var msg = 'Không lấy được vị trí';
+            var permissionDenied = false;
+            if (err && err.code === 1) { msg = 'Trang web chưa được cấp quyền vị trí'; permissionDenied = true; }
+            else if (err && err.code === 2) msg = 'Không xác định được vị trí (kiểm tra Location/Vị trí đã bật trong Windows chưa)';
+            else if (err && err.code === 3) msg = 'Định vị quá thời gian chờ, thử lại';
+            resolve({ ok: false, skip: false, permissionDenied: permissionDenied, message: msg, lat: '', lng: '', distance: '' });
+          });
+        });
+      });
+    }
+
+    function renderVerifyRow(dotId, stateId, result, retryBtnId) {
+      var dot = document.getElementById(dotId);
+      var state = document.getElementById(stateId);
+      var retryBtn = retryBtnId ? document.getElementById(retryBtnId) : null;
+      if (!dot || !state) return;
+      if (result.skip) {
+        dot.className = 'ts-verify-dot';
+        state.className = 'ts-verify-state';
+        state.textContent = 'Đang tắt';
+        if (retryBtn) retryBtn.hidden = true;
+        return;
+      }
+      dot.className = 'ts-verify-dot ' + (result.ok ? 'ok' : 'fail');
+      state.className = 'ts-verify-state ' + (result.ok ? 'ok' : 'fail');
+      state.textContent = result.message;
+      // Nút gọi lại getCurrentPosition() thủ công — hiện bất cứ khi nào định
+      // vị chưa đạt (không tính lúc đang tắt): permissionDenied → nhãn "Cấp
+      // quyền vị trí" (bấm nút này CHÍNH LÀ cách web yêu cầu lại quyền định vị
+      // với nền tảng/thiết bị, trình duyệt tự hiện hộp thoại xin quyền nếu
+      // chưa từng bị chặn cứng); còn lại (timeout/không xác định được/kết quả
+      // vô lý) → nhãn "Thử lại".
+      if (retryBtn) {
+        retryBtn.hidden = result.ok;
+        var retryLabel = result.permissionDenied ? 'Cấp quyền vị trí' : 'Thử lại định vị';
+        retryBtn.title = retryLabel;
+        retryBtn.setAttribute('aria-label', retryLabel);
+      }
+    }
+
+    function runLiveStatusCheck() {
+      var panel = document.getElementById('tsVerifyPanel');
+      if (!panel) return Promise.resolve({ geo: null, ip: null, device: null });
+      // Điều kiện Thiết bị luôn bật (không có cờ enable/disable như GPS/Wifi),
+      // nên panel giờ luôn hiện để còn thấy trạng thái thiết bị.
+      panel.hidden = false;
+      return Promise.all([checkGeoStatus(), checkIpStatus()]).then(function (results) {
+        var deviceResult = checkDeviceStatus();
+        renderVerifyRow('tsVerifyGeoDot', 'tsVerifyGeoState', results[0], 'tsGeoRetryBtn');
+        renderVerifyRow('tsVerifyIpDot', 'tsVerifyIpState', results[1]);
+        renderVerifyRow('tsVerifyDeviceDot', 'tsVerifyDeviceState', deviceResult);
+        return { geo: results[0], ip: results[1], device: deviceResult };
+      });
+    }
+
+    // Nút "Thử lại"/"Cấp quyền vị trí" — hiện khi định vị chưa đạt, gọi lại
+    // đúng 1 mình checkGeoStatus() (không đụng Wifi/Thiết bị). Bấm nút này
+    // CHÍNH LÀ cách gọi lại navigator.geolocation.getCurrentPosition() — với
+    // nền tảng web, đó là thao tác "yêu cầu quyền vị trí": nếu chưa từng bị
+    // chặn cứng, trình duyệt tự hiện lại hộp thoại xin quyền của thiết bị.
+    (function initGeoRetryBtn() {
+      var retryBtn = document.getElementById('tsGeoRetryBtn');
+      if (!retryBtn) return;
+      retryBtn.addEventListener('click', function () {
+        retryBtn.disabled = true;
+        retryBtn.classList.add('spinning');
+        checkGeoStatus().then(function (result) {
+          renderVerifyRow('tsVerifyGeoDot', 'tsVerifyGeoState', result, 'tsGeoRetryBtn');
+          retryBtn.disabled = false;
+          retryBtn.classList.remove('spinning');
+        });
+      });
+    })();
+
+    function verifyRowHtml(label, result) {
+      var cls = result.skip ? '' : (result.ok ? 'ok' : 'fail');
+      return '<div class="ts-verify-row"><span class="ts-verify-dot ' + cls + '"></span><span class="ts-verify-body">' +
+        '<span class="ts-verify-label">' + label + '</span>' +
+        '<span class="ts-verify-state ' + cls + '">' + (result.skip ? 'Đang tắt' : result.message) + '</span>' +
+      '</span></div>';
+    }
+
+    // Bảng thông báo khi CHƯA ĐẠT ĐỦ CẢ 3 điều kiện (GPS/Wifi/Thiết bị) — chỉ
+    // để BÁO cho người dùng biết đang thiếu điều kiện nào, KHÔNG có lựa chọn
+    // "vẫn chấm công" bỏ qua nữa (2026-09-11: trước đó đạt tối thiểu 2/3 là
+    // cho qua thẳng, đạt đúng 1/3 thì hỏi xác nhận thủ công để bỏ qua điều
+    // kiện thiếu — nay siết lại bắt buộc đủ 3/3 mới cho chấm công, thiếu bất
+    // kỳ điều kiện nào đều bị chặn hẳn, xem verifyThenProceed()).
+    // Hộp thoại xác nhận tự dựng thay cho confirm() gốc của trình duyệt —
+    // confirm() là 1 dialog NATIVE chặn hẳn main thread, khiến các công cụ
+    // automation (Claude in Chrome) không tương tác/chụp màn hình được nữa,
+    // treo cứng luôn tab (đã gặp thật khi test nút xoá địa điểm). Dùng chung
+    // được cho mọi xác nhận xoá trong trang này.
+    // Thông báo nhẹ, KHÔNG chặn main thread (khác alert()/confirm() gốc —
+    // 2 hàm đó từng làm treo cứng tab khi test với Claude in Chrome, xem
+    // comment ở showConfirmDialog() ngay dưới). Tự biến mất sau vài giây.
+    function showToast(message, ok) {
+      var el = document.createElement('div');
+      el.style.cssText = 'position:fixed; top:20px; left:50%; transform:translateX(-50%); z-index:10001; max-width:420px; padding:14px 18px; background:var(--ts-surface); border:1px solid var(--ts-border); border-left:4px solid ' + (ok === false ? '#A04848' : 'var(--ts-bronze)') + '; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.25); font-size:0.875rem; color:var(--ts-text);';
+      el.textContent = message;
+      document.body.appendChild(el);
+      setTimeout(function () { el.remove(); }, 4000);
+    }
+
+    function showConfirmDialog(title, onConfirm, confirmLabel) {
+      var overlay = document.createElement('div');
+      overlay.className = 'ts-confirm-overlay';
+      overlay.innerHTML =
+        '<div class="ts-confirm-box">' +
+          '<div class="ts-confirm-title">' + title + '</div>' +
+          '<div class="ts-confirm-actions">' +
+            '<button type="button" class="ts-confirm-cancel">Huỷ</button>' +
+            '<button type="button" class="ts-confirm-ok">' + (confirmLabel || 'Xoá') + '</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(overlay);
+      overlay.querySelector('.ts-confirm-cancel').addEventListener('click', function () { overlay.remove(); });
+      overlay.querySelector('.ts-confirm-ok').addEventListener('click', function () {
+        overlay.remove();
+        onConfirm();
+      });
+    }
+
+    function showFailNotice(geoResult, ipResult, deviceResult) {
+      deviceResult = deviceResult || { skip: true };
+      var overlay = document.createElement('div');
+      overlay.className = 'ts-confirm-overlay';
+      overlay.innerHTML =
+        '<div class="ts-confirm-box">' +
+          '<div class="ts-confirm-title">Chưa đủ điều kiện chấm công</div>' +
+          '<div class="ts-verify-panel">' +
+            verifyRowHtml('Vị trí GPS', geoResult) +
+            verifyRowHtml('Mạng Wifi công ty', ipResult) +
+            verifyRowHtml('Thiết bị đã đăng ký', deviceResult) +
+          '</div>' +
+          '<div class="ts-confirm-actions">' +
+            '<button type="button" class="ts-confirm-ok">Đã hiểu</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(overlay);
+      overlay.querySelector('.ts-confirm-ok').addEventListener('click', function () {
+        overlay.remove();
+      });
+    }
+
+    // Chống chấm công hộ: web không đọc được ID phần cứng thật (không có API
+    // nào cho phép — cố ý bị chặn ở mọi trình duyệt vì lý do riêng tư), nên
+    // tự sinh 1 mã ngẫu nhiên đại diện cho "thiết bị này" và lưu bền trong
+    // localStorage của trình duyệt. Mỗi thành viên tự đăng ký tối đa
+    // MAX_MEMBER_DEVICES (2) mã như vậy (2 máy/điện thoại quen dùng).
+    // 2026-09-10: ĐỔI SANG ĐĂNG KÝ THỦ CÔNG BẮT BUỘC (trước đó 2 thiết bị đầu
+    // tự đăng ký ngay không hỏi gì — bị lỗi 2 máy khác nhau cùng lúc coi mình
+    // là "máy đầu tiên" rồi ghi đè lẫn nhau do mỗi máy đọc/ghi theo cache cục
+    // bộ riêng, không đồng bộ tức thời, người dùng phát hiện 2 máy cùng hiện
+    // "slot 1"). Giờ thiết bị lạ LUÔN bị tính là chưa đăng ký (không tự động
+    // chiếm slot trống), phải tự bấm "Đăng ký thiết bị này" — bấm mới thật sự
+    // ghi, và trước khi ghi sẽ tải lại dữ liệu mới nhất từ Sheet để không ghi
+    // đè lên thiết bị máy khác vừa đăng ký. Thiết bị lạ vẫn KHÔNG chặn cứng
+    // chấm công (chỉ tính là 1/3 điều kiện fail, hỏi xác nhận thủ công như
+    // GPS/Wifi) — tài khoản đổi điện thoại/máy vẫn chấm công được.
+    // Nhược điểm đã báo trước: mã mất nếu xoá dữ liệu trình duyệt (Clear
+    // browsing data), và ai rành kỹ thuật vẫn có thể copy mã sang máy khác —
+    // đây là lớp cảnh báo phụ, không phải xác thực tuyệt đối.
+    var DEVICE_ID_KEY = 'hiconique_device_id';
+    function getOrCreateDeviceId() {
+      try {
+        var id = localStorage.getItem(DEVICE_ID_KEY);
+        if (!id) {
+          id = (crypto.randomUUID ? crypto.randomUUID() : ('dev_' + Date.now() + '_' + Math.random().toString(16).slice(2)));
+          localStorage.setItem(DEVICE_ID_KEY, id);
+        }
+        return id;
+      } catch (_err) {
+        return null; // localStorage bị chặn (chế độ ẩn danh khoá lưu trữ...) — bỏ qua kiểm tra
+      }
+    }
+
+    function shortDeviceId(id) {
+      return id ? id.slice(0, 8).toUpperCase() : '--';
+    }
+
+    // Tên thiết bị dễ đọc kiểu "lịch sử đăng nhập" của Facebook/Zalo (VD
+    // "iPhone · Safari", "Windows PC · Chrome") thay vì mã hex vô nghĩa — chỉ
+    // suy ra từ User-Agent nên không chính xác tuyệt đối (VD user đổi UA),
+    // nhưng đủ để người dùng tự nhận ra máy nào là máy nào.
+    function getDeviceLabel() {
+      var ua = navigator.userAgent || '';
+      var device = /iPhone/.test(ua) ? 'iPhone'
+        : /iPad/.test(ua) ? 'iPad'
+        : /iPod/.test(ua) ? 'iPod'
+        : /Android/.test(ua) ? (/Mobile/.test(ua) ? 'Điện thoại Android' : 'Máy tính bảng Android')
+        : /Macintosh/.test(ua) ? 'Mac'
+        : /Windows/.test(ua) ? 'Windows PC'
+        : /Linux/.test(ua) ? 'Linux PC'
+        : 'Thiết bị';
+      var browser = /EdgA?\//.test(ua) ? 'Edge'
+        : /OPR\//.test(ua) ? 'Opera'
+        : /CriOS\//.test(ua) ? 'Chrome'
+        : /Chrome\//.test(ua) ? 'Chrome'
+        : /FxiOS\//.test(ua) ? 'Firefox'
+        : /Firefox\//.test(ua) ? 'Firefox'
+        : /Safari\//.test(ua) ? 'Safari'
+        : 'trình duyệt';
+      return (device + ' · ' + browser).replace(/[,:]/g, ' ');
+    }
+
+    var MAX_MEMBER_DEVICES_UI = 2;
+
+    // Điều kiện thứ 3 (cùng nhóm với GPS/Wifi) — { ok, skip, message } giống
+    // hệt format của checkGeoStatus()/checkIpStatus() nên dùng chung được với
+    // renderVerifyRow/showFailNotice và luật "bắt buộc đủ 3/3 điều kiện" ở
+    // handler Check In. CHỈ ĐỌC trạng thái, KHÔNG tự ghi đăng ký nữa (xem lý
+    // do ở comment DEVICE_ID_KEY phía trên) — đăng ký thật sự chỉ xảy ra khi
+    // người dùng tự bấm nút trong renderDeviceTable().
+    function checkDeviceStatus() {
+      var deviceId = getOrCreateDeviceId();
+      var userId = getUserId();
+      if (!deviceId || !userId || typeof TaskManager === 'undefined' || !TaskManager.getMemberDevices) {
+        return { skip: true, ok: false, message: 'Đang tắt' };
+      }
+      renderDeviceTable();
+      var devices = TaskManager.getMemberDevices(userId);
+      var mine = devices.filter(function (d) { return d.id === deviceId; })[0];
+      if (mine) {
+        // Thiết bị mới đăng ký phải chờ CEO/Manager duyệt (status 'pending')
+        // mới tính là "quen dùng" — xem registerMemberDevice() trong task-data.js.
+        if (mine.status === 'pending') return { skip: false, ok: false, message: 'Thiết bị đang chờ CEO/Quản lý duyệt' };
+        return { skip: false, ok: true, message: 'Thiết bị quen dùng' };
+      }
+      var full = devices.length >= MAX_MEMBER_DEVICES_UI;
+      return {
+        skip: false, ok: false,
+        message: full ? 'Thiết bị lạ (đã đủ ' + MAX_MEMBER_DEVICES_UI + ' thiết bị)' : 'Thiết bị chưa đăng ký — bấm "Đăng ký thiết bị này" bên dưới'
+      };
+    }
+
+    // Bảng nhỏ hiển thị các thiết bị đã đăng ký của chính người đang đăng
+    // nhập — cho họ tự gỡ 1 thiết bị cũ để nhường slot cho máy mới.
+    function renderDeviceTable() {
+      var wrap = document.getElementById('tsDeviceTable');
+      if (!wrap || typeof TaskManager === 'undefined' || !TaskManager.getMemberDevices) return;
+      var userId = getUserId();
+      var myDeviceId = getOrCreateDeviceId();
+      var myLabel = getDeviceLabel();
+      var devices = TaskManager.getMemberDevices(userId); // [{id, name, status}]
+      var alreadyRegistered = devices.some(function (d) { return d.id === myDeviceId; });
+      var rows = devices.map(function (d) {
+        var isThis = d.id === myDeviceId;
+        // Entry cũ đăng ký trước khi có tính năng tên thiết bị: không biết tên
+        // thật của máy đó, chỉ còn cách hiện mã rút gọn như trước.
+        var label = d.name || (isThis ? myLabel : 'Thiết bị chưa xác định (' + shortDeviceId(d.id) + ')');
+        var statusBadge = d.status === 'pending'
+          ? '<span style="font-size:0.6875rem; color:var(--ts-warning, #C7A464); font-weight:600; margin-left:6px;">Chờ duyệt</span>'
+          : '<span style="font-size:0.6875rem; color:var(--ts-success, #4F6F52); font-weight:600; margin-left:6px;">Đã duyệt</span>';
+        return '<div class="ts-device-row">' +
+          '<span class="ts-device-id">' + label + (isThis ? ' <em>(thiết bị này)</em>' : '') + statusBadge + '</span>' +
+          '<button type="button" class="ts-device-remove" data-device-id="' + d.id + '">Gỡ</button>' +
+        '</div>';
+      }).join('');
+      // Ô trống đầu tiên (nếu còn) cho phép đăng ký ngay THIẾT BỊ ĐANG DÙNG —
+      // đây là ĐƯỜNG DUY NHẤT để 1 thiết bị được ghi vào deviceIds (không còn
+      // tự động đăng ký nữa, xem checkDeviceStatus()). Các ô trống còn lại chỉ
+      // hiện "Còn trống" chờ tự tay đăng ký từ đúng máy đó — web không có cách
+      // nào biết trước ID của 1 thiết bị chưa từng ghé để đăng ký hộ.
+      var emptySlots = MAX_MEMBER_DEVICES_UI - devices.length;
+      for (var i = 0; i < emptySlots; i++) {
+        if (i === 0 && !alreadyRegistered) {
+          rows += '<div class="ts-device-row ts-device-empty">' +
+            '<span class="ts-device-id">Còn trống — thiết bị này (' + myLabel + ') chưa đăng ký</span>' +
+            '<button type="button" class="ts-device-add" id="tsDeviceAddBtn">+ Đăng ký thiết bị này</button>' +
+          '</div>';
+        } else {
+          rows += '<div class="ts-device-row ts-device-empty"><span class="ts-device-id">Còn trống</span></div>';
+        }
+      }
+      wrap.innerHTML =
+        '<div class="ts-device-title">Thiết bị chấm công đã đăng ký (tối đa ' + MAX_MEMBER_DEVICES_UI + ')</div>' +
+        rows +
+        '<div class="ts-device-sync">' +
+          '<button type="button" class="ts-device-sync-toggle" id="tsDeviceSyncToggle">Cùng 1 máy nhưng bị tính thành 2 thiết bị (VD dùng cả Safari lẫn app đã "Thêm vào Màn hình chính")?</button>' +
+          '<div class="ts-device-sync-body" id="tsDeviceSyncBody" hidden>' +
+            '<p>iOS/Android coi trình duyệt và app "Thêm vào Màn hình chính" là 2 nơi lưu trữ riêng dù cùng 1 điện thoại, nên tự sinh 2 mã khác nhau. Mở trang này ở CẢ HAI nơi, rồi dán mã của bên kia vào đây để 2 nơi được tính là 1 thiết bị — nếu bên kia đã lỡ đăng ký riêng, bấm "Gỡ" thiết bị đó ở trên trước.</p>' +
+            '<div class="ts-device-sync-row"><span>Mã máy này:</span><code id="tsDeviceSyncMyId">' + escapeHtmlTs(myDeviceId) + '</code><button type="button" id="tsDeviceSyncCopyBtn">Sao chép</button></div>' +
+            '<div class="ts-device-sync-row"><input type="text" id="tsDeviceSyncInput" placeholder="Dán mã thiết bị từ nơi kia vào đây"><button type="button" id="tsDeviceSyncApplyBtn">Đồng bộ</button></div>' +
+          '</div>' +
+        '</div>';
+      var syncToggle = document.getElementById('tsDeviceSyncToggle');
+      var syncBody = document.getElementById('tsDeviceSyncBody');
+      if (syncToggle && syncBody) {
+        syncToggle.addEventListener('click', function () { syncBody.hidden = !syncBody.hidden; });
+      }
+      var syncCopyBtn = document.getElementById('tsDeviceSyncCopyBtn');
+      if (syncCopyBtn) {
+        syncCopyBtn.addEventListener('click', function () {
+          (navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(myDeviceId) : Promise.reject())
+            .then(function () { showToast('Đã sao chép mã thiết bị.', true); })
+            .catch(function () { showToast('Không sao chép được — tự bôi đen mã rồi copy thủ công.', false); });
+        });
+      }
+      var syncApplyBtn = document.getElementById('tsDeviceSyncApplyBtn');
+      if (syncApplyBtn) {
+        syncApplyBtn.addEventListener('click', function () {
+          var pasted = (document.getElementById('tsDeviceSyncInput').value || '').trim();
+          if (!pasted) return;
+          if (pasted === myDeviceId) { showToast('Mã này đã là mã của máy hiện tại rồi.', false); return; }
+          try { localStorage.setItem(DEVICE_ID_KEY, pasted); }
+          catch (e) { showToast('Không lưu được — trình duyệt đang chặn lưu trữ (chế độ ẩn danh?).', false); return; }
+          showToast('Đã đồng bộ mã thiết bị — nơi này giờ được tính chung với mã vừa dán.', true);
+          renderDeviceTable();
+          runLiveStatusCheck();
+        });
+      }
+      wrap.querySelectorAll('.ts-device-remove').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          showConfirmDialog('Gỡ thiết bị này? Lần chấm công sau từ máy đó sẽ bị coi là thiết bị lạ.', function () {
+            var user = TaskManager.getCurrentUser ? TaskManager.getCurrentUser() : null;
+            var updated = TaskManager.removeMemberDevice(userId, btn.dataset.deviceId, user);
+            if (!updated) showToast('Không gỡ được — mạng đang chập chờn, thử lại sau vài giây.', false);
+            renderDeviceTable();
+          });
+        });
+      });
+      var addBtn = document.getElementById('tsDeviceAddBtn');
+      if (addBtn) {
+        addBtn.addEventListener('click', function () {
+          addBtn.disabled = true;
+          addBtn.textContent = 'Đang đăng ký...';
+          // Tải lại dữ liệu thành viên MỚI NHẤT từ Sheet trước khi ghi — nếu
+          // không, cache cục bộ cũ (chưa thấy thiết bị máy khác vừa đăng ký
+          // trước đó) sẽ khiến máy này tưởng nhầm mình là "thiết bị đầu tiên"
+          // rồi ghi đè mất đăng ký của máy kia (đúng lỗi đã xảy ra trước khi
+          // sửa — xem comment ở DEVICE_ID_KEY).
+          function doRegister() {
+            var user = TaskManager.getCurrentUser ? TaskManager.getCurrentUser() : null;
+            var result = TaskManager.registerMemberDevice(userId, myDeviceId, user, myLabel);
+            renderDeviceTable();
+            if (result && result.ok && result.isNew) {
+              if (result.status === 'pending') {
+                showToast('Đã gửi yêu cầu đăng ký thiết bị — chờ CEO/Quản lý duyệt thì mới dùng để chấm công được.');
+              } else {
+                showToast('Đã đăng ký thiết bị thành công.', true);
+              }
+            } else if (result && result.blocked) {
+              // Trước đây im lặng không báo gì — người dùng bấm hoài không
+              // thấy phản hồi, tưởng nút hỏng ("đăng ký mãi không được").
+              showToast('Không đăng ký được — mạng đang chập chờn, thử lại sau vài giây.', false);
+            } else if (result && result.full) {
+              showToast('Đã đủ ' + MAX_MEMBER_DEVICES_UI + ' thiết bị — gỡ bớt 1 thiết bị cũ trước khi đăng ký máy mới.', false);
+            } else if (!result || !result.ok) {
+              showToast('Không đăng ký được thiết bị, thử lại.', false);
+            }
+          }
+          if (TaskManager.refreshFromGSheets) {
+            TaskManager.refreshFromGSheets(doRegister);
+          } else {
+            doRegister();
+          }
+        });
+      }
+    }
+
+    // helpers
+    function getToday() {
+      var now = new Date();
+      return now.getFullYear() + '-' +
+        String(now.getMonth() + 1).padStart(2, '0') + '-' +
+        String(now.getDate()).padStart(2, '0');
+    }
+
+    function getUserId() {
+      if (typeof Auth !== 'undefined' && Auth.getCurrentUser) {
+        var u = Auth.getCurrentUser();
+        return u ? u.id : 'guest';
+      }
+      return 'guest';
+    }
+
+    function getEntries() {
+      if (typeof TaskManager !== 'undefined' && TaskManager.getTimesheetEntries) {
+        return TaskManager.getTimesheetEntries({ memberId: getUserId() });
+      }
+      return [];
+    }
+
+    function getEntryByDate(dateStr) {
+      var entries = getEntries();
+      for (var i = 0; i < entries.length; i++) {
+        if (entries[i].date === dateStr) return entries[i];
+      }
+      return null;
+    }
+
+    // Clock
+    function updateClock() {
+      var now = new Date();
+      var hh = String(now.getHours()).padStart(2, '0');
+      var mm = String(now.getMinutes()).padStart(2, '0');
+      var ss = String(now.getSeconds()).padStart(2, '0');
+      document.getElementById('tsClock').textContent = hh + ':' + mm + ':' + ss;
+      var dow = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'][now.getDay()];
+      document.getElementById('tsDate').textContent = dow + ', ' +
+        now.toLocaleDateString('vi-VN', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    // Chấm công theo ca sáng/chiều — 2 khối nút độc lập, xem
+    // shiftCheckIn()/shiftCheckOut() trong task-data.js.
+    function shiftVnLabel(shift) { return shift === 'morning' ? 'Sáng' : 'Chiều'; }
+
+    function renderShiftBlock(shift, record) {
+      var btn = document.getElementById(shift === 'morning' ? 'tsMorningBtn' : 'tsAfternoonBtn');
+      var status = document.getElementById(shift === 'morning' ? 'tsMorningStatus' : 'tsAfternoonStatus');
+      var inTime = record && record[shift + 'Checkin'];
+      var outTime = record && record[shift + 'Checkout'];
+      var label = shiftVnLabel(shift);
+
+      if (shift === 'afternoon' && !(record && record.morningCheckout)) {
+        btn.textContent = 'Check In Chiều';
+        btn.className = 'ts-checkin-btn in';
+        btn.disabled = true;
+        status.className = 'ts-checkin-status idle';
+        status.textContent = 'Hoàn thành ca sáng trước';
+        return;
+      }
+
+      if (outTime) {
+        btn.textContent = 'Đã hoàn thành';
+        btn.disabled = true;
+        btn.className = 'ts-checkin-btn done';
+        status.className = 'ts-checkin-status working' + (record.isLate || record.isEarly ? ' late' : '');
+        status.innerHTML = '✓ Vào: ' + inTime + ' &nbsp;|&nbsp; Ra: ' + outTime +
+          (record.isLate ? ' <strong>(đi muộn)</strong>' : '') + (record.isEarly ? ' <strong>(về sớm)</strong>' : '');
+      } else if (inTime) {
+        btn.textContent = 'Check Out ' + label;
+        btn.className = 'ts-checkin-btn out';
+        btn.disabled = false;
+        status.className = 'ts-checkin-status working' + (record.isLate ? ' late' : '');
+        status.textContent = 'Đang làm việc từ ' + inTime + (record.isLate ? ' (đi muộn)' : '');
+      } else {
+        btn.textContent = 'Check In ' + label;
+        btn.className = 'ts-checkin-btn in';
+        btn.disabled = false;
+        status.className = 'ts-checkin-status idle';
+        status.textContent = 'Chưa check-in ca ' + label.toLowerCase();
+      }
+    }
+
+    function updateShiftUI() {
+      var record = getEntryByDate(getToday());
+      renderShiftBlock('morning', record);
+      renderShiftBlock('afternoon', record);
+      // Reset nhãn/viền ô lý do về mặc định — tự bật lại "bắt buộc" ở lần
+      // bấm chấm công kế tiếp nếu vẫn đang muộn/sớm (xem requireLateEarlyNote()).
+      var noteLabel = document.getElementById('tsNoteLabel');
+      var noteInput = document.getElementById('tsCheckinNote');
+      if (noteLabel) noteLabel.textContent = 'Ghi chú (tuỳ chọn)';
+      if (noteInput) noteInput.style.borderColor = '';
+      updateStats();
+    }
+
+    // Giờ làm việc chuẩn — tải 1 lần/phiên trang (không cache localStorage,
+    // TaskManager.getWorkSchedule() đã tự cache 30s ở tầng dưới), dùng làm
+    // mốc tính đi muộn/về sớm mỗi lần chấm công theo ca.
+    var workScheduleCache = null;
+    function loadWorkSchedule(callback) {
+      if (workScheduleCache) { callback(workScheduleCache); return; }
+      if (typeof TaskManager === 'undefined' || !TaskManager.getWorkSchedule) {
+        callback({ morningStart: '07:30', morningEnd: '11:30', afternoonStart: '13:30', afternoonEnd: '17:30' });
+        return;
+      }
+      TaskManager.getWorkSchedule(function (ws) { workScheduleCache = ws; callback(ws); });
+    }
+
+    // vi-VN đôi khi trả giờ dạng "07.30" (dấu chấm) thay vì "07:30" tuỳ trình
+    // duyệt — chuẩn hoá về ":" trước khi so sánh, y hệt cách checkOut() cũ đã
+    // xử lý khi parse Date().
+    function normalizeHM(t) { return String(t || '').trim().replace(/\./g, ':'); }
+    function nowHM() { return new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }); }
+
+    // kind: 'in' (check-in — muộn nếu SAU giờ vào chuẩn) hoặc 'out' (check-out
+    // — sớm nếu TRƯỚC giờ ra chuẩn). So sánh chuỗi "HH:MM" (zero-pad 2 số) —
+    // đúng thứ tự lexicographic y hệt so số, không cần parse Date.
+    function isLateOrEarly(shift, kind, timeStr, ws) {
+      var time = normalizeHM(timeStr);
+      if (kind === 'in') {
+        var start = normalizeHM(ws[shift + 'Start']);
+        return !!start && time > start;
+      }
+      var end = normalizeHM(ws[shift + 'End']);
+      return !!end && time < end;
+    }
+
+    // Bắt nhập lý do TRƯỚC KHI cho chấm công tiếp khi phát hiện muộn/sớm —
+    // chặn ngay ở đây (trước khi tốn công chạy verifyThenProceed) nếu ô Ghi
+    // chú đang trống, đồng thời đổi nhãn ô để người dùng biết đang cần nhập
+    // gì (không chỉ 1 câu toast thoáng qua rồi mất).
+    function requireLateEarlyNote(kind) {
+      var noteInput = document.getElementById('tsCheckinNote');
+      var noteLabel = document.getElementById('tsNoteLabel');
+      var val = noteInput ? noteInput.value.trim() : '';
+      if (val) return true;
+      if (noteLabel) noteLabel.textContent = kind === 'late' ? 'Lý do đi muộn (bắt buộc)' : 'Lý do về sớm (bắt buộc)';
+      if (noteInput) { noteInput.style.borderColor = '#A04848'; noteInput.focus(); }
+      showToast(kind === 'late' ? 'Bạn đang vào ca muộn — nhập lý do rồi mới chấm công tiếp được.' : 'Bạn đang ra ca sớm — nhập lý do rồi mới chấm công tiếp được.', false);
+      return false;
+    }
+
+    function updateStats() {
+      var entries = getEntries();
+      var totalDays = 0, totalHours = 0, overtimeHours = 0;
+      for (var i = 0; i < entries.length; i++) {
+        var r = entries[i];
+        if (r.checkoutTime) {
+          totalDays++;
+          totalHours += parseFloat(r.totalHours) || 0;
+          overtimeHours += parseFloat(r.overtimeHours) || 0;
+        }
+      }
+      document.getElementById('tsTotalDays').textContent = totalDays;
+      document.getElementById('tsTotalHours').textContent = totalHours.toFixed(1) + 'h';
+      document.getElementById('tsOvertime').textContent = overtimeHours.toFixed(1) + 'h';
+      document.getElementById('tsAvgHours').textContent = totalDays > 0 ? (totalHours / totalDays).toFixed(1) + 'h' : '0h';
+    }
+
+    // Chấm công theo ca — thay cho checkIn()/checkOut() 1-lần/ngày cũ. Logic
+    // ghi thật (tính lại tổng giờ, gửi thông báo muộn/sớm tới Founder/CEO/
+    // Quản lý) nằm trong TaskManager.shiftCheckIn()/shiftCheckOut()
+    // (task-data.js) — ở đây chỉ gom dữ liệu verify + gọi xuống.
+    function doShiftCheckIn(shift, time, late, geoResult, ipResult, deviceResult) {
+      geoResult = geoResult || { skip: true };
+      ipResult = ipResult || { skip: true };
+      deviceResult = deviceResult || { skip: true };
+      var noteInput = document.getElementById('tsCheckinNote');
+      var user = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
+      var fields = {
+        time: time,
+        isLate: late,
+        lateEarlyNote: late && noteInput ? noteInput.value.trim() : '',
+        verify: {
+          checkinLat: geoResult.lat || '',
+          checkinLng: geoResult.lng || '',
+          checkinDistance: geoResult.distance || '',
+          checkinIp: ipResult.ip || '',
+          checkinDeviceId: getOrCreateDeviceId() || '',
+          geoPass: geoResult.skip ? '' : (geoResult.ok ? 'TRUE' : 'FALSE'),
+          ipPass: ipResult.skip ? '' : (ipResult.ok ? 'TRUE' : 'FALSE'),
+          devicePass: deviceResult.skip ? '' : (deviceResult.ok ? 'TRUE' : 'FALSE')
+        }
+      };
+      if (typeof TaskManager !== 'undefined' && TaskManager.shiftCheckIn) {
+        TaskManager.shiftCheckIn(getUserId(), shift, fields, user);
+      }
+      if (noteInput && late) noteInput.value = '';
+      setGeoStatus(null);
+      updateShiftUI();
+      renderCalendar();
+    }
+
+    function doShiftCheckOut(shift, time, early) {
+      var noteInput = document.getElementById('tsCheckinNote');
+      var user = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
+      var fields = { time: time, isEarly: early, lateEarlyNote: early && noteInput ? noteInput.value.trim() : '' };
+      if (typeof TaskManager !== 'undefined' && TaskManager.shiftCheckOut) {
+        TaskManager.shiftCheckOut(getUserId(), shift, fields, user);
+      }
+      if (noteInput && early) noteInput.value = '';
+      updateShiftUI();
+      renderCalendar();
+    }
+
+    // Calendar — weeks start on Monday (ISO)
+    function renderCalendar() {
+      var grid = document.getElementById('tsCalGrid');
+      var title = document.getElementById('tsCalTitle');
+      title.textContent = 'Tháng ' + calMonth + '/' + calYear;
+
+      // Day headers — T2 first (ISO week)
+      var dayNames = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+      var html = '';
+      for (var d = 0; d < 7; d++) {
+        html += '<div class="ts-cal-day-header">' + dayNames[d] + '</div>';
+      }
+
+      var firstDay = new Date(calYear, calMonth - 1, 1);
+      // getDay(): 0=Sun,1=Mon,... → ISO: Mon=0
+      var startDay = (firstDay.getDay() + 6) % 7; // Mon=0
+
+      var lastDay = new Date(calYear, calMonth, 0).getDate();
+      var today = getToday();
+      var entries = getEntries();
+
+      // Prev month padding
+      var prevMonth = new Date(calYear, calMonth - 1, 0).getDate();
+      for (var p = startDay - 1; p >= 0; p--) {
+        html += '<div class="ts-cal-day other-month"><span class="ts-day-num">' + (prevMonth - p) + '</span></div>';
+      }
+
+      // Current month
+      for (var day = 1; day <= lastDay; day++) {
+        var dateStr = calYear + '-' + String(calMonth).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+        var isToday = dateStr === today;
+        var record = null;
+        for (var k = 0; k < entries.length; k++) {
+          if (entries[k].date === dateStr && entries[k].checkinTime) {
+            record = entries[k];
+            break;
+          }
+        }
+        var dayOfWeek = new Date(dateStr).getDay();
+        var isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+        var cls = 'ts-cal-day';
+        if (isToday) cls += ' today';
+        if (record) cls += record.checkoutTime ? ' checked' : ' partial-check';
+        if (isWeekend) cls += ' other-month';
+
+        var dot = '';
+        if (record) {
+          dot = '<span class="ts-day-dot">' + (record.checkoutTime ? '●' : '○') + '</span>';
+        }
+
+        html += '<div class="' + cls + '" data-date="' + dateStr + '">' +
+          '<span class="ts-day-num">' + day + '</span>' + dot + '</div>';
+      }
+
+      // Next month padding to complete grid
+      var totalCells = startDay + lastDay;
+      var remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+      for (var n = 1; n <= remaining; n++) {
+        html += '<div class="ts-cal-day other-month"><span class="ts-day-num">' + n + '</span></div>';
+      }
+
+      grid.innerHTML = html;
+
+      // Click to view day detail
+      grid.querySelectorAll('.ts-cal-day:not(.other-month)').forEach(function(cell) {
+        cell.addEventListener('click', function() {
+          var dateStr = cell.dataset.date;
+          showDayDetail(dateStr);
+        });
+      });
+    }
+
+    function showDayDetail(dateStr) {
+      var detail = document.getElementById('tsDayDetail');
+      var d = new Date(dateStr + 'T00:00:00');
+      var dow = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][d.getDay()];
+      document.getElementById('tsDetailDate').textContent =
+        dow + ', ' + d.toLocaleDateString('vi-VN', { day: 'numeric', month: 'long', year: 'numeric' });
+
+      var record = getEntryByDate(dateStr);
+      var badge = document.getElementById('tsDetailBadge');
+      var detailIn = document.getElementById('tsDetailIn');
+      var detailOut = document.getElementById('tsDetailOut');
+      var detailTotal = document.getElementById('tsDetailTotal');
+      var detailOT = document.getElementById('tsDetailOT');
+      var detailNote = document.getElementById('tsDetailNote');
+      var noteEditBtn = document.getElementById('tsDetailNoteEditBtn');
+      var lateEarlyEl = document.getElementById('tsDetailLateEarly');
+
+      if (record && (record.isLate || record.isEarly)) {
+        var parts = [];
+        if (record.isLate) parts.push('Đi muộn');
+        if (record.isEarly) parts.push('Về sớm');
+        lateEarlyEl.className = 'ts-checkin-status ' + (record.isLate ? 'late' : 'early');
+        lateEarlyEl.textContent = parts.join(' · ') + (record.lateEarlyNote ? ' — ' + record.lateEarlyNote : '');
+        lateEarlyEl.hidden = false;
+      } else {
+        lateEarlyEl.hidden = true;
+      }
+
+      if (record && record.checkoutTime) {
+        badge.className = 'ts-detail-badge full';
+        badge.textContent = 'Đã chấm đủ';
+        detailIn.textContent = record.checkinTime;
+        detailOut.textContent = record.checkoutTime;
+        detailTotal.textContent = record.totalHours + 'h';
+        detailOT.textContent = record.overtimeHours > 0 ? record.overtimeHours + 'h' : '—';
+        detailNote.textContent = record.note || '—';
+      } else if (record) {
+        badge.className = 'ts-detail-badge partial';
+        badge.textContent = 'Chỉ check-in';
+        detailIn.textContent = record.checkinTime;
+        detailOut.textContent = '—';
+        detailTotal.textContent = 'Đang làm';
+        detailOT.textContent = '—';
+        detailNote.textContent = record.note || '—';
+      } else {
+        badge.className = 'ts-detail-badge none';
+        badge.textContent = 'Chưa chấm';
+        detailIn.textContent = '—';
+        detailOut.textContent = '—';
+        detailTotal.textContent = '—';
+        detailOT.textContent = '—';
+        detailNote.textContent = '—';
+      }
+
+      // Chỉ cho sửa ghi chú khi ngày đó đã có bản ghi chấm công thật (có id để
+      // update) — chưa chấm công thì chưa có gì để gắn ghi chú vào.
+      closeNoteEditor();
+      currentDetailRecord = record;
+      noteEditBtn.hidden = !record;
+
+      detail.style.display = 'block';
+      detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // ---- Sửa ghi chú của 1 ngày đã chấm công (từ Day detail) ----
+    var currentDetailRecord = null;
+
+    function closeNoteEditor() {
+      var form = document.getElementById('tsDetailNoteForm');
+      var value = document.getElementById('tsDetailNote');
+      var editBtn = document.getElementById('tsDetailNoteEditBtn');
+      form.hidden = true;
+      value.hidden = false;
+      if (currentDetailRecord) editBtn.hidden = false;
+    }
+
+    document.getElementById('tsDetailNoteEditBtn').addEventListener('click', function () {
+      if (!currentDetailRecord) return;
+      var form = document.getElementById('tsDetailNoteForm');
+      var value = document.getElementById('tsDetailNote');
+      var input = document.getElementById('tsDetailNoteInput');
+      input.value = currentDetailRecord.note || '';
+      value.hidden = true;
+      form.hidden = false;
+      this.hidden = true;
+      input.focus();
+    });
+
+    document.getElementById('tsDetailNoteCancelBtn').addEventListener('click', closeNoteEditor);
+
+    document.getElementById('tsDetailNoteSaveBtn').addEventListener('click', function () {
+      if (!currentDetailRecord || !currentDetailRecord.id) return;
+      var newNote = document.getElementById('tsDetailNoteInput').value.trim();
+      var updated = TaskManager.updateTimesheetEntry(currentDetailRecord.id, { note: newNote });
+      currentDetailRecord = updated || Object.assign({}, currentDetailRecord, { note: newNote });
+      document.getElementById('tsDetailNote').textContent = currentDetailRecord.note || '—';
+      closeNoteEditor();
+    });
+
+    // Chạy đủ cả 3 điều kiện (GPS / Wifi công ty / Thiết bị đã đăng ký) rồi
+    // mới cho phép tiếp tục — dùng chung cho CẢ Check In lẫn Check Out, vì
+    // trước đây Check Out chỉ kiểm tra mỗi Thiết bị (bỏ qua hẳn GPS/Wifi) nên
+    // dù 2/3 điều kiện fail vẫn check-out được bình thường — đây là bug đã
+    // sửa (2026-09-10). Chỉ tính điều kiện đang BẬT (GPS/Wifi có thể tắt qua
+    // GEO_RESTRICTION/IP_RESTRICTION, Thiết bị luôn bật). 2026-09-11: siết từ
+    // "tối thiểu 2/3, thiếu thì hỏi xác nhận thủ công để bỏ qua" lên **BẮT
+    // BUỘC ĐẠT ĐỦ 100% các điều kiện đang bật** — thiếu bất kỳ điều kiện nào
+    // đều CHẶN HẲN, chỉ hiện bảng thông báo (showFailNotice) liệt kê điều
+    // kiện nào chưa đạt, không còn đường nào bỏ qua để chấm công.
+    // 2026-09-19: nhận thêm `btn` — trước đây hardcode `#tsCheckinBtn` (1 nút
+    // chấm công duy nhất/ngày), giờ có 2 nút riêng theo ca (sáng/chiều) nên
+    // phải biết ĐÚNG nút nào vừa được bấm để khoá/hiện "Đang kiểm tra..." lên
+    // đúng chỗ, không đụng tới nút của ca kia.
+    function verifyThenProceed(btn, onPass) {
+      var originalText = btn.textContent;
+      setGeoStatus(null);
+      btn.disabled = true;
+      btn.textContent = 'Đang kiểm tra...';
+
+      Promise.all([checkGeoStatus(), checkIpStatus()]).then(function (results) {
+        var geoResult = results[0], ipResult = results[1];
+        var deviceResult = checkDeviceStatus();
+        renderVerifyRow('tsVerifyGeoDot', 'tsVerifyGeoState', geoResult, 'tsGeoRetryBtn');
+        renderVerifyRow('tsVerifyIpDot', 'tsVerifyIpState', ipResult);
+        renderVerifyRow('tsVerifyDeviceDot', 'tsVerifyDeviceState', deviceResult);
+        btn.disabled = false;
+        btn.textContent = originalText;
+
+        var checks = [geoResult, ipResult, deviceResult].filter(function (r) { return !r.skip; });
+        if (checks.length === 0) { onPass(geoResult, ipResult, deviceResult); return; }
+
+        var passCount = checks.filter(function (r) { return r.ok; }).length;
+        if (passCount === checks.length) {
+          onPass(geoResult, ipResult, deviceResult);
+        } else {
+          showFailNotice(geoResult, ipResult, deviceResult);
+        }
+      });
+    }
+
+    // ===== Xuất báo cáo chấm công CẢ CÔNG TY (chỉ CEO thấy nút) =====
+    // 1 sheet "Tổng hợp" (mọi nhân viên, số liệu gộp cả tháng) + 1 sheet
+    // riêng cho từng người (đủ mọi ngày trong tháng, kể cả ngày chưa/không
+    // chấm công) — dùng ExcelJS, cùng thư viện + phong cách (viền, màu
+    // header tối) đã dùng cho "Xuất Excel" ở Gantt (xem gantt.js).
+    function tsDaysInMonth(year, month) { return new Date(year, month, 0).getDate(); }
+    function tsDow(dateObj) {
+      var names = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+      return names[dateObj.getDay()];
+    }
+    function tsIsWeekend(dateObj) { var d = dateObj.getDay(); return d === 0 || d === 6; }
+    function tsBorderAll() {
+      var s = { style: 'thin', color: { argb: 'FFD9D9D9' } };
+      return { top: s, left: s, bottom: s, right: s };
+    }
+    function tsHeaderCell(cell, label) {
+      cell.value = label;
+      cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF22272E' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+      cell.border = tsBorderAll();
+    }
+
+    function exportAttendanceReport() {
+      if (typeof ExcelJS === 'undefined') { alert('Thư viện xuất Excel chưa tải xong, thử lại sau vài giây.'); return; }
+      var btn = document.getElementById('tsExportBtn');
+      var originalHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.textContent = 'Đang xuất...';
+
+      function restoreBtn() { btn.disabled = false; btn.innerHTML = originalHtml; }
+
+      try {
+        var members = (typeof TaskManager !== 'undefined' && TaskManager.getMembers ? TaskManager.getMembers() : [])
+          .filter(function (m) { return !m.status || m.status === 'active'; });
+        var allEntries = (typeof TaskManager !== 'undefined' && TaskManager.getTimesheetEntries)
+          ? TaskManager.getTimesheetEntries({ year: calYear, month: calMonth })
+          : [];
+        var entriesByMember = {};
+        allEntries.forEach(function (e) {
+          if (!entriesByMember[e.memberId]) entriesByMember[e.memberId] = {};
+          entriesByMember[e.memberId][e.date] = e;
+        });
+
+        var nDays = tsDaysInMonth(calYear, calMonth);
+        var todayKey = getToday();
+
+        var wb = new ExcelJS.Workbook();
+        wb.creator = 'HICONIQUE Internal Hub';
+        wb.created = new Date();
+
+        // ----- Sheet "Tổng hợp" -----
+        var wsSum = wb.addWorksheet('Tổng hợp', { views: [{ state: 'frozen', ySplit: 2 }] });
+        wsSum.mergeCells(1, 1, 1, 7);
+        var sumTitle = wsSum.getCell(1, 1);
+        sumTitle.value = 'BÁO CÁO CHẤM CÔNG THÁNG ' + calMonth + '/' + calYear + ' — HICONIQUE VIETNAM';
+        sumTitle.font = { bold: true, size: 13, color: { argb: 'FF0B0D10' } };
+        wsSum.getRow(1).height = 24;
+
+        var sumHeaders = ['Mã NV', 'Họ tên', 'Chức vụ', 'Ngày công', 'Tổng giờ làm', 'Giờ tăng ca', 'Số lần quên check-out'];
+        sumHeaders.forEach(function (label, i) { tsHeaderCell(wsSum.getCell(2, i + 1), label); });
+        wsSum.getRow(2).height = 26;
+        [14, 22, 18, 11, 13, 12, 18].forEach(function (w, i) { wsSum.getColumn(i + 1).width = w; });
+
+        var sr = 3;
+        members.forEach(function (m) {
+          var byDate = entriesByMember[m.id] || {};
+          var workDays = 0, totalHours = 0, overtimeHours = 0, forgotCount = 0;
+          Object.keys(byDate).forEach(function (dk) {
+            var e = byDate[dk];
+            if (e.checkoutTime) {
+              workDays++;
+              totalHours += parseFloat(e.totalHours) || 0;
+              overtimeHours += parseFloat(e.overtimeHours) || 0;
+            }
+            if (e.note && e.note.indexOf(TS_AUTO_CHECKOUT_TAG) !== -1) forgotCount++;
+          });
+          var rowVals = [m.id, m.name || '', m.role || '', workDays, Math.round(totalHours * 10) / 10, Math.round(overtimeHours * 10) / 10, forgotCount];
+          rowVals.forEach(function (val, i) {
+            var cell = wsSum.getCell(sr, i + 1);
+            cell.value = val;
+            cell.font = { size: 10, bold: i === 6 && val > 0, color: { argb: i === 6 && val > 0 ? 'FFA04848' : 'FF14181D' } };
+            cell.alignment = { horizontal: i === 1 || i === 2 ? 'left' : 'center', vertical: 'middle' };
+            cell.border = tsBorderAll();
+          });
+          sr++;
+        });
+
+        // ----- 1 sheet chi tiết / người — đủ mọi ngày trong tháng -----
+        var usedSheetNames = {};
+        members.forEach(function (m) {
+          var base = (m.name || m.id).replace(/[\\\/\?\*\[\]:]/g, ' ').trim().slice(0, 28) || m.id;
+          var sheetName = base, n = 2;
+          while (usedSheetNames[sheetName]) { sheetName = (base + ' ' + n).slice(0, 31); n++; }
+          usedSheetNames[sheetName] = true;
+
+          var ws = wb.addWorksheet(sheetName, { views: [{ state: 'frozen', ySplit: 2 }] });
+          ws.mergeCells(1, 1, 1, 8);
+          var t = ws.getCell(1, 1);
+          t.value = (m.name || m.id) + (m.role ? ' — ' + m.role : '') + ' — Tháng ' + calMonth + '/' + calYear;
+          t.font = { bold: true, size: 12, color: { argb: 'FF0B0D10' } };
+          ws.getRow(1).height = 22;
+
+          var headers = ['Ngày', 'Thứ', 'Check-in', 'Check-out', 'Trạng thái', 'Muộn/Sớm', 'Tổng giờ', 'Giờ OT', 'Ghi chú / Lỗi'];
+          headers.forEach(function (label, i) { tsHeaderCell(ws.getCell(2, i + 1), label); });
+          ws.getRow(2).height = 24;
+          [12, 6, 10, 10, 17, 22, 10, 9, 42].forEach(function (w, i) { ws.getColumn(i + 1).width = w; });
+
+          var byDate = entriesByMember[m.id] || {};
+          for (var d = 1; d <= nDays; d++) {
+            var dateStr = calYear + '-' + String(calMonth).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+            // Dùng Date.UTC để tránh ExcelJS đọc ngày lệch 1 ngày ở múi giờ UTC+7 (Việt Nam) —
+            // Date thường (local midnight) khi ExcelJS đọc component UTC sẽ bị lùi về hôm trước.
+            var dateObj = new Date(Date.UTC(calYear, calMonth - 1, d));
+            var weekend = tsIsWeekend(dateObj);
+            var e = byDate[dateStr];
+            var status = '', note = '', checkin = '', checkout = '', hours = '', ot = '', lateEarly = '';
+
+            if (e) {
+              checkin = e.checkinTime || '';
+              checkout = e.checkoutTime || '';
+              hours = e.checkoutTime ? (parseFloat(e.totalHours) || 0) : '';
+              ot = e.checkoutTime ? (parseFloat(e.overtimeHours) || 0) : '';
+              note = e.note || '';
+              var leParts = [];
+              if (e.isLate) leParts.push('Đi muộn');
+              if (e.isEarly) leParts.push('Về sớm');
+              lateEarly = leParts.join(' + ') + (leParts.length && e.lateEarlyNote ? ' (' + e.lateEarlyNote + ')' : '');
+              if (note.indexOf(TS_AUTO_CHECKOUT_TAG) !== -1) {
+                status = 'Quên check-out';
+              } else if (e.checkoutTime) {
+                status = 'Đi làm';
+              } else {
+                status = dateStr === todayKey ? 'Đang làm' : 'Chưa check-out';
+              }
+            } else if (dateStr > todayKey) {
+              status = '';
+            } else if (weekend) {
+              status = 'Cuối tuần';
+            } else {
+              status = 'Chưa chấm công';
+              note = 'Không có dữ liệu chấm công — kiểm tra lại (có thể nghỉ phép hoặc quên chấm công)';
+            }
+
+            var r = 2 + d;
+            var rowVals = [dateObj, tsDow(dateObj), checkin, checkout, status, lateEarly, hours, ot, note];
+            rowVals.forEach(function (val, i) {
+              var cell = ws.getCell(r, i + 1);
+              cell.value = val;
+              if (i === 0) cell.numFmt = 'dd/mm/yyyy';
+              cell.font = { size: 9.5, color: { argb: i === 5 && lateEarly ? 'FFA04848' : 'FF14181D' } };
+              cell.alignment = { horizontal: i === 8 ? 'left' : 'center', vertical: 'middle', wrapText: i === 8 };
+              cell.border = tsBorderAll();
+            });
+            var statusCell = ws.getCell(r, 5);
+            if (status === 'Quên check-out' || status === 'Chưa chấm công') {
+              statusCell.font = { size: 9.5, bold: true, color: { argb: 'FFA04848' } };
+            } else if (status === 'Đi làm') {
+              statusCell.font = { size: 9.5, bold: true, color: { argb: 'FF4F6F52' } };
+            } else if (status === 'Cuối tuần') {
+              statusCell.font = { size: 9.5, color: { argb: 'FF9AA0A8' } };
+            }
+            if (weekend) {
+              [1, 2].forEach(function (i) { ws.getCell(r, i).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F5F5' } }; });
+            }
+          }
+        });
+
+        wb.xlsx.writeBuffer().then(function (buffer) {
+          var blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url;
+          a.download = 'Cham-cong-HICONIQUE-Thang' + calMonth + '-' + calYear + '.xlsx';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+          restoreBtn();
+        }).catch(function (err) {
+          console.error('Xuất báo cáo chấm công thất bại:', err);
+          alert('Xuất báo cáo thất bại. Vui lòng thử lại.');
+          restoreBtn();
+        });
+      } catch (err) {
+        console.error('Xuất báo cáo chấm công thất bại:', err);
+        alert('Xuất báo cáo thất bại. Vui lòng thử lại.');
+        restoreBtn();
+      }
+    }
+
+    function bindExportAttendanceBtn() {
+      var btn = document.getElementById('tsExportBtn');
+      if (!btn) return;
+      var user = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
+      if (!user || user.roleLevel !== 'admin') return; // giữ hidden — chỉ CEO thấy nút này
+      btn.hidden = false;
+      btn.addEventListener('click', exportAttendanceReport);
+    }
+
+    // ====== Báo cáo chấm công trực tiếp (CHỈ CEO) — modal xem ngay trong
+    // trang, không cần tải file Excel, dùng chung logic tính toán với
+    // exportAttendanceReport() (workDays/totalHours/overtimeHours/forgotCount)
+    // nhưng vẽ ra biểu đồ Chart.js + bảng thay vì ghi vào file .xlsx. ======
+    var tsReportCharts = {};
+    function tsDestroyReportCharts() {
+      Object.keys(tsReportCharts).forEach(function (k) { if (tsReportCharts[k]) tsReportCharts[k].destroy(); });
+      tsReportCharts = {};
+    }
+    function tsCssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+    var reportMonth = calMonth;
+    var reportYear = calYear;
+
+    function renderAttendanceReportModal() {
+      var monthLabel = document.getElementById('tsReportMonthLabel');
+      if (monthLabel) monthLabel.textContent = 'Tháng ' + reportMonth + '/' + reportYear;
+
+      var members = (typeof TaskManager !== 'undefined' && TaskManager.getMembers ? TaskManager.getMembers() : [])
+        .filter(function (m) { return !m.status || m.status === 'active'; });
+      var allEntries = (typeof TaskManager !== 'undefined' && TaskManager.getTimesheetEntries)
+        ? TaskManager.getTimesheetEntries({ year: reportYear, month: reportMonth })
+        : [];
+      var entriesByMember = {};
+      allEntries.forEach(function (e) {
+        if (!entriesByMember[e.memberId]) entriesByMember[e.memberId] = {};
+        entriesByMember[e.memberId][e.date] = e;
+      });
+
+      var nDays = tsDaysInMonth(reportYear, reportMonth);
+      var todayKey = getToday();
+
+      var perMember = members.map(function (m) {
+        var byDate = entriesByMember[m.id] || {};
+        var workDays = 0, totalHours = 0, overtimeHours = 0, forgotCount = 0;
+        Object.keys(byDate).forEach(function (dk) {
+          var e = byDate[dk];
+          if (e.checkoutTime) {
+            workDays++;
+            totalHours += parseFloat(e.totalHours) || 0;
+            overtimeHours += parseFloat(e.overtimeHours) || 0;
+          }
+          if (e.note && e.note.indexOf(TS_AUTO_CHECKOUT_TAG) !== -1) forgotCount++;
+        });
+        return { member: m, workDays: workDays, totalHours: totalHours, overtimeHours: overtimeHours, forgotCount: forgotCount };
+      });
+
+      var sumDays = perMember.reduce(function (s, r) { return s + r.workDays; }, 0);
+      var sumHours = perMember.reduce(function (s, r) { return s + r.totalHours; }, 0);
+      var sumOT = perMember.reduce(function (s, r) { return s + r.overtimeHours; }, 0);
+      var sumForgot = perMember.reduce(function (s, r) { return s + r.forgotCount; }, 0);
+
+      var statGrid = document.getElementById('tsReportStatGrid');
+      if (statGrid) {
+        statGrid.innerHTML =
+          '<div class="report-stat"><span class="report-stat-label">Tổng ngày công</span><span class="report-stat-value">' + sumDays + '</span></div>'
+          + '<div class="report-stat"><span class="report-stat-label">Tổng giờ làm</span><span class="report-stat-value">' + (Math.round(sumHours * 10) / 10) + 'h</span></div>'
+          + '<div class="report-stat"><span class="report-stat-label">Tổng giờ OT</span><span class="report-stat-value" style="color:var(--ts-bronze)">' + (Math.round(sumOT * 10) / 10) + 'h</span></div>'
+          + '<div class="report-stat"><span class="report-stat-label">Quên check-out</span><span class="report-stat-value" style="' + (sumForgot ? 'color:var(--ts-danger)' : '') + '">' + sumForgot + '</span></div>';
+      }
+
+      // ----- Trạng thái ngày công cả công ty (member × ngày trong tháng) -----
+      var statusCounts = { work: 0, forgot: 0, missing: 0, weekend: 0, future: 0 };
+      members.forEach(function (m) {
+        var byDate = entriesByMember[m.id] || {};
+        for (var d = 1; d <= nDays; d++) {
+          var dateStr = reportYear + '-' + String(reportMonth).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+          var dateObj = new Date(Date.UTC(reportYear, reportMonth - 1, d));
+          var weekend = tsIsWeekend(dateObj);
+          var e = byDate[dateStr];
+          if (e) {
+            if (e.note && e.note.indexOf(TS_AUTO_CHECKOUT_TAG) !== -1) statusCounts.forgot++;
+            else statusCounts.work++;
+          } else if (dateStr > todayKey) {
+            statusCounts.future++;
+          } else if (weekend) {
+            statusCounts.weekend++;
+          } else {
+            statusCounts.missing++;
+          }
+        }
+      });
+
+      tsDestroyReportCharts();
+      if (typeof Chart !== 'undefined') {
+        var statusEl = document.getElementById('tsReportStatusChart');
+        if (statusEl) {
+          tsReportCharts.status = new Chart(statusEl, {
+            type: 'doughnut',
+            data: {
+              labels: ['Đi làm', 'Quên check-out', 'Chưa chấm công', 'Cuối tuần'],
+              datasets: [{
+                data: [statusCounts.work, statusCounts.forgot, statusCounts.missing, statusCounts.weekend],
+                backgroundColor: [tsCssVar('--ts-success'), tsCssVar('--ts-danger'), '#DC2626', tsCssVar('--ts-muted')],
+                borderWidth: 0
+              }]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false, cutout: '62%',
+              plugins: { legend: { position: 'bottom', labels: { color: tsCssVar('--ts-muted'), boxWidth: 10, font: { size: 11 } } } }
+            }
+          });
+        }
+
+        var hoursEl = document.getElementById('tsReportHoursChart');
+        var hoursWrap = document.getElementById('tsReportHoursWrap');
+        if (hoursEl) {
+          if (hoursWrap) hoursWrap.style.height = Math.max(190, perMember.length * 30) + 'px';
+          tsReportCharts.hours = new Chart(hoursEl, {
+            type: 'bar',
+            data: {
+              labels: perMember.map(function (r) { return r.member.name || r.member.id; }),
+              datasets: [
+                { label: 'Giờ làm', data: perMember.map(function (r) { return Math.round(r.totalHours * 10) / 10; }), backgroundColor: tsCssVar('--ts-bronze'), stack: 's', borderRadius: 4 },
+                { label: 'Giờ OT', data: perMember.map(function (r) { return Math.round(r.overtimeHours * 10) / 10; }), backgroundColor: '#C7A464', stack: 's', borderRadius: 4 }
+              ]
+            },
+            options: {
+              indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+              plugins: { legend: { position: 'bottom', labels: { color: tsCssVar('--ts-muted'), boxWidth: 10, font: { size: 11 } } } },
+              scales: {
+                x: { stacked: true, beginAtZero: true, ticks: { color: tsCssVar('--ts-muted'), font: { size: 11 } }, grid: { color: tsCssVar('--ts-border') } },
+                y: { stacked: true, ticks: { color: tsCssVar('--ts-muted'), font: { size: 11 } }, grid: { display: false } }
+              }
+            }
+          });
+        }
+      }
+
+      var byMemberEl = document.getElementById('tsReportByMember');
+      if (byMemberEl) {
+        byMemberEl.innerHTML = perMember.length === 0 ? '<div class="report-empty">Chưa có nhân viên nào.</div>' : perMember.map(function (r) {
+          var m = r.member;
+          return '<div class="report-row">'
+            + '<div class="report-row-name"><span class="report-avatar" style="background:' + (m.color || '#6B7280') + '">' + (m.avatar || (m.name || '?').substring(0, 2).toUpperCase()) + '</span><span>' + (m.name || m.id) + '</span></div>'
+            + '<div class="report-row-meta">' + r.workDays + ' ngày · ' + (Math.round(r.totalHours * 10) / 10) + 'h' + (r.overtimeHours ? ' · OT ' + (Math.round(r.overtimeHours * 10) / 10) + 'h' : '') + (r.forgotCount ? ' · ' + r.forgotCount + ' lần quên checkout' : '') + '</div>'
+            + '</div>';
+        }).join('');
+      }
+    }
+
+    function bindAttendanceReportBtn() {
+      var btn = document.getElementById('tsReportBtn');
+      var modal = document.getElementById('tsReportModal');
+      if (!btn || !modal) return;
+      var user = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
+      if (!user || user.roleLevel !== 'admin') return; // giữ hidden — chỉ CEO thấy nút này
+      btn.hidden = false;
+
+      function openModal() { reportMonth = calMonth; reportYear = calYear; modal.classList.add('active'); renderAttendanceReportModal(); }
+      function closeModal() { modal.classList.remove('active'); }
+
+      btn.addEventListener('click', openModal);
+      document.getElementById('tsReportModalClose').addEventListener('click', closeModal);
+      modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
+
+      document.getElementById('tsReportPrevMonth').addEventListener('click', function () {
+        reportMonth--;
+        if (reportMonth < 1) { reportMonth = 12; reportYear--; }
+        renderAttendanceReportModal();
+      });
+      document.getElementById('tsReportNextMonth').addEventListener('click', function () {
+        reportMonth++;
+        if (reportMonth > 12) { reportMonth = 1; reportYear++; }
+        renderAttendanceReportModal();
+      });
+
+      bindReportMonthPicker();
+    }
+
+    // Bấm thẳng vào "Tháng X/YYYY" mở bảng chọn nhanh 12 tháng + điều hướng
+    // năm — cùng kiểu với Timeline/Gantt ở projects.js (xem GHI_CHU_DU_AN.md
+    // §6.6, đồng bộ UI dùng chung), tránh phải bấm mũi tên từng bước 1.
+    var reportPickerYear = null;
+    function bindReportMonthPicker() {
+      var picker = document.getElementById('tsReportMonthPicker');
+      var pbtn = document.getElementById('tsReportMonthLabelBtn');
+      var panel = document.getElementById('tsReportMonthPanel');
+      var yearLabel = document.getElementById('tsReportYearLabel');
+      var grid = document.getElementById('tsReportMonthGrid');
+      var yearPrev = document.getElementById('tsReportYearPrev');
+      var yearNext = document.getElementById('tsReportYearNext');
+      if (!picker || !pbtn || !panel || !grid) return;
+
+      var monthNames = ['Th1', 'Th2', 'Th3', 'Th4', 'Th5', 'Th6', 'Th7', 'Th8', 'Th9', 'Th10', 'Th11', 'Th12'];
+
+      function renderGrid() {
+        yearLabel.textContent = reportPickerYear;
+        grid.innerHTML = monthNames.map(function (label, i) {
+          var isCurrent = reportPickerYear === reportYear && (i + 1) === reportMonth;
+          return '<button type="button" class="timeline-month-cell' + (isCurrent ? ' active' : '') + '" data-month="' + i + '">' + label + '</button>';
+        }).join('');
+        grid.querySelectorAll('.timeline-month-cell').forEach(function (cell) {
+          cell.addEventListener('click', function () {
+            reportMonth = parseInt(cell.dataset.month, 10) + 1;
+            reportYear = reportPickerYear;
+            panel.hidden = true;
+            picker.classList.remove('open');
+            renderAttendanceReportModal();
+          });
+        });
+      }
+
+      pbtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var willOpen = panel.hidden;
+        panel.hidden = !willOpen;
+        picker.classList.toggle('open', willOpen);
+        if (willOpen) { reportPickerYear = reportYear; renderGrid(); }
+      });
+      yearPrev.addEventListener('click', function (e) { e.stopPropagation(); reportPickerYear--; renderGrid(); });
+      yearNext.addEventListener('click', function (e) { e.stopPropagation(); reportPickerYear++; renderGrid(); });
+      document.addEventListener('click', function (e) {
+        if (!picker.contains(e.target)) { panel.hidden = true; picker.classList.remove('open'); }
+      });
+    }
+
+    // ====== Quản lý địa điểm GPS/IP (CHỈ CEO/admin) ======
+    // Mọi thay đổi (thêm/sửa/xoá) ghi thẳng xuống sheet "Địa điểm chấm công"
+    // qua TaskManager.*AttendanceLocation() — xem gsheets-api-v2.js. Sau mỗi
+    // thay đổi, xoá attendanceLocationsCache (biến ở đầu file) để lần check-in
+    // kế tiếp trong CÙNG phiên trang lấy đúng danh sách mới, không cần F5.
+    function locTypeLabel(loc) {
+      var hasGeo = loc.lat !== '' && loc.lat != null;
+      var hasIp = !!loc.ip;
+      if (hasGeo && hasIp) return 'GPS + IP';
+      if (hasGeo) return 'GPS';
+      if (hasIp) return 'IP';
+      return '—';
+    }
+
+    function renderLocationList() {
+      var list = document.getElementById('tsLocationList');
+      if (!list) return;
+      list.innerHTML = '<p style="font-size:0.8125rem; color:var(--color-text-muted);">Đang tải...</p>';
+      TaskManager.getAttendanceLocations(function (rows) {
+        attendanceLocationsCache = null; // buộc checkGeoStatus/checkIpStatus tải lại danh sách mới nhất
+        if (!rows || rows.length === 0) {
+          list.innerHTML = '<p style="font-size:0.8125rem; color:var(--color-text-muted);">Chưa có địa điểm nào — thêm ở form phía trên.</p>';
+          return;
+        }
+        list.innerHTML = rows.map(function (loc) {
+          var isOff = loc.active === false;
+          var detail = [];
+          if (loc.lat !== '' && loc.lat != null) detail.push('GPS ' + loc.lat + ', ' + loc.lng + ' (±' + (loc.radiusMeters || 50) + 'm)');
+          if (loc.ip) detail.push('IP ' + loc.ip);
+          return ''
+            + '<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; background:var(--color-bg); border:1px solid var(--color-border); border-radius:10px;' + (isOff ? ' opacity:0.55;' : '') + '">'
+            +   '<div style="min-width:0;">'
+            +     '<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">'
+            +       '<span style="font-weight:600; font-size:0.9375rem;">' + escapeHtmlTs(loc.name || '(chưa đặt tên)') + '</span>'
+            +       '<span class="tl-project" style="font-size:0.6875rem;">' + locTypeLabel(loc) + '</span>'
+            +       (isOff ? '<span style="font-size:0.6875rem; color:var(--color-text-faint);">Đã tắt</span>' : '')
+            +     '</div>'
+            +     '<div style="font-size:0.8125rem; color:var(--color-text-muted); margin-top:2px;">' + escapeHtmlTs(detail.join(' · ') || '—') + (loc.note ? ' · ' + escapeHtmlTs(loc.note) : '') + '</div>'
+            +   '</div>'
+            +   '<div style="display:flex; gap:6px; flex-shrink:0;">'
+            +     '<button type="button" class="btn btn-secondary btn-icon tsLocEditBtn" data-id="' + escapeHtmlTs(loc.id) + '" aria-label="Sửa" style="padding:6px 10px;">'
+            +       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>'
+            +     '</button>'
+            +     '<button type="button" class="btn btn-danger btn-icon tsLocDeleteBtn" data-id="' + escapeHtmlTs(loc.id) + '" data-name="' + escapeHtmlTs(loc.name || '') + '" aria-label="Xoá" style="padding:6px 10px;">'
+            +       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>'
+            +     '</button>'
+            +   '</div>'
+            + '</div>';
+        }).join('');
+
+        list.querySelectorAll('.tsLocEditBtn').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var loc = rows.filter(function (r) { return r.id === btn.dataset.id; })[0];
+            if (loc) fillLocationForm(loc);
+          });
+        });
+        list.querySelectorAll('.tsLocDeleteBtn').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            showConfirmDialog('Xoá địa điểm "' + escapeHtmlTs(btn.dataset.name) + '"? Không thể hoàn tác.', function () {
+              btn.disabled = true;
+              TaskManager.deleteAttendanceLocation(btn.dataset.id, function () {
+                if (document.getElementById('tsLocEditId').value === btn.dataset.id) resetLocationForm();
+                renderLocationList();
+              });
+            });
+          });
+        });
+      });
+    }
+
+    function escapeHtmlTs(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+
+    function fillLocationForm(loc) {
+      document.getElementById('tsLocEditId').value = loc.id;
+      document.getElementById('tsLocName').value = loc.name || '';
+      document.getElementById('tsLocLat').value = loc.lat != null ? loc.lat : '';
+      document.getElementById('tsLocLng').value = loc.lng != null ? loc.lng : '';
+      document.getElementById('tsLocRadius').value = loc.radiusMeters != null ? loc.radiusMeters : '';
+      document.getElementById('tsLocIp').value = loc.ip || '';
+      document.getElementById('tsLocNote').value = loc.note || '';
+      document.getElementById('tsLocActive').checked = loc.active !== false;
+      document.getElementById('tsLocSubmitBtn').textContent = 'Lưu thay đổi';
+      document.getElementById('tsLocCancelEdit').hidden = false;
+      document.getElementById('tsLocName').focus();
+    }
+
+    function resetLocationForm() {
+      document.getElementById('tsLocationForm').reset();
+      document.getElementById('tsLocEditId').value = '';
+      document.getElementById('tsLocActive').checked = true;
+      document.getElementById('tsLocSubmitBtn').textContent = 'Thêm thông tin';
+      document.getElementById('tsLocCancelEdit').hidden = true;
+    }
+
+    function bindLocationManagerBtn() {
+      var btn = document.getElementById('tsLocationManagerBtn');
+      var modal = document.getElementById('tsLocationModal');
+      if (!btn || !modal) return;
+      var user = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
+      if (!user || user.roleLevel !== 'admin') return; // giữ hidden — chỉ CEO thấy nút này
+      btn.hidden = false;
+
+      function openModal() { modal.classList.add('active'); renderLocationList(); }
+      function closeModal() { modal.classList.remove('active'); resetLocationForm(); }
+
+      btn.addEventListener('click', openModal);
+      document.getElementById('tsLocationModalClose').addEventListener('click', closeModal);
+      document.getElementById('tsLocationModalCloseFooter').addEventListener('click', closeModal);
+      modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
+      document.getElementById('tsLocCancelEdit').addEventListener('click', resetLocationForm);
+
+      document.getElementById('tsLocationForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var editId = document.getElementById('tsLocEditId').value;
+        var data = {
+          name: document.getElementById('tsLocName').value.trim(),
+          lat: document.getElementById('tsLocLat').value.trim(),
+          lng: document.getElementById('tsLocLng').value.trim(),
+          radiusMeters: document.getElementById('tsLocRadius').value.trim(),
+          ip: document.getElementById('tsLocIp').value.trim(),
+          note: document.getElementById('tsLocNote').value.trim(),
+          active: document.getElementById('tsLocActive').checked
+        };
+        if (!data.name) { showToast('Nhập tên địa điểm / mạng.', false); return; }
+        if (!data.lat && !data.ip) { showToast('Phải nhập ít nhất GPS (vĩ độ + kinh độ) hoặc IP.', false); return; }
+        if ((data.lat && !data.lng) || (!data.lat && data.lng)) { showToast('Nhập đủ cả vĩ độ và kinh độ, hoặc để trống cả hai.', false); return; }
+
+        var submitBtn = document.getElementById('tsLocSubmitBtn');
+        submitBtn.disabled = true;
+        function done() { submitBtn.disabled = false; resetLocationForm(); renderLocationList(); }
+
+        if (editId) {
+          TaskManager.updateAttendanceLocation(editId, data, done);
+        } else {
+          TaskManager.addAttendanceLocation(data, done);
+        }
+      });
+    }
+
+    // Định dạng giờ tự động khi gõ: chỉ giữ số, tự chèn dấu ":" sau 2 số đầu
+    // (VD: "0730" -> "07:30") — đảm bảo luôn nhập/hiển thị 24h, không phụ
+    // thuộc <input type="time"> vốn theo định dạng 12h/24h của hệ điều hành.
+    function bindTimeTextMask(input) {
+      input.addEventListener('input', function () {
+        var digits = input.value.replace(/[^0-9]/g, '').slice(0, 4);
+        if (digits.length >= 3) {
+          input.value = digits.slice(0, 2) + ':' + digits.slice(2);
+        } else {
+          input.value = digits;
+        }
+      });
+    }
+
+    function isValidHM(v) {
+      var m = /^([0-1][0-9]|2[0-3]):([0-5][0-9])$/.exec(v || '');
+      return !!m;
+    }
+
+    function bindWorkScheduleBtn() {
+      var btn = document.getElementById('tsWorkScheduleBtn');
+      var modal = document.getElementById('tsWorkScheduleModal');
+      if (!btn || !modal) return;
+      var user = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
+      if (!user) return;
+      btn.hidden = false;
+
+      // Chỉ Founder/CEO được sửa (không tính Giám đốc Bộ phận dù cùng
+      // roleLevel 'admin') — các cấp còn lại mở modal chỉ để XEM.
+      var canEdit = user.level === 'founder' || user.level === 'ceo';
+      var inputs = ['tsWsMorningStart', 'tsWsMorningEnd', 'tsWsAfternoonStart', 'tsWsAfternoonEnd'].map(function (id) {
+        return document.getElementById(id);
+      });
+      var saveBtn = document.getElementById('tsWorkScheduleSaveBtn');
+      var viewOnlyNote = document.getElementById('tsWorkScheduleViewOnlyNote');
+      inputs.forEach(function (input) {
+        input.readOnly = !canEdit;
+        if (canEdit) bindTimeTextMask(input);
+      });
+      saveBtn.hidden = !canEdit;
+      viewOnlyNote.hidden = canEdit;
+
+      function fillForm(ws) {
+        document.getElementById('tsWsMorningStart').value = ws.morningStart || DEFAULT_WORK_SCHEDULE.morningStart;
+        document.getElementById('tsWsMorningEnd').value = ws.morningEnd || DEFAULT_WORK_SCHEDULE.morningEnd;
+        document.getElementById('tsWsAfternoonStart').value = ws.afternoonStart || DEFAULT_WORK_SCHEDULE.afternoonStart;
+        document.getElementById('tsWsAfternoonEnd').value = ws.afternoonEnd || DEFAULT_WORK_SCHEDULE.afternoonEnd;
+      }
+
+      function openModal() {
+        modal.classList.add('active');
+        TaskManager.getWorkSchedule(fillForm);
+      }
+      function closeModal() { modal.classList.remove('active'); }
+
+      btn.addEventListener('click', openModal);
+      document.getElementById('tsWorkScheduleModalClose').addEventListener('click', closeModal);
+      modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
+
+      if (!canEdit) return; // xem xong là hết việc — không gắn submit handler
+
+      document.getElementById('tsWorkScheduleForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var data = {
+          morningStart: document.getElementById('tsWsMorningStart').value,
+          morningEnd: document.getElementById('tsWsMorningEnd').value,
+          afternoonStart: document.getElementById('tsWsAfternoonStart').value,
+          afternoonEnd: document.getElementById('tsWsAfternoonEnd').value
+        };
+        if (!isValidHM(data.morningStart) || !isValidHM(data.morningEnd) || !isValidHM(data.afternoonStart) || !isValidHM(data.afternoonEnd)) {
+          showToast('Giờ không hợp lệ, nhập theo định dạng HH:MM (24h), VD: 07:30.', false);
+          return;
+        }
+        saveBtn.disabled = true;
+        TaskManager.saveWorkSchedule(data, function (result) {
+          saveBtn.disabled = false;
+          if (!result) { showToast('Lưu giờ làm việc thất bại.', false); return; }
+          workScheduleCache = null;
+          showToast('Đã lưu giờ làm việc.', true);
+          closeModal();
+        });
+      });
+    }
+
+    // ====== Panel duyệt thiết bị chấm công (CHỈ CEO/Manager) ======
+    // Khác ts-device-table (chỉ hiện thiết bị CỦA CHÍNH người đăng nhập) —
+    // panel này gom thiết bị 'pending' của TOÀN CÔNG TY để CEO/Manager duyệt.
+    function renderPendingDevicesList() {
+      var list = document.getElementById('tsPendingDevicesList');
+      var countEl = document.getElementById('tsPendingDevicesCount');
+      var card = document.getElementById('tsPendingDevicesCard');
+      if (!list || typeof TaskManager === 'undefined' || !TaskManager.getPendingDeviceRegistrations) return;
+      var pending = TaskManager.getPendingDeviceRegistrations();
+      card.hidden = false;
+      countEl.textContent = pending.length + ' đang chờ';
+      if (pending.length === 0) {
+        list.innerHTML = '<p style="font-size:0.8125rem; color:var(--ts-muted);">Không có thiết bị nào đang chờ duyệt.</p>';
+        return;
+      }
+      list.innerHTML = pending.map(function (p) {
+        return ''
+          + '<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; background:var(--color-bg); border:1px solid var(--ts-border); border-radius:10px;">'
+          +   '<div style="min-width:0;">'
+          +     '<span style="font-weight:600; font-size:0.9375rem;">' + escapeHtmlTs(p.memberName) + '</span>'
+          +     '<div style="font-size:0.8125rem; color:var(--ts-muted); margin-top:2px;">' + escapeHtmlTs(p.deviceName || '(không rõ tên thiết bị)') + '</div>'
+          +   '</div>'
+          +   '<div style="display:flex; gap:6px; flex-shrink:0;">'
+          +     '<button type="button" class="btn btn-secondary tsDeviceRejectBtn" data-member="' + escapeHtmlTs(p.memberId) + '" data-device="' + escapeHtmlTs(p.deviceId) + '" style="padding:6px 12px; font-size:0.8125rem;">Từ chối</button>'
+          +     '<button type="button" class="btn btn-primary tsDeviceApproveBtn" data-member="' + escapeHtmlTs(p.memberId) + '" data-device="' + escapeHtmlTs(p.deviceId) + '" style="padding:6px 12px; font-size:0.8125rem;">Duyệt</button>'
+          +   '</div>'
+          + '</div>';
+      }).join('');
+
+      list.querySelectorAll('.tsDeviceApproveBtn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var user = TaskManager.getCurrentUser ? TaskManager.getCurrentUser() : null;
+          btn.disabled = true;
+          TaskManager.approveMemberDevice(btn.dataset.member, btn.dataset.device, user);
+          renderPendingDevicesList();
+        });
+      });
+      list.querySelectorAll('.tsDeviceRejectBtn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          showConfirmDialog('Từ chối thiết bị này? Nhân viên sẽ phải đăng ký lại.', function () {
+            var user = TaskManager.getCurrentUser ? TaskManager.getCurrentUser() : null;
+            TaskManager.rejectMemberDevice(btn.dataset.member, btn.dataset.device, user);
+            renderPendingDevicesList();
+          }, 'Từ chối');
+        });
+      });
+    }
+
+    function bindPendingDevicesPanel() {
+      var user = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
+      if (!user || (user.roleLevel !== 'admin' && user.roleLevel !== 'manager')) return; // giữ hidden — chỉ CEO/Manager thấy
+      renderPendingDevicesList();
+    }
+
+    // Init — 1 handler dùng chung cho cả 2 nút ca (sáng/chiều), tự xác định
+    // đang ở bước check-in hay check-out của ĐÚNG ca đó rồi mới quyết định
+    // có cần bắt nhập lý do muộn/sớm hay không trước khi chạy verifyThenProceed.
+    function bindShiftButton(shift) {
+      var btn = document.getElementById(shift === 'morning' ? 'tsMorningBtn' : 'tsAfternoonBtn');
+      btn.addEventListener('click', function () {
+        // Chặn ngay từ đầu, trước khi tốn thời gian dò GPS/Wifi/Thiết bị — mất
+        // mạng thì dò xong cũng không ghi được, chặn sớm cho gọn trải nghiệm.
+        if (typeof Offline !== 'undefined' && Offline.guard('chấm công')) return;
+        var record = getEntryByDate(getToday());
+        var isCheckout = !!(record && record[shift + 'Checkin'] && !record[shift + 'Checkout']);
+        var time = nowHM();
+        loadWorkSchedule(function (ws) {
+          if (isCheckout) {
+            var early = isLateOrEarly(shift, 'out', time, ws);
+            if (early && !requireLateEarlyNote('early')) return;
+            verifyThenProceed(btn, function () { doShiftCheckOut(shift, time, early); });
+          } else {
+            var late = isLateOrEarly(shift, 'in', time, ws);
+            if (late && !requireLateEarlyNote('late')) return;
+            verifyThenProceed(btn, function (geoResult, ipResult, deviceResult) {
+              doShiftCheckIn(shift, time, late, geoResult, ipResult, deviceResult);
+            });
+          }
+        });
+      });
+    }
+    bindShiftButton('morning');
+    bindShiftButton('afternoon');
+
+    runLiveStatusCheck();
+
+    document.getElementById('tsPrevMonth').addEventListener('click', function() {
+      calMonth--;
+      if (calMonth < 1) { calMonth = 12; calYear--; }
+      document.getElementById('tsDayDetail').style.display = 'none';
+      renderCalendar();
+    });
+
+    document.getElementById('tsNextMonth').addEventListener('click', function() {
+      calMonth++;
+      if (calMonth > 12) { calMonth = 1; calYear++; }
+      document.getElementById('tsDayDetail').style.display = 'none';
+      renderCalendar();
+    });
+
+    renderCalendar();
+    updateShiftUI();
+    renderDeviceTable();
+    bindExportAttendanceBtn();
+    bindAttendanceReportBtn();
+    bindLocationManagerBtn();
+    bindWorkScheduleBtn();
+    bindPendingDevicesPanel();
+
+    if (typeof Auth !== 'undefined' && Auth.getCurrentUser && !Auth.getCurrentUser()) {
+      Auth.showLoginModal();
+    }
+  })();
+  </script>
+</body>
+</html>
