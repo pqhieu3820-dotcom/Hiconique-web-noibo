@@ -1920,7 +1920,7 @@
           <div class="todo-cal-controls">
             <label>Tháng<select id="todoCalMonth">${monthNames.map(function (m, i) { return '<option value="' + (i + 1) + '"' + (i + 1 === state.month ? ' selected' : '') + '>' + m + '</option>'; }).join('')}</select></label>
             <label>Năm<select id="todoCalYear">${yearsOptions.map(function (y) { return '<option value="' + y + '"' + (y === state.year ? ' selected' : '') + '>' + y + '</option>'; }).join('')}</select></label>
-            <button type="button" class="todo-cal-reload" id="todoCalReload"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Tải lại</button>
+            <button type="button" class="todo-cal-reload" id="todoCalToday"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="12" cy="15" r="2" fill="currentColor" stroke="none"/></svg> Hôm nay</button>
           </div>
         </div>
         <div class="todo-cal-grid">
@@ -1961,15 +1961,12 @@
       todoCalState.year = parseInt(val, 10);
       renderCalendar();
     });
-    document.getElementById('todoCalReload').addEventListener('click', function () {
-      var btn = this;
-      btn.disabled = true;
-      btn.classList.add('spinning');
-      if (typeof TaskManager !== 'undefined' && TaskManager.refreshFromGSheets) {
-        TaskManager.refreshFromGSheets(function () { renderCalendar(); });
-      } else {
-        renderCalendar();
-      }
+    document.getElementById('todoCalToday').addEventListener('click', function () {
+      var t = new Date();
+      todoCalState.year = t.getFullYear();
+      todoCalState.month = t.getMonth() + 1;
+      todoCalState.selectedDate = null;
+      renderCalendar();
     });
     tmContent.querySelectorAll('.todo-cal-day:not(.other-month)').forEach(function (cell) {
       cell.addEventListener('click', function () {
