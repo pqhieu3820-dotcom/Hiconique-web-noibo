@@ -2067,6 +2067,54 @@
     }
   }
 
+  // Icon SVG (line-icon, đồng bộ phong cách với các icon khác trong app,
+  // đổi từ emoji sang) + class màu riêng cho từng loại đề xuất — dùng chung
+  // cho cả icon lớn trên mỗi thẻ đề xuất và icon trong bảng chọn loại ở modal.
+  const PROPOSAL_TYPE_META = {
+    'nghi-phep': {
+      label: 'Nghỉ phép',
+      colorClass: 'proposal-color-leave',
+      svg: '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>'
+    },
+    'mua-sam': {
+      label: 'Mua sắm',
+      colorClass: 'proposal-color-shopping',
+      svg: '<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>'
+    },
+    'nhan-su': {
+      label: 'Nhân sự',
+      colorClass: 'proposal-color-hr',
+      svg: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'
+    },
+    'cong-tac': {
+      label: 'Công tác',
+      colorClass: 'proposal-color-trip',
+      svg: '<path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/>'
+    },
+    'tai-chinh': {
+      label: 'Tài chính',
+      colorClass: 'proposal-color-finance',
+      svg: '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>'
+    },
+    'khen-thuong': {
+      label: 'Khen thưởng',
+      colorClass: 'proposal-color-reward',
+      svg: '<circle cx="12" cy="8" r="7"/><path d="M8.21 13.89L7 23l5-3 5 3-1.21-9.12"/>'
+    }
+  };
+  const PROPOSAL_TYPE_DEFAULT = { label: 'Khác', colorClass: 'proposal-color-other', svg: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>' };
+
+  function proposalTypeMeta(type) {
+    return PROPOSAL_TYPE_META[type] || PROPOSAL_TYPE_DEFAULT;
+  }
+
+  function proposalIconHtml(type, sizeClass) {
+    const meta = proposalTypeMeta(type);
+    return '<div class="proposal-icon ' + (sizeClass || '') + ' ' + meta.colorClass + '">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + meta.svg + '</svg>' +
+      '</div>';
+  }
+
   function renderProposals() {
     const tmContent = document.querySelector('.tm-content');
     if (!tmContent) return;
@@ -2109,18 +2157,7 @@
           const requester = TaskManager.getMember(proposal.requesterId);
           const reviewer = proposal.reviewerId ? TaskManager.getMember(proposal.reviewerId) : null;
 
-          const typeIcon = proposal.type === 'mua-sam' ? '🛒' :
-                         proposal.type === 'nghi-phep' ? '🌴' :
-                         proposal.type === 'nhan-su' ? '👥' :
-                         proposal.type === 'cong-tac' ? '✈️' :
-                         proposal.type === 'tai-chinh' ? '💰' :
-                         proposal.type === 'khen-thuong' ? '🏆' : '📝';
-          const typeLabel = proposal.type === 'mua-sam' ? 'Mua sắm' :
-                           proposal.type === 'nghi-phep' ? 'Nghỉ phép' :
-                           proposal.type === 'nhan-su' ? 'Nhân sự' :
-                           proposal.type === 'cong-tac' ? 'Công tác' :
-                           proposal.type === 'tai-chinh' ? 'Tài chính' :
-                           proposal.type === 'khen-thuong' ? 'Khen thưởng' : 'Khác';
+          const typeIconHtml = proposalIconHtml(proposal.type);
 
           const statusBadge = proposal.status === 'pending' ? '<span class="task-priority-badge priority-medium">Chờ duyệt</span>' :
                             proposal.status === 'approved' ? '<span class="task-priority-badge priority-low">Đã duyệt</span>' :
@@ -2131,7 +2168,7 @@
           return `
             <div class="proposal-card" style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; padding: 16px;">
               <div style="display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap;">
-                <div style="font-size: 2rem;">${typeIcon}</div>
+                ${typeIconHtml}
                 <div style="flex: 1 1 220px; min-width: 220px;">
                   <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px; flex-wrap: wrap;">
                     <h3 style="font-size: 1rem; font-weight: 600; color: var(--color-text);">${proposal.title}</h3>
@@ -2139,10 +2176,10 @@
                   </div>
                   <p style="font-size: 0.875rem; color: var(--color-text-muted); margin-bottom: 12px;">${proposal.description}</p>
                   <div class="proposal-meta" style="display: flex; gap: 8px 24px; font-size: 0.8125rem; color: var(--color-text-muted); flex-wrap: wrap;">
-                    <span>👤 ${requester ? requester.name : 'Không rõ'}</span>
-                    <span>💰 ${proposal.amount ? proposal.amount.toLocaleString('vi-VN') + ' VNĐ' : 'Không có'}</span>
-                    <span>📅 ${new Date(proposal.createdAt).toLocaleDateString('vi-VN')}</span>
-                    ${reviewer ? `<span>✓ Người duyệt: ${reviewer.name}</span>` : ''}
+                    <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;vertical-align:-2px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> ${requester ? requester.name : 'Không rõ'}</span>
+                    <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;vertical-align:-2px;"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> ${proposal.amount ? proposal.amount.toLocaleString('vi-VN') + ' VNĐ' : 'Không có'}</span>
+                    <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg> ${new Date(proposal.createdAt).toLocaleDateString('vi-VN')}</span>
+                    ${reviewer ? `<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;vertical-align:-2px;"><path d="M20 6L9 17l-5-5"/></svg> Người duyệt: ${reviewer.name}</span>` : ''}
                   </div>
                 </div>
                 ${canReview ? `
@@ -2156,7 +2193,7 @@
           `;
         }).join('') : `
           <div class="empty-state">
-            <div class="empty-state-icon">📝</div>
+            <div class="empty-state-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:40px;height:40px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></div>
             <div class="empty-state-title">Không có đề xuất nào</div>
             <div class="empty-state-desc">Tạo đề xuất đầu tiên</div>
           </div>
@@ -2188,27 +2225,27 @@
           <label class="form-label">Loại đề xuất</label>
           <div class="proposal-type-options">
             <div class="proposal-type-option ${proposal && proposal.type === 'nghi-phep' ? 'active' : ''}" data-value="nghi-phep" onclick="selectProposalType(this)">
-              <div class="type-icon">🌴</div>
+              ${proposalIconHtml('nghi-phep', 'proposal-icon-sm')}
               <div class="type-label">Nghỉ phép</div>
             </div>
             <div class="proposal-type-option ${!proposal || proposal.type === 'mua-sam' ? 'active' : ''}" data-value="mua-sam" onclick="selectProposalType(this)">
-              <div class="type-icon">🛒</div>
+              ${proposalIconHtml('mua-sam', 'proposal-icon-sm')}
               <div class="type-label">Mua sắm</div>
             </div>
             <div class="proposal-type-option ${proposal && proposal.type === 'nhan-su' ? 'active' : ''}" data-value="nhan-su" onclick="selectProposalType(this)">
-              <div class="type-icon">👥</div>
+              ${proposalIconHtml('nhan-su', 'proposal-icon-sm')}
               <div class="type-label">Nhân sự</div>
             </div>
             <div class="proposal-type-option ${proposal && proposal.type === 'cong-tac' ? 'active' : ''}" data-value="cong-tac" onclick="selectProposalType(this)">
-              <div class="type-icon">✈️</div>
+              ${proposalIconHtml('cong-tac', 'proposal-icon-sm')}
               <div class="type-label">Công tác</div>
             </div>
             <div class="proposal-type-option ${proposal && proposal.type === 'tai-chinh' ? 'active' : ''}" data-value="tai-chinh" onclick="selectProposalType(this)">
-              <div class="type-icon">💰</div>
+              ${proposalIconHtml('tai-chinh', 'proposal-icon-sm')}
               <div class="type-label">Tài chính</div>
             </div>
             <div class="proposal-type-option ${proposal && proposal.type === 'khen-thuong' ? 'active' : ''}" data-value="khen-thuong" onclick="selectProposalType(this)">
-              <div class="type-icon">🏆</div>
+              ${proposalIconHtml('khen-thuong', 'proposal-icon-sm')}
               <div class="type-label">Khen thưởng</div>
             </div>
           </div>

@@ -1413,15 +1413,39 @@
   background: rgba(176, 141, 87, 0.15);
 }
 
-.proposal-type-option .type-icon {
-  font-size: 1.5rem;
-  margin-bottom: var(--space-xs);
-}
-
 .proposal-type-option .type-label {
   font-size: 0.75rem;
   color: var(--color-text-muted);
 }
+
+/* Icon danh mục đề xuất — badge vuông bo góc màu riêng cho từng loại, thay
+   cho emoji cũ (🌴🛒👥✈️💰🏆) để đồng bộ phong cách line-icon của app
+   (giống .stat-icon ở Dashboard). Dùng chung cho icon lớn trên mỗi thẻ đề
+   xuất và icon nhỏ trong bảng chọn loại ở modal (biến thể .proposal-icon-sm). */
+.proposal-icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+}
+.proposal-icon svg { width: 24px; height: 24px; }
+
+.proposal-icon.proposal-icon-sm {
+  width: 36px;
+  height: 36px;
+  margin: 0 auto var(--space-xs);
+}
+.proposal-icon.proposal-icon-sm svg { width: 18px; height: 18px; }
+
+.proposal-color-leave { background: rgba(79, 111, 82, 0.15); color: #4F6F52; }
+.proposal-color-shopping { background: rgba(59, 107, 140, 0.15); color: #3B6B8C; }
+.proposal-color-hr { background: rgba(124, 90, 166, 0.15); color: #7C5AA6; }
+.proposal-color-trip { background: rgba(47, 143, 157, 0.15); color: #2F8F9D; }
+.proposal-color-finance { background: rgba(176, 141, 87, 0.15); color: #B08D57; }
+.proposal-color-reward { background: rgba(184, 114, 90, 0.15); color: #B8725A; }
+.proposal-color-other { background: rgba(122, 122, 130, 0.15); color: #7A7A82; }
 
 /* Filter Bar */
 .filter-bar {
