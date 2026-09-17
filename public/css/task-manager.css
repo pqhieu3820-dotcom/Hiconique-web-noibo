@@ -2179,6 +2179,15 @@
 .todo-cal-empty { font-size: 0.8125rem; color: var(--color-text-muted); }
 
 @media (max-width: 640px) {
+  /* 7 cột không thể ép vừa màn hình điện thoại (~375px) mà vẫn đọc được số
+     ngày — cho cuộn NGANG thay vì để trình duyệt tự cắt cụt 2-3 cột cuối
+     tuần (Thứ 5/6/7 mất hẳn, không cách nào xem được — đúng lỗi thực tế). */
+  .todo-cal-grid {
+    grid-template-columns: repeat(7, minmax(76px, 1fr));
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .todo-cal-day, .todo-cal-day-header { min-width: 76px; }
   .todo-cal-day { min-height: 64px; }
   .todo-cal-pill { display: none; }
   .todo-cal-day-header { font-size: 0.5625rem; }
