@@ -314,6 +314,17 @@
 
     .ts-checkin-status.working { background: var(--ts-success-light); color: var(--ts-success); }
     .ts-checkin-status.idle { background: var(--color-bg); color: var(--ts-muted); }
+    .ts-checkin-status.late, .ts-checkin-status.early { background: rgba(160,72,72,0.12); color: #A04848; }
+
+    /* Chấm công theo ca sáng/chiều — mỗi ca 1 khối nút+trạng thái riêng, xem
+       shiftCheckIn()/shiftCheckOut() trong task-data.js. */
+    .ts-shift-block { margin-bottom: 14px; }
+    .ts-shift-block:last-of-type { margin-bottom: 0; }
+    .ts-shift-title {
+      font-size: 0.75rem; color: var(--ts-muted); text-transform: uppercase;
+      letter-spacing: 0.05em; margin-bottom: 8px; font-weight: 600;
+    }
+    .ts-shift-block .ts-checkin-btn { margin-bottom: 8px; padding: 13px; font-size: 0.9375rem; }
 
     /* Calendar Card */
     .ts-calendar-card {
@@ -704,6 +715,50 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:17px;height:17px;"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
           Quản lý địa điểm GPS/IP
         </button>
+        <button class="btn btn-secondary" id="tsWorkScheduleBtn" hidden style="padding:10px 20px; font-size:0.875rem;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:17px;height:17px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Setup thời gian làm việc
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal "Setup thời gian làm việc" — giờ chuẩn ca sáng/chiều, làm mốc
+         tính đi muộn/về sớm khi chấm công theo ca. CHỈ CEO/admin thấy nút mở
+         (bindWorkScheduleBtn()), sống trên sheet riêng "Giờ làm việc" (luôn
+         đúng 1 dòng, upsert phía server) qua TaskManager.getWorkSchedule()/
+         saveWorkSchedule() — xem GHI_CHU_DU_AN.md. -->
+    <div class="modal-overlay" id="tsWorkScheduleModal">
+      <div class="modal" style="max-width:480px;">
+        <div class="modal-header">
+          <span class="modal-title">Setup thời gian làm việc</span>
+          <button class="modal-close" id="tsWorkScheduleModalClose" aria-label="Đóng">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p style="font-size:0.8125rem; color:var(--color-text-muted); margin:-8px 0 20px;">
+            Giờ chuẩn dùng làm mốc tính "Đi muộn"/"Về sớm" khi chấm công theo ca — áp dụng chung cho cả công ty.
+          </p>
+          <form id="tsWorkScheduleForm">
+            <div class="form-group">
+              <label class="form-label">Ca sáng</label>
+              <div class="form-row">
+                <input type="time" class="form-input" id="tsWsMorningStart" required>
+                <input type="time" class="form-input" id="tsWsMorningEnd" required>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Ca chiều</label>
+              <div class="form-row">
+                <input type="time" class="form-input" id="tsWsAfternoonStart" required>
+                <input type="time" class="form-input" id="tsWsAfternoonEnd" required>
+              </div>
+            </div>
+            <div class="form-group" style="display:flex; justify-content:flex-end;">
+              <button type="submit" class="btn btn-primary">Lưu giờ làm việc</button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
 
@@ -857,7 +912,7 @@
         <div class="ts-clock" id="tsClock">--:--</div>
         <div class="ts-date" id="tsDate">--</div>
 
-        <label class="ts-note-label" for="tsCheckinNote">Ghi chú (tuỳ chọn)</label>
+        <label class="ts-note-label" for="tsCheckinNote" id="tsNoteLabel">Ghi chú (tuỳ chọn)</label>
         <textarea class="ts-note-input" id="tsCheckinNote" rows="2" placeholder="Ví dụ: đi công trình, xin về sớm…"></textarea>
 
         <div class="ts-verify-panel" id="tsVerifyPanel" hidden>
@@ -891,9 +946,21 @@
 
         <div class="ts-geo-status" id="tsGeoStatus" hidden></div>
 
-        <button class="ts-checkin-btn in" id="tsCheckinBtn">Check In</button>
-
-        <div class="ts-checkin-status idle" id="tsCheckinStatus">Chưa check-in hôm nay</div>
+        <!-- 2026-09-19: chấm công theo ca sáng/chiều (Setup thời gian làm
+             việc) thay cho 1 nút Check In/Out chung cả ngày cũ — xem
+             shiftCheckIn()/shiftCheckOut() trong task-data.js. Ca chiều khoá
+             tới khi ca sáng xong (đủ vào+ra) — chấm công tuần tự theo đúng
+             mô tả yêu cầu, tránh chấm nhảy cóc ca chiều trước. -->
+        <div class="ts-shift-block">
+          <div class="ts-shift-title">Ca sáng</div>
+          <button class="ts-checkin-btn in" id="tsMorningBtn">Check In Sáng</button>
+          <div class="ts-checkin-status idle" id="tsMorningStatus">Chưa check-in ca sáng</div>
+        </div>
+        <div class="ts-shift-block">
+          <div class="ts-shift-title">Ca chiều</div>
+          <button class="ts-checkin-btn in" id="tsAfternoonBtn">Check In Chiều</button>
+          <div class="ts-checkin-status idle" id="tsAfternoonStatus">Chưa check-in ca chiều</div>
+        </div>
 
         <div class="ts-device-table" id="tsDeviceTable"></div>
       </div>
@@ -935,6 +1002,7 @@
             <span class="ts-detail-date" id="tsDetailDate">--</span>
             <span class="ts-detail-badge none" id="tsDetailBadge">Chưa chấm</span>
           </div>
+          <div class="ts-checkin-status late" id="tsDetailLateEarly" style="margin:-4px 0 12px; display:inline-block;" hidden></div>
           <div class="ts-detail-row">
             <div class="ts-detail-field">
               <div class="ts-detail-field-label">Check-in</div>
@@ -1576,37 +1644,106 @@
     updateClock();
     setInterval(updateClock, 1000);
 
-    // Update checkin button
-    function updateCheckinUI() {
-      var record = getEntryByDate(getToday());
-      var btn = document.getElementById('tsCheckinBtn');
-      var status = document.getElementById('tsCheckinStatus');
-      var noteLabel = document.querySelector('.ts-note-label');
-      var noteInput = document.getElementById('tsCheckinNote');
-      var showNote = !record;
-      if (noteLabel) noteLabel.hidden = !showNote;
-      if (noteInput) noteInput.hidden = !showNote;
+    // Chấm công theo ca sáng/chiều — 2 khối nút độc lập, xem
+    // shiftCheckIn()/shiftCheckOut() trong task-data.js.
+    function shiftVnLabel(shift) { return shift === 'morning' ? 'Sáng' : 'Chiều'; }
 
-      if (record && record.checkoutTime) {
+    function renderShiftBlock(shift, record) {
+      var btn = document.getElementById(shift === 'morning' ? 'tsMorningBtn' : 'tsAfternoonBtn');
+      var status = document.getElementById(shift === 'morning' ? 'tsMorningStatus' : 'tsAfternoonStatus');
+      var inTime = record && record[shift + 'Checkin'];
+      var outTime = record && record[shift + 'Checkout'];
+      var label = shiftVnLabel(shift);
+
+      if (shift === 'afternoon' && !(record && record.morningCheckout)) {
+        btn.textContent = 'Check In Chiều';
+        btn.className = 'ts-checkin-btn in';
+        btn.disabled = true;
+        status.className = 'ts-checkin-status idle';
+        status.textContent = 'Hoàn thành ca sáng trước';
+        return;
+      }
+
+      if (outTime) {
         btn.textContent = 'Đã hoàn thành';
         btn.disabled = true;
         btn.className = 'ts-checkin-btn done';
-        status.className = 'ts-checkin-status working';
-        status.innerHTML = '✓ Check-in: ' + record.checkinTime + ' &nbsp;|&nbsp; Check-out: ' + record.checkoutTime + '<br>Tổng: ' + record.totalHours + 'h';
-      } else if (record) {
-        btn.textContent = 'Check Out';
+        status.className = 'ts-checkin-status working' + (record.isLate || record.isEarly ? ' late' : '');
+        status.innerHTML = '✓ Vào: ' + inTime + ' &nbsp;|&nbsp; Ra: ' + outTime +
+          (record.isLate ? ' <strong>(đi muộn)</strong>' : '') + (record.isEarly ? ' <strong>(về sớm)</strong>' : '');
+      } else if (inTime) {
+        btn.textContent = 'Check Out ' + label;
         btn.className = 'ts-checkin-btn out';
         btn.disabled = false;
-        status.className = 'ts-checkin-status working';
-        status.textContent = 'Đang làm việc từ ' + record.checkinTime + ' · ' + (TaskManager.formatShortDate ? TaskManager.formatShortDate(record.date) : record.date);
+        status.className = 'ts-checkin-status working' + (record.isLate ? ' late' : '');
+        status.textContent = 'Đang làm việc từ ' + inTime + (record.isLate ? ' (đi muộn)' : '');
       } else {
-        btn.textContent = 'Check In';
+        btn.textContent = 'Check In ' + label;
         btn.className = 'ts-checkin-btn in';
         btn.disabled = false;
         status.className = 'ts-checkin-status idle';
-        status.textContent = 'Chưa check-in hôm nay';
+        status.textContent = 'Chưa check-in ca ' + label.toLowerCase();
       }
+    }
+
+    function updateShiftUI() {
+      var record = getEntryByDate(getToday());
+      renderShiftBlock('morning', record);
+      renderShiftBlock('afternoon', record);
+      // Reset nhãn/viền ô lý do về mặc định — tự bật lại "bắt buộc" ở lần
+      // bấm chấm công kế tiếp nếu vẫn đang muộn/sớm (xem requireLateEarlyNote()).
+      var noteLabel = document.getElementById('tsNoteLabel');
+      var noteInput = document.getElementById('tsCheckinNote');
+      if (noteLabel) noteLabel.textContent = 'Ghi chú (tuỳ chọn)';
+      if (noteInput) noteInput.style.borderColor = '';
       updateStats();
+    }
+
+    // Giờ làm việc chuẩn — tải 1 lần/phiên trang (không cache localStorage,
+    // TaskManager.getWorkSchedule() đã tự cache 30s ở tầng dưới), dùng làm
+    // mốc tính đi muộn/về sớm mỗi lần chấm công theo ca.
+    var workScheduleCache = null;
+    function loadWorkSchedule(callback) {
+      if (workScheduleCache) { callback(workScheduleCache); return; }
+      if (typeof TaskManager === 'undefined' || !TaskManager.getWorkSchedule) {
+        callback({ morningStart: '07:30', morningEnd: '11:30', afternoonStart: '13:30', afternoonEnd: '17:30' });
+        return;
+      }
+      TaskManager.getWorkSchedule(function (ws) { workScheduleCache = ws; callback(ws); });
+    }
+
+    // vi-VN đôi khi trả giờ dạng "07.30" (dấu chấm) thay vì "07:30" tuỳ trình
+    // duyệt — chuẩn hoá về ":" trước khi so sánh, y hệt cách checkOut() cũ đã
+    // xử lý khi parse Date().
+    function normalizeHM(t) { return String(t || '').trim().replace(/\./g, ':'); }
+    function nowHM() { return new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }); }
+
+    // kind: 'in' (check-in — muộn nếu SAU giờ vào chuẩn) hoặc 'out' (check-out
+    // — sớm nếu TRƯỚC giờ ra chuẩn). So sánh chuỗi "HH:MM" (zero-pad 2 số) —
+    // đúng thứ tự lexicographic y hệt so số, không cần parse Date.
+    function isLateOrEarly(shift, kind, timeStr, ws) {
+      var time = normalizeHM(timeStr);
+      if (kind === 'in') {
+        var start = normalizeHM(ws[shift + 'Start']);
+        return !!start && time > start;
+      }
+      var end = normalizeHM(ws[shift + 'End']);
+      return !!end && time < end;
+    }
+
+    // Bắt nhập lý do TRƯỚC KHI cho chấm công tiếp khi phát hiện muộn/sớm —
+    // chặn ngay ở đây (trước khi tốn công chạy verifyThenProceed) nếu ô Ghi
+    // chú đang trống, đồng thời đổi nhãn ô để người dùng biết đang cần nhập
+    // gì (không chỉ 1 câu toast thoáng qua rồi mất).
+    function requireLateEarlyNote(kind) {
+      var noteInput = document.getElementById('tsCheckinNote');
+      var noteLabel = document.getElementById('tsNoteLabel');
+      var val = noteInput ? noteInput.value.trim() : '';
+      if (val) return true;
+      if (noteLabel) noteLabel.textContent = kind === 'late' ? 'Lý do đi muộn (bắt buộc)' : 'Lý do về sớm (bắt buộc)';
+      if (noteInput) { noteInput.style.borderColor = '#A04848'; noteInput.focus(); }
+      showToast(kind === 'late' ? 'Bạn đang vào ca muộn — nhập lý do rồi mới chấm công tiếp được.' : 'Bạn đang ra ca sớm — nhập lý do rồi mới chấm công tiếp được.', false);
+      return false;
     }
 
     function updateStats() {
@@ -1626,70 +1763,49 @@
       document.getElementById('tsAvgHours').textContent = totalDays > 0 ? (totalHours / totalDays).toFixed(1) + 'h' : '0h';
     }
 
-    function checkIn(geoResult, ipResult, deviceResult) {
-      var now = new Date();
-      var time = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-      var noteInput = document.getElementById('tsCheckinNote');
+    // Chấm công theo ca — thay cho checkIn()/checkOut() 1-lần/ngày cũ. Logic
+    // ghi thật (tính lại tổng giờ, gửi thông báo muộn/sớm tới Founder/CEO/
+    // Quản lý) nằm trong TaskManager.shiftCheckIn()/shiftCheckOut()
+    // (task-data.js) — ở đây chỉ gom dữ liệu verify + gọi xuống.
+    function doShiftCheckIn(shift, time, late, geoResult, ipResult, deviceResult) {
       geoResult = geoResult || { skip: true };
       ipResult = ipResult || { skip: true };
       deviceResult = deviceResult || { skip: true };
-      var checks = [geoResult, ipResult, deviceResult].filter(function (r) { return !r.skip; });
-      var passCount = checks.filter(function (r) { return r.ok; }).length;
-      var required = checks.length >= 2 ? 2 : checks.length;
-      var verifyStatus = checks.length === 0 ? 'not_required'
-        : passCount >= required && passCount === checks.length ? 'passed_all'
-        : passCount >= required ? 'passed_min_2of3'
-        : passCount > 0 ? 'passed_partial_confirmed'
-        : 'failed';
-      var entry = {
-        id: 'TS_' + Date.now(),
-        memberId: getUserId(),
-        date: getToday(),
-        checkinTime: time,
-        checkoutTime: '',
-        totalHours: 0,
-        overtimeHours: 0,
-        status: 'working',
-        note: noteInput ? noteInput.value.trim() : '',
-        checkinLat: geoResult.lat || '',
-        checkinLng: geoResult.lng || '',
-        checkinDistance: geoResult.distance || '',
-        checkinIp: ipResult.ip || '',
-        checkinDeviceId: getOrCreateDeviceId() || '',
-        geoPass: geoResult.skip ? '' : (geoResult.ok ? 'TRUE' : 'FALSE'),
-        ipPass: ipResult.skip ? '' : (ipResult.ok ? 'TRUE' : 'FALSE'),
-        devicePass: deviceResult.skip ? '' : (deviceResult.ok ? 'TRUE' : 'FALSE'),
-        verifyPassCount: checks.length === 0 ? '' : passCount + '/' + checks.length,
-        verifyStatus: verifyStatus
+      var noteInput = document.getElementById('tsCheckinNote');
+      var user = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
+      var fields = {
+        time: time,
+        isLate: late,
+        lateEarlyNote: late && noteInput ? noteInput.value.trim() : '',
+        verify: {
+          checkinLat: geoResult.lat || '',
+          checkinLng: geoResult.lng || '',
+          checkinDistance: geoResult.distance || '',
+          checkinIp: ipResult.ip || '',
+          checkinDeviceId: getOrCreateDeviceId() || '',
+          geoPass: geoResult.skip ? '' : (geoResult.ok ? 'TRUE' : 'FALSE'),
+          ipPass: ipResult.skip ? '' : (ipResult.ok ? 'TRUE' : 'FALSE'),
+          devicePass: deviceResult.skip ? '' : (deviceResult.ok ? 'TRUE' : 'FALSE')
+        }
       };
-      if (typeof TaskManager !== 'undefined' && TaskManager.addTimesheetEntry) {
-        TaskManager.addTimesheetEntry(entry);
+      if (typeof TaskManager !== 'undefined' && TaskManager.shiftCheckIn) {
+        TaskManager.shiftCheckIn(getUserId(), shift, fields, user);
       }
-      if (noteInput) noteInput.value = '';
+      if (noteInput && late) noteInput.value = '';
       setGeoStatus(null);
-      updateCheckinUI();
+      updateShiftUI();
       renderCalendar();
     }
 
-    function checkOut() {
-      var record = getEntryByDate(getToday());
-      if (!record) return;
-      var now = new Date();
-      var checkoutTime = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-      var checkinMs = new Date(record.date + 'T' + record.checkinTime.replace(/\./g, ':')).getTime();
-      var checkoutMs = now.getTime();
-      var hours = (checkoutMs - checkinMs) / (1000 * 60 * 60);
-      var overtime = Math.max(0, hours - 8);
-      var updates = {
-        checkoutTime: checkoutTime,
-        totalHours: parseFloat(hours.toFixed(1)),
-        overtimeHours: parseFloat(overtime.toFixed(1)),
-        status: 'completed'
-      };
-      if (typeof TaskManager !== 'undefined' && TaskManager.updateTimesheetEntry) {
-        TaskManager.updateTimesheetEntry(record.id, updates);
+    function doShiftCheckOut(shift, time, early) {
+      var noteInput = document.getElementById('tsCheckinNote');
+      var user = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
+      var fields = { time: time, isEarly: early, lateEarlyNote: early && noteInput ? noteInput.value.trim() : '' };
+      if (typeof TaskManager !== 'undefined' && TaskManager.shiftCheckOut) {
+        TaskManager.shiftCheckOut(getUserId(), shift, fields, user);
       }
-      updateCheckinUI();
+      if (noteInput && early) noteInput.value = '';
+      updateShiftUI();
       renderCalendar();
     }
 
@@ -1781,6 +1897,18 @@
       var detailOT = document.getElementById('tsDetailOT');
       var detailNote = document.getElementById('tsDetailNote');
       var noteEditBtn = document.getElementById('tsDetailNoteEditBtn');
+      var lateEarlyEl = document.getElementById('tsDetailLateEarly');
+
+      if (record && (record.isLate || record.isEarly)) {
+        var parts = [];
+        if (record.isLate) parts.push('Đi muộn');
+        if (record.isEarly) parts.push('Về sớm');
+        lateEarlyEl.className = 'ts-checkin-status ' + (record.isLate ? 'late' : 'early');
+        lateEarlyEl.textContent = parts.join(' · ') + (record.lateEarlyNote ? ' — ' + record.lateEarlyNote : '');
+        lateEarlyEl.hidden = false;
+      } else {
+        lateEarlyEl.hidden = true;
+      }
 
       if (record && record.checkoutTime) {
         badge.className = 'ts-detail-badge full';
@@ -1863,8 +1991,11 @@
     // BUỘC ĐẠT ĐỦ 100% các điều kiện đang bật** — thiếu bất kỳ điều kiện nào
     // đều CHẶN HẲN, chỉ hiện bảng thông báo (showFailNotice) liệt kê điều
     // kiện nào chưa đạt, không còn đường nào bỏ qua để chấm công.
-    function verifyThenProceed(onPass) {
-      var btn = document.getElementById('tsCheckinBtn');
+    // 2026-09-19: nhận thêm `btn` — trước đây hardcode `#tsCheckinBtn` (1 nút
+    // chấm công duy nhất/ngày), giờ có 2 nút riêng theo ca (sáng/chiều) nên
+    // phải biết ĐÚNG nút nào vừa được bấm để khoá/hiện "Đang kiểm tra..." lên
+    // đúng chỗ, không đụng tới nút của ca kia.
+    function verifyThenProceed(btn, onPass) {
       var originalText = btn.textContent;
       setGeoStatus(null);
       btn.disabled = true;
@@ -1994,10 +2125,10 @@
           t.font = { bold: true, size: 12, color: { argb: 'FF0B0D10' } };
           ws.getRow(1).height = 22;
 
-          var headers = ['Ngày', 'Thứ', 'Check-in', 'Check-out', 'Trạng thái', 'Tổng giờ', 'Giờ OT', 'Ghi chú / Lỗi'];
+          var headers = ['Ngày', 'Thứ', 'Check-in', 'Check-out', 'Trạng thái', 'Muộn/Sớm', 'Tổng giờ', 'Giờ OT', 'Ghi chú / Lỗi'];
           headers.forEach(function (label, i) { tsHeaderCell(ws.getCell(2, i + 1), label); });
           ws.getRow(2).height = 24;
-          [12, 6, 10, 10, 17, 10, 9, 42].forEach(function (w, i) { ws.getColumn(i + 1).width = w; });
+          [12, 6, 10, 10, 17, 22, 10, 9, 42].forEach(function (w, i) { ws.getColumn(i + 1).width = w; });
 
           var byDate = entriesByMember[m.id] || {};
           for (var d = 1; d <= nDays; d++) {
@@ -2007,7 +2138,7 @@
             var dateObj = new Date(Date.UTC(calYear, calMonth - 1, d));
             var weekend = tsIsWeekend(dateObj);
             var e = byDate[dateStr];
-            var status = '', note = '', checkin = '', checkout = '', hours = '', ot = '';
+            var status = '', note = '', checkin = '', checkout = '', hours = '', ot = '', lateEarly = '';
 
             if (e) {
               checkin = e.checkinTime || '';
@@ -2015,6 +2146,10 @@
               hours = e.checkoutTime ? (parseFloat(e.totalHours) || 0) : '';
               ot = e.checkoutTime ? (parseFloat(e.overtimeHours) || 0) : '';
               note = e.note || '';
+              var leParts = [];
+              if (e.isLate) leParts.push('Đi muộn');
+              if (e.isEarly) leParts.push('Về sớm');
+              lateEarly = leParts.join(' + ') + (leParts.length && e.lateEarlyNote ? ' (' + e.lateEarlyNote + ')' : '');
               if (note.indexOf(TS_AUTO_CHECKOUT_TAG) !== -1) {
                 status = 'Quên check-out';
               } else if (e.checkoutTime) {
@@ -2032,13 +2167,13 @@
             }
 
             var r = 2 + d;
-            var rowVals = [dateObj, tsDow(dateObj), checkin, checkout, status, hours, ot, note];
+            var rowVals = [dateObj, tsDow(dateObj), checkin, checkout, status, lateEarly, hours, ot, note];
             rowVals.forEach(function (val, i) {
               var cell = ws.getCell(r, i + 1);
               cell.value = val;
               if (i === 0) cell.numFmt = 'dd/mm/yyyy';
-              cell.font = { size: 9.5 };
-              cell.alignment = { horizontal: i === 7 ? 'left' : 'center', vertical: 'middle', wrapText: i === 7 };
+              cell.font = { size: 9.5, color: { argb: i === 5 && lateEarly ? 'FFA04848' : 'FF14181D' } };
+              cell.alignment = { horizontal: i === 8 ? 'left' : 'center', vertical: 'middle', wrapText: i === 8 };
               cell.border = tsBorderAll();
             });
             var statusCell = ws.getCell(r, 5);
@@ -2447,6 +2582,51 @@
       });
     }
 
+    function bindWorkScheduleBtn() {
+      var btn = document.getElementById('tsWorkScheduleBtn');
+      var modal = document.getElementById('tsWorkScheduleModal');
+      if (!btn || !modal) return;
+      var user = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
+      if (!user || user.roleLevel !== 'admin') return; // giữ hidden — chỉ CEO thấy nút này
+      btn.hidden = false;
+
+      function fillForm(ws) {
+        document.getElementById('tsWsMorningStart').value = ws.morningStart || DEFAULT_WORK_SCHEDULE.morningStart;
+        document.getElementById('tsWsMorningEnd').value = ws.morningEnd || DEFAULT_WORK_SCHEDULE.morningEnd;
+        document.getElementById('tsWsAfternoonStart').value = ws.afternoonStart || DEFAULT_WORK_SCHEDULE.afternoonStart;
+        document.getElementById('tsWsAfternoonEnd').value = ws.afternoonEnd || DEFAULT_WORK_SCHEDULE.afternoonEnd;
+      }
+
+      function openModal() {
+        modal.classList.add('active');
+        TaskManager.getWorkSchedule(fillForm);
+      }
+      function closeModal() { modal.classList.remove('active'); }
+
+      btn.addEventListener('click', openModal);
+      document.getElementById('tsWorkScheduleModalClose').addEventListener('click', closeModal);
+      modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
+
+      document.getElementById('tsWorkScheduleForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var data = {
+          morningStart: document.getElementById('tsWsMorningStart').value,
+          morningEnd: document.getElementById('tsWsMorningEnd').value,
+          afternoonStart: document.getElementById('tsWsAfternoonStart').value,
+          afternoonEnd: document.getElementById('tsWsAfternoonEnd').value
+        };
+        var submitBtn = e.target.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        TaskManager.saveWorkSchedule(data, function (result) {
+          submitBtn.disabled = false;
+          if (!result) { showToast('Lưu giờ làm việc thất bại.', false); return; }
+          workScheduleCache = null;
+          showToast('Đã lưu giờ làm việc.', true);
+          closeModal();
+        });
+      });
+    }
+
     // ====== Panel duyệt thiết bị chấm công (CHỈ CEO/Manager) ======
     // Khác ts-device-table (chỉ hiện thiết bị CỦA CHÍNH người đăng nhập) —
     // panel này gom thiết bị 'pending' của TOÀN CÔNG TY để CEO/Manager duyệt.
@@ -2501,21 +2681,35 @@
       renderPendingDevicesList();
     }
 
-    // Init
-    document.getElementById('tsCheckinBtn').addEventListener('click', function() {
-      // Chặn ngay từ đầu, trước khi tốn thời gian dò GPS/Wifi/Thiết bị — mất
-      // mạng thì dò xong cũng không ghi được, chặn sớm cho gọn trải nghiệm.
-      if (typeof Offline !== 'undefined' && Offline.guard('chấm công')) return;
-      var record = getEntryByDate(getToday());
-      var isCheckout = !!(record && !record.checkoutTime);
-
-      if (isCheckout) {
-        verifyThenProceed(function () { checkOut(); });
-        return;
-      }
-
-      verifyThenProceed(checkIn);
-    });
+    // Init — 1 handler dùng chung cho cả 2 nút ca (sáng/chiều), tự xác định
+    // đang ở bước check-in hay check-out của ĐÚNG ca đó rồi mới quyết định
+    // có cần bắt nhập lý do muộn/sớm hay không trước khi chạy verifyThenProceed.
+    function bindShiftButton(shift) {
+      var btn = document.getElementById(shift === 'morning' ? 'tsMorningBtn' : 'tsAfternoonBtn');
+      btn.addEventListener('click', function () {
+        // Chặn ngay từ đầu, trước khi tốn thời gian dò GPS/Wifi/Thiết bị — mất
+        // mạng thì dò xong cũng không ghi được, chặn sớm cho gọn trải nghiệm.
+        if (typeof Offline !== 'undefined' && Offline.guard('chấm công')) return;
+        var record = getEntryByDate(getToday());
+        var isCheckout = !!(record && record[shift + 'Checkin'] && !record[shift + 'Checkout']);
+        var time = nowHM();
+        loadWorkSchedule(function (ws) {
+          if (isCheckout) {
+            var early = isLateOrEarly(shift, 'out', time, ws);
+            if (early && !requireLateEarlyNote('early')) return;
+            verifyThenProceed(btn, function () { doShiftCheckOut(shift, time, early); });
+          } else {
+            var late = isLateOrEarly(shift, 'in', time, ws);
+            if (late && !requireLateEarlyNote('late')) return;
+            verifyThenProceed(btn, function (geoResult, ipResult, deviceResult) {
+              doShiftCheckIn(shift, time, late, geoResult, ipResult, deviceResult);
+            });
+          }
+        });
+      });
+    }
+    bindShiftButton('morning');
+    bindShiftButton('afternoon');
 
     runLiveStatusCheck();
 
@@ -2534,11 +2728,12 @@
     });
 
     renderCalendar();
-    updateCheckinUI();
+    updateShiftUI();
     renderDeviceTable();
     bindExportAttendanceBtn();
     bindAttendanceReportBtn();
     bindLocationManagerBtn();
+    bindWorkScheduleBtn();
     bindPendingDevicesPanel();
 
     if (typeof Auth !== 'undefined' && Auth.getCurrentUser && !Auth.getCurrentUser()) {

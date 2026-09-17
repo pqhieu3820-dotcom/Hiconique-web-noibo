@@ -19,6 +19,7 @@ const SHEETS = {
   // hợp lệ để chấm công, thêm/sửa/xoá thoải mái trên Sheet, không cần đụng
   // code hay redeploy. Xem checkGeoStatus()/checkIpStatus() trong timesheet.html.
   attendanceLocations: 'TLCC-Địa điểm chấm công',
+  workSchedule: 'TLCC-Giờ làm việc',
   notifications: 'TT-Thông báo',
   notices: 'TT-Bảng tin',
   documents: 'TT-Tài liệu',
@@ -143,12 +144,30 @@ const FIELD_MAP = {
     ['Giờ checkout', 'checkoutTime'], ['Tổng số giờ làm việc', 'totalHours'], ['Số giờ tăng ca', 'overtimeHours'],
     ['Trạng thái', 'status'], ['Ghi chú', 'note'], ['Vĩ độ checkin', 'checkinLat'], ['Kinh độ checkin', 'checkinLng'],
     ['Khoảng cách checkin', 'checkinDistance'], ['IP Checkin', 'checkinIp'], ['Trạng thái đạt vị trí', 'geoPass'],
-    ['Trạng thái đạt IP', 'ipPass'], ['Số điều kiện đạt', 'verifyPassCount'], ['Trạng thái xác thực', 'verifyStatus']
+    ['Trạng thái đạt IP', 'ipPass'], ['Số điều kiện đạt', 'verifyPassCount'], ['Trạng thái xác thực', 'verifyStatus'],
+    // 2026-09-19: 2 cột này đã được client (checkIn() trong timesheet.html)
+    // gán vào entry từ lâu nhưng CHƯA từng có trong FIELD_MAP nên bị rớt mất
+    // khi ghi xuống Sheet (chỉ tồn tại tạm trong cache trình duyệt) — vá nốt.
+    ['Mã thiết bị checkin', 'checkinDeviceId'], ['Trạng thái đạt thiết bị', 'devicePass'],
+    // 2026-09-19: chấm công theo ca sáng/chiều (Setup thời gian làm việc) —
+    // xem shiftCheckIn()/shiftCheckOut() trong task-data.js. checkinTime/
+    // checkoutTime cũ vẫn được mirror từ morningCheckin/afternoonCheckout để
+    // lịch + báo cáo tháng hiện có không cần sửa gì thêm.
+    ['Giờ vào ca sáng', 'morningCheckin'], ['Giờ ra ca sáng', 'morningCheckout'],
+    ['Giờ vào ca chiều', 'afternoonCheckin'], ['Giờ ra ca chiều', 'afternoonCheckout'],
+    ['Đi muộn', 'isLate'], ['Về sớm', 'isEarly'], ['Lý do muộn/sớm', 'lateEarlyNote']
   ],
   attendanceLocations: [
     ['Mã', 'id'], ['Tên địa điểm / mạng', 'name'], ['Vĩ độ (lat)', 'lat'], ['Kinh độ (lng)', 'lng'],
     ['Bán kính (m)', 'radiusMeters'], ['Địa chỉ IP', 'ip'], ['Đang dùng', 'active'], ['Ghi chú', 'note'],
     ['Ngày tạo', 'createdAt']
+  ],
+  // 2026-09-19: giờ làm việc chuẩn (ca sáng/chiều) — CHỈ 1 dòng duy nhất
+  // (id cố định 'default', xem saveWorkSchedule()), dùng làm mốc tính đi
+  // muộn/về sớm khi chấm công theo ca. Setup thời gian làm việc (timesheet.html).
+  workSchedule: [
+    ['Mã', 'id'], ['Giờ vào ca sáng', 'morningStart'], ['Giờ ra ca sáng', 'morningEnd'],
+    ['Giờ vào ca chiều', 'afternoonStart'], ['Giờ ra ca chiều', 'afternoonEnd'], ['Ngày cập nhật', 'updatedAt']
   ],
   notifications: [
     ['Mã TB', 'id'], ['Tiêu đề', 'title'], ['Nội dung', 'message'], ['Loại', 'type'], ['Phạm vi', 'scope'],
@@ -585,6 +604,20 @@ function handleRequest(e) {
       result = updateData(ss, SHEETS.attendanceLocations, params.id, JSON.parse(params.data));
     } else if (action === 'deleteAttendanceLocation') {
       result = deleteData(ss, SHEETS.attendanceLocations, params.id);
+    } else if (action === 'getWorkSchedule') {
+      result = getAllData(ss, SHEETS.workSchedule);
+    } else if (action === 'saveWorkSchedule') {
+      // Upsert 1 dòng duy nhất — sheet này chỉ có ĐÚNG 1 cấu hình chung cho
+      // cả công ty, không phải danh sách nhiều dòng như attendanceLocations.
+      var wsData = JSON.parse(params.data);
+      wsData.updatedAt = new Date().toISOString();
+      var wsExisting = getAllData(ss, SHEETS.workSchedule);
+      if (wsExisting.length > 0) {
+        result = updateData(ss, SHEETS.workSchedule, wsExisting[0].id, wsData);
+      } else {
+        wsData.id = 'default';
+        result = addData(ss, SHEETS.workSchedule, wsData);
+      }
     } else if (action === 'getNotifications') {
       result = getAllData(ss, SHEETS.notifications);
     } else if (action === 'addNotification') {

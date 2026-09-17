@@ -1482,6 +1482,105 @@ var TaskManager = (function() {
     return updated;
   }
 
+  // Giờ làm việc chuẩn (ca sáng/chiều) — Setup thời gian làm việc, xem
+  // GHI_CHU_DU_AN.md. Sống hẳn trên sheet riêng "Giờ làm việc" (CHỈ 1 dòng
+  // duy nhất, upsert phía server — xem action `saveWorkSchedule` trong
+  // gsheets-api-v2.js), KHÔNG cache localStorage (giống attendanceLocations)
+  // vì chấm công cần luôn đọc đúng giờ chuẩn mới nhất; getFromGSheets() vẫn
+  // tự cache 30s ở tầng dưới nên không gọi API dồn dập.
+  var DEFAULT_WORK_SCHEDULE = { morningStart: '07:30', morningEnd: '11:30', afternoonStart: '13:30', afternoonEnd: '17:30' };
+  function getWorkSchedule(callback) {
+    if (!isUsingGSheets()) { callback(DEFAULT_WORK_SCHEDULE); return; }
+    getFromGSheets('workSchedule', function (rows) {
+      callback(rows && rows.length > 0 ? rows[0] : DEFAULT_WORK_SCHEDULE);
+    });
+  }
+  function saveWorkSchedule(data, callback) {
+    if (!isUsingGSheets()) { callback && callback(null); return; }
+    if (typeof Offline !== 'undefined' && Offline.guard('lưu giờ làm việc')) { callback && callback(null); return; }
+    fetch(GSHEETS_CONFIG.API_URL + '?action=saveWorkSchedule&data=' + encodeURIComponent(JSON.stringify(data)), { redirect: 'follow' })
+      .then(function (r) { return r.json(); })
+      .then(function (result) { gsCacheTime.workSchedule = 0; callback && callback(result); })
+      .catch(function (e) { console.error('saveWorkSchedule failed:', e); callback && callback(null); });
+  }
+
+  // Chấm công theo ca sáng/chiều — thay cho checkIn()/checkOut() 1-lần/ngày cũ
+  // (vẫn giữ nguyên `addTimesheetEntry`/`updateTimesheetEntry` phía trên cho
+  // chỗ nào còn dùng kiểu cũ). Đặt trong task-data.js (không phải
+  // timesheet.html) vì cần gọi addSystemNotificationsBatch()/
+  // adminAndManagerMembers() — 2 hàm PRIVATE của module này, xem
+  // registerMemberDevice() ở trên làm mẫu cùng kiểu.
+  // `isLate`/`isEarly`/`lateEarlyNote` do PHÍA GỌI (timesheet.html) tự tính
+  // trước bằng cách so giờ hiện tại với getWorkSchedule() rồi truyền vào —
+  // hàm này chỉ ghi lại đúng những gì đã được UI xác định, không tự tính lại
+  // để tránh 2 nơi có 2 quy tắc khác nhau.
+  function shiftCheckIn(memberId, shift, fields, user) {
+    var today = new Date().toISOString().split('T')[0];
+    var entries = getAll(STORAGE_KEYS.timesheet);
+    var record = entries.filter(function (e) { return e.memberId === memberId && e.date === today; })[0];
+    var patch = {};
+    patch[shift + 'Checkin'] = fields.time;
+    if (shift === 'morning') patch.checkinTime = fields.time; // mirror field cũ cho lịch/báo cáo
+    if (fields.isLate) { patch.isLate = true; patch.lateEarlyNote = fields.lateEarlyNote || ''; }
+    Object.keys(fields.verify || {}).forEach(function (k) { patch[k] = fields.verify[k]; });
+
+    var result;
+    if (record) {
+      result = updateTimesheetEntry(record.id, patch);
+    } else {
+      var entry = Object.assign({
+        id: 'TS_' + Date.now(), memberId: memberId, date: today,
+        checkoutTime: '', totalHours: 0, overtimeHours: 0, status: 'working', note: ''
+      }, patch);
+      result = addTimesheetEntry(entry);
+    }
+    if (fields.isLate) {
+      var shiftLabel = shift === 'morning' ? 'sáng' : 'chiều';
+      var member = getMember(memberId);
+      var msg = (member ? member.name : memberId) + ' vào ca ' + shiftLabel + ' lúc ' + fields.time + ' (muộn) — lý do: ' + (fields.lateEarlyNote || 'không ghi rõ');
+      addSystemNotificationsBatch(adminAndManagerMembers(user && user.id).map(function (mgr) {
+        return { title: 'Đi muộn ca ' + shiftLabel, message: msg, type: 'attendance', scope: mgr.id, recurring: false };
+      }));
+    }
+    return result;
+  }
+
+  function shiftCheckOut(memberId, shift, fields, user) {
+    var today = new Date().toISOString().split('T')[0];
+    var entries = getAll(STORAGE_KEYS.timesheet);
+    var record = entries.filter(function (e) { return e.memberId === memberId && e.date === today; })[0];
+    if (!record) return null;
+    var patch = {};
+    patch[shift + 'Checkout'] = fields.time;
+    if (shift === 'afternoon') { patch.checkoutTime = fields.time; patch.status = 'completed'; } // mirror field cũ
+    if (fields.isEarly) { patch.isEarly = true; patch.lateEarlyNote = fields.lateEarlyNote || record.lateEarlyNote || ''; }
+
+    // Tính lại tổng giờ = tổng thời lượng các cặp check-in/out ĐÃ CÓ (sáng +
+    // chiều), cặp nào chưa đủ (thiếu checkin hoặc checkout) thì bỏ qua —
+    // không giả định phải làm đủ cả 2 ca mới tính được giờ.
+    var merged = Object.assign({}, record, patch);
+    function pairHours(inTime, outTime) {
+      if (!inTime || !outTime) return 0;
+      var inMs = new Date(today + 'T' + String(inTime).replace(/\./g, ':')).getTime();
+      var outMs = new Date(today + 'T' + String(outTime).replace(/\./g, ':')).getTime();
+      return Math.max(0, (outMs - inMs) / 3600000);
+    }
+    var totalHours = pairHours(merged.morningCheckin, merged.morningCheckout) + pairHours(merged.afternoonCheckin, merged.afternoonCheckout);
+    patch.totalHours = parseFloat(totalHours.toFixed(1));
+    patch.overtimeHours = parseFloat(Math.max(0, totalHours - 8).toFixed(1));
+
+    var result = updateTimesheetEntry(record.id, patch);
+    if (fields.isEarly) {
+      var shiftLabel = shift === 'morning' ? 'sáng' : 'chiều';
+      var member = getMember(memberId);
+      var msg = (member ? member.name : memberId) + ' ra ca ' + shiftLabel + ' lúc ' + fields.time + ' (sớm) — lý do: ' + (fields.lateEarlyNote || 'không ghi rõ');
+      addSystemNotificationsBatch(adminAndManagerMembers(user && user.id).map(function (mgr) {
+        return { title: 'Về sớm ca ' + shiftLabel, message: msg, type: 'attendance', scope: mgr.id, recurring: false };
+      }));
+    }
+    return result;
+  }
+
   function getMonthlyTimesheetStats(memberId, month) {
     // month: 'YYYY-MM'
     var parts = String(month).split('-');
@@ -1939,6 +2038,10 @@ var TaskManager = (function() {
     addAttendanceLocation: addAttendanceLocation,
     updateAttendanceLocation: updateAttendanceLocation,
     deleteAttendanceLocation: deleteAttendanceLocation,
+    getWorkSchedule: getWorkSchedule,
+    saveWorkSchedule: saveWorkSchedule,
+    shiftCheckIn: shiftCheckIn,
+    shiftCheckOut: shiftCheckOut,
 
     // Notifications
     getNotifications: getNotifications,
