@@ -326,6 +326,10 @@
     }
     .ts-shift-block .ts-checkin-btn { margin-bottom: 8px; padding: 13px; font-size: 0.9375rem; }
 
+    /* Modal "Setup thời gian làm việc" — chỉ Founder/CEO sửa được, người
+       khác mở lên chỉ xem (input readonly). */
+    #tsWorkScheduleModal .form-input[readonly] { background: var(--color-bg); color: var(--ts-muted); cursor: default; }
+
     /* Calendar Card */
     .ts-calendar-card {
       background: var(--ts-surface);
@@ -723,10 +727,13 @@
     </div>
 
     <!-- Modal "Setup thời gian làm việc" — giờ chuẩn ca sáng/chiều, làm mốc
-         tính đi muộn/về sớm khi chấm công theo ca. CHỈ CEO/admin thấy nút mở
-         (bindWorkScheduleBtn()), sống trên sheet riêng "Giờ làm việc" (luôn
-         đúng 1 dòng, upsert phía server) qua TaskManager.getWorkSchedule()/
-         saveWorkSchedule() — xem GHI_CHU_DU_AN.md. -->
+         tính đi muộn/về sớm khi chấm công theo ca. Mọi người đều xem được,
+         CHỈ Founder/CEO (user.level) mới sửa/lưu được (bindWorkScheduleBtn()),
+         sống trên sheet riêng "Giờ làm việc" (luôn đúng 1 dòng, upsert phía
+         server) qua TaskManager.getWorkSchedule()/saveWorkSchedule() — xem
+         GHI_CHU_DU_AN.md. Input giờ là TEXT (không dùng <input type="time">)
+         để luôn hiển thị 24h, không phụ thuộc định dạng 12h/24h của hệ điều
+         hành/trình duyệt người dùng. -->
     <div class="modal-overlay" id="tsWorkScheduleModal">
       <div class="modal" style="max-width:480px;">
         <div class="modal-header">
@@ -736,26 +743,27 @@
           </button>
         </div>
         <div class="modal-body">
-          <p style="font-size:0.8125rem; color:var(--color-text-muted); margin:-8px 0 20px;">
-            Giờ chuẩn dùng làm mốc tính "Đi muộn"/"Về sớm" khi chấm công theo ca — áp dụng chung cho cả công ty.
+          <p style="font-size:0.8125rem; color:var(--color-text-muted); margin:-8px 0 4px;">
+            Giờ chuẩn dùng làm mốc tính "Đi muộn"/"Về sớm" khi chấm công theo ca — áp dụng chung cho cả công ty. Định dạng 24h, VD: 07:30, 13:30.
           </p>
+          <p id="tsWorkScheduleViewOnlyNote" style="font-size:0.8125rem; color:var(--ts-muted); margin:0 0 16px;" hidden>Chỉ Founder/CEO mới chỉnh sửa được — bạn đang xem.</p>
           <form id="tsWorkScheduleForm">
             <div class="form-group">
               <label class="form-label">Ca sáng</label>
               <div class="form-row">
-                <input type="time" class="form-input" id="tsWsMorningStart" required>
-                <input type="time" class="form-input" id="tsWsMorningEnd" required>
+                <input type="text" class="form-input" id="tsWsMorningStart" inputmode="numeric" maxlength="5" placeholder="07:30" required>
+                <input type="text" class="form-input" id="tsWsMorningEnd" inputmode="numeric" maxlength="5" placeholder="11:30" required>
               </div>
             </div>
             <div class="form-group">
               <label class="form-label">Ca chiều</label>
               <div class="form-row">
-                <input type="time" class="form-input" id="tsWsAfternoonStart" required>
-                <input type="time" class="form-input" id="tsWsAfternoonEnd" required>
+                <input type="text" class="form-input" id="tsWsAfternoonStart" inputmode="numeric" maxlength="5" placeholder="13:30" required>
+                <input type="text" class="form-input" id="tsWsAfternoonEnd" inputmode="numeric" maxlength="5" placeholder="17:30" required>
               </div>
             </div>
             <div class="form-group" style="display:flex; justify-content:flex-end;">
-              <button type="submit" class="btn btn-primary">Lưu giờ làm việc</button>
+              <button type="submit" class="btn btn-primary" id="tsWorkScheduleSaveBtn">Lưu giờ làm việc</button>
             </div>
           </form>
         </div>
@@ -2582,13 +2590,47 @@
       });
     }
 
+    // Định dạng giờ tự động khi gõ: chỉ giữ số, tự chèn dấu ":" sau 2 số đầu
+    // (VD: "0730" -> "07:30") — đảm bảo luôn nhập/hiển thị 24h, không phụ
+    // thuộc <input type="time"> vốn theo định dạng 12h/24h của hệ điều hành.
+    function bindTimeTextMask(input) {
+      input.addEventListener('input', function () {
+        var digits = input.value.replace(/[^0-9]/g, '').slice(0, 4);
+        if (digits.length >= 3) {
+          input.value = digits.slice(0, 2) + ':' + digits.slice(2);
+        } else {
+          input.value = digits;
+        }
+      });
+    }
+
+    function isValidHM(v) {
+      var m = /^([0-1][0-9]|2[0-3]):([0-5][0-9])$/.exec(v || '');
+      return !!m;
+    }
+
     function bindWorkScheduleBtn() {
       var btn = document.getElementById('tsWorkScheduleBtn');
       var modal = document.getElementById('tsWorkScheduleModal');
       if (!btn || !modal) return;
       var user = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
-      if (!user || user.roleLevel !== 'admin') return; // giữ hidden — chỉ CEO thấy nút này
+      if (!user) return;
       btn.hidden = false;
+
+      // Chỉ Founder/CEO được sửa (không tính Giám đốc Bộ phận dù cùng
+      // roleLevel 'admin') — các cấp còn lại mở modal chỉ để XEM.
+      var canEdit = user.level === 'founder' || user.level === 'ceo';
+      var inputs = ['tsWsMorningStart', 'tsWsMorningEnd', 'tsWsAfternoonStart', 'tsWsAfternoonEnd'].map(function (id) {
+        return document.getElementById(id);
+      });
+      var saveBtn = document.getElementById('tsWorkScheduleSaveBtn');
+      var viewOnlyNote = document.getElementById('tsWorkScheduleViewOnlyNote');
+      inputs.forEach(function (input) {
+        input.readOnly = !canEdit;
+        if (canEdit) bindTimeTextMask(input);
+      });
+      saveBtn.hidden = !canEdit;
+      viewOnlyNote.hidden = canEdit;
 
       function fillForm(ws) {
         document.getElementById('tsWsMorningStart').value = ws.morningStart || DEFAULT_WORK_SCHEDULE.morningStart;
@@ -2607,6 +2649,8 @@
       document.getElementById('tsWorkScheduleModalClose').addEventListener('click', closeModal);
       modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
 
+      if (!canEdit) return; // xem xong là hết việc — không gắn submit handler
+
       document.getElementById('tsWorkScheduleForm').addEventListener('submit', function (e) {
         e.preventDefault();
         var data = {
@@ -2615,10 +2659,13 @@
           afternoonStart: document.getElementById('tsWsAfternoonStart').value,
           afternoonEnd: document.getElementById('tsWsAfternoonEnd').value
         };
-        var submitBtn = e.target.querySelector('button[type="submit"]');
-        submitBtn.disabled = true;
+        if (!isValidHM(data.morningStart) || !isValidHM(data.morningEnd) || !isValidHM(data.afternoonStart) || !isValidHM(data.afternoonEnd)) {
+          showToast('Giờ không hợp lệ, nhập theo định dạng HH:MM (24h), VD: 07:30.', false);
+          return;
+        }
+        saveBtn.disabled = true;
         TaskManager.saveWorkSchedule(data, function (result) {
-          submitBtn.disabled = false;
+          saveBtn.disabled = false;
           if (!result) { showToast('Lưu giờ làm việc thất bại.', false); return; }
           workScheduleCache = null;
           showToast('Đã lưu giờ làm việc.', true);
