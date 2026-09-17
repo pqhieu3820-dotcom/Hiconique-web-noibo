@@ -285,6 +285,20 @@ var HiconiqueGantt = (function () {
     bindMonthPicker(root);
     bindZoomControl(root);
     bindWheelZoom(root);
+    bindWheelMonthNav(root.querySelector('.gantt-month-nav'), prevBtn, nextBtn);
+  }
+
+  // Lăn chuột khi trỏ vào cụm điều hướng tháng (mũi tên trái/phải + nhãn
+  // "Tháng X Năm YYYY") để chuyển tháng nhanh, khỏi phải bấm mũi tên nhiều
+  // lần — dùng chung cho mọi nơi có cụm điều hướng dạng mũi tên trái/phải.
+  function bindWheelMonthNav(navEl, prevBtn, nextBtn) {
+    if (!navEl || navEl.dataset.wheelBound) return;
+    navEl.dataset.wheelBound = '1';
+    navEl.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      var btn = e.deltaY > 0 ? nextBtn : prevBtn;
+      if (btn) btn.click();
+    }, { passive: false });
   }
 
   // Giữ Ctrl (hoặc Cmd trên Mac) + lăn chuột trong bảng Gantt để zoom in/out,

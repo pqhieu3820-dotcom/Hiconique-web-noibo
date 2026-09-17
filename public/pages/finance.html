@@ -575,6 +575,17 @@
       for (var y = curYear; y >= curYear - 5; y--) { yearsHtml += '<option value="' + y + '">' + y + '</option>'; }
       yearSelect.innerHTML = yearsHtml;
       yearSelect.addEventListener('change', function () { loadBsSnapshotIntoForm(); renderAll(); });
+      // Lăn chuột khi trỏ vào dropdown Năm để đổi nhanh, không cần mở danh
+      // sách rồi chọn.
+      yearSelect.addEventListener('wheel', function (e) {
+        e.preventDefault();
+        var options = Array.prototype.slice.call(yearSelect.options);
+        var idx = options.findIndex(function (o) { return o.value === yearSelect.value; });
+        var nextIdx = idx + (e.deltaY > 0 ? 1 : -1);
+        if (nextIdx < 0 || nextIdx >= options.length) return;
+        yearSelect.value = options[nextIdx].value;
+        yearSelect.dispatchEvent(new Event('change'));
+      }, { passive: false });
 
       document.getElementById('fnBsSaveBtn').addEventListener('click', function () {
         var year = document.getElementById('fnCfoYear').value;

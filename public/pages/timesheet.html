@@ -2495,6 +2495,20 @@
       });
 
       bindReportMonthPicker();
+      bindWheelMonthNav(document.querySelector('.ts-report-month-nav'), document.getElementById('tsReportPrevMonth'), document.getElementById('tsReportNextMonth'));
+    }
+
+    // Lăn chuột khi trỏ vào cụm điều hướng tháng (mũi tên trái/phải + nhãn)
+    // để chuyển tháng nhanh, khỏi phải bấm nhiều lần — dùng chung cho mọi
+    // cụm điều hướng tháng dạng mũi tên trong trang này.
+    function bindWheelMonthNav(navEl, prevBtn, nextBtn) {
+      if (!navEl || navEl.dataset.wheelBound) return;
+      navEl.dataset.wheelBound = '1';
+      navEl.addEventListener('wheel', function (e) {
+        e.preventDefault();
+        var btn = e.deltaY > 0 ? nextBtn : prevBtn;
+        if (btn) btn.click();
+      }, { passive: false });
     }
 
     // Bấm thẳng vào "Tháng X/YYYY" mở bảng chọn nhanh 12 tháng + điều hướng
@@ -2897,6 +2911,7 @@
       document.getElementById('tsDayDetail').style.display = 'none';
       renderCalendar();
     });
+    bindWheelMonthNav(document.querySelector('.ts-cal-header'), document.getElementById('tsPrevMonth'), document.getElementById('tsNextMonth'));
 
     renderCalendar();
     updateShiftUI();

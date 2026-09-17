@@ -779,6 +779,19 @@
       renderTimeline();
     });
     bindTimelineMonthPicker();
+    bindWheelMonthNav(document.querySelector('.timeline-header'), prev, next);
+  }
+
+  // Lăn chuột khi trỏ vào cụm điều hướng tháng (mũi tên trái/phải + nhãn)
+  // để chuyển tháng nhanh, khỏi phải bấm nhiều lần.
+  function bindWheelMonthNav(navEl, prevBtn, nextBtn) {
+    if (!navEl || navEl.dataset.wheelBound) return;
+    navEl.dataset.wheelBound = '1';
+    navEl.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      var btn = e.deltaY > 0 ? nextBtn : prevBtn;
+      if (btn) btn.click();
+    }, { passive: false });
   }
 
   // Bấm thẳng vào tiêu đề "Tháng X / YYYY" mở bảng chọn nhanh 12 tháng +
