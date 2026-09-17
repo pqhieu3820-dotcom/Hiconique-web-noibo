@@ -354,19 +354,35 @@
       }
       departmentSel.disabled = false;
       var depts = (typeof TaskManager !== 'undefined' && TaskManager.getDepartmentsByDivision) ? TaskManager.getDepartmentsByDivision(divisionCode) : [];
+      // title="" trên từng <option> (mô tả chức năng phòng ban) — trình duyệt
+      // hiện tooltip khi di chuột vào từng dòng trong danh sách đang mở, cùng
+      // kiểu tooltip đã thêm ở modal Team (portal.js openTeamMemberModal()).
       departmentSel.innerHTML = '<option value="">-- Chọn phòng ban --</option>' +
-        depts.map(function (d) { return '<option value="' + d.code + '">' + d.code + ' — ' + d.name + '</option>'; }).join('');
+        depts.map(function (d) { return '<option value="' + d.code + '"' + (d.desc ? ' title="' + escapeHtmlPf(d.desc) + '"' : '') + '>' + d.code + ' — ' + d.name + '</option>'; }).join('');
       if (selectedCode) departmentSel.value = selectedCode;
+      updateSelectTitle(departmentSel);
     }
+    function escapeHtmlPf(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+    // Cũng đặt title="" trên chính thẻ <select> (đang đóng) = mô tả của lựa
+    // chọn hiện tại, để hover khi select chưa mở cũng thấy được mô tả.
+    function updateSelectTitle(sel) {
+      var opt = sel.options[sel.selectedIndex];
+      sel.title = (opt && opt.title) || '';
+    }
+    if (departmentSel) departmentSel.addEventListener('change', function () { updateSelectTitle(departmentSel); });
     (function populateDivisionSelect() {
       if (!divisionSel || typeof TaskManager === 'undefined' || !TaskManager.getDivisions) return;
       TaskManager.getDivisions().forEach(function (dv) {
         var opt = document.createElement('option');
         opt.value = dv.code;
         opt.textContent = dv.code + ' — ' + dv.name;
+        if (dv.desc) opt.title = dv.desc;
         divisionSel.appendChild(opt);
       });
-      divisionSel.addEventListener('change', function () { renderDepartmentOptions(divisionSel.value, ''); });
+      divisionSel.addEventListener('change', function () {
+        renderDepartmentOptions(divisionSel.value, '');
+        updateSelectTitle(divisionSel);
+      });
     })();
 
     function render() {
@@ -396,8 +412,15 @@
         effectiveDivisionCode = deptForDivision ? deptForDivision.divisionCode : '';
       }
       var effectiveDivisionInfo = effectiveDivisionCode && typeof TaskManager !== 'undefined' && TaskManager.getDivisionByCode ? TaskManager.getDivisionByCode(effectiveDivisionCode) : null;
-      document.getElementById('profileDivision').textContent = effectiveDivisionCode ? (effectiveDivisionCode + ' — ' + (user.division || (effectiveDivisionInfo ? effectiveDivisionInfo.name : ''))) : '--';
-      document.getElementById('profileDepartment').textContent = user.departmentCode ? (user.departmentCode + ' — ' + (user.department || '')) : '--';
+      var profileDivisionEl = document.getElementById('profileDivision');
+      profileDivisionEl.textContent = effectiveDivisionCode ? (effectiveDivisionCode + ' — ' + (user.division || (effectiveDivisionInfo ? effectiveDivisionInfo.name : ''))) : '--';
+      // title="" = mô tả chức năng Bộ phận/Phòng ban, hiện tooltip khi di
+      // chuột vào (đồng bộ với modal Team ở portal.js).
+      profileDivisionEl.title = effectiveDivisionInfo ? (effectiveDivisionInfo.desc || '') : '';
+      var deptInfoForTitle = user.departmentCode && typeof TaskManager !== 'undefined' && TaskManager.getDepartmentByCode ? TaskManager.getDepartmentByCode(user.departmentCode) : null;
+      var profileDepartmentEl = document.getElementById('profileDepartment');
+      profileDepartmentEl.textContent = user.departmentCode ? (user.departmentCode + ' — ' + (user.department || '')) : '--';
+      profileDepartmentEl.title = deptInfoForTitle ? (deptInfoForTitle.desc || '') : '';
       document.getElementById('profileDob').textContent = fmtDob(user.dob);
       document.getElementById('profileGender').textContent = fmtGender(user.gender);
       document.getElementById('profileCccd').textContent = user.cccd || '--';
@@ -411,7 +434,7 @@
       document.getElementById('profileColorText').textContent = user.color || 'Mặc định';
       document.getElementById('profileColorInput').value = user.color || '#B08D57';
 
-      if (divisionSel) divisionSel.value = effectiveDivisionCode || '';
+      if (divisionSel) { divisionSel.value = effectiveDivisionCode || ''; updateSelectTitle(divisionSel); }
       renderDepartmentOptions(effectiveDivisionCode || '', user.departmentCode || '');
       document.getElementById('profileDobInput').value = isoDob(user.dob);
       document.getElementById('profileGenderInput').value = user.gender || '';
