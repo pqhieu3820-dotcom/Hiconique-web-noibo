@@ -1861,12 +1861,14 @@
     const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
 
     const monthNames = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
-    const dayHeaders = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+    // 2026-09-18: tuần bắt đầu từ Thứ 2 (ISO, giống lịch chấm công ở
+    // timesheet.html) + tên ngày tiếng Việt thay vì SUNDAY/MONDAY... tiếng Anh.
+    const dayHeaders = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
     const yearsOptions = [];
     for (var y = today.getFullYear() - 2; y <= today.getFullYear() + 2; y++) yearsOptions.push(y);
 
     const firstDay = new Date(state.year, state.month - 1, 1);
-    const startWeekday = firstDay.getDay(); // 0=Sun
+    const startWeekday = (firstDay.getDay() + 6) % 7; // getDay(): 0=CN..6=T7 -> quy về 0=T2..6=CN
     const daysInMonth = new Date(state.year, state.month, 0).getDate();
 
     var cellsHtml = '';
