@@ -1083,6 +1083,31 @@ function stringifyArrayForCell(enKey, val) {
   return JSON.stringify(val);
 }
 
+// Sheet đã có sẵn header (KHÔNG rỗng) nhưng FIELD_MAP được bổ sung field MỚI
+// SAU khi sheet đã tồn tại (VD 2026-09-17 thêm 9 cột ca sáng/chiều + đi muộn/
+// về sớm vào FIELD_MAP.timesheet) — addData()/updateData() chỉ ghi field có
+// header ĐÃ CÓ SẴN trên Sheet (`headers.forEach`/`headers.map`), field mới
+// tinh bị ÂM THẦM BỎ QUA (không lỗi, không cột, mất trắng dữ liệu) vì nhánh
+// tự tạo header chỉ chạy khi `headers.length === 0` (sheet hoàn toàn trống).
+// Tự bổ sung cột còn thiếu (CHỈ những field đã khai báo trong FIELD_MAP, có
+// mặt trong data đang ghi — không tự tạo cột cho field lạ/gõ nhầm) mỗi lần
+// addData/updateData gặp field mới, để không phải nhớ tay chạy 1 lần dọn sheet.
+function ensureSchemaColumns(sheet, sheetName, headers, dataObj) {
+  const schemaKey = sheetKeyFor(sheetName);
+  const pairs = schemaKey && FIELD_MAP[schemaKey];
+  if (!pairs) return headers;
+  const missing = [];
+  pairs.forEach(function (p) {
+    const viHeader = p[0], enKey = p[1];
+    if (headers.indexOf(viHeader) === -1 && dataObj[enKey] !== undefined && missing.indexOf(viHeader) === -1) {
+      missing.push(viHeader);
+    }
+  });
+  if (missing.length === 0) return headers;
+  sheet.getRange(1, headers.length + 1, 1, missing.length).setValues([missing]);
+  return headers.concat(missing);
+}
+
 function addData(ss, sheetName, data) {
   const sheet = getOrCreateSheet(ss, sheetName);
   let headers = getHeaders(sheet);
@@ -1092,6 +1117,8 @@ function addData(ss, sheetName, data) {
     const pairs = schemaKey && FIELD_MAP[schemaKey];
     headers = pairs ? pairs.map(function (p) { return p[0]; }) : Object.keys(data);
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  } else {
+    headers = ensureSchemaColumns(sheet, sheetName, headers, data);
   }
   if (!data.id) {
     const prefix = (sheetKeyFor(sheetName) || sheetName).toLowerCase().replace(/s$/, '');
@@ -1124,7 +1151,7 @@ function addData(ss, sheetName, data) {
 
 function updateData(ss, sheetName, id, updates) {
   const sheet = getOrCreateSheet(ss, sheetName);
-  const headers = getHeaders(sheet);
+  const headers = ensureSchemaColumns(sheet, sheetName, getHeaders(sheet), updates);
   const data = getAllData(ss, sheetName);
   const index = data.findIndex(function (row) { return row.id === id; });
   if (index === -1) return { error: 'Not found: ' + id };
