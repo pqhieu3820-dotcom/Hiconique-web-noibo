@@ -175,11 +175,15 @@
       margin-bottom: 16px;
     }
     .ts-verify-panel[hidden] { display: none; }
-    .ts-verify-row { display: flex; align-items: flex-start; gap: 10px; font-size: 0.75rem; }
+    /* 2026-09-19: đổi align-items từ flex-start sang center — dòng thông
+       báo dài (VD "Trang web chưa được cấp quyền vị trí") xuống 2 dòng trên
+       màn hẹp khiến chấm tròn trạng thái dính cứng ở mép trên, trông lệch
+       hẳn lên so với cả khối nội dung; giờ chấm tròn LUÔN nằm đúng giữa
+       chiều cao của khối, bất kể nhãn/thông báo dài ngắn thế nào. */
+    .ts-verify-row { display: flex; align-items: center; gap: 10px; font-size: 0.75rem; }
     .ts-verify-row + .ts-verify-row { padding-top: 8px; border-top: 1px solid var(--ts-border); }
     .ts-verify-dot {
       width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
-      margin-top: 5px;
       background: var(--ts-muted);
     }
     .ts-verify-dot.ok { background: var(--ts-success); }
