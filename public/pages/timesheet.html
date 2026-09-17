@@ -240,6 +240,35 @@
     }
     .ts-device-add:hover { background: var(--ts-bronze); color: #0B0D10; }
 
+    /* "Đồng bộ mã thiết bị" — Safari và app "Thêm vào Màn hình chính" trên
+       cùng 1 điện thoại bị hệ điều hành coi là 2 nơi lưu trữ RIÊNG (iOS đặc
+       biệt hay gặp), nên tự sinh 2 deviceId khác nhau dù cùng 1 máy — không
+       có cách nào hợp nhất từ phía web, chỉ có thể cho người dùng tự dán mã
+       của "bên kia" sang để đồng bộ thủ công. Xem initDeviceSync().*/
+    .ts-device-sync { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--ts-border); }
+    .ts-device-sync-toggle {
+      background: none; border: none; color: var(--ts-muted); font-size: 0.75rem;
+      text-decoration: underline; cursor: pointer; padding: 0; font-family: inherit; text-align: left;
+    }
+    .ts-device-sync-toggle:hover { color: var(--ts-bronze); }
+    .ts-device-sync-body { margin-top: 10px; }
+    .ts-device-sync-body p { font-size: 0.75rem; color: var(--ts-muted); margin: 0 0 8px; line-height: 1.5; }
+    .ts-device-sync-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+    .ts-device-sync-row code {
+      background: var(--color-bg); border: 1px solid var(--ts-border); border-radius: 6px;
+      padding: 4px 8px; font-size: 0.75rem; word-break: break-all;
+    }
+    .ts-device-sync-row input {
+      flex: 1; min-width: 160px; padding: 6px 10px; background: var(--color-bg);
+      border: 1px solid var(--ts-border); border-radius: 6px; color: var(--ts-text);
+      font-size: 0.8125rem; font-family: inherit;
+    }
+    .ts-device-sync-row button {
+      border: 1px solid var(--ts-bronze); background: transparent; color: var(--ts-bronze);
+      border-radius: 6px; padding: 6px 12px; font-size: 0.75rem; cursor: pointer; font-family: inherit; white-space: nowrap;
+    }
+    .ts-device-sync-row button:hover { background: var(--ts-bronze); color: #0B0D10; }
+
     .ts-checkin-btn {
       width: 100%;
       padding: 16px;
@@ -1018,7 +1047,15 @@
       return loadAttendanceLocations().then(function (rows) {
         var validIPs = activeIps(rows);
         if (validIPs.length === 0) return { ok: false, skip: true, message: 'Chưa cấu hình IP', ip: '' };
-        return fetch('https://api.ipify.org?format=json')
+        // 2026-09-19: fetch() KHÔNG có timeout mặc định — mạng di động chập
+        // chờn có thể treo request này rất lâu (hàng chục giây tới cả phút,
+        // người dùng phản ánh thật "kiểm tra lâu hơn 1-2 phút"), làm cả nút
+        // Check In đứng im chờ theo vì đang Promise.all() cùng checkGeoStatus().
+        // Ép timeout cứng 6s bằng AbortController — quá giờ thì coi như lỗi
+        // mạng (message đã có sẵn), không để treo vô thời hạn.
+        var controller = new AbortController();
+        var timer = setTimeout(function () { controller.abort(); }, 6000);
+        return fetch('https://api.ipify.org?format=json', { signal: controller.signal })
           .then(function (r) { return r.json(); })
           .then(function (data) {
             var ok = validIPs.indexOf(data.ip) !== -1;
@@ -1026,7 +1063,8 @@
           })
           .catch(function () {
             return { ok: false, skip: false, message: 'Không kiểm tra được kết nối mạng', ip: '' };
-          });
+          })
+          .finally(function () { clearTimeout(timer); });
       });
     }
 
@@ -1069,7 +1107,14 @@
         var geoLocations = activeGeoLocations(rows);
         if (geoLocations.length === 0) return { ok: false, skip: true, message: 'Chưa cấu hình địa điểm', lat: '', lng: '', distance: '' };
         return new Promise(function (resolve) {
-          getBestGeoPosition(3, 7000).then(function (pos) {
+          // 2026-09-19: giảm từ 3 lần/7s xuống 2 lần/5s — nguyên nhân gốc gây
+          // sai lệch km đã fix ở toạ độ Sheet (xem GHI_CHU_DU_AN.md), lớp
+          // retry này giờ chỉ còn là bảo vệ phụ nên không cần thử nhiều/lâu
+          // đến mức làm chậm hẳn quá trình kiểm tra (người dùng phản ánh
+          // "kiểm tra lâu hơn 1-2 phút" — cộng dồn với checkIpStatus() không
+          // timeout ở trên mới là nguyên nhân chính, nhưng vẫn giảm luôn cho
+          // chắc). Tối đa ~10s thay vì ~21s trước đó.
+          getBestGeoPosition(2, 5000).then(function (pos) {
             var lat = pos.coords.latitude, lng = pos.coords.longitude;
             // So khớp với TỪNG địa điểm đang bật, lấy điểm gần nhất — chỉ cần
             // nằm trong bán kính của MỘT điểm bất kỳ là đạt (nhiều công trình/
@@ -1370,12 +1415,47 @@
       }
       wrap.innerHTML =
         '<div class="ts-device-title">Thiết bị chấm công đã đăng ký (tối đa ' + MAX_MEMBER_DEVICES_UI + ')</div>' +
-        rows;
+        rows +
+        '<div class="ts-device-sync">' +
+          '<button type="button" class="ts-device-sync-toggle" id="tsDeviceSyncToggle">Cùng 1 máy nhưng bị tính thành 2 thiết bị (VD dùng cả Safari lẫn app đã "Thêm vào Màn hình chính")?</button>' +
+          '<div class="ts-device-sync-body" id="tsDeviceSyncBody" hidden>' +
+            '<p>iOS/Android coi trình duyệt và app "Thêm vào Màn hình chính" là 2 nơi lưu trữ riêng dù cùng 1 điện thoại, nên tự sinh 2 mã khác nhau. Mở trang này ở CẢ HAI nơi, rồi dán mã của bên kia vào đây để 2 nơi được tính là 1 thiết bị — nếu bên kia đã lỡ đăng ký riêng, bấm "Gỡ" thiết bị đó ở trên trước.</p>' +
+            '<div class="ts-device-sync-row"><span>Mã máy này:</span><code id="tsDeviceSyncMyId">' + escapeHtmlTs(myDeviceId) + '</code><button type="button" id="tsDeviceSyncCopyBtn">Sao chép</button></div>' +
+            '<div class="ts-device-sync-row"><input type="text" id="tsDeviceSyncInput" placeholder="Dán mã thiết bị từ nơi kia vào đây"><button type="button" id="tsDeviceSyncApplyBtn">Đồng bộ</button></div>' +
+          '</div>' +
+        '</div>';
+      var syncToggle = document.getElementById('tsDeviceSyncToggle');
+      var syncBody = document.getElementById('tsDeviceSyncBody');
+      if (syncToggle && syncBody) {
+        syncToggle.addEventListener('click', function () { syncBody.hidden = !syncBody.hidden; });
+      }
+      var syncCopyBtn = document.getElementById('tsDeviceSyncCopyBtn');
+      if (syncCopyBtn) {
+        syncCopyBtn.addEventListener('click', function () {
+          (navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(myDeviceId) : Promise.reject())
+            .then(function () { showToast('Đã sao chép mã thiết bị.', true); })
+            .catch(function () { showToast('Không sao chép được — tự bôi đen mã rồi copy thủ công.', false); });
+        });
+      }
+      var syncApplyBtn = document.getElementById('tsDeviceSyncApplyBtn');
+      if (syncApplyBtn) {
+        syncApplyBtn.addEventListener('click', function () {
+          var pasted = (document.getElementById('tsDeviceSyncInput').value || '').trim();
+          if (!pasted) return;
+          if (pasted === myDeviceId) { showToast('Mã này đã là mã của máy hiện tại rồi.', false); return; }
+          try { localStorage.setItem(DEVICE_ID_KEY, pasted); }
+          catch (e) { showToast('Không lưu được — trình duyệt đang chặn lưu trữ (chế độ ẩn danh?).', false); return; }
+          showToast('Đã đồng bộ mã thiết bị — nơi này giờ được tính chung với mã vừa dán.', true);
+          renderDeviceTable();
+          runLiveStatusCheck();
+        });
+      }
       wrap.querySelectorAll('.ts-device-remove').forEach(function (btn) {
         btn.addEventListener('click', function () {
           showConfirmDialog('Gỡ thiết bị này? Lần chấm công sau từ máy đó sẽ bị coi là thiết bị lạ.', function () {
             var user = TaskManager.getCurrentUser ? TaskManager.getCurrentUser() : null;
-            TaskManager.removeMemberDevice(userId, btn.dataset.deviceId, user);
+            var updated = TaskManager.removeMemberDevice(userId, btn.dataset.deviceId, user);
+            if (!updated) showToast('Không gỡ được — mạng đang chập chờn, thử lại sau vài giây.', false);
             renderDeviceTable();
           });
         });
@@ -1400,6 +1480,14 @@
               } else {
                 showToast('Đã đăng ký thiết bị thành công.', true);
               }
+            } else if (result && result.blocked) {
+              // Trước đây im lặng không báo gì — người dùng bấm hoài không
+              // thấy phản hồi, tưởng nút hỏng ("đăng ký mãi không được").
+              showToast('Không đăng ký được — mạng đang chập chờn, thử lại sau vài giây.', false);
+            } else if (result && result.full) {
+              showToast('Đã đủ ' + MAX_MEMBER_DEVICES_UI + ' thiết bị — gỡ bớt 1 thiết bị cũ trước khi đăng ký máy mới.', false);
+            } else if (!result || !result.ok) {
+              showToast('Không đăng ký được thiết bị, thử lại.', false);
             }
           }
           if (TaskManager.refreshFromGSheets) {

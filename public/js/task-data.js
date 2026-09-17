@@ -69,9 +69,19 @@ function syncToGSheets(type, action, data, id) {
 // Payslips/Commissions/CommissionRates are brand-new sheets with no CSV
 // publish gid available yet, so they're read straight from the Apps Script
 // Web App (JSON) instead of the CSV-publish path used for the older sheets.
+// 2026-09-19: fetch() KHÔNG có timeout mặc định — trên mạng di động chập
+// chờn, 1 request có thể treo rất lâu (nhiều chục giây tới cả phút) trước khi
+// trình duyệt tự bỏ cuộc, và hàm này là ĐƯỜNG DUY NHẤT đọc dữ liệu Sheet cho
+// TOÀN BỘ app (kể cả loadAttendanceLocations() dùng ở trang Chấm công) — đây
+// mới là nguyên nhân chính khiến người dùng phản ánh "kiểm tra để chấm công
+// lâu hơn 1-2 phút", không chỉ riêng phần định vị GPS. Ép timeout cứng 8s
+// bằng AbortController, quá giờ thì coi như đọc lỗi (rơi về callback([]) có
+// sẵn) thay vì treo vô thời hạn.
 function fetchFromAPI(action, callback) {
   if (!isUsingGSheets() || !GSHEETS_CONFIG.API_URL) { callback([]); return; }
-  fetch(GSHEETS_CONFIG.API_URL + '?action=' + encodeURIComponent(action), { redirect: 'follow' })
+  var controller = new AbortController();
+  var timer = setTimeout(function () { controller.abort(); }, 8000);
+  fetch(GSHEETS_CONFIG.API_URL + '?action=' + encodeURIComponent(action), { redirect: 'follow', signal: controller.signal })
     .then(function (r) { return r.json(); })
     .then(function (data) {
       // Đọc thành công = mốc "dữ liệu mới nhất" cho banner offline — đánh dấu
@@ -79,7 +89,8 @@ function fetchFromAPI(action, callback) {
       if (typeof Offline !== 'undefined') Offline.markSynced();
       callback(Array.isArray(data) ? data : []);
     })
-    .catch(function (e) { console.error('GSheets API read failed:', e); callback([]); });
+    .catch(function (e) { console.error('GSheets API read failed:', e); callback([]); })
+    .finally(function () { clearTimeout(timer); });
 }
 
 var TaskManager = (function() {
@@ -976,7 +987,15 @@ var TaskManager = (function() {
     var isSelfAdmin = canManageMembers(user) && user.id === memberId;
     var status = isSelfAdmin ? 'approved' : 'pending';
     entries.push({ id: deviceId, name: deviceName || '', status: status });
-    updateMember(memberId, stringifyDeviceEntries(entries), user);
+    // Bug 2026-09-19: trước đây hàm này LUÔN trả `ok: true` bất kể
+    // updateMember() có thật sự ghi được hay không — nếu bị Offline.guard()
+    // chặn (báo mất mạng sai trên mạng di động chập chờn, đã biết ở
+    // GHI_CHU_DU_AN.md) thì updateMember() trả `null`, KHÔNG có gì được ghi,
+    // nhưng UI vẫn hiện "Đã đăng ký thiết bị thành công" — người dùng tưởng
+    // xong, tải lại trang thấy mất, nghĩ là "đăng ký mãi không được". Giờ
+    // check đúng kết quả ghi trước khi báo thành công.
+    var updated = updateMember(memberId, stringifyDeviceEntries(entries), user);
+    if (!updated) return { ok: false, isNew: false, full: false, blocked: true };
     if (!isSelfAdmin) {
       var msg = (member.name || memberId) + ' vừa đăng ký thiết bị chấm công mới (' + (deviceName || 'không rõ tên') + ') — đang chờ duyệt.';
       addSystemNotificationsBatch(adminAndManagerMembers(user && user.id).map(function (mgr) {
