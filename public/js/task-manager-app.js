@@ -55,6 +55,17 @@
     setupEventListeners();
     renderDashboard();
 
+    // 2026-09-19: mở thẳng chi tiết 1 task khi tới từ link thông báo
+    // (?openTask=<id>) — xem notifTarget() trong portal.js (bấm thông báo
+    // "Việc quá hạn"/"Việc đến hạn hôm nay" giờ nhảy thẳng vào đúng task thay
+    // vì chỉ đánh dấu đã đọc rồi thôi). Xoá param khỏi URL sau khi mở để
+    // F5/back không mở lại modal ngoài ý muốn.
+    var openTaskId = new URLSearchParams(window.location.search).get('openTask');
+    if (openTaskId) {
+      openTaskDetailModal(openTaskId);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+
     // Wire sync button click handler
     var syncBtn = document.getElementById('syncFromSheetsBtn');
     if (syncBtn) syncBtn.addEventListener('click', syncFromSheets);

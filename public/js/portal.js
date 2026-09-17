@@ -980,6 +980,27 @@
   // ----- Notifications bell (site-wide: reuses the bell on index.html, injects one elsewhere) -----
   var NOTIF_TYPE_LABELS = { task: 'Việc', project: 'Dự án', violation: 'Vi phạm', checkin: 'Chấm công', payroll: 'Lương', system: 'Hệ thống', custom: 'Thông báo' };
 
+  // 2026-09-19: bấm vào 1 thông báo giờ tự nhảy sang đúng trang liên quan
+  // thay vì chỉ đánh dấu đã đọc rồi nằm im — suy trang đích từ `type` của
+  // thông báo. Với 2 loại "Việc quá hạn"/"Việc đến hạn hôm nay" (computed
+  // alert, id dạng "alert_overdue_<taskId>"/"alert_duetoday_<taskId>") còn
+  // mở THẲNG đúng task (xem ?openTask= trong task-manager-app.js) — các loại
+  // còn lại chỉ nhảy tới đúng TRANG (chưa có deep-link theo id ở trang đó).
+  // Trả về null cho loại không có trang liên quan rõ ràng (system/custom/
+  // general/violation) — bấm vào vẫn chỉ đánh dấu đã đọc như cũ.
+  function notifTarget(n) {
+    var type = n.type;
+    if (type === 'task') {
+      var m = /^alert_(?:overdue|duetoday)_(.+)$/.exec(n.id || '');
+      return m ? ('/pages/tasks-manager.html?openTask=' + encodeURIComponent(m[1])) : '/pages/tasks-manager.html';
+    }
+    if (type === 'attendance' || type === 'checkin') return '/pages/timesheet.html';
+    if (type === 'payroll') return '/pages/payslip.html';
+    if (type === 'project') return '/pages/projects.html';
+    if (type === 'birthday') return '/pages/team.html';
+    return null;
+  }
+
   function relTime(dateStr) {
     if (!dateStr) return '';
     var d = new Date(dateStr);
@@ -1081,6 +1102,9 @@
           TaskManager.markNotificationRead(row.dataset.id);
           row.classList.remove('unread');
           updateBadge();
+          var n = items.filter(function (x) { return x.id === row.dataset.id; })[0];
+          var target = n && notifTarget(n);
+          if (target) window.location.href = target;
         });
       });
 
