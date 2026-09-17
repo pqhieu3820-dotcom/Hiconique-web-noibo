@@ -778,6 +778,13 @@
       if (state.timelineMonth > 11) { state.timelineMonth = 0; state.timelineYear++; }
       renderTimeline();
     });
+    var todayBtn = document.getElementById('timelineTodayMonth');
+    if (todayBtn) todayBtn.addEventListener('click', function () {
+      var t = new Date();
+      state.timelineMonth = t.getMonth();
+      state.timelineYear = t.getFullYear();
+      renderTimeline();
+    });
     bindTimelineMonthPicker();
     bindWheelMonthNav(document.querySelector('.timeline-header'), prev, next);
   }

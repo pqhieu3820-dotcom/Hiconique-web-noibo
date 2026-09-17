@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="/css/portal.css">
   <link rel="stylesheet" href="/css/subpage.css">
   <link rel="stylesheet" href="/css/task-manager.css">
+  <link rel="stylesheet" href="/css/gantt.css">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
   <link rel="apple-touch-icon" sizes="167x167" href="/apple-touch-icon-167.png" />
@@ -364,6 +365,16 @@
 
     .ts-cal-nav button:hover { border-color: var(--ts-bronze); color: var(--ts-text); }
     .ts-cal-nav button svg { width: 16px; height: 16px; }
+    /* Nút "Hôm nay" cần rộng hơn theo chữ, không dùng kích thước vuông
+       32x32 chung của .ts-cal-nav button (dành cho 2 nút mũi tên). */
+    .ts-cal-nav button#tsTodayMonth {
+      width: auto;
+      height: 32px;
+      padding: 0 12px;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
 
     .ts-cal-legend {
       padding: 12px 24px;
@@ -584,6 +595,15 @@
       border-radius: 6px; color: var(--ts-muted); font-family: inherit;
     }
     .ts-report-month-nav button:hover { background: var(--ts-surface); color: var(--ts-text); }
+    .ts-report-month-nav button#tsReportTodayMonth {
+      width: auto;
+      height: 28px;
+      padding: 0 12px;
+      border: 1px solid var(--ts-border);
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
 
     /* Bảng chọn nhanh tháng/năm (đồng bộ kiểu với Timeline/Gantt ở
        projects.css §6.6 — bấm thẳng vào "Tháng X/YYYY" thay vì bấm
@@ -853,6 +873,7 @@
             </div>
           </div>
           <button type="button" id="tsReportNextMonth" aria-label="Tháng sau">&rarr;</button>
+          <button type="button" class="hq-month-nav-today" id="tsReportTodayMonth">Hôm nay</button>
         </div>
         <div class="modal-body">
           <div class="report-stat-grid" id="tsReportStatGrid"></div>
@@ -969,6 +990,7 @@
             <button id="tsNextMonth" title="Tháng sau">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
             </button>
+            <button type="button" class="hq-month-nav-today" id="tsTodayMonth">Hôm nay</button>
           </div>
         </div>
 
@@ -2493,6 +2515,12 @@
         if (reportMonth > 12) { reportMonth = 1; reportYear++; }
         renderAttendanceReportModal();
       });
+      document.getElementById('tsReportTodayMonth').addEventListener('click', function () {
+        var t = new Date();
+        reportMonth = t.getMonth() + 1;
+        reportYear = t.getFullYear();
+        renderAttendanceReportModal();
+      });
 
       bindReportMonthPicker();
       bindWheelMonthNav(document.querySelector('.ts-report-month-nav'), document.getElementById('tsReportPrevMonth'), document.getElementById('tsReportNextMonth'));
@@ -2908,6 +2936,13 @@
     document.getElementById('tsNextMonth').addEventListener('click', function() {
       calMonth++;
       if (calMonth > 12) { calMonth = 1; calYear++; }
+      document.getElementById('tsDayDetail').style.display = 'none';
+      renderCalendar();
+    });
+    document.getElementById('tsTodayMonth').addEventListener('click', function() {
+      var t = new Date();
+      calMonth = t.getMonth() + 1;
+      calYear = t.getFullYear();
       document.getElementById('tsDayDetail').style.display = 'none';
       renderCalendar();
     });

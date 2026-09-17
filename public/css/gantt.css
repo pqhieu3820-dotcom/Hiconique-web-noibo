@@ -519,3 +519,67 @@
   color: #fff;
   font-weight: 600;
 }
+
+/* 2026-09-18: cụm điều hướng tháng dùng chung (public/js/month-nav.js) —
+   thay các <input type="month"> gốc của trình duyệt (finance/commission/
+   payslip: tiếng Anh, không lăn chuột được) bằng UI đồng bộ với Gantt/
+   Timeline (mũi tên trái/phải + nhãn "Tháng X Năm YYYY" dùng lại
+   .timeline-month-picker ở trên, cộng nút "Hôm nay"). */
+.hq-month-nav {
+  display: inline-flex;
+  align-items: stretch;
+  height: 38px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  flex-shrink: 0;
+  position: relative;
+}
+.hq-month-nav-btn {
+  width: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.9375rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: all var(--dur-base) var(--ease);
+}
+.hq-month-nav-btn:first-child { border-radius: 10px 0 0 10px; }
+.hq-month-nav-btn:last-of-type { border-radius: 0 10px 10px 0; }
+.hq-month-nav-btn:hover { background: var(--color-surface-2); color: var(--color-bronze); }
+.hq-month-nav .timeline-month-picker {
+  display: flex;
+  align-items: stretch;
+  border-left: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+}
+.hq-month-nav .timeline-title-btn {
+  height: 100%;
+  padding: 0 var(--space-md);
+  border-radius: 0;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+.hq-month-nav .timeline-title-btn:hover { background: var(--color-surface-2); }
+.hq-month-nav-today {
+  height: 38px;
+  margin-left: var(--space-sm);
+  padding: 0 var(--space-md);
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--dur-base) var(--ease);
+}
+.hq-month-nav-today:hover { border-color: var(--color-bronze); color: var(--color-bronze); }

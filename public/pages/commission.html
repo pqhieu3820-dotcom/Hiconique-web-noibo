@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="/css/portal.css">
   <link rel="stylesheet" href="/css/subpage.css">
   <link rel="stylesheet" href="/css/task-manager.css">
+  <link rel="stylesheet" href="/css/gantt.css">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
   <link rel="apple-touch-icon" sizes="167x167" href="/apple-touch-icon-167.png" />
@@ -145,6 +146,7 @@
   </main>
 
   <script src="/js/portal.js" defer></script>
+  <script src="/js/month-nav.js"></script>
   <script>
   (function () {
     'use strict';
@@ -167,6 +169,7 @@
 
     var monthInput = document.getElementById('cmMonthInput');
     monthInput.value = currentMonthStr();
+    HiconiqueMonthNav.mount(monthInput);
 
     function renderRates() {
       var user = getUser();
