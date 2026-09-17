@@ -1000,13 +1000,22 @@
     var GEO_MAX_PLAUSIBLE_DISTANCE_M = 20000;
 
     var attendanceLocationsCache = null; // mảng thô từ Sheet, load 1 lần/phiên trang rồi tái dùng
+    // Bug 2026-09-19: trước đây cache 1 lần "mãi mãi" kể cả khi lần đọc đó
+    // THẤT BẠI (mạng chập chờn/timeout khiến TaskManager.getAttendanceLocations
+    // trả về [] rỗng, không phân biệt được với "Sheet thật sự trống") — mảng
+    // rỗng `[]` vẫn là giá trị "truthy" trong JS nên `if (attendanceLocationsCache)`
+    // coi là đã có cache, KHÔNG BAO GIỜ thử tải lại nữa trong suốt phiên mở
+    // trang, khiến GPS/Wifi báo nhầm "Đang tắt" (renderVerifyRow hiện chữ này
+    // cho MỌI lý do skip, kể cả "Chưa cấu hình địa điểm" do cache rỗng giả).
+    // Giờ chỉ coi là cache HỢP LỆ khi thật sự có dữ liệu — 1 lần lỗi/timeout
+    // sẽ tự thử lại ở lần gọi kế tiếp thay vì kẹt cứng cả phiên.
     function loadAttendanceLocations() {
-      if (attendanceLocationsCache) return Promise.resolve(attendanceLocationsCache);
+      if (attendanceLocationsCache && attendanceLocationsCache.length > 0) return Promise.resolve(attendanceLocationsCache);
       return new Promise(function (resolve) {
-        if (typeof TaskManager === 'undefined' || !TaskManager.getAttendanceLocations) { resolve([]); return; }
+        if (typeof TaskManager === 'undefined' || !TaskManager.getAttendanceLocations) { resolve(attendanceLocationsCache || []); return; }
         TaskManager.getAttendanceLocations(function (rows) {
-          attendanceLocationsCache = Array.isArray(rows) ? rows : [];
-          resolve(attendanceLocationsCache);
+          if (Array.isArray(rows) && rows.length > 0) attendanceLocationsCache = rows;
+          resolve(attendanceLocationsCache || []);
         });
       });
     }

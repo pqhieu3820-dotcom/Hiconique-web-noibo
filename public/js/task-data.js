@@ -271,25 +271,47 @@ var TaskManager = (function() {
   var DEFAULT_DOC_CATEGORIES = ['Template chung', 'SPC · Quy chuẩn kỹ thuật', 'Sổ tay nhân sự', 'Brand & Marketing'];
 
   // Cache for Google Sheets data
+  // Bug 2026-09-19 phát hiện cùng lúc với bug refreshFromGSheets() trùng tên ở
+  // trên: `lastFetch` là 1 mốc giờ DÙNG CHUNG cho MỌI loại dữ liệu thay vì
+  // riêng từng loại — hễ BẤT KỲ loại nào khác (projects/tasks/...) fetch
+  // thành công thì mốc giờ chung này nhảy lên mới, khiến 1 loại chưa từng
+  // fetch lại thật sự (VD `attendanceLocations`, không nằm trong danh sách
+  // refreshFromGSheets() làm mới định kỳ) bị "khoá cứng" ở kết quả CŨ (kể cả
+  // kết quả rỗng do 1 lần lỗi/timeout) suốt cả phiên mở trang — checkGeoStatus()/
+  // checkIpStatus() ở timesheet.html tưởng nhầm là "Chưa cấu hình" rồi hiện
+  // ra "Đang tắt" dù dữ liệu thật vẫn còn nguyên trên Sheet. Đổi sang mốc giờ
+  // RIÊNG từng loại (`gsCacheTime[type]`).
   var gsCache = {
     projects: null,
     tasks: null,
     members: null,
     proposals: null,
-    timesheet: null,
-    lastFetch: 0
+    timesheet: null
   };
+  var gsCacheTime = {};
 
-  // Force refresh from Google Sheets (bypass cache)
+  // Force refresh from Google Sheets (bypass cache).
+  // Bug 2026-09-19 phát hiện khi rà lỗi "đăng ký thiết bị mãi không được":
+  // file này có 2 hàm CÙNG TÊN `refreshFromGSheets` (hàm này, thêm 2026-09-10
+  // để dùng trước khi ghi — nhận callback; và 1 bản thêm sau 2026-09-17 cho
+  // silentRefresh() định kỳ — KHÔNG nhận callback, xem lịch sử git). Function
+  // declaration trùng tên thì bản khai báo SAU thắng (ghi đè hẳn bản trước) —
+  // export `TaskManager.refreshFromGSheets` vì vậy luôn trỏ vào bản KHÔNG hỗ
+  // trợ callback, khiến `TaskManager.refreshFromGSheets(doRegister)` trong
+  // timesheet.html (nút "Đăng ký thiết bị này") không bao giờ gọi lại
+  // `doRegister` — nút kẹt mãi ở "Đang đăng ký..." trên MỌI thiết bị, không
+  // phải do mạng hay do 1 máy cụ thể. Đã gộp lại thành 1 hàm duy nhất (đủ
+  // field của cả 2 bản cũ + hỗ trợ callback), `silentRefresh` giờ trỏ chung
+  // vào đây luôn (gọi không kèm callback vẫn chạy bình thường).
   function refreshFromGSheets(callback) {
-    gsCache.lastFetch = 0;
+    gsCacheTime = {};
     if (!isUsingGSheets()) {
       if (callback) callback(false);
       return;
     }
 
     var done = 0;
-    var total = 11;
+    var total = 16;
     var success = false;
 
     function checkDone() {
@@ -360,6 +382,26 @@ var TaskManager = (function() {
       }
       checkDone();
     });
+    getFromGSheets('priceCatalog', function(items) {
+      localStorage.setItem(STORAGE_KEYS.priceCatalog, JSON.stringify(items));
+      checkDone();
+    });
+    getFromGSheets('financeEntries', function(entries) {
+      localStorage.setItem(STORAGE_KEYS.financeEntries, JSON.stringify(entries));
+      checkDone();
+    });
+    getFromGSheets('receivables', function(list) {
+      localStorage.setItem(STORAGE_KEYS.receivables, JSON.stringify(list));
+      checkDone();
+    });
+    getFromGSheets('bsSnapshots', function(list) {
+      localStorage.setItem(STORAGE_KEYS.bsSnapshots, JSON.stringify(list));
+      checkDone();
+    });
+    getFromGSheets('orders', function(list) {
+      localStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(list));
+      checkDone();
+    });
   }
 
   // Get data from Google Sheets (all via the Apps Script Web App — see note
@@ -373,8 +415,10 @@ var TaskManager = (function() {
 
   function getFromGSheets(type, callback) {
     var now = Date.now();
-    // Cache for 30 seconds
-    if (gsCache[type] && (now - gsCache.lastFetch) < 30000) {
+    // Cache for 30 seconds — chỉ tin cache khi THẬT SỰ có dữ liệu (mảng rỗng
+    // do 1 lần fetch lỗi/timeout KHÔNG được coi là cache hợp lệ, tự thử lại
+    // ngay ở lần gọi kế tiếp thay vì khoá cứng cả 30s hoặc lâu hơn).
+    if (gsCache[type] && gsCache[type].length > 0 && (now - (gsCacheTime[type] || 0)) < 30000) {
       callback(gsCache[type]);
       return;
     }
@@ -400,9 +444,15 @@ var TaskManager = (function() {
     var action = apiReadActions[type];
     if (!action) { callback([]); return; }
     fetchFromAPI(action, function (data) {
-      gsCache[type] = data;
-      gsCache.lastFetch = now;
-      callback(data);
+      // Chỉ ghi đè cache khi có dữ liệu thật — 1 lần lỗi/timeout trả về []
+      // không được phép xoá mất cache TỐT trước đó (nếu có), y hệt nguyên
+      // tắc "không đè dữ liệu thật bằng kết quả rỗng" đã áp dụng ở
+      // refreshFromGSheets().
+      if (Array.isArray(data) && data.length > 0) {
+        gsCache[type] = data;
+        gsCacheTime[type] = now;
+      }
+      callback(Array.isArray(data) && data.length > 0 ? data : (gsCache[type] || []));
     });
   }
 
@@ -415,75 +465,6 @@ var TaskManager = (function() {
     }
     // Fallback to first member (development only)
     return DEFAULT_MEMBERS[0];
-  }
-
-  // 2026-09-17: tách phần tải dữ liệu từ Sheet ra khỏi initData() để dùng lại
-  // được cho "làm mới ngầm" định kỳ (silentRefresh(), gọi từ offline.js) — CHỈ
-  // ghi đè localStorage, KHÔNG tự vẽ lại UI của từng trang (mỗi trang render
-  // khác nhau, không có cách chung để ép vẽ lại an toàn). Trang nào tự đọc lại
-  // localStorage ở lần tương tác tiếp theo (mở modal, chuyển tab con...) sẽ tự
-  // thấy dữ liệu mới — đây là lý do KHÔNG cần reload cả trang định kỳ nữa
-  // (trước đó đã dùng cách reload cả trang mỗi ~20-30s, gây nháy màn hình liên
-  // tục làm gián đoạn thao tác đang làm dở — người dùng phản ánh 2026-09-17).
-  function refreshFromGSheets() {
-    if (!isUsingGSheets()) return;
-      // Chỉ ghi vào localStorage khi thật sự lấy được dữ liệu từ Google Sheet.
-      // KHÔNG BAO GIỜ tự động chèn dữ liệu mẫu (DEFAULT_*) đè lên cache khi
-      // sheet trống hoặc lần fetch bị lỗi/timeout — giữ nguyên cache thật cũ
-      // (nếu có) và để UI tự hiển thị trạng thái trống thật, tránh hiện lại
-      // dữ liệu giả "Dự án A/B/C", "MGR1/MEM1"... (lỗi người dùng phát hiện
-      // 2026-09-09: 1 lần fetch chậm/lỗi đã khiến toàn bộ cache bị đè bằng
-      // dữ liệu mẫu này).
-      getFromGSheets('projects', function(projects) {
-        if (projects.length > 0) localStorage.setItem(STORAGE_KEYS.projects, JSON.stringify(projects));
-      });
-      getFromGSheets('tasks', function(tasks) {
-        if (tasks.length > 0) localStorage.setItem(STORAGE_KEYS.tasks, JSON.stringify(tasks));
-      });
-      getFromGSheets('members', function(members) {
-        if (members.length > 0) localStorage.setItem(STORAGE_KEYS.members, JSON.stringify(members));
-      });
-      getFromGSheets('proposals', function(proposals) {
-        if (proposals.length > 0) localStorage.setItem(STORAGE_KEYS.proposals, JSON.stringify(proposals));
-      });
-      getFromGSheets('timesheet', function(timesheet) {
-        if (timesheet.length > 0) {
-          localStorage.setItem(STORAGE_KEYS.timesheet, JSON.stringify(timesheet));
-        }
-      });
-      getFromGSheets('notifications', function(notifications) {
-        if (notifications.length > 0) localStorage.setItem(STORAGE_KEYS.notifications, JSON.stringify(notifications));
-      });
-      getFromGSheets('notices', function(notices) {
-        if (notices.length > 0) localStorage.setItem(STORAGE_KEYS.notices, JSON.stringify(notices));
-      });
-      getFromGSheets('documents', function(documents) {
-        if (documents.length > 0) localStorage.setItem(STORAGE_KEYS.documents, JSON.stringify(documents));
-      });
-      getFromGSheets('payslips', function(payslips) {
-        localStorage.setItem(STORAGE_KEYS.payslips, JSON.stringify(payslips));
-      });
-      getFromGSheets('commissions', function(commissions) {
-        localStorage.setItem(STORAGE_KEYS.commissions, JSON.stringify(commissions));
-      });
-      getFromGSheets('commissionRates', function(rates) {
-        if (rates.length > 0) localStorage.setItem(STORAGE_KEYS.commissionRates, JSON.stringify(rates));
-      });
-      getFromGSheets('priceCatalog', function(items) {
-        localStorage.setItem(STORAGE_KEYS.priceCatalog, JSON.stringify(items));
-      });
-      getFromGSheets('financeEntries', function(entries) {
-        localStorage.setItem(STORAGE_KEYS.financeEntries, JSON.stringify(entries));
-      });
-      getFromGSheets('receivables', function(list) {
-        localStorage.setItem(STORAGE_KEYS.receivables, JSON.stringify(list));
-      });
-      getFromGSheets('bsSnapshots', function(list) {
-        localStorage.setItem(STORAGE_KEYS.bsSnapshots, JSON.stringify(list));
-      });
-      getFromGSheets('orders', function(list) {
-        localStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(list));
-      });
   }
 
   // Initialize data from localStorage or Google Sheets — chạy 1 lần lúc trang
@@ -1475,7 +1456,7 @@ var TaskManager = (function() {
     if (typeof Offline !== 'undefined' && Offline.guard('thêm địa điểm')) { callback && callback(null); return; }
     fetch(GSHEETS_CONFIG.API_URL + '?action=addAttendanceLocation&data=' + encodeURIComponent(JSON.stringify(data)), { redirect: 'follow' })
       .then(function (r) { return r.json(); })
-      .then(function (result) { gsCache.lastFetch = 0; callback && callback(result); })
+      .then(function (result) { gsCacheTime.attendanceLocations = 0; callback && callback(result); })
       .catch(function (e) { console.error('addAttendanceLocation failed:', e); callback && callback(null); });
   }
   function updateAttendanceLocation(id, updates, callback) {
@@ -1483,7 +1464,7 @@ var TaskManager = (function() {
     if (typeof Offline !== 'undefined' && Offline.guard('sửa địa điểm')) { callback && callback(null); return; }
     fetch(GSHEETS_CONFIG.API_URL + '?action=updateAttendanceLocation&id=' + encodeURIComponent(id) + '&data=' + encodeURIComponent(JSON.stringify(updates)), { redirect: 'follow' })
       .then(function (r) { return r.json(); })
-      .then(function (result) { gsCache.lastFetch = 0; callback && callback(result); })
+      .then(function (result) { gsCacheTime.attendanceLocations = 0; callback && callback(result); })
       .catch(function (e) { console.error('updateAttendanceLocation failed:', e); callback && callback(null); });
   }
   function deleteAttendanceLocation(id, callback) {
@@ -1491,7 +1472,7 @@ var TaskManager = (function() {
     if (typeof Offline !== 'undefined' && Offline.guard('xoá địa điểm')) { callback && callback(null); return; }
     fetch(GSHEETS_CONFIG.API_URL + '?action=deleteAttendanceLocation&id=' + encodeURIComponent(id), { redirect: 'follow' })
       .then(function (r) { return r.json(); })
-      .then(function (result) { gsCache.lastFetch = 0; callback && callback(result); })
+      .then(function (result) { gsCacheTime.attendanceLocations = 0; callback && callback(result); })
       .catch(function (e) { console.error('deleteAttendanceLocation failed:', e); callback && callback(null); });
   }
 
