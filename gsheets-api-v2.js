@@ -2343,13 +2343,13 @@ const DIVISION_CODES = ['BO', 'FO', 'DDC', 'CPC'];
 const DEPARTMENT_NAMES = [
   'Ban Giám đốc', 'Nhân sự', 'Kế toán & Tài chính', 'Hành chính & Công nghệ', 'Pháp chế & Hợp đồng',
   'Kinh doanh', 'Truyền thông', 'Chăm sóc Khách hàng',
-  'Thiết kế Kiến trúc & Nội thất', 'Quản lý Dữ liệu số', 'Nghiên cứu Kỹ thuật',
+  'Thiết kế Ý tưởng & 3D', 'Kỹ thuật Triển khai 2D', 'Quản lý Dữ liệu số', 'Nghiên cứu Kỹ thuật',
   'Dự toán & Bóc tách', 'Cung ứng & Mua hàng', 'Kho bãi & Vận tải', 'Xưởng sản xuất',
-  'Quản lý Thi công', 'An toàn & Môi trường', 'Chất lượng'
+  'Quản lý Thi công', 'An toàn & Môi trường', 'Quản lý Chất lượng'
 ];
 const DEPARTMENT_CODES = [
-  'BOD', 'HRM', 'ACC', 'ADM', 'LEG', 'BIZ', 'MKT', 'CUS', 'DES', 'BIM', 'RND',
-  'EST', 'PUR', 'WHS', 'MFG', 'CON', 'HSE', 'QAS'
+  'BOD', 'HRM', 'ACC', 'ADM', 'LEG', 'BIZ', 'MKT', 'CUS', 'DES', 'DRW', 'BIM', 'RND',
+  'QS', 'PUR', 'WHS', 'MFG', 'CON', 'HSE', 'QAC'
 ];
 
 // Đặt dropdown (data validation, danh sách CỐ ĐỊNH) cho 4 cột Bộ phận/Mã bộ

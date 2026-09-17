@@ -567,6 +567,7 @@
         (function () {
           var divCode = m.divisionCode;
           var divName = m.division;
+          var divDesc = '';
           if (!divCode && m.departmentCode && typeof TaskManager !== 'undefined' && TaskManager.getDepartmentByCode) {
             var deptInfo = TaskManager.getDepartmentByCode(m.departmentCode);
             if (deptInfo) {
@@ -575,9 +576,20 @@
               divName = divInfo ? divInfo.name : '';
             }
           }
-          return divCode ? '<div class="team-modal-row">' + ICON.building + '<span>' + escapeHtml(divCode) + (divName ? ' — ' + escapeHtml(divName) : '') + '</span></div>' : '';
+          if (divCode && typeof TaskManager !== 'undefined' && TaskManager.getDivisionByCode) {
+            var divFull = TaskManager.getDivisionByCode(divCode);
+            divDesc = divFull ? divFull.desc || '' : '';
+          }
+          // title = mô tả chức năng của Khối, hiện khi di chuột vào (giống quy
+          // ước title="" đã dùng ở deptLabel trên badge team card).
+          return divCode ? '<div class="team-modal-row"' + (divDesc ? ' title="' + escapeHtml(divDesc) + '"' : '') + '>' + ICON.building + '<span>' + escapeHtml(divCode) + (divName ? ' — ' + escapeHtml(divName) : '') + '</span></div>' : '';
         })() +
-        (m.departmentCode ? '<div class="team-modal-row">' + ICON.building + '<span>' + escapeHtml(m.departmentCode) + (m.department ? ' — ' + escapeHtml(m.department) : '') + '</span></div>' : '') +
+        (function () {
+          if (!m.departmentCode) return '';
+          var deptFull = (typeof TaskManager !== 'undefined' && TaskManager.getDepartmentByCode) ? TaskManager.getDepartmentByCode(m.departmentCode) : null;
+          var deptDesc = deptFull ? deptFull.desc || '' : '';
+          return '<div class="team-modal-row"' + (deptDesc ? ' title="' + escapeHtml(deptDesc) + '"' : '') + '>' + ICON.building + '<span>' + escapeHtml(m.departmentCode) + (m.department ? ' — ' + escapeHtml(m.department) : '') + '</span></div>';
+        })() +
         (m.phone ? '<div class="team-modal-row">' + ICON.phone + '<span>' + escapeHtml(m.phone) + '</span></div>' : '') +
         (m.hometown ? '<div class="team-modal-row">' + ICON.pin + '<span>' + escapeHtml(m.hometown) + '</span></div>' : '') +
         (dobDate ? '<div class="team-modal-row">' + ICON.cake + '<span>Sinh ngày ' + dobDate + '</span></div>' : '') +

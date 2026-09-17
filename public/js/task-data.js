@@ -133,10 +133,10 @@ var TaskManager = (function() {
   // Front-Office -> FO, Design & Data Core -> DDC, Construct & Product
   // Core -> CPC) — cùng quy ước với mã Phòng ban bên dưới.
   var DIVISIONS = [
-    { code: 'BO', name: 'Khối Quản trị & Vận hành chung' },
-    { code: 'FO', name: 'Khối Kinh doanh & Trải nghiệm Khách hàng' },
-    { code: 'DDC', name: 'Khối Chuyên môn Thiết kế & Số hóa' },
-    { code: 'CPC', name: 'Khối Kỹ thuật Xây dựng & Sản xuất' }
+    { code: 'BO', name: 'Khối Quản trị & Vận hành chung', desc: 'Back-Office — quản trị chiến lược, nhân sự, kế toán & tài chính, hành chính & công nghệ, pháp chế.' },
+    { code: 'FO', name: 'Khối Kinh doanh & Trải nghiệm Khách hàng', desc: 'Front-Office — kinh doanh, truyền thông thương hiệu và chăm sóc khách hàng.' },
+    { code: 'DDC', name: 'Khối Chuyên môn Thiết kế & Số hóa', desc: 'Design & Data Core — thiết kế ý tưởng & 3D, kỹ thuật triển khai 2D, quản lý dữ liệu số (BIM) và nghiên cứu kỹ thuật.' },
+    { code: 'CPC', name: 'Khối Kỹ thuật Xây dựng & Sản xuất', desc: 'Construct & Product Core — dự toán, cung ứng, kho vận, sản xuất, thi công, an toàn và quản lý chất lượng.' }
   ];
   function getDivisions() { return DIVISIONS.slice(); }
   function getDivisionByCode(code) { return DIVISIONS.find(function (d) { return d.code === code; }) || null; }
@@ -147,28 +147,37 @@ var TaskManager = (function() {
   // lý thành viên (team.html) — 1 nguồn duy nhất, không viết trùng 3 nơi.
   // Không tự thêm/sửa danh sách này khi không có yêu cầu — đây là danh mục
   // chuẩn hoá dùng cho đánh số văn bản/hồ sơ, đổi tuỳ tiện sẽ lệch với SOP.
+  // Cập nhật 2026-09-18: đủ 19 phòng ban theo SOP mới nhất (thêm DRW; đổi mã
+  // EST -> QS, QAS -> QAC cho khớp SOP — không có thành viên nào đang gán 2
+  // mã cũ này nên đổi an toàn) + thêm `desc` (mô tả chức năng) cho mỗi mục,
+  // dùng để hiện tooltip khi di chuột vào thông tin ban ngành ở modal Team
+  // (xem bindDeptTooltip() trong portal.js). Cũng nhớ đồng bộ 2 mảng
+  // DEPARTMENT_NAMES/DEPARTMENT_CODES trong gsheets-api-v2.js rồi redeploy
+  // Apps Script — nếu không, dropdown chọn phòng ban trên Google Sheet sẽ
+  // lệch với danh sách này.
   // `divisionCode` = mã Bộ phận cha (xem DIVISIONS ở trên) — quan hệ cha/con
   // dùng để lọc dropdown Phòng ban theo Bộ phận đã chọn ở form đăng ký/trang
   // cá nhân (chọn Bộ phận trước sẽ thu hẹp danh sách Phòng ban tương ứng).
   var DEPARTMENTS = [
-    { code: 'BOD', name: 'Ban Giám đốc', group: 'Khối Quản trị & Vận hành chung', divisionCode: 'BO' },
-    { code: 'HRM', name: 'Nhân sự', group: 'Khối Quản trị & Vận hành chung', divisionCode: 'BO' },
-    { code: 'ACC', name: 'Kế toán & Tài chính', group: 'Khối Quản trị & Vận hành chung', divisionCode: 'BO' },
-    { code: 'ADM', name: 'Hành chính & Công nghệ', group: 'Khối Quản trị & Vận hành chung', divisionCode: 'BO' },
-    { code: 'LEG', name: 'Pháp chế & Hợp đồng', group: 'Khối Quản trị & Vận hành chung', divisionCode: 'BO' },
-    { code: 'BIZ', name: 'Kinh doanh', group: 'Khối Kinh doanh & Trải nghiệm Khách hàng', divisionCode: 'FO' },
-    { code: 'MKT', name: 'Truyền thông', group: 'Khối Kinh doanh & Trải nghiệm Khách hàng', divisionCode: 'FO' },
-    { code: 'CUS', name: 'Chăm sóc Khách hàng', group: 'Khối Kinh doanh & Trải nghiệm Khách hàng', divisionCode: 'FO' },
-    { code: 'DES', name: 'Thiết kế Kiến trúc & Nội thất', group: 'Khối Chuyên môn Thiết kế & Số hóa', divisionCode: 'DDC' },
-    { code: 'BIM', name: 'Quản lý Dữ liệu số', group: 'Khối Chuyên môn Thiết kế & Số hóa', divisionCode: 'DDC' },
-    { code: 'RND', name: 'Nghiên cứu Kỹ thuật', group: 'Khối Chuyên môn Thiết kế & Số hóa', divisionCode: 'DDC' },
-    { code: 'EST', name: 'Dự toán & Bóc tách', group: 'Khối Kỹ thuật Xây dựng & Sản xuất', divisionCode: 'CPC' },
-    { code: 'PUR', name: 'Cung ứng & Mua hàng', group: 'Khối Kỹ thuật Xây dựng & Sản xuất', divisionCode: 'CPC' },
-    { code: 'WHS', name: 'Kho bãi & Vận tải', group: 'Khối Kỹ thuật Xây dựng & Sản xuất', divisionCode: 'CPC' },
-    { code: 'MFG', name: 'Xưởng sản xuất', group: 'Khối Kỹ thuật Xây dựng & Sản xuất', divisionCode: 'CPC' },
-    { code: 'CON', name: 'Quản lý Thi công', group: 'Khối Kỹ thuật Xây dựng & Sản xuất', divisionCode: 'CPC' },
-    { code: 'HSE', name: 'An toàn & Môi trường', group: 'Khối Kỹ thuật Xây dựng & Sản xuất', divisionCode: 'CPC' },
-    { code: 'QAS', name: 'Chất lượng', group: 'Khối Kỹ thuật Xây dựng & Sản xuất', divisionCode: 'CPC' }
+    { code: 'BOD', name: 'Ban Giám đốc', group: 'Khối Quản trị & Vận hành chung', divisionCode: 'BO', desc: 'Quản trị chiến lược, lập kế hoạch năm, quy chế công ty, ủy quyền và pháp lý doanh nghiệp.' },
+    { code: 'HRM', name: 'Nhân sự', group: 'Khối Quản trị & Vận hành chung', divisionCode: 'BO', desc: 'Tuyển dụng, đào tạo, đánh giá năng lực, chấm công, tính lương thưởng và phúc lợi.' },
+    { code: 'ACC', name: 'Kế toán & Tài chính', group: 'Khối Quản trị & Vận hành chung', divisionCode: 'BO', desc: 'Lập ngân sách, tạm ứng, thanh toán, quản lý công nợ, và kiểm soát dòng tiền dự án.' },
+    { code: 'ADM', name: 'Hành chính & Công nghệ', group: 'Khối Quản trị & Vận hành chung', divisionCode: 'BO', desc: 'Quản lý tài sản văn phòng, cấp phát trang thiết bị (đồng phục, máy tính), bảo trì hệ thống và bản quyền phần mềm.' },
+    { code: 'LEG', name: 'Pháp chế & Hợp đồng', group: 'Khối Quản trị & Vận hành chung', divisionCode: 'BO', desc: 'Soạn thảo hợp đồng, phụ lục, thỏa thuận bảo mật (NDA) và kiểm soát rủi ro pháp lý.' },
+    { code: 'BIZ', name: 'Kinh doanh', group: 'Khối Kinh doanh & Trải nghiệm Khách hàng', divisionCode: 'FO', desc: 'Tiếp cận khách hàng, tư vấn sơ bộ, thương thảo báo giá và chốt hợp đồng nguyên tắc.' },
+    { code: 'MKT', name: 'Truyền thông', group: 'Khối Kinh doanh & Trải nghiệm Khách hàng', divisionCode: 'FO', desc: 'Quản trị nhận diện thương hiệu, tiêu chuẩn hóa ấn phẩm truyền thông, nhiếp ảnh kiến trúc và quản lý kênh truyền thông.' },
+    { code: 'CUS', name: 'Chăm sóc Khách hàng', group: 'Khối Kinh doanh & Trải nghiệm Khách hàng', divisionCode: 'FO', desc: 'Khảo sát mức độ hài lòng sau bàn giao, tiếp nhận khiếu nại và tổ chức tri ân khách hàng.' },
+    { code: 'DES', name: 'Thiết kế Ý tưởng & 3D', group: 'Khối Chuyên môn Thiết kế & Số hóa', divisionCode: 'DDC', desc: 'Khảo sát hiện trạng, thiết kế Concept, dựng hình 3D (SketchUp, 3ds Max, Blender), định hình ngôn ngữ không gian, ứng dụng công thái học.' },
+    { code: 'DRW', name: 'Kỹ thuật Triển khai 2D', group: 'Khối Chuyên môn Thiết kế & Số hóa', divisionCode: 'DDC', desc: 'Khảo sát hiện trạng, lên mặt bằng bố trí công năng 2D, tiếp nhận Concept 3D để khai triển hồ sơ bản vẽ kỹ thuật thi công (Shop Drawing). Kiểm soát chặt chẽ các tiêu chuẩn kích thước cấu tạo thực tế và độ hoàn thiện bản vẽ.' },
+    { code: 'BIM', name: 'Quản lý Dữ liệu số', group: 'Khối Chuyên môn Thiết kế & Số hóa', divisionCode: 'DDC', desc: 'Quản lý dự án theo tiêu chuẩn IFC (định dạng dữ liệu mở quốc tế trao đổi mô hình BIM giữa các phần mềm), quản lý môi trường dữ liệu chung (CDE), luồng luân chuyển file đa phần mềm và quy tắc lưu trữ đám mây.' },
+    { code: 'RND', name: 'Nghiên cứu Kỹ thuật', group: 'Khối Chuyên môn Thiết kế & Số hóa', divisionCode: 'DDC', desc: 'Xây dựng thư viện vật liệu hoàn thiện, đánh giá đặc tính lý hóa vật tư, cập nhật công nghệ vật liệu mới, quy chuẩn trong thiết kế.' },
+    { code: 'QS', name: 'Dự toán & Bóc tách', group: 'Khối Kỹ thuật Xây dựng & Sản xuất', divisionCode: 'CPC', desc: 'Bóc tách khối lượng từ bản vẽ kỹ thuật, áp giá, lập dự toán thi công (BOQ) và tính toán chi phí phát sinh.' },
+    { code: 'PUR', name: 'Cung ứng & Mua hàng', group: 'Khối Kỹ thuật Xây dựng & Sản xuất', divisionCode: 'CPC', desc: 'Đánh giá nhà cung cấp, đặt hàng vật tư thô, phụ kiện kim khí và thiết bị hoàn thiện.' },
+    { code: 'WHS', name: 'Kho bãi & Vận tải', group: 'Khối Kỹ thuật Xây dựng & Sản xuất', divisionCode: 'CPC', desc: 'Quản lý xuất/nhập/tồn kho gỗ, vật tư tại xưởng và điều phối phương tiện vận chuyển hàng lên công trình.' },
+    { code: 'MFG', name: 'Xưởng sản xuất', group: 'Khối Kỹ thuật Xây dựng & Sản xuất', divisionCode: 'CPC', desc: 'Bóc tách module CNC, gia công đồ mộc, dán cạnh, sơn hoàn thiện, lắp ráp thử (mock-up) và đóng gói.' },
+    { code: 'CON', name: 'Quản lý Thi công', group: 'Khối Kỹ thuật Xây dựng & Sản xuất', divisionCode: 'CPC', desc: 'Lập tiến độ, tổ chức mặt bằng hiện trường, họp phối hợp các bộ môn và giám sát nhà thầu phụ (MEP, thạch cao, đá).' },
+    { code: 'HSE', name: 'An toàn & Môi trường', group: 'Khối Kỹ thuật Xây dựng & Sản xuất', divisionCode: 'CPC', desc: 'Quản lý bảo hộ lao động, an toàn giàn giáo, an toàn điện, phòng chống cháy nổ và kiểm soát rác thải.' },
+    { code: 'QAC', name: 'Quản lý Chất lượng', group: 'Khối Kỹ thuật Xây dựng & Sản xuất', divisionCode: 'CPC', desc: 'Nghiệm thu vật tư đầu vào, kiểm tra dung sai các điểm dừng kỹ thuật, vệ sinh công nghiệp và quy trình bảo hành/bảo trì.' }
   ];
   function getDepartments() { return DEPARTMENTS.slice(); }
   function getDepartmentByCode(code) { return DEPARTMENTS.find(function (d) { return d.code === code; }) || null; }
