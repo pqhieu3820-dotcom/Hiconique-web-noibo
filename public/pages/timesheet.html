@@ -1090,25 +1090,60 @@
     // đang cách xa đến thế, xem checkGeoStatus().
     var GEO_MAX_PLAUSIBLE_DISTANCE_M = 20000;
 
-    var attendanceLocationsCache = null; // mảng thô từ Sheet, load 1 lần/phiên trang rồi tái dùng
-    // Bug 2026-09-19: trước đây cache 1 lần "mãi mãi" kể cả khi lần đọc đó
-    // THẤT BẠI (mạng chập chờn/timeout khiến TaskManager.getAttendanceLocations
-    // trả về [] rỗng, không phân biệt được với "Sheet thật sự trống") — mảng
-    // rỗng `[]` vẫn là giá trị "truthy" trong JS nên `if (attendanceLocationsCache)`
-    // coi là đã có cache, KHÔNG BAO GIỜ thử tải lại nữa trong suốt phiên mở
-    // trang, khiến GPS/Wifi báo nhầm "Đang tắt" (renderVerifyRow hiện chữ này
-    // cho MỌI lý do skip, kể cả "Chưa cấu hình địa điểm" do cache rỗng giả).
-    // Giờ chỉ coi là cache HỢP LỆ khi thật sự có dữ liệu — 1 lần lỗi/timeout
-    // sẽ tự thử lại ở lần gọi kế tiếp thay vì kẹt cứng cả phiên.
-    function loadAttendanceLocations() {
-      if (attendanceLocationsCache && attendanceLocationsCache.length > 0) return Promise.resolve(attendanceLocationsCache);
+    // 2026-09-19: người dùng phản ánh 3 điều kiện (GPS/Wifi/Thiết bị) load
+    // rất lâu mỗi lần vào trang Chấm công — nguyên nhân chính là DANH SÁCH
+    // ĐỊA ĐIỂM/IP (sheet "Địa điểm chấm công") phải tải mới qua Apps Script
+    // MỖI LẦN mở trang trước khi checkGeoStatus()/checkIpStatus() chạy được,
+    // trong khi dữ liệu này hầu như không đổi (CEO hoạ hoằn mới thêm/sửa 1
+    // địa điểm). Áp dụng đúng pattern "stale-while-revalidate" đã dùng cho
+    // dropdown Tỉnh/Thành (projects.js, xem GHI_CHU_DU_AN.md): điền NGAY từ
+    // cache localStorage nếu có (0 độ trễ mạng) rồi mới âm thầm tải bản mới
+    // nhất ở NỀN 1 lần/phiên trang để cập nhật cho lần mở SAU — không đợi
+    // mạng chỉ để BIẾT được các cột lat/lng/ip đã cấu hình như cũ.
+    var ATTENDANCE_LOCATIONS_CACHE_KEY = 'hiconique_attendance_locations_cache';
+    var attendanceLocationsCache = null; // mảng thô từ Sheet — hydrate từ localStorage bên dưới nếu có
+    (function hydrateAttendanceLocationsCache() {
+      try {
+        var cached = JSON.parse(localStorage.getItem(ATTENDANCE_LOCATIONS_CACHE_KEY) || 'null');
+        if (Array.isArray(cached) && cached.length > 0) attendanceLocationsCache = cached;
+      } catch (e) { /* cache hỏng/không đọc được — bỏ qua, coi như chưa có cache */ }
+    })();
+
+    var attendanceLocationsPromise = null; // gọi dở, dùng để gộp các lệnh gọi trùng thời điểm
+    var attendanceLocationsBgRefreshed = false; // chỉ âm thầm làm mới TỐI ĐA 1 lần/phiên trang
+
+    function fetchAttendanceLocationsFromServer() {
       return new Promise(function (resolve) {
         if (typeof TaskManager === 'undefined' || !TaskManager.getAttendanceLocations) { resolve(attendanceLocationsCache || []); return; }
         TaskManager.getAttendanceLocations(function (rows) {
-          if (Array.isArray(rows) && rows.length > 0) attendanceLocationsCache = rows;
+          if (Array.isArray(rows) && rows.length > 0) {
+            attendanceLocationsCache = rows;
+            try { localStorage.setItem(ATTENDANCE_LOCATIONS_CACHE_KEY, JSON.stringify(rows)); } catch (e) { /* localStorage đầy/bị chặn — bỏ qua, không ảnh hưởng chấm công */ }
+          }
           resolve(attendanceLocationsCache || []);
         });
       });
+    }
+
+    // checkGeoStatus() và checkIpStatus() đều gọi hàm này gần như CÙNG LÚC
+    // (qua Promise.all ở runLiveStatusCheck()) — dùng chung 1 Promise đang
+    // chạy dở thay vì để cả 2 tự bắn request Apps Script riêng (tốn gấp đôi,
+    // Apps Script vốn đã chậm/dễ quá tải khi nhiều request chạy song song).
+    function loadAttendanceLocations() {
+      if (attendanceLocationsCache && attendanceLocationsCache.length > 0) {
+        if (!attendanceLocationsBgRefreshed) {
+          attendanceLocationsBgRefreshed = true;
+          fetchAttendanceLocationsFromServer(); // âm thầm ở nền, không chặn lời gọi hiện tại
+        }
+        return Promise.resolve(attendanceLocationsCache);
+      }
+      if (attendanceLocationsPromise) return attendanceLocationsPromise;
+      attendanceLocationsBgRefreshed = true;
+      attendanceLocationsPromise = fetchAttendanceLocationsFromServer().then(function (rows) {
+        attendanceLocationsPromise = null;
+        return rows;
+      });
+      return attendanceLocationsPromise;
     }
     function activeGeoLocations(rows) {
       return rows.filter(function (r) { return r.active !== false && r.lat !== '' && r.lat != null && r.lng !== '' && r.lng != null; });
@@ -1182,17 +1217,28 @@
       return new Promise(function (resolve, reject) {
         var attemptsLeft = maxAttempts;
         var best = null;
+        var isFirstAttempt = true;
         function tryOnce() {
+          // 2026-09-19: LẦN THỬ ĐẦU cho phép trình duyệt trả về vị trí đã có
+          // sẵn trong bộ nhớ đệm (tối đa 15s trước) thay vì luôn ép định vị
+          // lại từ đầu (`maximumAge: 0`) — đây là nguyên nhân chính khiến
+          // dòng "Vị trí GPS" mất nhiều giây mỗi lần mở trang dù vừa đứng yên
+          // 1 chỗ, vị trí gần như chắc chắn không đổi. Các lần thử LẠI (khi
+          // lần đầu chưa đủ chính xác) vẫn ép định vị mới hoàn toàn
+          // (`maximumAge: 0`) — mục đích retry là lấy 1 lần đo THẬT tốt hơn,
+          // dùng lại cache ở đây sẽ chỉ trả về đúng kết quả cũ, vô nghĩa.
           navigator.geolocation.getCurrentPosition(function (pos) {
             if (!best || pos.coords.accuracy < best.coords.accuracy) best = pos;
             attemptsLeft--;
+            isFirstAttempt = false;
             if (attemptsLeft <= 0 || best.coords.accuracy <= 50) resolve(best);
             else tryOnce();
           }, function (err) {
             attemptsLeft--;
+            isFirstAttempt = false;
             if (attemptsLeft <= 0) { if (best) resolve(best); else reject(err); }
             else tryOnce();
-          }, { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 0 });
+          }, { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: isFirstAttempt ? 15000 : 0 });
         }
         tryOnce();
       });
@@ -2502,7 +2548,18 @@
       if (!list) return;
       list.innerHTML = '<p style="font-size:0.8125rem; color:var(--color-text-muted);">Đang tải...</p>';
       TaskManager.getAttendanceLocations(function (rows) {
-        attendanceLocationsCache = null; // buộc checkGeoStatus/checkIpStatus tải lại danh sách mới nhất
+        // Đang có sẵn danh sách MỚI NHẤT ngay tại đây (vừa fetch xong) — cập
+        // nhật thẳng vào cache (thay vì chỉ null hoá rồi bắt checkGeoStatus/
+        // checkIpStatus tự tải lại lần sau) VÀ localStorage, để CEO vừa
+        // thêm/sửa địa điểm xong thì cả tab đang mở lẫn lần mở trang SAU đều
+        // thấy đúng ngay, không phải đợi cache 30s hoặc F5 nhiều lần.
+        if (Array.isArray(rows) && rows.length > 0) {
+          attendanceLocationsCache = rows;
+          try { localStorage.setItem(ATTENDANCE_LOCATIONS_CACHE_KEY, JSON.stringify(rows)); } catch (e) { /* bỏ qua */ }
+        } else {
+          attendanceLocationsCache = null;
+          try { localStorage.removeItem(ATTENDANCE_LOCATIONS_CACHE_KEY); } catch (e) { /* bỏ qua */ }
+        }
         if (!rows || rows.length === 0) {
           list.innerHTML = '<p style="font-size:0.8125rem; color:var(--color-text-muted);">Chưa có địa điểm nào — thêm ở form phía trên.</p>';
           return;
