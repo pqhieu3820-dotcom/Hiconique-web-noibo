@@ -9,6 +9,14 @@
   let modalOverlay = null;
   let currentModal = null;
 
+  // 2026-09-19: state cho "Calendar To Do List" (mục Lịch, xem renderCalendar()
+  // phía dưới) — tháng/năm đang xem + ngày đang mở chi tiết, giữ NGOÀI hàm để
+  // sống sót qua các lần renderCalendar() (đổi tháng/năm, bấm Tải lại...).
+  var todoCalState = (function () {
+    var now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() + 1, selectedDate: null };
+  })();
+
   // Normalize task.assigneeIds (mảng nhiều người phụ trách) — tolerate ô cũ
   // dạng chuỗi đơn (chưa migrate) hoặc thiếu hẳn field.
   function getTaskAssigneeIds(task) {
@@ -22,6 +30,12 @@
   }
   function taskHasAssignee(task, memberId) {
     return getTaskAssigneeIds(task).indexOf(memberId) !== -1;
+  }
+
+  function escapeHtml(str) {
+    return String(str == null ? '' : str).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
   }
 
   // Normalize project.members from Google Sheets string to array
@@ -1796,40 +1810,135 @@
     `;
   }
 
+  // "Calendar To Do List" — lưới lịch tháng thật (thay cho danh sách deadline
+  // đơn giản cũ), mỗi ngày hiện các task có deadline đúng ngày đó, bấm vào 1
+  // ngày mở khung to-do-list đầy đủ bên dưới (tick hoàn thành ngay tại chỗ,
+  // bấm tên task mở modal chi tiết đầy đủ — dùng lại openTaskDetailModal()).
+  function tasksDueOn(tasks, dateStr) {
+    return tasks.filter(function (t) {
+      if (!t.deadline) return false;
+      var d = new Date(t.deadline);
+      if (isNaN(d.getTime())) return false;
+      var s = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      return s === dateStr;
+    });
+  }
+
   function renderCalendar() {
     const tmContent = document.querySelector('.tm-content');
     if (!tmContent) return;
 
+    const state = todoCalState;
     const tasks = TaskManager.getTasks();
+    const today = new Date();
+    const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+
+    const monthNames = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
+    const dayHeaders = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+    const yearsOptions = [];
+    for (var y = today.getFullYear() - 2; y <= today.getFullYear() + 2; y++) yearsOptions.push(y);
+
+    const firstDay = new Date(state.year, state.month - 1, 1);
+    const startWeekday = firstDay.getDay(); // 0=Sun
+    const daysInMonth = new Date(state.year, state.month, 0).getDate();
+
+    var cellsHtml = '';
+    for (var p = 0; p < startWeekday; p++) cellsHtml += '<div class="todo-cal-day other-month"></div>';
+    for (var d = 1; d <= daysInMonth; d++) {
+      var dateStr = state.year + '-' + String(state.month).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+      var dueTasks = tasksDueOn(tasks, dateStr);
+      var isToday = dateStr === todayStr;
+      var isSelected = dateStr === state.selectedDate;
+      var pillsHtml = dueTasks.slice(0, 3).map(function (t) {
+        var isDone = t.status === 'completed';
+        var dotColor = isDone ? 'var(--color-success)' : (t.priority === 'high' ? 'var(--color-destructive)' : t.priority === 'medium' ? 'var(--color-terracotta)' : 'var(--color-bronze)');
+        return '<div class="todo-cal-pill" style="border-left-color:' + dotColor + '" title="' + escapeHtml(t.title) + '">' + escapeHtml(t.title) + '</div>';
+      }).join('');
+      var moreHtml = dueTasks.length > 3 ? '<div class="todo-cal-more">+' + (dueTasks.length - 3) + ' việc khác</div>' : '';
+      cellsHtml += '<div class="todo-cal-day' + (isToday ? ' today' : '') + (isSelected ? ' selected' : '') + '" data-date="' + dateStr + '">' +
+        '<span class="todo-cal-daynum">' + String(d).padStart(2, '0') + '</span>' +
+        '<div class="todo-cal-pills">' + pillsHtml + moreHtml + '</div>' +
+        '</div>';
+    }
+    var totalCells = startWeekday + daysInMonth;
+    var trailing = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+    for (var n = 0; n < trailing; n++) cellsHtml += '<div class="todo-cal-day other-month"></div>';
+
+    var selectedTasks = state.selectedDate ? tasksDueOn(tasks, state.selectedDate) : [];
+    var detailHtml = '';
+    if (state.selectedDate) {
+      var selD = new Date(state.selectedDate + 'T00:00:00');
+      var selLabel = selD.toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' });
+      detailHtml = '<div class="todo-cal-detail">' +
+        '<h3>Việc cần làm — ' + selLabel + '</h3>' +
+        (selectedTasks.length ? '<ul class="todo-cal-tasklist">' + selectedTasks.map(function (t) {
+          var isDone = t.status === 'completed';
+          var project = t.projectId ? TaskManager.getProject(t.projectId) : null;
+          return '<li class="todo-cal-task' + (isDone ? ' done' : '') + '" data-task-id="' + t.id + '">' +
+            '<button type="button" class="todo-cal-check" data-toggle-id="' + t.id + '" aria-label="Đánh dấu hoàn thành">' +
+              (isDone ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>' : '') +
+            '</button>' +
+            '<span class="todo-cal-task-title" data-open-id="' + t.id + '">' + escapeHtml(t.title) + (project ? ' <span class="todo-cal-task-project">· ' + escapeHtml(project.name) + '</span>' : '') + '</span>' +
+          '</li>';
+        }).join('') + '</ul>' : '<p class="todo-cal-empty">Không có việc nào đến hạn ngày này.</p>') +
+      '</div>';
+    }
 
     tmContent.innerHTML = `
-      <div class="tm-topbar">
-        <h2 style="font-size: 1.5rem; font-weight: 600; color: var(--color-text);">Lịch</h2>
-      </div>
-
-      <div style="padding: 40px; text-align: center;">
-        <div style="font-size: 4rem; margin-bottom: 16px;">📅</div>
-        <h3 style="font-size: 1.25rem; color: var(--color-text); margin-bottom: 8px;">Lịch trình</h3>
-        <p style="color: var(--color-text-muted);">Hiển thị các task có deadline</p>
-        <div style="margin-top: 24px; text-align: left; max-width: 600px; margin-left: auto; margin-right: auto;">
-          ${tasks.filter(t => t.deadline).slice(0, 10).map(task => {
-            const deadline = new Date(task.deadline);
-            return `
-              <div style="display: flex; gap: 16px; padding: 12px; background: var(--color-surface); border-radius: 8px; margin-bottom: 8px; border: 1px solid var(--color-border);">
-                <div style="min-width: 60px; text-align: center;">
-                  <div style="font-size: 1.25rem; font-weight: 600; color: var(--color-bronze);">${deadline.getDate()}</div>
-                  <div style="font-size: 0.75rem; color: var(--color-text-muted);">${deadline.toLocaleDateString('vi-VN', { month: 'short' })}</div>
-                </div>
-                <div>
-                  <div style="font-weight: 500; color: var(--color-text);">${task.title}</div>
-                  <div style="font-size: 0.8125rem; color: var(--color-text-muted);">${deadline.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</div>
-                </div>
-              </div>
-            `;
-          }).join('')}
+      <div class="todo-cal-card">
+        <div class="todo-cal-header">
+          <h2><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M9 16l2 2 4-4"/><path d="M16 2v4M8 2v4M3 10h18"/></svg> Calendar To Do List</h2>
+          <div class="todo-cal-controls">
+            <label>Tháng<select id="todoCalMonth">${monthNames.map(function (m, i) { return '<option value="' + (i + 1) + '"' + (i + 1 === state.month ? ' selected' : '') + '>' + m + '</option>'; }).join('')}</select></label>
+            <label>Năm<select id="todoCalYear">${yearsOptions.map(function (y) { return '<option value="' + y + '"' + (y === state.year ? ' selected' : '') + '>' + y + '</option>'; }).join('')}</select></label>
+            <button type="button" class="todo-cal-reload" id="todoCalReload"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Tải lại</button>
+          </div>
+        </div>
+        <div class="todo-cal-grid">
+          ${dayHeaders.map(function (h) { return '<div class="todo-cal-day-header">' + h + '</div>'; }).join('')}
+          ${cellsHtml}
         </div>
       </div>
+      ${detailHtml}
     `;
+
+    document.getElementById('todoCalMonth').addEventListener('change', function () {
+      todoCalState.month = parseInt(this.value, 10);
+      renderCalendar();
+    });
+    document.getElementById('todoCalYear').addEventListener('change', function () {
+      todoCalState.year = parseInt(this.value, 10);
+      renderCalendar();
+    });
+    document.getElementById('todoCalReload').addEventListener('click', function () {
+      var btn = this;
+      btn.disabled = true;
+      btn.classList.add('spinning');
+      if (typeof TaskManager !== 'undefined' && TaskManager.refreshFromGSheets) {
+        TaskManager.refreshFromGSheets(function () { renderCalendar(); });
+      } else {
+        renderCalendar();
+      }
+    });
+    tmContent.querySelectorAll('.todo-cal-day:not(.other-month)').forEach(function (cell) {
+      cell.addEventListener('click', function () {
+        todoCalState.selectedDate = todoCalState.selectedDate === cell.dataset.date ? null : cell.dataset.date;
+        renderCalendar();
+      });
+    });
+    tmContent.querySelectorAll('[data-toggle-id]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        TaskManager.toggleTaskStatus(btn.dataset.toggleId);
+        renderCalendar();
+      });
+    });
+    tmContent.querySelectorAll('[data-open-id]').forEach(function (el) {
+      el.addEventListener('click', function (e) {
+        e.stopPropagation();
+        openTaskDetailModal(el.dataset.openId);
+      });
+    });
   }
 
   function renderProposals() {
