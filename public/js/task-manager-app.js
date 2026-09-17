@@ -217,6 +217,7 @@
       else if (view === 'my-tasks') renderMyTasks();
       else if (view === 'team') renderTeam();
       else if (view === 'calendar') renderCalendar();
+      else if (view === 'gantt') renderGantt();
       else if (view === 'proposals') renderProposals();
       else renderDashboard();
 
@@ -289,6 +290,7 @@
             else if (view === 'my-tasks') renderMyTasks();
             else if (view === 'team') renderTeam();
             else if (view === 'calendar') renderCalendar();
+            else if (view === 'gantt') renderGantt();
             else if (view === 'proposals') renderProposals();
             else renderDashboard();
           }
@@ -310,6 +312,7 @@
         else if (view === 'my-tasks') renderMyTasks();
         else if (view === 'team') renderTeam();
         else if (view === 'calendar') renderCalendar();
+        else if (view === 'gantt') renderGantt();
         else if (view === 'proposals') renderProposals();
       }
     });
@@ -1939,6 +1942,81 @@
         openTaskDetailModal(el.dataset.openId);
       });
     });
+  }
+
+  // "Gantt" (mục Gantt, sidebar) — dùng lại NGUYÊN VẸN component HiconiqueGantt
+  // đã có sẵn cho trang Dự án (public/js/gantt.js) thay vì viết lại: cùng 1
+  // biểu đồ Gantt toàn công ty (tất cả dự án + task có deadline), tránh 2 nơi
+  // có 2 logic vẽ Gantt khác nhau. Khác trang Dự án (nơi #gantt-view là 1
+  // phần tử TĨNH luôn nằm sẵn trong DOM, chỉ ẩn/hiện bằng display:none) —
+  // ở đây .tm-content bị THAY TOÀN BỘ innerHTML mỗi lần đổi view, nên phải
+  // tự dựng lại đúng khung HTML đó rồi gọi cả render() LẪN bind() mỗi lần.
+  function renderGantt() {
+    const tmContent = document.querySelector('.tm-content');
+    if (!tmContent) return;
+
+    tmContent.innerHTML = `
+      <div class="tm-topbar">
+        <h2 style="font-size: 1.5rem; font-weight: 600; color: var(--color-text);">Gantt — Tiến độ công việc</h2>
+      </div>
+      <div class="gantt-view" id="gantt-view">
+        <div class="gantt-toolbar">
+          <div class="gantt-filter-tabs" id="ganttFilterTabs"></div>
+          <div class="gantt-month-nav">
+            <button type="button" class="gantt-nav-btn" id="ganttPrevMonth" aria-label="Tháng trước">&larr;</button>
+            <div class="timeline-month-picker" id="ganttMonthPicker">
+              <button type="button" class="timeline-title-btn" id="ganttMonthLabelBtn">
+                <span class="gantt-month-label" id="ganttMonthLabel"></span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="timeline-month-panel" id="ganttMonthPanel" hidden>
+                <div class="timeline-year-nav">
+                  <button type="button" id="ganttYearPrev" aria-label="Năm trước">&larr;</button>
+                  <span id="ganttYearLabel"></span>
+                  <button type="button" id="ganttYearNext" aria-label="Năm sau">&rarr;</button>
+                </div>
+                <div class="timeline-month-grid" id="ganttMonthGrid"></div>
+              </div>
+            </div>
+            <button type="button" class="gantt-nav-btn" id="ganttNextMonth" aria-label="Tháng sau">&rarr;</button>
+            <button type="button" class="gantt-today-btn" id="ganttTodayMonth">Hôm nay</button>
+          </div>
+          <button class="gantt-export-btn" id="ganttExportBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Xuất Excel
+          </button>
+        </div>
+        <div class="gantt-card">
+          <div class="gantt-card-header">
+            <div class="gantt-card-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              Biểu đồ Gantt — Tiến độ dự án
+            </div>
+            <div class="gantt-card-meta" id="ganttCardMeta"></div>
+          </div>
+          <div class="gantt-legend" id="ganttLegend"></div>
+          <div class="gantt-table-wrap">
+            <table class="gantt-table" id="ganttTable">
+              <thead>
+                <tr>
+                  <th>Công việc</th>
+                  <th colspan="12" style="text-align:center">Khoảng thời gian</th>
+                  <th class="gantt-col-progress">Tiến độ</th>
+                  <th style="text-align:right">Trạng thái</th>
+                </tr>
+              </thead>
+              <tbody id="ganttBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `;
+
+    if (typeof HiconiqueGantt !== 'undefined') {
+      var ganttRoot = document.getElementById('gantt-view');
+      HiconiqueGantt.render(ganttRoot);
+      HiconiqueGantt.bind(ganttRoot);
+    }
   }
 
   function renderProposals() {
