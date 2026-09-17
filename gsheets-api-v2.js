@@ -934,6 +934,17 @@ function getAllData(ss, sheetName) {
       obj.roleLevel = LEVEL_TO_ROLELEVEL[obj.level] || 'member';
     }
     return obj;
+  }).filter(function (obj) {
+    // Bỏ qua "hàng" hoàn toàn trống ở cột id (VD "Mã DA") — getRange() ở
+    // trên đọc tới sheet.getLastColumn(), nên nếu có 1 cột phụ nào đó nằm xa
+    // bên phải bảng dữ liệu chính (VD danh sách nguồn cho dropdown data
+    // validation) chứa giá trị ở hàng thấp hơn last row thật của bảng chính,
+    // hàng đó sẽ bị đọc nhầm thành 1 "bản ghi" rỗng (phát hiện thực tế
+    // 2026-09-18 ở Sheet "Dự án" — 1 dự án rỗng hoàn toàn xuất hiện trên
+    // trang Hoa hồng, chỉ có đúng 1 cột phụ "Danh sách Loại dự án (nguồn
+    // dropdown)" là có giá trị). Sheet nào không có cột "id" thì obj.id là
+    // undefined — không lọc nhầm.
+    return obj.id === undefined || obj.id !== '';
   });
 }
 
