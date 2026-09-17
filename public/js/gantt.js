@@ -284,6 +284,26 @@ var HiconiqueGantt = (function () {
 
     bindMonthPicker(root);
     bindZoomControl(root);
+    bindWheelZoom(root);
+  }
+
+  // Giữ Ctrl (hoặc Cmd trên Mac) + lăn chuột trong bảng Gantt để zoom in/out,
+  // giống thao tác quen thuộc ở Google Maps/Figma. preventDefault() để chặn
+  // trình duyệt zoom cả trang; chỉ kích hoạt khi con trỏ đang ở trong
+  // .gantt-table-wrap (không ảnh hưởng cuộn trang bình thường).
+  function bindWheelZoom(root) {
+    var wrap = root.querySelector('.gantt-table-wrap');
+    if (!wrap || wrap.dataset.wheelBound) return;
+    wrap.dataset.wheelBound = '1';
+    wrap.addEventListener('wheel', function (e) {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      var step = e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP;
+      var next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round((currentZoom + step) * 100) / 100));
+      if (next === currentZoom) return;
+      currentZoom = next;
+      render(root);
+    }, { passive: false });
   }
 
   // Độ rộng mỗi cột ngày = BASE_DAY_WIDTH * currentZoom, nhân với tổng số
