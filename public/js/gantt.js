@@ -11,6 +11,15 @@ var HiconiqueGantt = (function () {
   var currentMonth = new Date(today0.getFullYear(), today0.getMonth(), 1);
   var VI_DOW_SHORT = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
+  // 2026-09-18: nút zoom cột ngày — bảng vốn co lại vừa khung nhìn (min-width
+  // cố định 620px cho cả tháng, ~20px/ngày), khó đọc rõ khi nhiều task chồng
+  // ngày sát nhau. Zoom chỉ đổi ĐỘ RỘNG mỗi cột ngày (biến CSS
+  // --gantt-day-col-width, xem applyZoom()) — vị trí/độ dài thanh task vẫn
+  // tính bằng % (pct()) nên không cần vẽ lại gì khác, chỉ giãn/co khung chứa.
+  var BASE_DAY_WIDTH = 20; // px/ngày ở zoom 100% — khớp đúng 620px/31 ngày cũ
+  var MIN_ZOOM = 0.5, MAX_ZOOM = 2.5, ZOOM_STEP = 0.25;
+  var currentZoom = 1;
+
   function toDate(d) {
     if (!d) return null;
     var dt = new Date(d);
@@ -223,6 +232,7 @@ var HiconiqueGantt = (function () {
       '</div>';
     }).join('') + '</div>';
     metaEl.innerHTML = '<strong>' + totalTaskCount + '</strong> hạng mục · Cập nhật ' + new Date().toLocaleDateString('vi-VN');
+    applyZoom(root, axis);
 
     // Tooltip
     var tooltip = document.getElementById('ganttTooltip');
@@ -273,6 +283,50 @@ var HiconiqueGantt = (function () {
     });
 
     bindMonthPicker(root);
+    bindZoomControl(root);
+  }
+
+  // Độ rộng mỗi cột ngày = BASE_DAY_WIDTH * currentZoom, nhân với tổng số
+  // ngày trong tháng đang xem — set qua CSS custom property thay vì tính lại
+  // % vị trí thanh task (pct() không đổi, chỉ khung chứa giãn/co).
+  function applyZoom(root, axis) {
+    var width = Math.round(BASE_DAY_WIDTH * currentZoom * axis.totalDays);
+    root.style.setProperty('--gantt-day-col-width', width + 'px');
+    var levelEl = root.querySelector('#ganttZoomLevel');
+    if (levelEl) levelEl.textContent = Math.round(currentZoom * 100) + '%';
+    var zoomOutBtn = root.querySelector('#ganttZoomOut');
+    var zoomInBtn = root.querySelector('#ganttZoomIn');
+    if (zoomOutBtn) zoomOutBtn.disabled = currentZoom <= MIN_ZOOM;
+    if (zoomInBtn) zoomInBtn.disabled = currentZoom >= MAX_ZOOM;
+  }
+
+  // Tự chèn cụm nút zoom vào toolbar (KHÔNG bắt buộc trang gọi HiconiqueGantt
+  // phải tự viết sẵn markup này trong HTML) — dùng được ngay cho mọi trang đã
+  // nhúng gantt.js (Dự án lẫn Task Manager) mà không cần sửa thêm chỗ nào khác.
+  function bindZoomControl(root) {
+    var toolbar = root.querySelector('.gantt-toolbar');
+    if (!toolbar || toolbar.querySelector('.gantt-zoom')) return; // đã chèn rồi (VD render() gọi lại nhiều lần)
+    var zoomEl = document.createElement('div');
+    zoomEl.className = 'gantt-zoom';
+    zoomEl.innerHTML =
+      '<button type="button" class="gantt-zoom-btn" id="ganttZoomOut" aria-label="Thu nhỏ">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35M8 11h6" stroke-linecap="round"/></svg>' +
+      '</button>' +
+      '<span class="gantt-zoom-level" id="ganttZoomLevel">100%</span>' +
+      '<button type="button" class="gantt-zoom-btn" id="ganttZoomIn" aria-label="Phóng to">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35M11 8v6M8 11h6" stroke-linecap="round"/></svg>' +
+      '</button>';
+    var exportBtn = toolbar.querySelector('#ganttExportBtn');
+    if (exportBtn) toolbar.insertBefore(zoomEl, exportBtn); else toolbar.appendChild(zoomEl);
+
+    zoomEl.querySelector('#ganttZoomOut').addEventListener('click', function () {
+      currentZoom = Math.max(MIN_ZOOM, Math.round((currentZoom - ZOOM_STEP) * 100) / 100);
+      render(root);
+    });
+    zoomEl.querySelector('#ganttZoomIn').addEventListener('click', function () {
+      currentZoom = Math.min(MAX_ZOOM, Math.round((currentZoom + ZOOM_STEP) * 100) / 100);
+      render(root);
+    });
   }
 
   // Bấm thẳng vào nhãn "Tháng X Năm YYYY" mở bảng chọn nhanh 12 tháng + điều

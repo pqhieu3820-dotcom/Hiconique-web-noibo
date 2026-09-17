@@ -83,6 +83,42 @@
 
 .gantt-export-btn svg { width: 16px; height: 16px; }
 
+/* 2026-09-18: cụm nút zoom cột ngày — tự chèn bằng JS (bindZoomControl()
+   trong gantt.js), không cần trang nào viết sẵn markup này. */
+.gantt-zoom {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 3px;
+}
+.gantt-zoom-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.gantt-zoom-btn:hover:not(:disabled) { background: var(--color-surface-2); color: var(--color-bronze); }
+.gantt-zoom-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.gantt-zoom-btn svg { width: 15px; height: 15px; }
+.gantt-zoom-level {
+  min-width: 42px;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .gantt-card {
   background: var(--color-surface);
   border-radius: var(--radius-lg);
@@ -158,7 +194,10 @@
 .gantt-table thead th:first-child { text-align: left; width: 260px; min-width: 240px; }
 .gantt-table thead th:last-child { text-align: right; padding-right: 20px; width: 120px; min-width: 110px; }
 .gantt-table thead th.gantt-col-progress { text-align: center; width: 90px; min-width: 90px; }
-.gantt-table thead th:nth-child(2) { position: relative; padding: 0; height: 40px; width: auto; min-width: 620px; }
+/* min-width lấy theo biến --gantt-day-col-width (đặt bởi applyZoom() trong
+   gantt.js khi bấm nút zoom) — 620px là fallback khớp đúng giá trị cố định
+   cũ trước khi có zoom, dùng khi JS chưa kịp set biến (VD lần render đầu). */
+.gantt-table thead th:nth-child(2) { position: relative; padding: 0; height: 40px; width: auto; min-width: var(--gantt-day-col-width, 620px); }
 
 /* ─── Month navigation ─── */
 .gantt-month-nav { display: flex; align-items: center; gap: 8px; }
@@ -366,7 +405,9 @@
   .gantt-section-row td:first-child { background: var(--gantt-purple-light); }
 
   .gantt-table thead th:first-child { width: 104px; min-width: 100px; }
-  .gantt-table thead th:nth-child(2) { min-width: 700px; }
+  /* max() giữ sàn 700px cho mobile (đủ chỗ cuộn ngang dễ nhìn) nhưng vẫn
+     cho phép zoom in vượt qua mốc này khi người dùng bấm phóng to. */
+  .gantt-table thead th:nth-child(2) { min-width: max(700px, var(--gantt-day-col-width, 700px)); }
   .gantt-table thead th.gantt-col-progress { width: 60px; min-width: 60px; }
   .gantt-table thead th:last-child { width: 90px; min-width: 90px; padding-right: 10px; }
 
