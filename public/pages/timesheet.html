@@ -1112,13 +1112,28 @@
     var attendanceLocationsPromise = null; // gọi dở, dùng để gộp các lệnh gọi trùng thời điểm
     var attendanceLocationsBgRefreshed = false; // chỉ âm thầm làm mới TỐI ĐA 1 lần/phiên trang
 
-    function fetchAttendanceLocationsFromServer() {
+    // 2026-09-19 (c): người dùng phản ánh "sao lại hiện Chưa cấu hình" ngay
+    // sau khi fix hiển thị ở trên — dữ liệu Sheet vẫn còn nguyên (6 địa
+    // điểm/IP), đây là y hệt bug mạng chập chờn/Apps Script cold-start đã
+    // gặp nhiều lần cả phiên này, TRƯỚC ĐÂY bị chữ "Đang tắt" che mất nên
+    // không ai để ý. Giờ hiện đúng nhưng nhìn đáng sợ hơn hẳn — tự thử lại 1
+    // lần (chờ 1.5s) trước khi thật sự chấp nhận rỗng, để 1 lần fetch trượt
+    // thoáng qua không làm hiện sai "chưa cấu hình" khi Sheet vẫn còn đủ dữ liệu.
+    function fetchAttendanceLocationsFromServer(isRetry) {
       return new Promise(function (resolve) {
         if (typeof TaskManager === 'undefined' || !TaskManager.getAttendanceLocations) { resolve(attendanceLocationsCache || []); return; }
         TaskManager.getAttendanceLocations(function (rows) {
           if (Array.isArray(rows) && rows.length > 0) {
             attendanceLocationsCache = rows;
             try { localStorage.setItem(ATTENDANCE_LOCATIONS_CACHE_KEY, JSON.stringify(rows)); } catch (e) { /* localStorage đầy/bị chặn — bỏ qua, không ảnh hưởng chấm công */ }
+            resolve(attendanceLocationsCache);
+            return;
+          }
+          if (!isRetry) {
+            setTimeout(function () {
+              fetchAttendanceLocationsFromServer(true).then(resolve);
+            }, 1500);
+            return;
           }
           resolve(attendanceLocationsCache || []);
         });
