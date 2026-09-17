@@ -1520,7 +1520,13 @@ var TaskManager = (function() {
     var record = entries.filter(function (e) { return e.memberId === memberId && e.date === today; })[0];
     var patch = {};
     patch[shift + 'Checkin'] = fields.time;
-    if (shift === 'morning') patch.checkinTime = fields.time; // mirror field cũ cho lịch/báo cáo
+    // "checkinTime" (field cũ, lịch/báo cáo tháng vẫn đọc) = giờ CHECK-IN ĐẦU
+    // TIÊN trong ngày, bất kể thuộc ca nào — trước đây hardcode chỉ ca sáng
+    // mới ghi, nên ngày nào nút (tự chọn ca theo giờ hiện tại) quyết định bắt
+    // đầu thẳng từ ca chiều (VD quên chấm sáng, hoặc chỉ làm nửa ngày chiều)
+    // sẽ bị thiếu hẳn giờ check-in hiển thị trên lịch.
+    if (!record || !record.checkinTime) patch.checkinTime = fields.time;
+    patch.status = 'working'; // check-in lại (VD sau khi đã check-out ca trước) thì ngày chưa xong nữa
     if (fields.isLate) { patch.isLate = true; patch.lateEarlyNote = fields.lateEarlyNote || ''; }
     Object.keys(fields.verify || {}).forEach(function (k) { patch[k] = fields.verify[k]; });
 
@@ -1552,7 +1558,13 @@ var TaskManager = (function() {
     if (!record) return null;
     var patch = {};
     patch[shift + 'Checkout'] = fields.time;
-    if (shift === 'afternoon') { patch.checkoutTime = fields.time; patch.status = 'completed'; } // mirror field cũ
+    // "checkoutTime"/"status" (field cũ) luôn phản ánh lần CHECK-OUT GẦN NHẤT
+    // trong ngày (trước đây hardcode chỉ ca chiều mới ghi, nên ngày chỉ làm
+    // ca sáng — không có ca chiều — sẽ không bao giờ hiện "Đã chấm đủ"). Nếu
+    // sau đó check-in lại ca khác, shiftCheckIn() ở trên tự đặt lại status
+    // về 'working' — tự sửa đúng, không cần thêm điều kiện gì ở đây.
+    patch.checkoutTime = fields.time;
+    patch.status = 'completed';
     if (fields.isEarly) { patch.isEarly = true; patch.lateEarlyNote = fields.lateEarlyNote || record.lateEarlyNote || ''; }
 
     // Tính lại tổng giờ = tổng thời lượng các cặp check-in/out ĐÃ CÓ (sáng +

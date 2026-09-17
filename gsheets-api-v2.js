@@ -885,8 +885,15 @@ function getAllData(ss, sheetName) {
       // the literal epoch date to the user ("check-in lúc 1899-12-30", bug
       // reported 2026-09-09) — format checkinTime/checkoutTime as 'HH:mm'
       // instead so the time-of-day survives.
+      // 2026-09-19: cùng bug tái diễn ở 4 cột giờ ca sáng/chiều mới thêm
+      // (morningCheckin/morningCheckout/afternoonCheckin/afternoonCheckout)
+      // — chưa có trong danh sách này nên vẫn hiện "1899-12-30" thay vì giờ
+      // thật. Thêm cả 4 field vào đây (KHÔNG cần đổi gì ở write-side — giá
+      // trị time không hề bị mất, Sheets chỉ lưu dưới dạng serial Time thay
+      // vì text thuần, format lại đúng ở đây là đủ khôi phục nguyên vẹn).
       if (Object.prototype.toString.call(val) === '[object Date]') {
-        const pattern = (key === 'checkinTime' || key === 'checkoutTime') ? 'HH:mm' : 'yyyy-MM-dd';
+        const TIME_ONLY_FIELDS = { checkinTime: true, checkoutTime: true, morningCheckin: true, morningCheckout: true, afternoonCheckin: true, afternoonCheckout: true };
+        const pattern = TIME_ONLY_FIELDS[key] ? 'HH:mm' : 'yyyy-MM-dd';
         val = Utilities.formatDate(val, Session.getScriptTimeZone() || 'Asia/Ho_Chi_Minh', pattern);
       }
       if (typeof val === 'string' && val.startsWith('[')) {

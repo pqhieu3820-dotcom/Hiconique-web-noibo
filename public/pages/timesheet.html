@@ -316,16 +316,6 @@
     .ts-checkin-status.idle { background: var(--color-bg); color: var(--ts-muted); }
     .ts-checkin-status.late, .ts-checkin-status.early { background: rgba(160,72,72,0.12); color: #A04848; }
 
-    /* Chấm công theo ca sáng/chiều — mỗi ca 1 khối nút+trạng thái riêng, xem
-       shiftCheckIn()/shiftCheckOut() trong task-data.js. */
-    .ts-shift-block { margin-bottom: 14px; }
-    .ts-shift-block:last-of-type { margin-bottom: 0; }
-    .ts-shift-title {
-      font-size: 0.75rem; color: var(--ts-muted); text-transform: uppercase;
-      letter-spacing: 0.05em; margin-bottom: 8px; font-weight: 600;
-    }
-    .ts-shift-block .ts-checkin-btn { margin-bottom: 8px; padding: 13px; font-size: 0.9375rem; }
-
     /* Modal "Setup thời gian làm việc" — chỉ Founder/CEO sửa được, người
        khác mở lên chỉ xem (input readonly). */
     #tsWorkScheduleModal .form-input[readonly] { background: var(--color-bg); color: var(--ts-muted); cursor: default; }
@@ -955,20 +945,15 @@
         <div class="ts-geo-status" id="tsGeoStatus" hidden></div>
 
         <!-- 2026-09-19: chấm công theo ca sáng/chiều (Setup thời gian làm
-             việc) thay cho 1 nút Check In/Out chung cả ngày cũ — xem
-             shiftCheckIn()/shiftCheckOut() trong task-data.js. Ca chiều khoá
-             tới khi ca sáng xong (đủ vào+ra) — chấm công tuần tự theo đúng
-             mô tả yêu cầu, tránh chấm nhảy cóc ca chiều trước. -->
-        <div class="ts-shift-block">
-          <div class="ts-shift-title">Ca sáng</div>
-          <button class="ts-checkin-btn in" id="tsMorningBtn">Check In Sáng</button>
-          <div class="ts-checkin-status idle" id="tsMorningStatus">Chưa check-in ca sáng</div>
-        </div>
-        <div class="ts-shift-block">
-          <div class="ts-shift-title">Ca chiều</div>
-          <button class="ts-checkin-btn in" id="tsAfternoonBtn">Check In Chiều</button>
-          <div class="ts-checkin-status idle" id="tsAfternoonStatus">Chưa check-in ca chiều</div>
-        </div>
+             việc), nhưng gộp lại thành 1 NÚT DUY NHẤT (thay vì 2 nút riêng
+             ca sáng/chiều ban đầu, người dùng phản hồi 2 nút rườm rà) — nút
+             tự xác định đang là Check In/Out của ca nào (currentShift() +
+             renderCheckinUI() trong <script> dưới), dựa vào tiến độ chấm
+             công hôm nay + giờ hiện tại so với "Setup thời gian làm việc".
+             Logic ghi thật vẫn giữ nguyên shiftCheckIn()/shiftCheckOut()
+             trong task-data.js. -->
+        <button class="ts-checkin-btn in" id="tsCheckinBtn">Check In</button>
+        <div class="ts-checkin-status idle" id="tsCheckinStatus">Đang tải...</div>
 
         <div class="ts-device-table" id="tsDeviceTable"></div>
       </div>
@@ -1656,48 +1641,73 @@
     // shiftCheckIn()/shiftCheckOut() trong task-data.js.
     function shiftVnLabel(shift) { return shift === 'morning' ? 'Sáng' : 'Chiều'; }
 
-    function renderShiftBlock(shift, record) {
-      var btn = document.getElementById(shift === 'morning' ? 'tsMorningBtn' : 'tsAfternoonBtn');
-      var status = document.getElementById(shift === 'morning' ? 'tsMorningStatus' : 'tsAfternoonStatus');
-      var inTime = record && record[shift + 'Checkin'];
-      var outTime = record && record[shift + 'Checkout'];
-      var label = shiftVnLabel(shift);
+    function toMinutes(hm) {
+      var m = /^(\d{1,2}):(\d{2})$/.exec(normalizeHM(hm) || '');
+      if (!m) return null;
+      return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+    }
 
-      if (shift === 'afternoon' && !(record && record.morningCheckout)) {
-        btn.textContent = 'Check In Chiều';
-        btn.className = 'ts-checkin-btn in';
-        btn.disabled = true;
-        status.className = 'ts-checkin-status idle';
-        status.textContent = 'Hoàn thành ca sáng trước';
-        return;
+    // 1 nút chấm công duy nhất (2026-09-19, thay cho 2 nút riêng ca sáng/
+    // chiều) tự xác định đang là Check In/Out của ca nào — dựa vào tiến độ
+    // chấm công hôm nay: ca nào đang dở (đã vào chưa ra) thì ưu tiên hoàn
+    // thành ca đó trước; ca sáng đã xong mà chiều chưa bắt đầu thì chuyển
+    // sang chiều; chưa chấm ca nào cả thì so giờ hiện tại với "Setup thời
+    // gian làm việc" — gần nửa buổi nào hơn (mốc giữa giờ tan sáng/vào
+    // chiều, tức giờ nghỉ trưa) thì tính là ca đó. Trả về null khi cả 2 ca
+    // đã xong hôm nay (không còn gì để chấm nữa).
+    function currentShift(record, ws) {
+      if (record && record.morningCheckin && !record.morningCheckout) return 'morning';
+      if (record && record.afternoonCheckin && !record.afternoonCheckout) return 'afternoon';
+      if (record && record.morningCheckout && record.afternoonCheckout) return null;
+      if (record && record.morningCheckout && !record.afternoonCheckin) return 'afternoon';
+      if (record && record.afternoonCheckout && !record.morningCheckin) return 'morning';
+      var nowMin = toMinutes(nowHM());
+      var morningEndMin = toMinutes(ws.morningEnd);
+      var afternoonStartMin = toMinutes(ws.afternoonStart);
+      if (nowMin != null && morningEndMin != null && afternoonStartMin != null) {
+        return nowMin < (morningEndMin + afternoonStartMin) / 2 ? 'morning' : 'afternoon';
       }
+      return 'morning';
+    }
 
-      if (outTime) {
-        btn.textContent = 'Đã hoàn thành';
-        btn.disabled = true;
-        btn.className = 'ts-checkin-btn done';
-        status.className = 'ts-checkin-status working' + (record.isLate || record.isEarly ? ' late' : '');
-        status.innerHTML = '✓ Vào: ' + inTime + ' &nbsp;|&nbsp; Ra: ' + outTime +
-          (record.isLate ? ' <strong>(đi muộn)</strong>' : '') + (record.isEarly ? ' <strong>(về sớm)</strong>' : '');
-      } else if (inTime) {
-        btn.textContent = 'Check Out ' + label;
-        btn.className = 'ts-checkin-btn out';
-        btn.disabled = false;
-        status.className = 'ts-checkin-status working' + (record.isLate ? ' late' : '');
-        status.textContent = 'Đang làm việc từ ' + inTime + (record.isLate ? ' (đi muộn)' : '');
-      } else {
-        btn.textContent = 'Check In ' + label;
-        btn.className = 'ts-checkin-btn in';
-        btn.disabled = false;
-        status.className = 'ts-checkin-status idle';
-        status.textContent = 'Chưa check-in ca ' + label.toLowerCase();
-      }
+    function renderCheckinUI() {
+      var record = getEntryByDate(getToday());
+      var btn = document.getElementById('tsCheckinBtn');
+      var status = document.getElementById('tsCheckinStatus');
+      loadWorkSchedule(function (ws) {
+        var shift = currentShift(record, ws);
+
+        if (!shift) {
+          btn.textContent = 'Đã hoàn thành hôm nay';
+          btn.disabled = true;
+          btn.className = 'ts-checkin-btn done';
+          status.className = 'ts-checkin-status working' + (record.isLate || record.isEarly ? ' late' : '');
+          status.innerHTML = '✓ Sáng: ' + record.morningCheckin + '–' + record.morningCheckout +
+            ' &nbsp;|&nbsp; Chiều: ' + record.afternoonCheckin + '–' + record.afternoonCheckout +
+            (record.isLate ? ' <strong>(đi muộn)</strong>' : '') + (record.isEarly ? ' <strong>(về sớm)</strong>' : '');
+          return;
+        }
+
+        var label = shiftVnLabel(shift);
+        var inTime = record && record[shift + 'Checkin'];
+        if (inTime) {
+          btn.textContent = 'Check Out ' + label;
+          btn.className = 'ts-checkin-btn out';
+          btn.disabled = false;
+          status.className = 'ts-checkin-status working' + (record.isLate ? ' late' : '');
+          status.textContent = 'Đang làm ca ' + label.toLowerCase() + ' từ ' + inTime + (record.isLate ? ' (đi muộn)' : '');
+        } else {
+          btn.textContent = 'Check In ' + label;
+          btn.className = 'ts-checkin-btn in';
+          btn.disabled = false;
+          status.className = 'ts-checkin-status idle';
+          status.textContent = 'Chưa check-in ca ' + label.toLowerCase();
+        }
+      });
     }
 
     function updateShiftUI() {
-      var record = getEntryByDate(getToday());
-      renderShiftBlock('morning', record);
-      renderShiftBlock('afternoon', record);
+      renderCheckinUI();
       // Reset nhãn/viền ô lý do về mặc định — tự bật lại "bắt buộc" ở lần
       // bấm chấm công kế tiếp nếu vẫn đang muộn/sớm (xem requireLateEarlyNote()).
       var noteLabel = document.getElementById('tsNoteLabel');
@@ -2731,16 +2741,21 @@
     // Init — 1 handler dùng chung cho cả 2 nút ca (sáng/chiều), tự xác định
     // đang ở bước check-in hay check-out của ĐÚNG ca đó rồi mới quyết định
     // có cần bắt nhập lý do muộn/sớm hay không trước khi chạy verifyThenProceed.
-    function bindShiftButton(shift) {
-      var btn = document.getElementById(shift === 'morning' ? 'tsMorningBtn' : 'tsAfternoonBtn');
+    function bindCheckinButton() {
+      var btn = document.getElementById('tsCheckinBtn');
       btn.addEventListener('click', function () {
         // Chặn ngay từ đầu, trước khi tốn thời gian dò GPS/Wifi/Thiết bị — mất
         // mạng thì dò xong cũng không ghi được, chặn sớm cho gọn trải nghiệm.
         if (typeof Offline !== 'undefined' && Offline.guard('chấm công')) return;
         var record = getEntryByDate(getToday());
-        var isCheckout = !!(record && record[shift + 'Checkin'] && !record[shift + 'Checkout']);
         var time = nowHM();
         loadWorkSchedule(function (ws) {
+          // Tính lại currentShift() ngay lúc bấm (không dùng lại giá trị lúc
+          // render) — phòng trường hợp hiếm người dùng để trang mở lâu vắt
+          // qua đúng mốc giữa trưa rồi mới bấm.
+          var shift = currentShift(record, ws);
+          if (!shift) return; // cả 2 ca đã xong — nút đang disabled, phòng hờ double-click
+          var isCheckout = !!(record && record[shift + 'Checkin'] && !record[shift + 'Checkout']);
           if (isCheckout) {
             var early = isLateOrEarly(shift, 'out', time, ws);
             if (early && !requireLateEarlyNote('early')) return;
@@ -2755,8 +2770,7 @@
         });
       });
     }
-    bindShiftButton('morning');
-    bindShiftButton('afternoon');
+    bindCheckinButton();
 
     runLiveStatusCheck();
 
