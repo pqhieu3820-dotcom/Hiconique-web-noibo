@@ -1939,6 +1939,28 @@
       todoCalState.year = parseInt(this.value, 10);
       renderCalendar();
     });
+    // Lăn chuột khi trỏ vào dropdown Tháng/Năm để đổi giá trị nhanh, không
+    // cần bấm mở danh sách rồi chọn — preventDefault() để không cuộn cả
+    // trang khi con trỏ đang ở trên select.
+    function bindWheelSelect(select, onChange) {
+      select.addEventListener('wheel', function (e) {
+        e.preventDefault();
+        var options = Array.prototype.slice.call(select.options);
+        var idx = options.findIndex(function (o) { return o.value === select.value; });
+        var nextIdx = idx + (e.deltaY > 0 ? 1 : -1);
+        if (nextIdx < 0 || nextIdx >= options.length) return;
+        select.value = options[nextIdx].value;
+        onChange(select.value);
+      }, { passive: false });
+    }
+    bindWheelSelect(document.getElementById('todoCalMonth'), function (val) {
+      todoCalState.month = parseInt(val, 10);
+      renderCalendar();
+    });
+    bindWheelSelect(document.getElementById('todoCalYear'), function (val) {
+      todoCalState.year = parseInt(val, 10);
+      renderCalendar();
+    });
     document.getElementById('todoCalReload').addEventListener('click', function () {
       var btn = this;
       btn.disabled = true;
