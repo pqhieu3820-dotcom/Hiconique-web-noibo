@@ -9,14 +9,25 @@
 
 /* 2026-09-19: ẩn/hiện panel "Tiến độ hôm nay" bên phải — cột lưới thứ 3 co
    về 0 khi ẩn, để các mục cần bề ngang rộng (Gantt, Calendar To Do List...)
-   co giãn hết phần không gian vừa nhường lại. */
-.tm-main.tm-panel-collapsed { grid-template-columns: 240px 1fr 0px; }
-.tm-main.tm-panel-collapsed .tm-right-panel {
-  padding: 0;
-  border-left: none;
-  overflow: hidden;
-  opacity: 0;
-  pointer-events: none;
+   co giãn hết phần không gian vừa nhường lại.
+   BẮT BUỘC bọc trong @media (min-width: 1281px) — bug đã gặp: để trần (áp
+   dụng mọi kích thước màn hình) thì `.tm-main.tm-panel-collapsed` (2 class,
+   specificity cao hơn 1 class) ĐÈ LÊN LUÔN rule `.tm-main { grid-template-
+   columns: 1fr }` của media query mobile (1 class, specificity thấp hơn,
+   thắng/thua theo specificity chứ không theo thứ tự khai báo) bất cứ khi
+   nào trạng thái "đã ẩn panel" còn lưu trong localStorage từ lần dùng máy
+   tính trước đó — vỡ hẳn layout mobile (cột 240px/0px vẫn giữ nguyên dù màn
+   hình chỉ còn ~375px, đúng lỗi người dùng chụp màn hình báo lại). Từ
+   1281px trở lên mới có bố cục 3 cột với panel phải để mà ẩn/hiện. */
+@media (min-width: 1281px) {
+  .tm-main.tm-panel-collapsed { grid-template-columns: 240px 1fr 0px; }
+  .tm-main.tm-panel-collapsed .tm-right-panel {
+    padding: 0;
+    border-left: none;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
 }
 
 .tm-panel-toggle {
