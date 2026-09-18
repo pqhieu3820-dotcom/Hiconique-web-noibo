@@ -80,6 +80,25 @@ const Auth = (function() {
     document.body.style.overflow = '';
   }
 
+  // Nút "con mắt" hiện/ẩn mật khẩu lúc gõ (2026-09-19, theo yêu cầu) — để tự
+  // kiểm tra gõ đúng chưa trước khi bấm Đăng nhập, nhất là mật khẩu dài/có
+  // ký tự đặc biệt dễ gõ nhầm mà không biết. Đổi cả icon (mắt mở/mắt gạch
+  // chéo) để rõ trạng thái đang HIỆN hay đang ẨN.
+  var EYE_OPEN_PATH = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+  var EYE_OFF_PATH = '<path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.42 18.42 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+  function bindPasswordToggle(inputId, btnId, iconId) {
+    var input = document.getElementById(inputId);
+    var btn = document.getElementById(btnId);
+    var icon = document.getElementById(iconId);
+    if (!input || !btn || !icon) return;
+    btn.addEventListener('click', function () {
+      var showing = input.type === 'text';
+      input.type = showing ? 'password' : 'text';
+      icon.innerHTML = showing ? EYE_OPEN_PATH : EYE_OFF_PATH;
+      btn.setAttribute('aria-label', showing ? 'Hiện mật khẩu' : 'Ẩn mật khẩu');
+    });
+  }
+
   // Mốc 1h sáng gần nhất đã qua (hôm nay nếu đã sang 1h, còn chưa tới thì lấy
   // mốc 1h của hôm trước) — dùng để buộc đăng xuất toàn bộ mỗi ngày lúc 1h
   // sáng cho an toàn, thay vì chỉ dựa vào SESSION_DURATION 24h (không cố định
@@ -304,11 +323,19 @@ const Auth = (function() {
 
             <div>
               <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Mật khẩu</label>
-              <input type="password" id="authPasswordInput" required placeholder="Nhập mật khẩu"
-                style="width: 100%; padding: 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none; transition: border 0.2s;"
-                onfocus="this.style.borderColor='var(--color-bronze)'"
-                onblur="this.style.borderColor='var(--color-border)'"
-                autocomplete="off">
+              <div style="position: relative;">
+                <input type="password" id="authPasswordInput" required placeholder="Nhập mật khẩu"
+                  style="width: 100%; padding: 12px 40px 12px 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-size: 0.9375rem; font-family: inherit; outline: none; transition: border 0.2s; box-sizing: border-box;"
+                  onfocus="this.style.borderColor='var(--color-bronze)'"
+                  onblur="this.style.borderColor='var(--color-border)'"
+                  autocomplete="off">
+                <button type="button" id="authPasswordToggle" aria-label="Hiện mật khẩu"
+                  style="position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: none; border: none; color: var(--color-text-muted); cursor: pointer; border-radius: 6px;">
+                  <svg id="authPasswordEyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                  </svg>
+                </button>
+              </div>
             </div>
 
             <div id="authError" style="display: none; padding: 10px 12px; background: rgba(160,72,72,0.1); border: 1px solid rgba(160,72,72,0.3); border-radius: 6px; color: #A04848; font-size: 0.8125rem;"></div>
@@ -339,6 +366,7 @@ const Auth = (function() {
     var passwordInput = document.getElementById('authPasswordInput');
     var errorEl = document.getElementById('authError');
     var registerBtn = document.getElementById('showRegisterBtn');
+    bindPasswordToggle('authPasswordInput', 'authPasswordToggle', 'authPasswordEyeIcon');
 
     emailInput.focus();
 
@@ -419,7 +447,15 @@ const Auth = (function() {
               </div>
               <div>
                 <label style="display: block; font-size: 0.8125rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;">Mật khẩu *</label>
-                <input type="password" id="regPasswordInput" required placeholder="Nhập mật khẩu bất kỳ">
+                <div style="position: relative;">
+                  <input type="password" id="regPasswordInput" required placeholder="Nhập mật khẩu bất kỳ" style="padding-right: 40px;">
+                  <button type="button" id="regPasswordToggle" aria-label="Hiện mật khẩu"
+                    style="position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: none; border: none; color: var(--color-text-muted); cursor: pointer; border-radius: 6px;">
+                    <svg id="regPasswordEyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -503,6 +539,7 @@ const Auth = (function() {
     var emailInput = document.getElementById('regEmailInput');
     var roleInput = document.getElementById('regRoleInput');
     var passwordInput = document.getElementById('regPasswordInput');
+    bindPasswordToggle('regPasswordInput', 'regPasswordToggle', 'regPasswordEyeIcon');
     var dobInput = document.getElementById('regDobInput');
     var genderInput = document.getElementById('regGenderInput');
     var cccdInput = document.getElementById('regCccdInput');
@@ -699,6 +736,16 @@ const Auth = (function() {
   }
 
   // Login with password
+  // 2026-09-19: TaskManager.getMembers() đọc THẲNG localStorage (đồng bộ,
+  // không tự fetch mạng) — 1 thiết bị chưa từng mở app SAU LÚC được duyệt
+  // (VD lần trước mở app khi tài khoản còn "pending", rồi CEO duyệt xong ở
+  // chỗ khác) sẽ mãi thấy đúng bản snapshot CŨ đó và luôn báo sai "đang chờ
+  // phê duyệt" dù Sheet đã duyệt từ lâu — y hệt lớp bug cache-cũ đã gặp ở
+  // trang Chấm công (renderCalendar/renderDeviceTable). Chỉ khi cache cũ
+  // đang CHẶN đăng nhập (pending/rejected/không tìm thấy tài khoản) mới bắt
+  // buộc lấy dữ liệu MỚI NHẤT từ Sheet rồi kiểm tra lại 1 lần nữa trước khi
+  // thật sự từ chối — không làm chậm luồng đăng nhập bình thường (tài khoản
+  // đã active sẵn trong cache thì đăng nhập ngay, không cần chờ mạng).
   function loginWithPassword(email, password, callback) {
     if (!email) {
       if (callback) callback({ success: false, error: 'Vui lòng nhập email' });
@@ -710,45 +757,52 @@ const Auth = (function() {
       return;
     }
 
-    // Find member by email
-    var members = TaskManager.getMembers();
-    var member = members.find(function(m) {
-      return m.email && m.email.toLowerCase() === email.toLowerCase();
-    });
+    function findMember() {
+      var members = TaskManager.getMembers();
+      return members.find(function(m) {
+        return m.email && m.email.toLowerCase() === email.toLowerCase();
+      });
+    }
 
-    if (!member) {
-      // Try to register automatically if email is allowed
-      if (isAllowedEmail(email)) {
+    function finish(member, alreadyRefreshed) {
+      if (!member) {
+        if (!alreadyRefreshed && typeof TaskManager.refreshFromGSheets === 'function') {
+          TaskManager.refreshFromGSheets(function () { finish(findMember(), true); });
+          return;
+        }
         if (callback) callback({ success: false, error: 'Tài khoản chưa tồn tại. Vui lòng đăng ký trước.' });
         return;
       }
-      if (callback) callback({ success: false, error: 'Email chưa được đăng ký' });
-      return;
+
+      // Check password - convert both to string for comparison
+      if (member.password && String(member.password) !== String(password)) {
+        if (callback) callback({ success: false, error: 'Mật khẩu không đúng' });
+        return;
+      }
+
+      // Chặn đăng nhập nếu tài khoản chưa được duyệt / đã bị từ chối / đã ngưng
+      // công tác. Tài khoản không có trường status (dữ liệu cũ) coi là đang
+      // hoạt động. Cả 3 trạng thái chặn dưới đây đều có thể là CACHE CŨ (xem
+      // ghi chú trên hàm) — thử lấy dữ liệu mới đúng 1 lần trước khi từ chối
+      // thật sự, để tài khoản vừa được duyệt ở chỗ khác đăng nhập được ngay
+      // trên MỌI thiết bị, không phải đợi cache tự hết hạn hoặc F5 nhiều lần.
+      if (member.status === 'pending' || member.status === 'rejected' || member.status === 'inactive') {
+        if (!alreadyRefreshed && typeof TaskManager.refreshFromGSheets === 'function') {
+          TaskManager.refreshFromGSheets(function () { finish(findMember(), true); });
+          return;
+        }
+        var msg = member.status === 'pending' ? 'Tài khoản đang chờ quản lý hoặc CEO phê duyệt. Vui lòng quay lại sau.'
+          : member.status === 'rejected' ? 'Đăng ký của bạn đã bị từ chối. Vui lòng liên hệ quản lý.'
+          : 'Tài khoản đã ngưng công tác, không thể đăng nhập.';
+        if (callback) callback({ success: false, error: msg });
+        return;
+      }
+
+      var session = saveSession(member);
+      if (callback) callback({ success: true, user: session });
     }
 
-    // Check password - convert both to string for comparison
-    if (member.password && String(member.password) !== String(password)) {
-      if (callback) callback({ success: false, error: 'Mật khẩu không đúng' });
-      return;
-    }
-
-    // Chặn đăng nhập nếu tài khoản chưa được duyệt / đã bị từ chối / đã ngưng công tác.
-    // Tài khoản không có trường status (dữ liệu cũ) được coi là đang hoạt động.
-    if (member.status === 'pending') {
-      if (callback) callback({ success: false, error: 'Tài khoản đang chờ quản lý hoặc CEO phê duyệt. Vui lòng quay lại sau.' });
-      return;
-    }
-    if (member.status === 'rejected') {
-      if (callback) callback({ success: false, error: 'Đăng ký của bạn đã bị từ chối. Vui lòng liên hệ quản lý.' });
-      return;
-    }
-    if (member.status === 'inactive') {
-      if (callback) callback({ success: false, error: 'Tài khoản đã ngưng công tác, không thể đăng nhập.' });
-      return;
-    }
-
-    var session = saveSession(member);
-    if (callback) callback({ success: true, user: session });
+    finish(findMember(), false);
   }
 
   // Logout function
