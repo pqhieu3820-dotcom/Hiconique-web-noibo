@@ -2971,6 +2971,20 @@
     bindWorkScheduleBtn();
     bindPendingDevicesPanel();
 
+    // 2026-09-19: tự cập nhật khi dữ liệu chấm công thay đổi ở NƠI KHÁC
+    // (VD chấm công trên điện thoại xong, máy tính đang mở sẵn trang này) —
+    // TaskManager.refreshFromGSheets() tự chạy ngầm mỗi 20s (offline.js) và
+    // phát sự kiện 'hiconique:data-refreshed' khi xong, nhưng trước đây
+    // không ai lắng nghe nên chỉ localStorage được cập nhật, giao diện vẫn
+    // đứng yên cho tới khi F5 hoặc bấm nút đổi tháng. Vẽ lại NGAY TẠI CHỖ
+    // (không reload trang, không có hiệu ứng nháy màn hình vì chỉ đổi lại
+    // nội dung DOM, không remove/insert lại toàn bộ card).
+    window.addEventListener('hiconique:data-refreshed', function () {
+      renderCalendar();
+      updateShiftUI();
+      renderDeviceTable();
+    });
+
     if (typeof Auth !== 'undefined' && Auth.getCurrentUser && !Auth.getCurrentUser()) {
       Auth.showLoginModal();
     }

@@ -323,9 +323,20 @@ var TaskManager = (function() {
     var total = 16;
     var success = false;
 
+    // 2026-09-19: refreshFromGSheets() (kể cả bản chạy NGẦM mỗi 20s qua
+    // silentRefresh trong offline.js) trước đây chỉ ghi lại localStorage,
+    // KHÔNG có gì báo cho UI đang mở biết mà vẽ lại — dữ liệu chấm công từ
+    // 1 thiết bị khác (VD điện thoại) lên Sheet xong vẫn không hiện ra trên
+    // máy đang mở sẵn timesheet.html cho tới khi bấm nút đổi tháng (vô tình
+    // gọi lại renderCalendar()) hoặc F5. Phát 1 CustomEvent khi TOÀN BỘ các
+    // fetch ở trên xong (dù thành công hay không) để trang đang mở tự vẽ lại
+    // — xem timesheet.html lắng nghe 'hiconique:data-refreshed'.
     function checkDone() {
       done++;
-      if (done >= total && callback) callback(success);
+      if (done >= total) {
+        if (callback) callback(success);
+        try { window.dispatchEvent(new CustomEvent('hiconique:data-refreshed')); } catch (e) {}
+      }
     }
 
     getFromGSheets('projects', function(projects) {
