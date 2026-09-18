@@ -167,7 +167,8 @@ const FIELD_MAP = {
   // muộn/về sớm khi chấm công theo ca. Setup thời gian làm việc (timesheet.html).
   workSchedule: [
     ['Mã', 'id'], ['Giờ vào ca sáng', 'morningStart'], ['Giờ ra ca sáng', 'morningEnd'],
-    ['Giờ vào ca chiều', 'afternoonStart'], ['Giờ ra ca chiều', 'afternoonEnd'], ['Ngày cập nhật', 'updatedAt']
+    ['Giờ vào ca chiều', 'afternoonStart'], ['Giờ ra ca chiều', 'afternoonEnd'],
+    ['Thời gian cho phép muộn (phút)', 'lateGraceMinutes'], ['Ngày cập nhật', 'updatedAt']
   ],
   notifications: [
     ['Mã TB', 'id'], ['Tiêu đề', 'title'], ['Nội dung', 'message'], ['Loại', 'type'], ['Phạm vi', 'scope'],

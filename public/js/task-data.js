@@ -1508,7 +1508,13 @@ var TaskManager = (function() {
   // gsheets-api-v2.js), KHÔNG cache localStorage (giống attendanceLocations)
   // vì chấm công cần luôn đọc đúng giờ chuẩn mới nhất; getFromGSheets() vẫn
   // tự cache 30s ở tầng dưới nên không gọi API dồn dập.
-  var DEFAULT_WORK_SCHEDULE = { morningStart: '07:30', morningEnd: '11:30', afternoonStart: '13:30', afternoonEnd: '17:30' };
+  // `lateGraceMinutes` (2026-09-19, theo yêu cầu Founder): số phút "ân hạn"
+  // sau giờ vào ca chuẩn — chấm công trong khoảng này vẫn tính đúng giờ,
+  // không bị đánh dấu "đi muộn" (VD giờ vào 07:30 + ân hạn 5 phút = chấm
+  // công trước 07:35 vẫn OK). CHỈ áp dụng cho check-IN (đi muộn đầu giờ),
+  // không áp dụng cho check-OUT (về sớm) — xem isLateOrEarly() trong
+  // timesheet.html.
+  var DEFAULT_WORK_SCHEDULE = { morningStart: '07:30', morningEnd: '11:30', afternoonStart: '13:30', afternoonEnd: '17:30', lateGraceMinutes: 5 };
 
   // Ngày nghỉ lễ chính thức theo lịch nhà nước — KHÔNG có API/thư viện âm
   // lịch nào trong dự án để tự tính, nên liệt kê tay theo từng năm (thêm
@@ -1538,7 +1544,18 @@ var TaskManager = (function() {
   function getWorkSchedule(callback) {
     if (!isUsingGSheets()) { callback(DEFAULT_WORK_SCHEDULE); return; }
     getFromGSheets('workSchedule', function (rows) {
-      callback(rows && rows.length > 0 ? rows[0] : DEFAULT_WORK_SCHEDULE);
+      // Object.assign với DEFAULT_WORK_SCHEDULE trước — dòng đã lưu TRƯỚC KHI
+      // có field `lateGraceMinutes` (2026-09-19) sẽ thiếu hẳn cột này (chuỗi
+      // rỗng từ Sheet, không phải undefined), cần fallback về mặc định thay
+      // vì hiện trống/0 sai ý ở form và khi tính "đi muộn" trong
+      // isLateOrEarly().
+      var ws = rows && rows.length > 0 ? Object.assign({}, DEFAULT_WORK_SCHEDULE, rows[0]) : DEFAULT_WORK_SCHEDULE;
+      if (ws.lateGraceMinutes === '' || ws.lateGraceMinutes == null || isNaN(Number(ws.lateGraceMinutes))) {
+        ws.lateGraceMinutes = DEFAULT_WORK_SCHEDULE.lateGraceMinutes;
+      } else {
+        ws.lateGraceMinutes = Number(ws.lateGraceMinutes);
+      }
+      callback(ws);
     });
   }
   function saveWorkSchedule(data, callback) {

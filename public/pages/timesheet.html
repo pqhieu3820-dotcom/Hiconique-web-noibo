@@ -778,6 +778,11 @@
                 <input type="text" class="form-input" id="tsWsAfternoonEnd" inputmode="numeric" maxlength="5" placeholder="17:30" required>
               </div>
             </div>
+            <div class="form-group">
+              <label class="form-label">Thời gian cho phép muộn đầu giờ (phút)</label>
+              <input type="number" class="form-input" id="tsWsLateGrace" min="0" max="60" step="1" placeholder="5" style="max-width:120px;">
+              <p style="font-size:0.75rem; color:var(--ts-muted); margin:6px 0 0;">Chấm công trong khoảng phút này SAU giờ vào ca vẫn tính đúng giờ, không bị đánh dấu "đi muộn" — VD giờ vào 07:30, cho phép 5 phút thì chấm công trước 07:35 vẫn OK. Chỉ áp dụng lúc vào ca, không áp dụng lúc ra ca.</p>
+            </div>
             <div class="form-group" style="display:flex; justify-content:flex-end;">
               <button type="submit" class="btn btn-primary" id="tsWorkScheduleSaveBtn">Lưu giờ làm việc</button>
             </div>
@@ -1845,14 +1850,30 @@
     function normalizeHM(t) { return String(t || '').trim().replace(/\./g, ':'); }
     function nowHM() { return new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }); }
 
-    // kind: 'in' (check-in — muộn nếu SAU giờ vào chuẩn) hoặc 'out' (check-out
-    // — sớm nếu TRƯỚC giờ ra chuẩn). So sánh chuỗi "HH:MM" (zero-pad 2 số) —
-    // đúng thứ tự lexicographic y hệt so số, không cần parse Date.
+    // "HH:MM" + N phút -> "HH:MM" mới (zero-pad 2 số) — dùng để tính mốc
+    // "hết ân hạn đi muộn" (VD 07:30 + 5 phút = 07:35). Không cần lo tràn
+    // qua ngày hôm sau vì ca làm việc không kéo dài tới gần nửa đêm.
+    function addMinutesHM(hm, minutes) {
+      var parts = hm.split(':');
+      var totalMin = (parseInt(parts[0], 10) || 0) * 60 + (parseInt(parts[1], 10) || 0) + (minutes || 0);
+      var h = Math.floor(totalMin / 60) % 24;
+      var m = totalMin % 60;
+      return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+    }
+
+    // kind: 'in' (check-in — muộn nếu SAU giờ vào chuẩn + số phút ân hạn
+    // ws.lateGraceMinutes, xem "Setup thời gian làm việc") hoặc 'out'
+    // (check-out — sớm nếu TRƯỚC giờ ra chuẩn, không áp dụng ân hạn). So
+    // sánh chuỗi "HH:MM" (zero-pad 2 số) — đúng thứ tự lexicographic y hệt
+    // so số, không cần parse Date.
     function isLateOrEarly(shift, kind, timeStr, ws) {
       var time = normalizeHM(timeStr);
       if (kind === 'in') {
         var start = normalizeHM(ws[shift + 'Start']);
-        return !!start && time > start;
+        if (!start) return false;
+        var grace = Number(ws.lateGraceMinutes) || 0;
+        var deadline = grace > 0 ? addMinutesHM(start, grace) : start;
+        return time > deadline;
       }
       var end = normalizeHM(ws[shift + 'End']);
       return !!end && time < end;
@@ -2784,15 +2805,17 @@
       // Chỉ Founder/CEO được sửa (không tính Giám đốc Bộ phận dù cùng
       // roleLevel 'admin') — các cấp còn lại mở modal chỉ để XEM.
       var canEdit = user.level === 'founder' || user.level === 'ceo';
-      var inputs = ['tsWsMorningStart', 'tsWsMorningEnd', 'tsWsAfternoonStart', 'tsWsAfternoonEnd'].map(function (id) {
+      var timeInputs = ['tsWsMorningStart', 'tsWsMorningEnd', 'tsWsAfternoonStart', 'tsWsAfternoonEnd'].map(function (id) {
         return document.getElementById(id);
       });
+      var graceInput = document.getElementById('tsWsLateGrace');
       var saveBtn = document.getElementById('tsWorkScheduleSaveBtn');
       var viewOnlyNote = document.getElementById('tsWorkScheduleViewOnlyNote');
-      inputs.forEach(function (input) {
+      timeInputs.forEach(function (input) {
         input.readOnly = !canEdit;
         if (canEdit) bindTimeTextMask(input);
       });
+      graceInput.readOnly = !canEdit;
       saveBtn.hidden = !canEdit;
       viewOnlyNote.hidden = canEdit;
 
@@ -2801,6 +2824,7 @@
         document.getElementById('tsWsMorningEnd').value = ws.morningEnd || DEFAULT_WORK_SCHEDULE.morningEnd;
         document.getElementById('tsWsAfternoonStart').value = ws.afternoonStart || DEFAULT_WORK_SCHEDULE.afternoonStart;
         document.getElementById('tsWsAfternoonEnd').value = ws.afternoonEnd || DEFAULT_WORK_SCHEDULE.afternoonEnd;
+        graceInput.value = (ws.lateGraceMinutes === '' || ws.lateGraceMinutes == null) ? DEFAULT_WORK_SCHEDULE.lateGraceMinutes : ws.lateGraceMinutes;
       }
 
       function openModal() {
@@ -2817,14 +2841,20 @@
 
       document.getElementById('tsWorkScheduleForm').addEventListener('submit', function (e) {
         e.preventDefault();
+        var graceRaw = graceInput.value.trim();
         var data = {
           morningStart: document.getElementById('tsWsMorningStart').value,
           morningEnd: document.getElementById('tsWsMorningEnd').value,
           afternoonStart: document.getElementById('tsWsAfternoonStart').value,
-          afternoonEnd: document.getElementById('tsWsAfternoonEnd').value
+          afternoonEnd: document.getElementById('tsWsAfternoonEnd').value,
+          lateGraceMinutes: graceRaw === '' ? 0 : Math.max(0, Math.round(Number(graceRaw)))
         };
         if (!isValidHM(data.morningStart) || !isValidHM(data.morningEnd) || !isValidHM(data.afternoonStart) || !isValidHM(data.afternoonEnd)) {
           showToast('Giờ không hợp lệ, nhập theo định dạng HH:MM (24h), VD: 07:30.', false);
+          return;
+        }
+        if (graceRaw !== '' && (isNaN(Number(graceRaw)) || Number(graceRaw) < 0)) {
+          showToast('Thời gian cho phép muộn phải là số phút không âm.', false);
           return;
         }
         saveBtn.disabled = true;
