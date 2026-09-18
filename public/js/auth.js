@@ -62,6 +62,24 @@ const Auth = (function() {
   // Current session
   let currentUser = null;
 
+  // Khoá cuộn trang + chặn tương tác nền khi modal đăng nhập/đăng ký đang mở
+  // (2026-09-19, theo yêu cầu) — modal này không có nút đóng, chỉ biến mất
+  // khi đăng nhập thành công, nên nền phía sau phải hoàn toàn bất động cho
+  // tới lúc đó: không cuộn được (chuột/trackpad/touch), không bấm được gì.
+  // Backdrop của modal (position:fixed, inset:0) đã chặn click xuyên qua rồi,
+  // phần còn thiếu là chặn cuộn trang bên dưới.
+  function lockBodyScroll() {
+    if (document.body.dataset.authScrollLocked) return;
+    document.body.dataset.authScrollLocked = '1';
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+  }
+  function unlockBodyScroll() {
+    delete document.body.dataset.authScrollLocked;
+    document.documentElement.style.overflow = '';
+    document.body.style.overflow = '';
+  }
+
   // Mốc 1h sáng gần nhất đã qua (hôm nay nếu đã sang 1h, còn chưa tới thì lấy
   // mốc 1h của hôm trước) — dùng để buộc đăng xuất toàn bộ mỗi ngày lúc 1h
   // sáng cho an toàn, thay vì chỉ dựa vào SESSION_DURATION 24h (không cố định
@@ -265,7 +283,7 @@ const Auth = (function() {
     if (existing) existing.remove();
 
     var html = `
-      <div id="authLoginModal" style="position: fixed; inset: 0; background: rgba(11,13,16,0.85); backdrop-filter: blur(8px); z-index: 100000; display: flex; align-items: center; justify-content: center; padding: 20px;">
+      <div id="authLoginModal" style="position: fixed; inset: 0; background: rgba(11,13,16,0.92); backdrop-filter: blur(16px); z-index: 100000; display: flex; align-items: center; justify-content: center; padding: 20px;">
         <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 16px; max-width: 440px; width: 100%; max-height: calc(100vh - 40px); overflow-y: auto; padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.4);">
           <div style="text-align: center; margin-bottom: 32px;">
             <img src="/logo-mark.png" alt="HICONIQUE" style="width: 48px; height: 48px; margin: 0 auto 16px; display: block; object-fit: contain;" />
@@ -314,6 +332,7 @@ const Auth = (function() {
       </div>
     `;
     document.body.insertAdjacentHTML('beforeend', html);
+    lockBodyScroll();
 
     var form = document.getElementById('authLoginForm');
     var emailInput = document.getElementById('authEmailInput');
@@ -334,6 +353,7 @@ const Auth = (function() {
         if (result.success) {
           try { localStorage.removeItem('skip_auto_login'); } catch(e) {}
           document.getElementById('authLoginModal').remove();
+          unlockBodyScroll();
           if (window.onAuthSuccess) window.onAuthSuccess(result.user);
           else window.location.reload();
         } else {
@@ -372,7 +392,7 @@ const Auth = (function() {
           #authLoginModal input::placeholder { font-size: 0.8125rem; }
         }
       </style>
-      <div id="authLoginModal" style="position: fixed; inset: 0; background: rgba(11,13,16,0.85); backdrop-filter: blur(8px); z-index: 100000; display: flex; align-items: center; justify-content: center; padding: 20px;">
+      <div id="authLoginModal" style="position: fixed; inset: 0; background: rgba(11,13,16,0.92); backdrop-filter: blur(16px); z-index: 100000; display: flex; align-items: center; justify-content: center; padding: 20px;">
         <div class="auth-card" style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 16px; max-width: 520px; width: 100%; max-height: calc(100vh - 40px); overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.4);">
           <div style="text-align: center; margin-bottom: 32px;">
             <img src="/logo-mark.png" alt="HICONIQUE" style="width: 48px; height: 48px; margin: 0 auto 16px; display: block; object-fit: contain;" />
@@ -476,6 +496,7 @@ const Auth = (function() {
       </div>
     `;
     document.body.insertAdjacentHTML('beforeend', html);
+    lockBodyScroll();
 
     var form = document.getElementById('authRegisterForm');
     var nameInput = document.getElementById('regNameInput');
