@@ -77,7 +77,18 @@ function syncToGSheets(type, action, data, id) {
 // lâu hơn 1-2 phút", không chỉ riêng phần định vị GPS. Ép timeout cứng 8s
 // bằng AbortController, quá giờ thì coi như đọc lỗi (rơi về callback([]) có
 // sẵn) thay vì treo vô thời hạn.
-function fetchFromAPI(action, callback) {
+// 2026-09-19 (2): 1 lần timeout/lỗi (mạng chập chờn, hay gặp nhất là Apps
+// Script "cold start" — lần gọi đầu tiên sau 1 lúc không ai dùng có thể mất
+// 10-20s+ để khởi động lại) trước đây bị coi là "hết dữ liệu" ngay — hậu quả
+// thật: máy MỚI hoàn toàn (chưa có cache localStorage nào, VD lần đầu đăng
+// nhập ở 1 thiết bị khác) hiện sai "Chưa cấu hình địa điểm"/"Chưa cấu hình
+// IP" dù Sheet vẫn còn đủ dữ liệu (chỉ là lần gọi ĐẦU bị cold-start timeout),
+// và bảng "Thiết bị đã đăng ký" không thấy các thiết bị đã đăng ký từ máy
+// khác vì getMembers() cũng lỡ y hệt. Thêm 1 lần thử lại (cách nhau 1.5s)
+// trước khi thật sự chấp nhận rỗng — đủ để qua khỏi 1 lần cold-start điển
+// hình mà không kéo dài tới mức "chờ 1-2 phút" như bug gốc đã fix trước đó
+// (8s timeout/lần, tối đa 2 lần = ~17.5s xấu nhất, thay vì vô thời hạn).
+function fetchFromAPI(action, callback, isRetry) {
   if (!isUsingGSheets() || !GSHEETS_CONFIG.API_URL) { callback([]); return; }
   var controller = new AbortController();
   var timer = setTimeout(function () { controller.abort(); }, 8000);
@@ -87,10 +98,15 @@ function fetchFromAPI(action, callback) {
       // Đọc thành công = mốc "dữ liệu mới nhất" cho banner offline — đánh dấu
       // TRƯỚC khi trả callback để mọi trang đều thấy mốc giờ cập nhật đúng.
       if (typeof Offline !== 'undefined') Offline.markSynced();
+      clearTimeout(timer);
       callback(Array.isArray(data) ? data : []);
     })
-    .catch(function (e) { console.error('GSheets API read failed:', e); callback([]); })
-    .finally(function () { clearTimeout(timer); });
+    .catch(function (e) {
+      clearTimeout(timer);
+      if (!isRetry) { setTimeout(function () { fetchFromAPI(action, callback, true); }, 1500); return; }
+      console.error('GSheets API read failed:', e);
+      callback([]);
+    });
 }
 
 var TaskManager = (function() {
