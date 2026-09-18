@@ -84,7 +84,15 @@ const FIELD_MAP = {
     // yêu cầu người dùng, dễ nhìn/lọc trực tiếp trên Sheet hơn. Xem
     // splitDeviceColumns() (đã chạy 1 lần, xoá khỏi code) và task-data.js
     // parseDeviceIds()/stringifyDeviceEntries().
-    ['Thiết bị 1', 'device1'], ['Thiết bị 2', 'device2'],
+    ['Thiết bị 1', 'device1'],
+    // 2026-09-19: cột dropdown riêng để XEM/SỬA TRẠNG THÁI TRỰC TIẾP trên
+    // Sheet (yêu cầu người dùng) — mirror của trạng thái đã gộp sẵn trong
+    // "Thiết bị 1"/"Thiết bị 2" (chuỗi "id::tên::trạng"), KHÔNG thay thế
+    // chuỗi đó (id/tên vẫn chỉ sống trong chuỗi). Xem applyDeviceStatusDropdowns()
+    // và ghi chú ở VALUE_MAP phía trên.
+    ['Trạng thái Thiết bị 1', 'device1Status'],
+    ['Thiết bị 2', 'device2'],
+    ['Trạng thái Thiết bị 2', 'device2Status'],
     // 2026-09-16: thêm phòng ban — 2 cột riêng (tên đầy đủ + mã 3 ký tự
     // dùng để đánh số văn bản, xem TaskManager.getDepartments() trong
     // task-data.js — danh mục CỐ ĐỊNH theo SOP nội bộ, không tự thêm/sửa).
@@ -375,6 +383,18 @@ const VALUE_MAP = {
   ],
   'proposals.status': [
     ['Chờ duyệt', 'pending'], ['Đã duyệt', 'approved'], ['Từ chối', 'rejected']
+  ],
+  // 2026-09-19: cột "Trạng thái Thiết bị 1/2" (mirror của trạng thái đã gộp
+  // sẵn trong "Thiết bị 1"/"Thiết bị 2" dạng "id::tên::trạng") — cho CEO/
+  // Founder XEM VÀ SỬA TRỰC TIẾP trên Sheet bằng dropdown thay vì phải mở
+  // đúng chuỗi ghép để sửa tay, xem parseDeviceIds()/stringifyDeviceEntries()
+  // trong task-data.js (đọc cột này ĐÈ LÊN trạng thái trong chuỗi ghép nếu
+  // có giá trị — sửa tay trên Sheet có hiệu lực ngay ở lần đồng bộ kế tiếp).
+  'members.device1Status': [
+    ['Chờ duyệt', 'pending'], ['Đã duyệt', 'approved']
+  ],
+  'members.device2Status': [
+    ['Chờ duyệt', 'pending'], ['Đã duyệt', 'approved']
   ],
   'proposals.type': [
     ['Nghỉ phép', 'nghi-phep'], ['Mua sắm', 'mua-sam'], ['Nhân sự', 'nhan-su'],
@@ -2293,6 +2313,68 @@ function splitDeviceColumns() {
   sheet.deleteColumn(oldColIdx + 1);
 
   const report = 'Đã tách cột thành "Thiết bị 1"/"Thiết bị 2", di trú ' + migrated + ' dòng có dữ liệu thiết bị.';
+  Logger.log(report);
+  return report;
+}
+
+// 2026-09-19: chèn 2 cột "Trạng thái Thiết bị 1"/"Trạng thái Thiết bị 2"
+// NGAY SAU "Thiết bị 1"/"Thiết bị 2" (theo đúng vị trí người dùng yêu cầu,
+// không phải nối cuối sheet như cơ chế addData() tự thêm cột thiếu) + dropdown
+// "Chờ duyệt"/"Đã duyệt" + di trú trạng thái đã có sẵn trong chuỗi ghép
+// "id::tên::trạng" ra cột mới cho dễ xem/sửa tay. Chạy TAY ĐÚNG 1 LẦN (khớp
+// với FIELD_MAP mới thêm device1Status/device2Status ở đầu file) — an toàn
+// chạy lại (bỏ qua nếu cột đã tồn tại, chỉ đặt lại dropdown + không di trú
+// lại dữ liệu).
+function addDeviceStatusColumns() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = findSheet(ss, SHEETS.members);
+  if (!sheet) return 'Không tìm thấy sheet Thành viên';
+  const lines = [];
+  const STATUS_LABELS = { pending: 'Chờ duyệt', approved: 'Đã duyệt' };
+
+  [
+    { deviceHeader: 'Thiết bị 1', statusHeader: 'Trạng thái Thiết bị 1' },
+    { deviceHeader: 'Thiết bị 2', statusHeader: 'Trạng thái Thiết bị 2' }
+  ].forEach(function (pair) {
+    // Đọc lại headers MỖI VÒNG LẶP — lần chèn cột trước đó (Thiết bị 1) đã
+    // làm lệch index của mọi cột phía sau, kể cả "Thiết bị 2".
+    const headers = getHeaders(sheet);
+    const deviceColIdx = headers.indexOf(pair.deviceHeader);
+    if (deviceColIdx === -1) { lines.push(pair.deviceHeader + ': không tìm thấy cột, bỏ qua'); return; }
+    let statusColIdx = headers.indexOf(pair.statusHeader);
+    if (statusColIdx === -1) {
+      sheet.insertColumnAfter(deviceColIdx + 1);
+      statusColIdx = deviceColIdx + 1;
+      sheet.getRange(1, statusColIdx + 1).setValue(pair.statusHeader);
+      // Di trú trạng thái đã có sẵn trong chuỗi ghép "id::tên::trạng" (phần
+      // tử thứ 3, mặc định 'approved' nếu thiếu — khớp đúng quy ước parseDeviceIds()
+      // phía client) ra cột mới, chỉ 1 lần lúc vừa tạo cột.
+      const lastRow = sheet.getLastRow();
+      if (lastRow >= 2) {
+        const deviceValues = sheet.getRange(2, deviceColIdx + 1, lastRow - 1, 1).getValues();
+        const statusValues = deviceValues.map(function (row) {
+          const raw = String(row[0] || '').trim();
+          if (!raw) return [''];
+          const parts = raw.split('::');
+          const status = parts[2] || 'approved';
+          return [STATUS_LABELS[status] || STATUS_LABELS.approved];
+        });
+        sheet.getRange(2, statusColIdx + 1, statusValues.length, 1).setValues(statusValues);
+      }
+      lines.push(pair.statusHeader + ': đã chèn cột sau "' + pair.deviceHeader + '" + di trú trạng thái có sẵn');
+    } else {
+      lines.push(pair.statusHeader + ': đã có sẵn, bỏ qua chèn/di trú');
+    }
+    const lastRow2 = sheet.getLastRow();
+    const numRows = Math.min(Math.max(lastRow2 - 1, 0) + 50, sheet.getMaxRows() - 1);
+    const rule = SpreadsheetApp.newDataValidation().requireValueInList(['Chờ duyệt', 'Đã duyệt'], true).setAllowInvalid(false).build();
+    const targetRange = sheet.getRange(2, statusColIdx + 1, numRows, 1);
+    targetRange.clearDataValidations();
+    targetRange.setDataValidation(rule);
+    lines.push(pair.statusHeader + ': đã đặt dropdown (Chờ duyệt / Đã duyệt)');
+  });
+
+  const report = lines.join('\n');
   Logger.log(report);
   return report;
 }

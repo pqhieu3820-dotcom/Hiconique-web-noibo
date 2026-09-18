@@ -907,6 +907,14 @@ var TaskManager = (function() {
   // — entry cũ (chưa có "::tên") vẫn parse được bình thường, chỉ thiếu name.
   var MAX_MEMBER_DEVICES = 2;
   var DEVICE_SLOT_FIELDS = ['device1', 'device2'];
+  // 2026-09-19: cột "Trạng thái Thiết bị 1/2" mirror trên Sheet (dropdown
+  // Chờ duyệt/Đã duyệt, xem addDeviceStatusColumns() trong gsheets-api-v2.js)
+  // — cho CEO/Founder tự sửa tay trực tiếp trên Sheet, không cần mở đúng
+  // chuỗi ghép "id::tên::trạng" để sửa. Đọc ĐÈ LÊN trạng thái trong chuỗi
+  // ghép nếu có giá trị (parseDeviceIds), và LUÔN ghi lại đồng bộ khi web tự
+  // đổi trạng thái qua nút Duyệt/Từ chối (stringifyDeviceEntries) để 2 nơi
+  // không bao giờ lệch nhau dù sửa từ web hay sửa tay trên Sheet.
+  var DEVICE_STATUS_FIELDS = ['device1Status', 'device2Status'];
   // 2026-09-15: thêm "status" (pending/approved/rejected) — thiết bị đăng ký
   // MỚI phải chờ CEO/Manager duyệt mới tính là "quen dùng" trong 3 điều kiện
   // chấm công (xem checkDeviceStatus() ở timesheet.html). Entry cũ trước khi
@@ -915,11 +923,14 @@ var TaskManager = (function() {
   // người dùng hiện tại.
   function parseDeviceIds(member) {
     var out = [];
-    DEVICE_SLOT_FIELDS.forEach(function (field) {
+    DEVICE_SLOT_FIELDS.forEach(function (field, i) {
       var raw = String((member && member[field]) || '').trim();
       if (!raw) return;
       var parts = raw.split('::');
-      out.push({ id: parts[0], name: parts[1] || '', status: parts[2] || 'approved' });
+      var status = parts[2] || 'approved';
+      var mirrorStatus = String((member && member[DEVICE_STATUS_FIELDS[i]]) || '').trim();
+      if (mirrorStatus) status = mirrorStatus; // sửa tay trên Sheet có hiệu lực ngay
+      out.push({ id: parts[0], name: parts[1] || '', status: status });
     });
     return out;
   }
@@ -933,6 +944,7 @@ var TaskManager = (function() {
     DEVICE_SLOT_FIELDS.forEach(function (field, i) {
       var e = entries[i];
       out[field] = e ? [e.id, e.name || '', e.status || 'approved'].join('::') : '';
+      out[DEVICE_STATUS_FIELDS[i]] = e ? (e.status || 'approved') : '';
     });
     return out;
   }
