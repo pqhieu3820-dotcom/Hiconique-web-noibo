@@ -3013,6 +3013,20 @@
       renderCalendar();
       updateShiftUI();
       renderDeviceTable();
+      // 2026-09-19 (2): panel "Thiết bị chấm công chờ duyệt" (CEO/Manager)
+      // bị sót ở lần fix trên — cùng 1 bug y hệt, chỉ vẽ 1 lần lúc tải
+      // trang, nên khi 1 nhân viên bấm "Đăng ký thiết bị này" ở máy khác,
+      // Founder/CEO đang mở sẵn trang Chấm công phải tự F5 mới thấy yêu
+      // cầu mới xuất hiện — không phải do dữ liệu chậm lên Sheet, chỉ là
+      // panel không được vẽ lại. PHẢI check quyền lại ở đây giống hệt
+      // bindPendingDevicesPanel() — #tsPendingDevicesList vẫn tồn tại
+      // trong DOM (chỉ đang `hidden`) với nhân viên thường, gọi thẳng
+      // renderPendingDevicesList() không kiểm tra quyền sẽ VÔ TÌNH LỘ cả
+      // panel duyệt thiết bị cho họ.
+      var evtUser = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
+      if (evtUser && (evtUser.roleLevel === 'admin' || evtUser.roleLevel === 'manager')) {
+        renderPendingDevicesList();
+      }
     });
 
     if (typeof Auth !== 'undefined' && Auth.getCurrentUser && !Auth.getCurrentUser()) {
