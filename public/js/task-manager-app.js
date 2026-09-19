@@ -133,6 +133,13 @@
 
     // Start auto-polling from Google Sheets every 15s
     startAutoPolling();
+
+    // 2026-09-19: TaskManager.refreshFromGSheets() (chạy ngầm mỗi 20s qua
+    // offline.js, và cả bản 60s riêng của startAutoPolling() ở trên) tự
+    // phát sự kiện 'hiconique:data-refreshed' khi xong — vẽ lại đúng view
+    // đang mở (không chỉ badge/số liệu như startAutoPolling() cố tình bỏ
+    // qua để tránh giật màn hình lúc đang thao tác Kanban).
+    window.addEventListener('hiconique:data-refreshed', rerenderActiveView);
   }
 
   // Update UI with current user info
@@ -210,6 +217,31 @@
     // Button already in HTML, no action needed
   }
 
+  // Vẽ lại ĐÚNG view đang mở dựa vào data-view của .tm-nav-item.active (không
+  // đoán theo chữ hiển thị) — tách ra dùng chung cho cả nút "Đồng bộ" thủ
+  // công (syncFromSheets()) LẪN sự kiện 'hiconique:data-refreshed' (2026-09-19,
+  // xem bên dưới): trước đây renderProposals() (danh sách "Đề xuất" của CEO/
+  // Manager) chỉ được vẽ lại khi TỰ bấm nút Đồng bộ hoặc chuyển view - vòng
+  // lặp tự làm mới ngầm mỗi 20-60s (offline.js/startAutoPolling()) chỉ cập
+  // nhật badge/số liệu, không vẽ lại danh sách, y hệt bug "Thiết bị chờ
+  // duyệt" đã fix ở timesheet.html. Bỏ qua nếu đang mở modal (tránh mất
+  // trạng thái form đang nhập dở).
+  function rerenderActiveView() {
+    var modalOpen = document.getElementById('modalOverlay') &&
+                    document.getElementById('modalOverlay').classList.contains('active');
+    if (modalOpen) { updateNavBadges(); return; }
+    var activeNav = document.querySelector('.tm-nav-item.active');
+    var view = activeNav ? activeNav.dataset.view : 'dashboard';
+    if (view === 'dashboard') renderDashboard();
+    else if (view === 'projects') renderProjectsView();
+    else if (view === 'my-tasks') renderMyTasks();
+    else if (view === 'team') renderTeam();
+    else if (view === 'calendar') renderCalendar();
+    else if (view === 'gantt') renderGantt();
+    else if (view === 'proposals') renderProposals();
+    else renderDashboard();
+  }
+
   // Sync from Google Sheets
   function syncFromSheets(silent) {
     var btn = document.getElementById('syncFromSheetsBtn');
@@ -227,23 +259,7 @@
         btn.disabled = false;
         btn.classList.remove('spinning');
       }
-      // Re-render current view based on data-view attribute (not text match)
-      var activeNav = document.querySelector('.tm-nav-item.active');
-      var view = activeNav ? activeNav.dataset.view : 'dashboard';
-      // Skip re-render if modal is open to avoid losing modal state
-      var modalOpen = document.getElementById('modalOverlay') &&
-                      document.getElementById('modalOverlay').classList.contains('active');
-      if (modalOpen) {
-        // Only update badges, not full DOM
-        updateNavBadges();
-      } else if (view === 'dashboard') renderDashboard();
-      else if (view === 'projects') renderProjectsView();
-      else if (view === 'my-tasks') renderMyTasks();
-      else if (view === 'team') renderTeam();
-      else if (view === 'calendar') renderCalendar();
-      else if (view === 'gantt') renderGantt();
-      else if (view === 'proposals') renderProposals();
-      else renderDashboard();
+      rerenderActiveView();
 
       if (!silent) {
         var msg = document.createElement('div');

@@ -459,6 +459,15 @@
     monthInput.addEventListener('change', renderAll);
     renderAll();
 
+    // 2026-09-19: cung bug "duyet roi ma khong hien" da fix o timesheet.html
+    // (renderPendingDevicesList) - trang nay cung co 1 danh sach + so dem
+    // "Cho duyet" (renderList()) chi ve 1 lan luc tai trang/doi thang, khong
+    // tu ve lai khi TaskManager.refreshFromGSheets() chay ngam moi 20s cap
+    // nhat xong. Nhan vien duyet luong xong, tab dang mo cua nguoi khac van
+    // hien "Cho duyet" mai toi khi F5. renderAll() da tu kiem tra quyen ben
+    // trong (renderList()) nen goi thang duoc, khong lo lo quyen.
+    window.addEventListener('hiconique:data-refreshed', renderAll);
+
     if (typeof Auth !== 'undefined' && Auth.getCurrentUser && !Auth.getCurrentUser()) {
       Auth.showLoginModal();
     }

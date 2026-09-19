@@ -595,6 +595,11 @@
       setTimeout(renderAll, 1200); // re-render khi dữ liệu GSheets async về
     }
     boot();
+
+    // 2026-09-19: cung bug "cap nhat xong nhung khong hien" - renderAll()
+    // chi chay luc tai trang, khong tu ve lai khi TaskManager.refreshFromGSheets()
+    // cap nhat ngam moi 20s (VD ai do vua danh dau "Da thu tien" o may khac).
+    window.addEventListener('hiconique:data-refreshed', renderAll);
   })();
   </script>
 </body>

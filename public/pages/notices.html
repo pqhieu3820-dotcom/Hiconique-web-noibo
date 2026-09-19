@@ -418,6 +418,12 @@
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
     else boot();
+
+    // 2026-09-19: cung bug "cap nhat xong nhung khong hien" - render() chi
+    // chay luc tai trang, khong tu ve lai khi TaskManager.refreshFromGSheets()
+    // cap nhat ngam moi 20s. 1 thong bao moi do admin dang o may khac se
+    // khong hien o tab dang mo cho toi khi F5.
+    window.addEventListener('hiconique:data-refreshed', render);
   })();
   </script>
 

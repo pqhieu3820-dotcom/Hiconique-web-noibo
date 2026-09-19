@@ -665,6 +665,14 @@
     loadTeam();
   }
 
+  // 2026-09-19: cùng bug "cập nhật xong nhưng không hiện" — loadTeam() chỉ
+  // chạy 1 lần lúc trang tải, không tự vẽ lại khi có thành viên mới được
+  // duyệt/đổi trạng thái ở nơi khác trong lúc trang team.html đang mở sẵn.
+  // renderTeamGrid() đã tự no-op nếu #team-grid không tồn tại (trang khác
+  // không có grid này) nên đăng ký chung ở đây (portal.js load mọi trang)
+  // là an toàn.
+  window.addEventListener('hiconique:data-refreshed', loadTeam);
+
   // ----- Expand panels (Tasks / Dự án) -----
   function escapeHtml(str) {
     if (str === undefined || str === null) return '';
@@ -1077,6 +1085,19 @@
       if (dot) dot.hidden = unread === 0;
     }
     updateBadge();
+
+    // 2026-09-19: cùng bug "cập nhật xong nhưng không hiện" đã fix ở
+    // timesheet.html/task-manager-app.js — updateBadge() (chấm đỏ chuông
+    // thông báo, hiện SITEWIDE) trước đây chỉ chạy 1 lần lúc trang tải,
+    // không tự chạy lại khi TaskManager.refreshFromGSheets() cập nhật ngầm
+    // mỗi 20s. 1 thông báo MỚI do người khác tạo (VD duyệt đề xuất/thiết bị)
+    // sẽ không làm chấm đỏ sáng lên ở tab đang mở cho tới khi F5. Nếu panel
+    // đang mở sẵn (đang xem danh sách) thì vẽ lại luôn danh sách, không chỉ
+    // riêng chấm đỏ.
+    window.addEventListener('hiconique:data-refreshed', function () {
+      updateBadge();
+      if (!panel.hidden) render();
+    });
 
     function itemRow(n) {
       var unread = !TaskManager.isNotificationRead(n.id);
