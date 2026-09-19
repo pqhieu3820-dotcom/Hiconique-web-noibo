@@ -3027,6 +3027,15 @@
       if (evtUser && (evtUser.roleLevel === 'admin' || evtUser.roleLevel === 'manager')) {
         renderPendingDevicesList();
       }
+      // 2026-09-19 (3): cùng bug y hệt lần nữa — dòng "Thiết bị đã đăng ký"
+      // trong panel 3 điều kiện chấm công (checkDeviceStatus()) cũng chỉ
+      // check 1 lần lúc tải trang, đọc cache cũ. CEO duyệt thiết bị xong,
+      // thông báo "đã được duyệt" hiện đúng (nguồn dữ liệu khác) nhưng dòng
+      // "Thiết bị đã đăng ký" vẫn đứng yên báo "đang chờ duyệt" mãi tới khi
+      // F5. Chỉ gọi lại checkDeviceStatus() (KHÔNG gọi lại
+      // checkGeoStatus()/checkIpStatus() ở đây — 2 hàm đó tự xin lại vị trí
+      // GPS thật mỗi lần gọi, không nên tự lặp lại mỗi 20s vô ích/tốn pin).
+      renderVerifyRow('tsVerifyDeviceDot', 'tsVerifyDeviceState', checkDeviceStatus());
     });
 
     if (typeof Auth !== 'undefined' && Auth.getCurrentUser && !Auth.getCurrentUser()) {
