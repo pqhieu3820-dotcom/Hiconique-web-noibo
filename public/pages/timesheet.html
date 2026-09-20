@@ -257,6 +257,24 @@
     }
     .ts-device-add:hover { background: var(--ts-bronze); color: #0B0D10; }
 
+    /* Mã máy — luôn hiện sẵn (không giấu trong mục "2 thiết bị" nữa) để nhân
+       viên copy gửi admin ngay khi thấy chờ duyệt lâu, không cần hiểu trước
+       về tính năng đồng bộ 2 thiết bị bên dưới mới tìm ra được mã của mình. */
+    .ts-device-mycode {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      margin-top: 10px; padding: 8px 10px; border-radius: 8px; background: var(--color-bg);
+      font-size: 0.75rem; color: var(--ts-muted);
+    }
+    .ts-device-mycode code {
+      background: var(--ts-card, transparent); border: 1px solid var(--ts-border); border-radius: 6px;
+      padding: 4px 8px; font-size: 0.75rem; word-break: break-all; color: var(--ts-text);
+    }
+    .ts-device-mycode button {
+      border: 1px solid var(--ts-bronze); background: transparent; color: var(--ts-bronze);
+      border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer; font-family: inherit; white-space: nowrap;
+    }
+    .ts-device-mycode button:hover { background: var(--ts-bronze); color: #0B0D10; }
+
     /* "Đồng bộ mã thiết bị" — Safari và app "Thêm vào Màn hình chính" trên
        cùng 1 điện thoại bị hệ điều hành coi là 2 nơi lưu trữ RIÊNG (iOS đặc
        biệt hay gặp), nên tự sinh 2 deviceId khác nhau dù cùng 1 máy — không
@@ -1639,26 +1657,30 @@
       wrap.innerHTML =
         '<div class="ts-device-title">Thiết bị chấm công đã đăng ký (tối đa ' + MAX_MEMBER_DEVICES_UI + ')</div>' +
         rows +
+        '<div class="ts-device-mycode">' +
+          '<span>Mã máy này (gửi cho quản trị viên nếu chờ duyệt quá lâu):</span>' +
+          '<code id="tsDeviceMyCode">' + escapeHtmlTs(myDeviceId) + '</code>' +
+          '<button type="button" id="tsDeviceMyCodeCopyBtn">Sao chép</button>' +
+        '</div>' +
         '<div class="ts-device-sync">' +
           '<button type="button" class="ts-device-sync-toggle" id="tsDeviceSyncToggle">Cùng 1 máy nhưng bị tính thành 2 thiết bị (VD dùng cả Safari lẫn app đã "Thêm vào Màn hình chính")?</button>' +
           '<div class="ts-device-sync-body" id="tsDeviceSyncBody" hidden>' +
             '<p>iOS/Android coi trình duyệt và app "Thêm vào Màn hình chính" là 2 nơi lưu trữ riêng dù cùng 1 điện thoại, nên tự sinh 2 mã khác nhau. Mở trang này ở CẢ HAI nơi, rồi dán mã của bên kia vào đây để 2 nơi được tính là 1 thiết bị — nếu bên kia đã lỡ đăng ký riêng, bấm "Gỡ" thiết bị đó ở trên trước.</p>' +
-            '<div class="ts-device-sync-row"><span>Mã máy này:</span><code id="tsDeviceSyncMyId">' + escapeHtmlTs(myDeviceId) + '</code><button type="button" id="tsDeviceSyncCopyBtn">Sao chép</button></div>' +
             '<div class="ts-device-sync-row"><input type="text" id="tsDeviceSyncInput" placeholder="Dán mã thiết bị từ nơi kia vào đây"><button type="button" id="tsDeviceSyncApplyBtn">Đồng bộ</button></div>' +
           '</div>' +
         '</div>';
-      var syncToggle = document.getElementById('tsDeviceSyncToggle');
-      var syncBody = document.getElementById('tsDeviceSyncBody');
-      if (syncToggle && syncBody) {
-        syncToggle.addEventListener('click', function () { syncBody.hidden = !syncBody.hidden; });
-      }
-      var syncCopyBtn = document.getElementById('tsDeviceSyncCopyBtn');
-      if (syncCopyBtn) {
-        syncCopyBtn.addEventListener('click', function () {
+      var myCodeCopyBtn = document.getElementById('tsDeviceMyCodeCopyBtn');
+      if (myCodeCopyBtn) {
+        myCodeCopyBtn.addEventListener('click', function () {
           (navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(myDeviceId) : Promise.reject())
             .then(function () { showToast('Đã sao chép mã thiết bị.', true); })
             .catch(function () { showToast('Không sao chép được — tự bôi đen mã rồi copy thủ công.', false); });
         });
+      }
+      var syncToggle = document.getElementById('tsDeviceSyncToggle');
+      var syncBody = document.getElementById('tsDeviceSyncBody');
+      if (syncToggle && syncBody) {
+        syncToggle.addEventListener('click', function () { syncBody.hidden = !syncBody.hidden; });
       }
       var syncApplyBtn = document.getElementById('tsDeviceSyncApplyBtn');
       if (syncApplyBtn) {
