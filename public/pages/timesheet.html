@@ -1964,19 +1964,53 @@
       return !!end && time < end;
     }
 
-    // Bắt nhập lý do TRƯỚC KHI cho chấm công tiếp khi phát hiện muộn/sớm —
-    // chặn ngay ở đây (trước khi tốn công chạy verifyThenProceed) nếu ô Ghi
-    // chú đang trống, đồng thời đổi nhãn ô để người dùng biết đang cần nhập
-    // gì (không chỉ 1 câu toast thoáng qua rồi mất).
-    function requireLateEarlyNote(kind) {
+    // 2026-09-21: bảng nhập lý do hiện GIỮA MÀN HÌNH thay vì chỉ đổi nhãn +
+    // viền đỏ ô ghi chú nhỏ ở sidebar — ô đó dễ bị bỏ qua vì nằm khuất phía
+    // trên, người dùng bấm "Chấm công" xong không hiểu sao không chạy. Dùng
+    // lại đúng kiểu dáng showConfirmDialog() (.ts-confirm-overlay/-box) cho
+    // đồng nhất, thêm textarea ngay trong hộp.
+    function showLateNoteDialog(kind, onSubmit) {
+      var overlay = document.createElement('div');
+      overlay.className = 'ts-confirm-overlay';
+      var title = kind === 'late' ? 'Bạn đang vào ca MUỘN' : 'Bạn đang ra ca SỚM';
+      var label = kind === 'late' ? 'Vui lòng nhập lý do đi muộn (bắt buộc)' : 'Vui lòng nhập lý do về sớm (bắt buộc)';
+      overlay.innerHTML =
+        '<div class="ts-confirm-box" style="max-width:420px;">' +
+          '<div class="ts-confirm-title">' + title + '</div>' +
+          '<label style="display:block; font-size:0.8125rem; color:var(--ts-muted); margin:-12px 0 8px;">' + label + '</label>' +
+          '<textarea class="ts-note-input" id="tsLateNoteDialogInput" rows="3" style="width:100%; box-sizing:border-box; margin-bottom:16px;" placeholder="Ví dụ: kẹt xe, đi công trình, xin về sớm…"></textarea>' +
+          '<div class="ts-confirm-actions">' +
+            '<button type="button" class="ts-confirm-cancel">Huỷ</button>' +
+            '<button type="button" class="ts-confirm-ok">Xác nhận</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(overlay);
+      var input = overlay.querySelector('#tsLateNoteDialogInput');
+      input.focus();
+      overlay.querySelector('.ts-confirm-cancel').addEventListener('click', function () { overlay.remove(); });
+      overlay.querySelector('.ts-confirm-ok').addEventListener('click', function () {
+        var val = input.value.trim();
+        if (!val) { input.style.borderColor = '#A04848'; input.focus(); return; }
+        overlay.remove();
+        onSubmit(val);
+      });
+    }
+
+    // Bắt nhập lý do TRƯỚC KHI cho chấm công tiếp khi phát hiện muộn/sớm.
+    // Nếu ô Ghi chú nhỏ ở sidebar đã có sẵn nội dung thì chạy tiếp ngay
+    // (onReady() đồng bộ); nếu chưa, hiện bảng giữa màn hình
+    // (showLateNoteDialog, bất đồng bộ) rồi mới gọi onReady() sau khi có lý do.
+    function requireLateEarlyNote(kind, onReady) {
       var noteInput = document.getElementById('tsCheckinNote');
       var noteLabel = document.getElementById('tsNoteLabel');
       var val = noteInput ? noteInput.value.trim() : '';
-      if (val) return true;
+      if (val) { onReady(); return; }
       if (noteLabel) noteLabel.textContent = kind === 'late' ? 'Lý do đi muộn (bắt buộc)' : 'Lý do về sớm (bắt buộc)';
-      if (noteInput) { noteInput.style.borderColor = '#A04848'; noteInput.focus(); }
-      showToast(kind === 'late' ? 'Bạn đang vào ca muộn — nhập lý do rồi mới chấm công tiếp được.' : 'Bạn đang ra ca sớm — nhập lý do rồi mới chấm công tiếp được.', false);
-      return false;
+      if (noteInput) noteInput.style.borderColor = '#A04848';
+      showLateNoteDialog(kind, function (enteredVal) {
+        if (noteInput) { noteInput.value = enteredVal; noteInput.style.borderColor = ''; }
+        onReady();
+      });
     }
 
     function updateStats() {
@@ -3165,14 +3199,16 @@
           showConfirmDialog(confirmTitle, function () {
             if (isCheckout) {
               var early = isLateOrEarly(shift, 'out', time, ws);
-              if (early && !requireLateEarlyNote('early')) return;
-              verifyThenProceed(btn, function () { doShiftCheckOut(shift, time, early); });
+              function proceedCheckout() { verifyThenProceed(btn, function () { doShiftCheckOut(shift, time, early); }); }
+              if (early) requireLateEarlyNote('early', proceedCheckout); else proceedCheckout();
             } else {
               var late = isLateOrEarly(shift, 'in', time, ws);
-              if (late && !requireLateEarlyNote('late')) return;
-              verifyThenProceed(btn, function (geoResult, ipResult, deviceResult) {
-                doShiftCheckIn(shift, time, late, geoResult, ipResult, deviceResult);
-              });
+              function proceedCheckin() {
+                verifyThenProceed(btn, function (geoResult, ipResult, deviceResult) {
+                  doShiftCheckIn(shift, time, late, geoResult, ipResult, deviceResult);
+                });
+              }
+              if (late) requireLateEarlyNote('late', proceedCheckin); else proceedCheckin();
             }
           }, 'Xác nhận');
         });
