@@ -1035,6 +1035,10 @@ var TaskManager = (function() {
   }
 
   function removeMemberDevice(memberId, deviceId, user) {
+    // Tự gỡ thiết bị của chính mình (self-service, timesheet.html) HOẶC
+    // CEO/Founder gỡ hộ người khác (bảng quản lý thiết bị) — không cho
+    // nhân viên thường gỡ thiết bị của người khác.
+    if (!user || (user.id !== memberId && !canManageMembers(user))) return null;
     var member = getMember(memberId);
     if (!member) return null;
     var entries = parseDeviceIds(member);
@@ -1098,6 +1102,69 @@ var TaskManager = (function() {
       type: 'attendance', scope: memberId, recurring: false
     }]);
     return updated;
+  }
+
+  // Danh sách MỌI thiết bị của MỌI thành viên (không chỉ đang chờ duyệt) —
+  // dùng cho bảng quản lý thiết bị đầy đủ (sửa/gỡ/reset/thêm hộ) mà CEO/
+  // Founder mở từ nút cạnh panel "Thiết bị chấm công chờ duyệt".
+  function getAllMemberDeviceRows() {
+    var out = [];
+    getMembers().forEach(function (m) {
+      parseDeviceIds(m).forEach(function (e) {
+        out.push({ memberId: m.id, memberName: m.name || m.id, deviceId: e.id, deviceName: e.name, status: e.status });
+      });
+    });
+    return out;
+  }
+
+  // CEO/Founder thêm thủ công 1 mã thiết bị (nhân viên tự gửi mã qua Zalo/
+  // tin nhắn khi chờ duyệt lâu quá) cho MỘT người khác — khác registerMemberDevice
+  // (tự đăng ký từ đúng máy đó) ở chỗ: admin đã tự xác nhận mã đúng của người
+  // đó nên ghi thẳng trạng thái 'approved', không qua hàng chờ duyệt nữa.
+  function adminRegisterMemberDevice(memberId, deviceId, deviceName, user) {
+    if (!canManageMembers(user)) return { ok: false, reason: 'forbidden' };
+    var member = getMember(memberId);
+    deviceId = String(deviceId || '').trim();
+    if (!member || !deviceId) return { ok: false, reason: 'invalid' };
+    var entries = parseDeviceIds(member);
+    var existing = entries.filter(function (e) { return e.id === deviceId; })[0];
+    if (existing) {
+      existing.status = 'approved';
+      if (deviceName) existing.name = deviceName;
+    } else {
+      if (entries.length >= MAX_MEMBER_DEVICES) return { ok: false, reason: 'full' };
+      entries.push({ id: deviceId, name: deviceName || '', status: 'approved' });
+    }
+    var updated = updateMember(memberId, stringifyDeviceEntries(entries), user);
+    if (!updated) return { ok: false, reason: 'blocked' };
+    addSystemNotificationsBatch([{
+      title: 'Thiết bị chấm công đã được thêm',
+      message: 'Thiết bị "' + (deviceName || deviceId) + '" đã được ' + (user.name || 'quản lý') + ' thêm thủ công cho bạn — có thể dùng để chấm công ngay.',
+      type: 'attendance', scope: memberId, recurring: false
+    }]);
+    return { ok: true };
+  }
+
+  // Sửa tên hiển thị của 1 thiết bị đã đăng ký (VD nhân viên đổi máy nhưng
+  // tên cũ ghi sai, hoặc admin muốn ghi chú rõ hơn "Điện thoại - Nam").
+  function adminRenameMemberDevice(memberId, deviceId, newName, user) {
+    if (!canManageMembers(user)) return null;
+    var member = getMember(memberId);
+    if (!member) return null;
+    var entries = parseDeviceIds(member);
+    var entry = entries.filter(function (e) { return e.id === deviceId; })[0];
+    if (!entry) return null;
+    entry.name = newName || '';
+    return updateMember(memberId, stringifyDeviceEntries(entries), user);
+  }
+
+  // Reset toàn bộ thiết bị đã đăng ký của 1 thành viên (nhả hết slot) — dùng
+  // khi người đó đổi hết máy móc hoặc dữ liệu thiết bị bị rối cần làm sạch.
+  function adminResetMemberDevices(memberId, user) {
+    if (!canManageMembers(user)) return null;
+    var member = getMember(memberId);
+    if (!member) return null;
+    return updateMember(memberId, stringifyDeviceEntries([]), user);
   }
 
   // Duyệt/từ chối thành viên đăng ký mới: CHỈ Founder/CEO/Giám đốc Bộ phận
@@ -2138,6 +2205,10 @@ var TaskManager = (function() {
     getPendingDeviceRegistrations: getPendingDeviceRegistrations,
     approveMemberDevice: approveMemberDevice,
     rejectMemberDevice: rejectMemberDevice,
+    getAllMemberDeviceRows: getAllMemberDeviceRows,
+    adminRegisterMemberDevice: adminRegisterMemberDevice,
+    adminRenameMemberDevice: adminRenameMemberDevice,
+    adminResetMemberDevices: adminResetMemberDevices,
     canManageMembers: canManageMembers,
     canTerminateMembers: canTerminateMembers,
     updateMemberStatus: updateMemberStatus,

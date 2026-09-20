@@ -275,6 +275,17 @@
     }
     .ts-device-mycode button:hover { background: var(--ts-bronze); color: #0B0D10; }
 
+    /* Modal "Quản lý tất cả thiết bị" (CEO/Founder) — xem bindManageAllDevicesModal(). */
+    .ts-manage-add-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .ts-manage-add-row select, .ts-manage-add-row input { flex: 1; min-width: 140px; }
+    .ts-manage-device-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 10px 12px; background: var(--color-bg); border: 1px solid var(--ts-border); border-radius: 10px;
+      flex-wrap: wrap;
+    }
+    .ts-manage-device-row .ts-manage-device-info { min-width: 0; }
+    .ts-manage-device-row .ts-manage-device-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
     /* "Đồng bộ mã thiết bị" — Safari và app "Thêm vào Màn hình chính" trên
        cùng 1 điện thoại bị hệ điều hành coi là 2 nơi lưu trữ RIÊNG (iOS đặc
        biệt hay gặp), nên tự sinh 2 deviceId khác nhau dù cùng 1 máy — không
@@ -1121,14 +1132,45 @@
          chờ duyệt (approve/reject), khác với ts-device-table (chỉ hiện thiết
          bị CỦA CHÍNH người đang đăng nhập). -->
     <div class="ts-calendar-card" id="tsPendingDevicesCard" hidden style="margin-top:24px; padding:24px;">
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
         <h3 style="font-size:1.0625rem; font-weight:600; margin:0;">Thiết bị chấm công chờ duyệt</h3>
-        <span class="ts-device-title" id="tsPendingDevicesCount" style="margin:0;"></span>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span class="ts-device-title" id="tsPendingDevicesCount" style="margin:0;"></span>
+          <button type="button" class="btn btn-secondary" id="tsManageAllDevicesBtn" hidden>Quản lý tất cả thiết bị</button>
+        </div>
       </div>
       <div id="tsPendingDevicesList" style="display:flex; flex-direction:column; gap:10px;"></div>
     </div>
   </div>
   </main>
+
+  <!-- Modal quản lý TOÀN BỘ thiết bị chấm công của mọi thành viên — CHỈ
+       CEO/Founder mở được (nút "Quản lý tất cả thiết bị" ở panel phía trên).
+       Khác panel chờ duyệt: hiện CẢ thiết bị đã duyệt, cho sửa tên/gỡ/reset/
+       thêm thủ công hộ người khác (workflow nhân viên gửi mã qua ngoài web
+       khi chờ duyệt lâu quá). Xem bindManageAllDevicesModal(). -->
+  <div class="modal-overlay" id="tsManageDevicesModal">
+    <div class="modal" style="max-width:720px;">
+      <div class="modal-header">
+        <span class="modal-title">Quản lý tất cả thiết bị chấm công</span>
+        <button class="modal-close" id="tsManageDevicesCloseBtn" aria-label="Đóng">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Thêm thủ công cho một người (nhân viên gửi mã qua Zalo/tin nhắn)</label>
+          <div class="ts-manage-add-row">
+            <select class="form-select" id="tsManageAddMember"></select>
+            <input type="text" class="form-input" id="tsManageAddDeviceId" placeholder="Mã thiết bị nhân viên gửi">
+            <input type="text" class="form-input" id="tsManageAddDeviceName" placeholder="Tên thiết bị (tuỳ chọn)">
+            <button type="button" class="ts-device-add" id="tsManageAddBtn">+ Thêm</button>
+          </div>
+        </div>
+        <div id="tsManageDevicesList" style="display:flex; flex-direction:column; gap:8px; margin-top:12px; max-height:50vh; overflow-y:auto;"></div>
+      </div>
+    </div>
+  </div>
 
   <script src="/js/portal.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js" defer></script>
@@ -2965,6 +3007,133 @@
       renderPendingDevicesList();
     }
 
+    // ====== Modal "Quản lý tất cả thiết bị" (CHỈ CEO/Founder — canManageMembers) ======
+    // Khác panel chờ duyệt ở trên: liệt kê MỌI thiết bị (kể cả đã duyệt) của
+    // MỌI thành viên, cho sửa tên/gỡ/reset toàn bộ/thêm thủ công hộ người
+    // khác — đúng yêu cầu "chỉnh sửa, gỡ, hủy, reset, thêm thủ công cho người
+    // khác" ở nút cạnh panel chờ duyệt.
+    function renderManageDevicesList() {
+      var list = document.getElementById('tsManageDevicesList');
+      if (!list || typeof TaskManager === 'undefined' || !TaskManager.getAllMemberDeviceRows) return;
+      var rows = TaskManager.getAllMemberDeviceRows();
+      var user = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
+      if (!rows.length) {
+        list.innerHTML = '<p style="font-size:0.8125rem; color:var(--ts-muted);">Chưa có thiết bị nào được đăng ký.</p>';
+        return;
+      }
+      // Gom theo người để còn nút "Reset toàn bộ" cho từng người.
+      var byMember = {};
+      rows.forEach(function (r) {
+        if (!byMember[r.memberId]) byMember[r.memberId] = { memberName: r.memberName, devices: [] };
+        byMember[r.memberId].devices.push(r);
+      });
+      list.innerHTML = Object.keys(byMember).map(function (memberId) {
+        var group = byMember[memberId];
+        var deviceRowsHtml = group.devices.map(function (d) {
+          var statusLabel = d.status === 'pending'
+            ? '<span style="color:var(--ts-warning, #C7A464); font-weight:600;">Chờ duyệt</span>'
+            : '<span style="color:var(--ts-success, #4F6F52); font-weight:600;">Đã duyệt</span>';
+          return ''
+            + '<div class="ts-manage-device-row">'
+            +   '<div class="ts-manage-device-info">'
+            +     '<input type="text" class="form-input tsManageRenameInput" data-member="' + escapeHtmlTs(memberId) + '" data-device="' + escapeHtmlTs(d.deviceId) + '" value="' + escapeHtmlTs(d.deviceName || '') + '" placeholder="(không rõ tên)" style="font-size:0.8125rem; padding:5px 8px; margin-bottom:4px;">'
+            +     '<div style="font-size:0.6875rem; color:var(--ts-muted); word-break:break-all;">' + escapeHtmlTs(d.deviceId) + ' — ' + statusLabel + '</div>'
+            +   '</div>'
+            +   '<div class="ts-manage-device-actions">'
+            +     (d.status === 'pending' ? '<button type="button" class="btn btn-primary tsManageApproveBtn" data-member="' + escapeHtmlTs(memberId) + '" data-device="' + escapeHtmlTs(d.deviceId) + '" style="padding:5px 10px; font-size:0.75rem;">Duyệt</button>' : '')
+            +     '<button type="button" class="btn btn-secondary tsManageRemoveBtn" data-member="' + escapeHtmlTs(memberId) + '" data-device="' + escapeHtmlTs(d.deviceId) + '" style="padding:5px 10px; font-size:0.75rem;">Gỡ</button>'
+            +   '</div>'
+            + '</div>';
+        }).join('');
+        return ''
+          + '<div style="border-top:1px dashed var(--ts-border); padding-top:10px; margin-top:4px;">'
+          +   '<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">'
+          +     '<span style="font-weight:600; font-size:0.875rem;">' + escapeHtmlTs(group.memberName) + '</span>'
+          +     '<button type="button" class="btn btn-secondary tsManageResetBtn" data-member="' + escapeHtmlTs(memberId) + '" style="padding:4px 10px; font-size:0.75rem; color:var(--ts-danger);">Reset toàn bộ</button>'
+          +   '</div>'
+          +   deviceRowsHtml
+          + '</div>';
+      }).join('');
+
+      list.querySelectorAll('.tsManageRenameInput').forEach(function (input) {
+        input.addEventListener('change', function () {
+          TaskManager.adminRenameMemberDevice(input.dataset.member, input.dataset.device, input.value.trim(), user);
+          showToast('Đã cập nhật tên thiết bị.', true);
+          renderManageDevicesList();
+          renderPendingDevicesList();
+        });
+      });
+      list.querySelectorAll('.tsManageApproveBtn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          TaskManager.approveMemberDevice(btn.dataset.member, btn.dataset.device, user);
+          renderManageDevicesList();
+          renderPendingDevicesList();
+        });
+      });
+      list.querySelectorAll('.tsManageRemoveBtn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          showConfirmDialog('Gỡ thiết bị này? Người đó sẽ phải đăng ký lại nếu vẫn muốn dùng máy này để chấm công.', function () {
+            TaskManager.removeMemberDevice(btn.dataset.member, btn.dataset.device, user);
+            renderManageDevicesList();
+            renderPendingDevicesList();
+          }, 'Gỡ thiết bị');
+        });
+      });
+      list.querySelectorAll('.tsManageResetBtn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          showConfirmDialog('Reset TOÀN BỘ thiết bị đã đăng ký của người này? Họ sẽ phải đăng ký lại từ đầu và chờ duyệt.', function () {
+            TaskManager.adminResetMemberDevices(btn.dataset.member, user);
+            showToast('Đã reset thiết bị.', true);
+            renderManageDevicesList();
+            renderPendingDevicesList();
+          }, 'Reset toàn bộ');
+        });
+      });
+    }
+
+    function bindManageAllDevicesModal() {
+      var btn = document.getElementById('tsManageAllDevicesBtn');
+      var modal = document.getElementById('tsManageDevicesModal');
+      if (!btn || !modal) return;
+      var user = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
+      if (!user || !TaskManager.canManageMembers(user)) return; // giữ hidden — chỉ CEO/Founder thấy nút này
+      btn.hidden = false;
+
+      var memberSelect = document.getElementById('tsManageAddMember');
+
+      function populateMemberSelect() {
+        var members = TaskManager.getActiveMembers ? TaskManager.getActiveMembers() : TaskManager.getMembers();
+        memberSelect.innerHTML = members.map(function (m) {
+          return '<option value="' + escapeHtmlTs(m.id) + '">' + escapeHtmlTs(m.name || m.id) + '</option>';
+        }).join('');
+      }
+
+      function openModal() { populateMemberSelect(); renderManageDevicesList(); modal.classList.add('active'); }
+      function closeModal() { modal.classList.remove('active'); }
+
+      btn.addEventListener('click', openModal);
+      document.getElementById('tsManageDevicesCloseBtn').addEventListener('click', closeModal);
+      modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
+
+      document.getElementById('tsManageAddBtn').addEventListener('click', function () {
+        var memberId = memberSelect.value;
+        var deviceId = document.getElementById('tsManageAddDeviceId').value.trim();
+        var deviceName = document.getElementById('tsManageAddDeviceName').value.trim();
+        if (!memberId || !deviceId) { showToast('Chọn người và nhập mã thiết bị trước.', false); return; }
+        var result = TaskManager.adminRegisterMemberDevice(memberId, deviceId, deviceName, user);
+        if (!result || !result.ok) {
+          var reasonMsg = result && result.reason === 'full' ? 'Người này đã đủ số thiết bị tối đa.' : 'Thêm thất bại — thử lại sau.';
+          showToast(reasonMsg, false);
+          return;
+        }
+        showToast('Đã thêm thiết bị cho ' + (memberSelect.options[memberSelect.selectedIndex] ? memberSelect.options[memberSelect.selectedIndex].text : memberId) + '.', true);
+        document.getElementById('tsManageAddDeviceId').value = '';
+        document.getElementById('tsManageAddDeviceName').value = '';
+        renderManageDevicesList();
+        renderPendingDevicesList();
+      });
+    }
+
     // Init — 1 handler dùng chung cho cả 2 nút ca (sáng/chiều), tự xác định
     // đang ở bước check-in hay check-out của ĐÚNG ca đó rồi mới quyết định
     // có cần bắt nhập lý do muộn/sớm hay không trước khi chạy verifyThenProceed.
@@ -3043,6 +3212,7 @@
     bindLocationManagerBtn();
     bindWorkScheduleBtn();
     bindPendingDevicesPanel();
+    bindManageAllDevicesModal();
 
     // 2026-09-19: tự cập nhật khi dữ liệu chấm công thay đổi ở NƠI KHÁC
     // (VD chấm công trên điện thoại xong, máy tính đang mở sẵn trang này) —
