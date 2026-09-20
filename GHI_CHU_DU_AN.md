@@ -28,11 +28,17 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   - Nhớ thêm `<script src="/js/money-input.js"></script>` vào trang nếu trang đó chưa nạp sẵn.
   - Chỉ áp dụng cho SỐ TIỀN thật (VNĐ) — KHÔNG áp dụng cho số lượng, phần trăm, giờ công hay các trường số khác không phải tiền.
 
-## ⏳ VIỆC CÒN TỒN ĐỌNG (đọc mục này đầu tiên — cập nhật 2026-09-17 cuối phiên)
+## ⏳ VIỆC CÒN TỒN ĐỌNG (đọc mục này đầu tiên — cập nhật 2026-09-21 cuối phiên)
 
-Không có việc gì đang dở dang trong code. Đã commit local (CHƯA push — theo quy tắc luôn hỏi trước khi push). Apps Script đã deploy phiên bản 69.
+Không có việc gì đang dở dang trong code. Đã commit local 6 lần trong phiên này (CHƯA push — theo quy tắc luôn hỏi trước khi push). KHÔNG đổi gì ở Apps Script (`gsheets-api-v2.js`) phiên này — vẫn phiên bản 71, không cần redeploy.
 
-**Việc CẦN người dùng tự làm (không phải code)**: mở lại app trên điện thoại 1 lần (có mạng) để Service Worker mới cài vào (từ phiên 2026-09-17) — trang sẽ tự reload 1 lần rồi từ đó về sau code mới luôn hiện ngay.
+### Phiên 2026-09-21 — Dinh dạng tiền VNĐ toàn app + quản lý thiết bị chấm công + popup lý do đi muộn giữa màn hình
+
+- **Dinh dạng tiền toàn bộ web** (`public/js/money-input.js`, `HiconiqueMoney`) — mọi ô nhập VNĐ giờ tự hiện dấu chấm ngăn cách hàng nghìn NGAY LÚC GÕ (gõ "90000000" tự hiện "90.000.000"). Đã áp dụng cho TẤT CẢ: `projects.html`/`projects.js`, `pricing.html` (modal tạo dự án nhanh + toàn bộ 6 công cụ: dự toán XD, dự toán thiết kế, dòng tiền, so sánh nhà thầu, phát sinh, danh mục giá, soạn báo giá), `task-manager-app.js` (modal Dự án + Đề xuất), `finance.html` (giao dịch, công nợ, bảng cân đối kế toán CFO), `payslip.html` (thưởng khác/khấu trừ/lương cơ bản), `commission.html` (giá trị dự án), `orders.html` (đơn giá hạng mục), `hicon-bim.html` (đơn giá sản phẩm + BOQ). Xem quy tắc cố định ở đầu file. **Chi tiết kỹ thuật quan trọng**: những chỗ dùng hàm đọc số chung (VD `num()` trong pricing.html) phải tách riêng hàm `moneyNum()` dùng `HiconiqueMoney.parse()` cho field tiền — không thể dùng chung `parseFloat` vì chuỗi có dấu chấm sẽ đọc sai (VD `parseFloat("2.800.000")` = `2.8`).
+- **Bỏ nút reload riêng trong modal "Báo cáo công việc"** (`projects.html`) — trùng với nút "Làm mới dữ liệu ngay" đã có sẵn ở toolbar chính.
+- **"Mã máy này" giờ LUÔN hiện rõ** ở bảng thiết bị chấm công (`timesheet.html`) — trước đó bị giấu trong mục "Cùng 1 máy nhưng bị tính thành 2 thiết bị?" (nhân viên không biết bấm vào đó mới thấy mã), giờ tách thành 1 dòng riêng luôn hiện, kèm nút Sao chép — dùng để gửi admin khi chờ duyệt quá lâu.
+- **Modal "Quản lý tất cả thiết bị" cho CEO/Founder** (`timesheet.html`, nút cạnh panel "Thiết bị chấm công chờ duyệt") — bảng đầy đủ MỌI thiết bị (không chỉ đang chờ) của MỌI thành viên, gom theo người: sửa tên, Duyệt (nếu đang chờ), Gỡ, Reset toàn bộ 1 người, và form thêm thủ công 1 mã thiết bị hộ người khác (đúng workflow nhân viên gửi mã qua Zalo/tin nhắn). Hàm mới trong `task-data.js`: `getAllMemberDeviceRows()`, `adminRegisterMemberDevice()` (ghi thẳng `approved`, không qua hàng chờ vì admin đã tự xác nhận), `adminRenameMemberDevice()`, `adminResetMemberDevices()` — cả 4 đều gate bằng `canManageMembers()` (chỉ `roleLevel==='admin'`). Đồng thời siết `removeMemberDevice()`: giờ chỉ cho tự gỡ thiết bị CỦA CHÍNH MÌNH hoặc admin gỡ hộ người khác (trước đó không có gate quyền nào).
+- **Bảng nhập lý do đi muộn/về sớm hiện GIỮA MÀN HÌNH** (`timesheet.html`) — trước chỉ đổi nhãn + viền đỏ ô ghi chú nhỏ trong sidebar (dễ bị bỏ qua vì nằm khuất). `requireLateEarlyNote()` đổi thành callback-style (`requireLateEarlyNote(kind, onReady)`), gọi `showLateNoteDialog()` (dựng động, tái dùng đúng class `.ts-confirm-overlay`/`.ts-confirm-box` của `showConfirmDialog()` cho đồng nhất) khi ô ghi chú đang trống — nhập xong tự điền lại vào ô ghi chú nhỏ để giữ nguyên luồng ghi dữ liệu xuống Sheet không đổi gì.
 
 ### Phiên 2026-09-17 (b) — Chấm công theo ca sáng/chiều + Setup thời gian làm việc + fix bug âm thầm mất dữ liệu khi thêm field mới vào FIELD_MAP
 
