@@ -785,7 +785,7 @@ var TaskManager = (function() {
     var task = getTask(taskId);
     if (!task) return null;
 
-    var today = new Date().toISOString().split('T')[0];
+    var today = todayStr();
     var dailyTasks = task.dailyTasks || [];
 
     var todayEntry = dailyTasks.find(function(d) { return d.date === today; });
@@ -820,7 +820,7 @@ var TaskManager = (function() {
     var task = getTask(taskId);
     if (!task) return null;
 
-    var today = new Date().toISOString().split('T')[0];
+    var today = todayStr();
     var dailyTasks = task.dailyTasks || [];
     return dailyTasks.find(function(d) { return d.date === today; }) || { progress: 0, note: '', done: false };
   }
@@ -1184,8 +1184,25 @@ var TaskManager = (function() {
   // recurring rule for today) are computed on the fly and never written —
   // keeps the sheet small no matter how long the company runs on it.
 
+  // 2026-09-21: BUG NGHIÊM TRỌNG phát hiện qua báo cáo thật — chấm công lúc
+  // 01:17 sáng (giờ VN, UTC+7) ghi lên Sheet với "Ngày" là HÔM QUA, khiến
+  // lịch/chi tiết ngày ở timesheet.html (tự tính "hôm nay" đúng theo giờ
+  // ĐỊA PHƯƯƠNG qua getFullYear()/getMonth()/getDate()) không bao giờ khớp
+  // được bản ghi vừa tạo — trông y hệt "chấm công xong mà web không cập
+  // nhật", trong khi Sheet đã có đúng dữ liệu. Nguyên nhân: toISOString()
+  // luôn quy đổi sang UTC trước khi cắt chuỗi ngày — với UTC+7, bất kỳ giờ
+  // nào TRƯỚC 07:00 sáng giờ VN đều bị lùi về ĐÚNG NGÀY HÔM TRƯỚC theo UTC.
+  // Đổi sang lấy trực tiếp năm/tháng/ngày ở giờ địa phương của máy/server
+  // (Apps Script chạy timezone Asia/Ho_Chi_Minh nên khớp) — không quy đổi
+  // UTC. Ảnh hưởng dây chuyền: shiftCheckIn()/shiftCheckOut() (chấm công
+  // theo ca), addDailyProgress()/getTodayProgress() (tiến độ hàng ngày),
+  // getComputedAlerts() (nhắc việc quá hạn/sinh nhật), getStats() (việc đến
+  // hạn hôm nay), markOrderPaid() (ngày ghi nhận doanh thu) — tất cả dùng
+  // chung hàm này thay vì tự lặp lại `new Date().toISOString().split('T')[0]`
+  // rải rác (đã lỡ SAI y hệt ở nhiều chỗ trước khi fix).
   function todayStr() {
-    return new Date().toISOString().split('T')[0];
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
 
   function canManageNotifications(user) {
@@ -1346,7 +1363,7 @@ var TaskManager = (function() {
     var todayMD = today.slice(5);
     var tomorrowDate = new Date();
     tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-    var tomorrowMD = tomorrowDate.toISOString().split('T')[0].slice(5);
+    var tomorrowMD = String(tomorrowDate.getMonth() + 1).padStart(2, '0') + '-' + String(tomorrowDate.getDate()).padStart(2, '0');
     members.filter(function (m) { return m.dob; }).forEach(function (m) {
       var dobMD = String(m.dob).slice(5, 10);
       if (dobMD === todayMD) {
@@ -1606,7 +1623,7 @@ var TaskManager = (function() {
   // hàm này chỉ ghi lại đúng những gì đã được UI xác định, không tự tính lại
   // để tránh 2 nơi có 2 quy tắc khác nhau.
   function shiftCheckIn(memberId, shift, fields, user) {
-    var today = new Date().toISOString().split('T')[0];
+    var today = todayStr();
     var entries = getAll(STORAGE_KEYS.timesheet);
     var record = entries.filter(function (e) { return e.memberId === memberId && e.date === today; })[0];
     var patch = {};
@@ -1643,7 +1660,7 @@ var TaskManager = (function() {
   }
 
   function shiftCheckOut(memberId, shift, fields, user) {
-    var today = new Date().toISOString().split('T')[0];
+    var today = todayStr();
     var entries = getAll(STORAGE_KEYS.timesheet);
     var record = entries.filter(function (e) { return e.memberId === memberId && e.date === today; })[0];
     if (!record) return null;
@@ -1968,7 +1985,7 @@ var TaskManager = (function() {
     if (order.linkedFinanceEntryId) {
       return updateOrder(id, { status: 'paid' }, user);
     }
-    var today = new Date().toISOString().split('T')[0];
+    var today = todayStr();
     var financeData = {
       type: 'revenue',
       category: 'Đơn hàng',
@@ -2046,7 +2063,7 @@ var TaskManager = (function() {
     var pendingTasks = tasks.filter(function(t) { return t.status === 'pending'; }).length;
     var inProgressTasks = tasks.filter(function(t) { return t.status === 'in-progress'; }).length;
 
-    var today = new Date().toISOString().split('T')[0];
+    var today = todayStr();
     var dueToday = tasks.filter(function(t) {
       if (!t.deadline) return false;
       return t.deadline.startsWith(today) && t.status !== 'completed';
