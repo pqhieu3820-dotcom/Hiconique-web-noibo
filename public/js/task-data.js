@@ -921,6 +921,11 @@ var TaskManager = (function() {
   // có tính năng này (chỉ 1-2 phần, không có status) mặc định coi là
   // 'approved' — không đột ngột khoá thiết bị đang hoạt động bình thường của
   // người dùng hiện tại.
+  // parts[3] (2026-09-21): "vân tay trình duyệt" — mã suy đoán thô từ đặc
+  // điểm máy (màn hình, múi giờ, hệ điều hành...), tính ở computeDeviceFingerprint()
+  // trong timesheet.html. KHÔNG phải ID thật (web không đọc được phần cứng
+  // thật), chỉ dùng để NHẬN LẠI 1 máy đã quen khi mất/đổi deviceId ngẫu nhiên
+  // (VD xoá dữ liệu trình duyệt) — xem logic ghép ở registerMemberDevice().
   function parseDeviceIds(member) {
     var out = [];
     DEVICE_SLOT_FIELDS.forEach(function (field, i) {
@@ -930,7 +935,7 @@ var TaskManager = (function() {
       var status = parts[2] || 'approved';
       var mirrorStatus = String((member && member[DEVICE_STATUS_FIELDS[i]]) || '').trim();
       if (mirrorStatus) status = mirrorStatus; // sửa tay trên Sheet có hiệu lực ngay
-      out.push({ id: parts[0], name: parts[1] || '', status: status });
+      out.push({ id: parts[0], name: parts[1] || '', status: status, fingerprint: parts[3] || '' });
     });
     return out;
   }
@@ -943,7 +948,7 @@ var TaskManager = (function() {
     var out = {};
     DEVICE_SLOT_FIELDS.forEach(function (field, i) {
       var e = entries[i];
-      out[field] = e ? [e.id, e.name || '', e.status || 'approved'].join('::') : '';
+      out[field] = e ? [e.id, e.name || '', e.status || 'approved', e.fingerprint || ''].join('::') : '';
       out[DEVICE_STATUS_FIELDS[i]] = e ? (e.status || 'approved') : '';
     });
     return out;
@@ -993,29 +998,59 @@ var TaskManager = (function() {
     });
   }
 
-  // Trả về { ok, isNew, full, status }. full=true nghĩa là deviceId lạ nhưng
-  // đã đủ MAX_MEMBER_DEVICES thiết bị — caller (UI) tự quyết định cảnh báo/
-  // hỏi lại, hàm này không tự chặn. Thiết bị MỚI của nhân viên thường luôn ở
-  // trạng thái 'pending' — phải chờ CEO/Manager duyệt (xem approveMemberDevice)
-  // mới tính là "quen dùng" khi chấm công; CEO/Manager tự đăng ký thì duyệt
-  // luôn cho chính mình (không lẽ tự đăng ký xong lại phải tự chờ chính mình).
-  function registerMemberDevice(memberId, deviceId, user, deviceName) {
+  // Trả về { ok, isNew, full, status, recovered }. full=true nghĩa là deviceId
+  // lạ nhưng đã đủ MAX_MEMBER_DEVICES thiết bị — caller (UI) tự quyết định
+  // cảnh báo/hỏi lại, hàm này không tự chặn. Thiết bị MỚI của nhân viên
+  // thường luôn ở trạng thái 'pending' — phải chờ CEO/Manager duyệt (xem
+  // approveMemberDevice) mới tính là "quen dùng" khi chấm công; CEO/Manager
+  // tự đăng ký thì duyệt luôn cho chính mình (không lẽ tự đăng ký xong lại
+  // phải tự chờ chính mình).
+  //
+  // 2026-09-21: thêm `fingerprint` (vân tay trình duyệt, xem
+  // computeDeviceFingerprint() ở timesheet.html) — deviceId ngẫu nhiên bị mất
+  // (xoá dữ liệu trình duyệt) khiến người dùng cứ phải đăng ký lại rồi chờ
+  // duyệt lại từ đầu dù vẫn cùng 1 máy quen. Nếu deviceId LẠ nhưng fingerprint
+  // TRÙNG với 1 entry đã có sẵn CỦA CHÍNH người này, coi đây là "cùng máy cũ,
+  // chỉ đổi mã lưu trữ" — THAY THẾ id cũ bằng id mới, GIỮ NGUYÊN trạng thái
+  // (đã duyệt thì vẫn đã duyệt luôn, không bắt chờ duyệt lại, không tốn thêm
+  // slot). Chỉ so trong phạm vi CHÍNH người đó (không so chéo qua người khác)
+  // — fingerprint chỉ là gợi ý thô (2 máy cùng đời/cùng cấu hình có thể
+  // trùng), không dùng để tự động tin cậy xuyên người dùng; vẫn báo cho
+  // CEO/Quản lý biết để họ tự kiểm tra lại nếu nghi ngờ.
+  function registerMemberDevice(memberId, deviceId, user, deviceName, fingerprint) {
     var member = getMember(memberId);
     if (!member || !deviceId) return { ok: false, isNew: false, full: false };
     var entries = parseDeviceIds(member);
     var existing = entries.filter(function (e) { return e.id === deviceId; })[0];
     if (existing) {
-      // Tự vá lại tên cho entry cũ (đăng ký trước khi có tính năng tên thiết bị).
-      if (deviceName && existing.name !== deviceName) {
-        existing.name = deviceName;
-        updateMember(memberId, stringifyDeviceEntries(entries), user);
-      }
+      // Tự vá lại tên/fingerprint cho entry cũ (VD đăng ký trước khi có tính
+      // năng tên thiết bị, hoặc fingerprint đổi nhẹ do cập nhật hệ điều hành).
+      var patched = false;
+      if (deviceName && existing.name !== deviceName) { existing.name = deviceName; patched = true; }
+      if (fingerprint && existing.fingerprint !== fingerprint) { existing.fingerprint = fingerprint; patched = true; }
+      if (patched) updateMember(memberId, stringifyDeviceEntries(entries), user);
       return { ok: true, isNew: false, full: false, status: existing.status };
+    }
+    var fingerprintMatch = fingerprint ? entries.filter(function (e) { return e.fingerprint && e.fingerprint === fingerprint; })[0] : null;
+    if (fingerprintMatch) {
+      var oldId = fingerprintMatch.id;
+      fingerprintMatch.id = deviceId;
+      if (deviceName) fingerprintMatch.name = deviceName;
+      var updatedRecovered = updateMember(memberId, stringifyDeviceEntries(entries), user);
+      if (!updatedRecovered) return { ok: false, isNew: false, full: false, blocked: true };
+      addSystemNotificationsBatch(adminAndManagerMembers(user && user.id).map(function (mgr) {
+        return {
+          title: 'Thiết bị chấm công tự nhận diện lại',
+          message: (member.name || memberId) + ' mở lại trang từ 1 mã thiết bị mới nhưng đặc điểm máy trùng với thiết bị cũ đã duyệt — hệ thống tự thay mã, không cần duyệt lại. Kiểm tra ở "Quản lý tất cả thiết bị" nếu nghi ngờ.',
+          type: 'attendance', scope: mgr.id, recurring: false
+        };
+      }));
+      return { ok: true, isNew: true, full: false, status: fingerprintMatch.status, recovered: true, oldId: oldId };
     }
     if (entries.length >= MAX_MEMBER_DEVICES) return { ok: false, isNew: false, full: true };
     var isSelfAdmin = canManageMembers(user) && user.id === memberId;
     var status = isSelfAdmin ? 'approved' : 'pending';
-    entries.push({ id: deviceId, name: deviceName || '', status: status });
+    entries.push({ id: deviceId, name: deviceName || '', status: status, fingerprint: fingerprint || '' });
     // Bug 2026-09-19: trước đây hàm này LUÔN trả `ok: true` bất kể
     // updateMember() có thật sự ghi được hay không — nếu bị Offline.guard()
     // chặn (báo mất mạng sai trên mạng di động chập chờn, đã biết ở
@@ -1107,12 +1142,29 @@ var TaskManager = (function() {
   // Danh sách MỌI thiết bị của MỌI thành viên (không chỉ đang chờ duyệt) —
   // dùng cho bảng quản lý thiết bị đầy đủ (sửa/gỡ/reset/thêm hộ) mà CEO/
   // Founder mở từ nút cạnh panel "Thiết bị chấm công chờ duyệt".
+  //
+  // 2026-09-21: thêm cờ `fingerprintDup` — TRÙNG vân tay trình duyệt với 1
+  // thiết bị của NGƯỜI KHÁC (khác `getMemberId`) là dấu hiệu đáng ngờ (VD 2
+  // người dùng chung 1 máy để chấm công hộ nhau) nên đánh dấu CẢNH BÁO cho
+  // CEO/Founder tự xem lại — KHÔNG tự chặn gì, vân tay chỉ là gợi ý thô (2
+  // máy cùng đời/cấu hình vẫn có thể trùng ngẫu nhiên), quyết định cuối vẫn
+  // là con người. Trùng vân tay GIỮA 2 thiết bị CỦA CÙNG 1 người là chuyện
+  // bình thường (xem registerMemberDevice's fingerprint-recovery), không tính.
   function getAllMemberDeviceRows() {
     var out = [];
+    var fingerprintOwners = {}; // fingerprint -> Set các memberId đã thấy
     getMembers().forEach(function (m) {
       parseDeviceIds(m).forEach(function (e) {
-        out.push({ memberId: m.id, memberName: m.name || m.id, deviceId: e.id, deviceName: e.name, status: e.status });
+        if (e.fingerprint) {
+          if (!fingerprintOwners[e.fingerprint]) fingerprintOwners[e.fingerprint] = {};
+          fingerprintOwners[e.fingerprint][m.id] = true;
+        }
+        out.push({ memberId: m.id, memberName: m.name || m.id, deviceId: e.id, deviceName: e.name, status: e.status, fingerprint: e.fingerprint });
       });
+    });
+    out.forEach(function (row) {
+      var owners = row.fingerprint ? Object.keys(fingerprintOwners[row.fingerprint] || {}) : [];
+      row.fingerprintDup = owners.length > 1;
     });
     return out;
   }

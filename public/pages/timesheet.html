@@ -1598,6 +1598,42 @@
       }
     }
 
+    // 2026-09-21: "vân tay trình duyệt" — mã suy đoán thô từ đặc điểm máy
+    // (KHÔNG phải ID phần cứng thật, web không đọc được), tính lại mỗi lần
+    // cần chứ không lưu localStorage (mục đích chính là SỐNG SÓT khi
+    // localStorage bị xoá — lưu lại thì mất tác dụng). Dùng kết hợp với
+    // deviceId ngẫu nhiên ở registerMemberDevice() (task-data.js): deviceId
+    // vẫn là định danh chính (chính xác), fingerprint chỉ là gợi ý phụ giúp
+    // "nhận lại" 1 máy quen khi deviceId bị mất, không thay thế deviceId.
+    // Cố tình CHỈ lấy tên trình duyệt/hệ điều hành (bỏ số phiên bản) — số
+    // phiên bản trong User-Agent đổi mỗi vài tuần khi trình duyệt tự cập
+    // nhật, giữ nguyên sẽ làm vân tay đổi liên tục, mất hết tác dụng.
+    function computeDeviceFingerprint() {
+      try {
+        var ua = navigator.userAgent || '';
+        var browserFamily = /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'Other';
+        var osFamily = /Windows/.test(ua) ? 'Windows' : /Android/.test(ua) ? 'Android' : /iPhone|iPad|iOS/.test(ua) ? 'iOS' : /Mac OS/.test(ua) ? 'Mac' : /Linux/.test(ua) ? 'Linux' : 'Other';
+        var parts = [
+          browserFamily, osFamily,
+          navigator.language || '',
+          String(navigator.hardwareConcurrency || ''),
+          String(navigator.maxTouchPoints || 0),
+          (screen.width || 0) + 'x' + (screen.height || 0),
+          String(screen.colorDepth || ''),
+          String(window.devicePixelRatio || ''),
+          (Intl.DateTimeFormat().resolvedOptions().timeZone || '')
+        ];
+        var raw = parts.join('|');
+        // Băm đơn giản (djb2) ra chuỗi hex ngắn — không cần thư viện ngoài,
+        // đủ dùng vì chỉ cần "nhiều khả năng cùng máy", không cần bảo mật.
+        var hash = 5381;
+        for (var i = 0; i < raw.length; i++) { hash = ((hash << 5) + hash) + raw.charCodeAt(i); hash |= 0; }
+        return 'fp_' + (hash >>> 0).toString(16);
+      } catch (_err) {
+        return '';
+      }
+    }
+
     function shortDeviceId(id) {
       return id ? id.slice(0, 8).toUpperCase() : '--';
     }
@@ -1759,10 +1795,13 @@
           // sửa — xem comment ở DEVICE_ID_KEY).
           function doRegister() {
             var user = TaskManager.getCurrentUser ? TaskManager.getCurrentUser() : null;
-            var result = TaskManager.registerMemberDevice(userId, myDeviceId, user, myLabel);
+            var fingerprint = computeDeviceFingerprint();
+            var result = TaskManager.registerMemberDevice(userId, myDeviceId, user, myLabel, fingerprint);
             renderDeviceTable();
             if (result && result.ok && result.isNew) {
-              if (result.status === 'pending') {
+              if (result.recovered) {
+                showToast('Đã tự nhận diện đây là máy quen (đặc điểm máy trùng thiết bị cũ) — dùng chấm công ngay, không cần chờ duyệt lại.', true);
+              } else if (result.status === 'pending') {
                 showToast('Đã gửi yêu cầu đăng ký thiết bị — chờ CEO/Quản lý duyệt thì mới dùng để chấm công được.');
               } else {
                 showToast('Đã đăng ký thiết bị thành công.', true);
@@ -3067,11 +3106,15 @@
           var statusLabel = d.status === 'pending'
             ? '<span style="color:var(--ts-warning, #C7A464); font-weight:600;">Chờ duyệt</span>'
             : '<span style="color:var(--ts-success, #4F6F52); font-weight:600;">Đã duyệt</span>';
+          var dupWarning = d.fingerprintDup
+            ? '<div style="font-size:0.6875rem; color:var(--ts-danger); font-weight:600; margin-top:2px;" title="Đặc điểm máy (vân tay trình duyệt) của thiết bị này trùng với thiết bị của MỘT NGƯỜI KHÁC — chỉ là gợi ý thô, có thể trùng ngẫu nhiên nếu 2 máy cùng đời/cấu hình, nhưng nên kiểm tra lại nếu nghi ngờ chấm công hộ.">⚠️ Trùng đặc điểm máy với người khác</div>'
+            : '';
           return ''
             + '<div class="ts-manage-device-row">'
             +   '<div class="ts-manage-device-info">'
             +     '<input type="text" class="form-input tsManageRenameInput" data-member="' + escapeHtmlTs(memberId) + '" data-device="' + escapeHtmlTs(d.deviceId) + '" value="' + escapeHtmlTs(d.deviceName || '') + '" placeholder="(không rõ tên)" style="font-size:0.8125rem; padding:5px 8px; margin-bottom:4px;">'
             +     '<div style="font-size:0.6875rem; color:var(--ts-muted); word-break:break-all;">' + escapeHtmlTs(d.deviceId) + ' — ' + statusLabel + '</div>'
+            +     dupWarning
             +   '</div>'
             +   '<div class="ts-manage-device-actions">'
             +     (d.status === 'pending' ? '<button type="button" class="btn btn-primary tsManageApproveBtn" data-member="' + escapeHtmlTs(memberId) + '" data-device="' + escapeHtmlTs(d.deviceId) + '" style="padding:5px 10px; font-size:0.75rem;">Duyệt</button>' : '')
