@@ -469,18 +469,18 @@
                   '<select class="fn-select" id="fnCfoYear" style="width:120px;"></select>' +
                 '</div>' +
                 '<div class="fn-form-grid" style="grid-template-columns:repeat(4,1fr);">' +
-                  '<div><span class="fn-field-label">Tài sản ngắn hạn</span><input type="number" class="fn-input mono" id="fnBsShortTermAssets" value="0"></div>' +
-                  '<div><span class="fn-field-label">Hàng tồn kho</span><input type="number" class="fn-input mono" id="fnBsInventory" value="0"></div>' +
-                  '<div><span class="fn-field-label">Tổng tài sản</span><input type="number" class="fn-input mono" id="fnBsTotalAssets" value="0"></div>' +
-                  '<div><span class="fn-field-label">Nợ ngắn hạn (tổng)</span><input type="number" class="fn-input mono" id="fnBsShortTermLiabilities" value="0"></div>' +
-                  '<div><span class="fn-field-label">— trong đó Vay ngắn hạn</span><input type="number" class="fn-input mono" id="fnBsShortTermDebt" value="0"></div>' +
-                  '<div><span class="fn-field-label">Vay dài hạn</span><input type="number" class="fn-input mono" id="fnBsLongTermDebt" value="0"></div>' +
-                  '<div><span class="fn-field-label">Tổng nợ phải trả</span><input type="number" class="fn-input mono" id="fnBsTotalLiabilities" value="0"></div>' +
-                  '<div><span class="fn-field-label">Vốn chủ sở hữu</span><input type="number" class="fn-input mono" id="fnBsEquity" value="0"></div>' +
-                  '<div><span class="fn-field-label">Chi phí lãi vay trong năm</span><input type="number" class="fn-input mono" id="fnBsInterestExpense" value="0"></div>' +
-                  '<div><span class="fn-field-label">Chi mua sắm TSCĐ (CAPEX)</span><input type="number" class="fn-input mono" id="fnBsCapex" value="0"></div>' +
-                  '<div><span class="fn-field-label">Vốn hóa thị trường (ước tính)</span><input type="number" class="fn-input mono" id="fnBsMarketCap" value="0"></div>' +
-                  '<div><span class="fn-field-label">LNST lũy kế (chưa phân phối)</span><input type="number" class="fn-input mono" id="fnBsRetainedEarnings" value="0"></div>' +
+                  '<div><span class="fn-field-label">Tài sản ngắn hạn</span><input type="text" inputmode="numeric" class="fn-input mono" id="fnBsShortTermAssets" data-money-input value="0"></div>' +
+                  '<div><span class="fn-field-label">Hàng tồn kho</span><input type="text" inputmode="numeric" class="fn-input mono" id="fnBsInventory" data-money-input value="0"></div>' +
+                  '<div><span class="fn-field-label">Tổng tài sản</span><input type="text" inputmode="numeric" class="fn-input mono" id="fnBsTotalAssets" data-money-input value="0"></div>' +
+                  '<div><span class="fn-field-label">Nợ ngắn hạn (tổng)</span><input type="text" inputmode="numeric" class="fn-input mono" id="fnBsShortTermLiabilities" data-money-input value="0"></div>' +
+                  '<div><span class="fn-field-label">— trong đó Vay ngắn hạn</span><input type="text" inputmode="numeric" class="fn-input mono" id="fnBsShortTermDebt" data-money-input value="0"></div>' +
+                  '<div><span class="fn-field-label">Vay dài hạn</span><input type="text" inputmode="numeric" class="fn-input mono" id="fnBsLongTermDebt" data-money-input value="0"></div>' +
+                  '<div><span class="fn-field-label">Tổng nợ phải trả</span><input type="text" inputmode="numeric" class="fn-input mono" id="fnBsTotalLiabilities" data-money-input value="0"></div>' +
+                  '<div><span class="fn-field-label">Vốn chủ sở hữu</span><input type="text" inputmode="numeric" class="fn-input mono" id="fnBsEquity" data-money-input value="0"></div>' +
+                  '<div><span class="fn-field-label">Chi phí lãi vay trong năm</span><input type="text" inputmode="numeric" class="fn-input mono" id="fnBsInterestExpense" data-money-input value="0"></div>' +
+                  '<div><span class="fn-field-label">Chi mua sắm TSCĐ (CAPEX)</span><input type="text" inputmode="numeric" class="fn-input mono" id="fnBsCapex" data-money-input value="0"></div>' +
+                  '<div><span class="fn-field-label">Vốn hóa thị trường (ước tính)</span><input type="text" inputmode="numeric" class="fn-input mono" id="fnBsMarketCap" data-money-input value="0"></div>' +
+                  '<div><span class="fn-field-label">LNST lũy kế (chưa phân phối)</span><input type="text" inputmode="numeric" class="fn-input mono" id="fnBsRetainedEarnings" data-money-input value="0"></div>' +
                   '<div style="grid-column:span 4;"><button class="fn-btn fn-btn-primary" id="fnBsSaveBtn">Lưu số liệu năm này</button></div>' +
                 '</div>' +
               '</div>' +
@@ -595,18 +595,18 @@
       document.getElementById('fnBsSaveBtn').addEventListener('click', function () {
         var year = document.getElementById('fnCfoYear').value;
         var data = {
-          shortTermAssets: parseFloat(document.getElementById('fnBsShortTermAssets').value) || 0,
-          inventory: parseFloat(document.getElementById('fnBsInventory').value) || 0,
-          totalAssets: parseFloat(document.getElementById('fnBsTotalAssets').value) || 0,
-          shortTermLiabilities: parseFloat(document.getElementById('fnBsShortTermLiabilities').value) || 0,
-          shortTermDebt: parseFloat(document.getElementById('fnBsShortTermDebt').value) || 0,
-          longTermDebt: parseFloat(document.getElementById('fnBsLongTermDebt').value) || 0,
-          totalLiabilities: parseFloat(document.getElementById('fnBsTotalLiabilities').value) || 0,
-          equity: parseFloat(document.getElementById('fnBsEquity').value) || 0,
-          interestExpense: parseFloat(document.getElementById('fnBsInterestExpense').value) || 0,
-          capex: parseFloat(document.getElementById('fnBsCapex').value) || 0,
-          marketCap: parseFloat(document.getElementById('fnBsMarketCap').value) || 0,
-          retainedEarnings: parseFloat(document.getElementById('fnBsRetainedEarnings').value) || 0
+          shortTermAssets: HiconiqueMoney.parse(document.getElementById('fnBsShortTermAssets').value),
+          inventory: HiconiqueMoney.parse(document.getElementById('fnBsInventory').value),
+          totalAssets: HiconiqueMoney.parse(document.getElementById('fnBsTotalAssets').value),
+          shortTermLiabilities: HiconiqueMoney.parse(document.getElementById('fnBsShortTermLiabilities').value),
+          shortTermDebt: HiconiqueMoney.parse(document.getElementById('fnBsShortTermDebt').value),
+          longTermDebt: HiconiqueMoney.parse(document.getElementById('fnBsLongTermDebt').value),
+          totalLiabilities: HiconiqueMoney.parse(document.getElementById('fnBsTotalLiabilities').value),
+          equity: HiconiqueMoney.parse(document.getElementById('fnBsEquity').value),
+          interestExpense: HiconiqueMoney.parse(document.getElementById('fnBsInterestExpense').value),
+          capex: HiconiqueMoney.parse(document.getElementById('fnBsCapex').value),
+          marketCap: HiconiqueMoney.parse(document.getElementById('fnBsMarketCap').value),
+          retainedEarnings: HiconiqueMoney.parse(document.getElementById('fnBsRetainedEarnings').value)
         };
         TaskManager.upsertBsSnapshot(year, data, user);
         renderAll();
@@ -658,14 +658,15 @@
         totalLiabilities: 'fnBsTotalLiabilities', equity: 'fnBsEquity', interestExpense: 'fnBsInterestExpense',
         capex: 'fnBsCapex', marketCap: 'fnBsMarketCap', retainedEarnings: 'fnBsRetainedEarnings'
       };
-      fields.forEach(function (f) { document.getElementById(idMap[f]).value = (snap && snap[f]) || 0; });
+      fields.forEach(function (f) { document.getElementById(idMap[f]).value = HiconiqueMoney.format((snap && snap[f]) || 0); });
       if (!snap) {
         // Chưa có ảnh chụp năm này — gợi ý sẵn LNST lũy kế tính từ toàn bộ lịch sử sổ giao dịch tới hết năm đó, CEO có thể sửa lại.
         var all = TaskManager.getFinanceEntries();
         var upToYear = all.filter(function (e) { return (e.month || '').slice(0, 4) <= String(year); });
         var suggested = sumByType(upToYear, 'revenue') - sumByType(upToYear, 'expense') - sumByType(upToYear, 'bonus') + sumByType(upToYear, 'penalty');
-        document.getElementById('fnBsRetainedEarnings').value = Math.round(suggested);
+        document.getElementById('fnBsRetainedEarnings').value = HiconiqueMoney.format(Math.round(suggested));
       }
+      if (typeof HiconiqueMoney !== 'undefined') fields.forEach(function (f) { HiconiqueMoney.bind(document.getElementById(idMap[f])); });
     }
 
     // ============================== OVERVIEW ==============================

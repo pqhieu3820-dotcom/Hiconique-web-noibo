@@ -470,21 +470,21 @@
       <div class="pr-client-grid" style="grid-template-columns:repeat(4,1fr);border-top:none;">
         <div><span class="pr-field-label">Kiểu móng</span><select class="pr-quote-select" id="estFoundationType"></select></div>
         <div><span class="pr-field-label">Hệ số móng</span><input type="number" min="0" max="3" step="0.05" class="pr-input mono" id="estFoundationCoef"></div>
-        <div><span class="pr-field-label">Đơn giá móng (đ/m²)</span><input type="number" min="0" class="pr-input mono" id="estFoundationPrice"></div>
+        <div><span class="pr-field-label">Đơn giá móng (đ/m²)</span><input type="text" inputmode="numeric" class="pr-input mono" id="estFoundationPrice" data-money-input></div>
         <div><span class="pr-field-label">Diện tích móng quy đổi</span><div class="pr-amount" id="estFoundationArea" style="padding-top:8px;">0</div></div>
       </div>
 
       <div class="pr-client-grid" style="grid-template-columns:repeat(4,1fr);border-top:none;">
         <div><span class="pr-field-label">Kiểu mái</span><select class="pr-quote-select" id="estRoofType"></select></div>
         <div><span class="pr-field-label">Hệ số mái</span><input type="number" min="0" max="2" step="0.05" class="pr-input mono" id="estRoofCoef"></div>
-        <div><span class="pr-field-label">Đơn giá mái (đ/m²)</span><input type="number" min="0" class="pr-input mono" id="estRoofPrice"></div>
+        <div><span class="pr-field-label">Đơn giá mái (đ/m²)</span><input type="text" inputmode="numeric" class="pr-input mono" id="estRoofPrice" data-money-input></div>
         <div><span class="pr-field-label">Diện tích mái quy đổi</span><div class="pr-amount" id="estRoofArea" style="padding-top:8px;">0</div></div>
       </div>
 
       <div class="pr-client-grid" style="grid-template-columns:repeat(3,1fr);border-top:none;">
-        <div><span class="pr-field-label">Đơn giá phần thô (đ/m²)</span><input type="number" min="0" class="pr-input mono" id="estRoughPrice" value="2800000"></div>
-        <div><span class="pr-field-label">Đơn giá hoàn thiện (đ/m²)</span><input type="number" min="0" class="pr-input mono" id="estFinishPrice" value="2500000"></div>
-        <div><span class="pr-field-label">Đơn giá điện nước (đ/m²)</span><input type="number" min="0" class="pr-input mono" id="estMepPrice" value="700000"></div>
+        <div><span class="pr-field-label">Đơn giá phần thô (đ/m²)</span><input type="text" inputmode="numeric" class="pr-input mono" id="estRoughPrice" data-money-input value="2.800.000"></div>
+        <div><span class="pr-field-label">Đơn giá hoàn thiện (đ/m²)</span><input type="text" inputmode="numeric" class="pr-input mono" id="estFinishPrice" data-money-input value="2.500.000"></div>
+        <div><span class="pr-field-label">Đơn giá điện nước (đ/m²)</span><input type="text" inputmode="numeric" class="pr-input mono" id="estMepPrice" data-money-input value="700.000"></div>
       </div>
 
       <table class="pr-table">
@@ -539,35 +539,35 @@
             <td><input type="checkbox" id="desInclArch" checked style="width:15px;height:15px;"></td>
             <td>Thiết kế kiến trúc</td>
             <td class="num pr-amount" id="desArchArea">0</td>
-            <td class="num"><input class="pr-input mono" id="desArchPrice" type="number" min="0" value="250000"></td>
+            <td class="num"><input class="pr-input mono" id="desArchPrice" type="text" inputmode="numeric" data-money-input value="250.000"></td>
             <td class="num pr-amount" data-des-total="arch">0</td>
           </tr>
           <tr>
             <td><input type="checkbox" id="desInclStruct" checked style="width:15px;height:15px;"></td>
             <td>Thiết kế kết cấu<br><select class="pr-quote-select" id="desStructType" style="margin-top:6px;"></select></td>
             <td class="num pr-amount" id="desStructArea">0</td>
-            <td class="num"><input class="pr-input mono" id="desStructPrice" type="number" min="0" value="70000"></td>
+            <td class="num"><input class="pr-input mono" id="desStructPrice" type="text" inputmode="numeric" data-money-input value="70.000"></td>
             <td class="num pr-amount" data-des-total="struct">0</td>
           </tr>
           <tr>
             <td><input type="checkbox" id="desInclMep" checked style="width:15px;height:15px;"></td>
             <td>Thiết kế điện nước (M&amp;E)</td>
             <td class="num pr-amount" id="desMepArea">0</td>
-            <td class="num"><input class="pr-input mono" id="desMepPrice" type="number" min="0" value="50000"></td>
+            <td class="num"><input class="pr-input mono" id="desMepPrice" type="text" inputmode="numeric" data-money-input value="50.000"></td>
             <td class="num pr-amount" data-des-total="mep">0</td>
           </tr>
           <tr>
             <td><input type="checkbox" id="desInclInterior" checked style="width:15px;height:15px;"></td>
             <td>Thiết kế nội thất</td>
             <td class="num"><input class="pr-input mono" id="desInteriorArea" type="number" min="0" value="0"></td>
-            <td class="num"><input class="pr-input mono" id="desInteriorPrice" type="number" min="0" value="250000"></td>
+            <td class="num"><input class="pr-input mono" id="desInteriorPrice" type="text" inputmode="numeric" data-money-input value="250.000"></td>
             <td class="num pr-amount" data-des-total="interior">0</td>
           </tr>
           <tr>
             <td><input type="checkbox" id="desInclExterior" checked style="width:15px;height:15px;"></td>
             <td>Thiết kế ngoại thất / cảnh quan sân vườn</td>
             <td class="num"><input class="pr-input mono" id="desExteriorArea" type="number" min="0" value="0"></td>
-            <td class="num"><input class="pr-input mono" id="desExteriorPrice" type="number" min="0" value="120000"></td>
+            <td class="num"><input class="pr-input mono" id="desExteriorPrice" type="text" inputmode="numeric" data-money-input value="120.000"></td>
             <td class="num pr-amount" data-des-total="exterior">0</td>
           </tr>
         </tbody>
@@ -629,7 +629,7 @@
         </div>
       </div>
       <div class="pr-client-grid" style="grid-template-columns:1fr;">
-        <div><span class="pr-field-label">Giá trị hợp đồng</span><input type="number" min="0" class="pr-input mono" id="cfContractValue" value="0"></div>
+        <div><span class="pr-field-label">Giá trị hợp đồng</span><input type="text" inputmode="numeric" class="pr-input mono" id="cfContractValue" data-money-input value="0"></div>
       </div>
       <table class="pr-table">
         <thead><tr><th>Mốc thanh toán</th><th class="num">Tỷ lệ</th><th class="num">Số tiền kế hoạch</th><th class="num">Đã thanh toán</th><th>Ngày thực tế</th><th>Trạng thái</th><th>Điều kiện giải ngân</th></tr></thead>
@@ -1045,17 +1045,18 @@
           '<td class="num">' + fmt(klLow) + '</td>' +
           '<td class="num">' + fmt(klHigh) + '</td>' +
           '<td>' + escapeHtml(item.unit) + '</td>' +
-          '<td class="num"><input class="pr-input mono" type="number" min="0" data-prelim-price value="' + Math.round(priceLow) + '"></td>' +
+          '<td class="num"><input class="pr-input mono" type="text" inputmode="numeric" data-money-input data-prelim-price value="' + HiconiqueMoney.format(Math.round(priceLow)) + '"></td>' +
           '<td class="num pr-amount">' + fmt(totalLow) + '</td>' +
           '<td class="num pr-amount">' + fmt(totalHigh) + '</td>' +
         '</tr>';
       }).join('');
+      if (typeof HiconiqueMoney !== 'undefined') HiconiqueMoney.bindAll(document.getElementById('prelimRows'));
       document.getElementById('prelimGrandTotal').textContent = fmt(grandLow) + ' – ' + fmt(grandHigh);
     }
     document.getElementById('prelimRows').addEventListener('input', function (e) {
       if (!e.target.matches('[data-prelim-price]')) return;
       var name = e.target.closest('tr').getAttribute('data-prelim-row');
-      prelimPriceOverrides[name] = parseFloat(e.target.value) || 0;
+      prelimPriceOverrides[name] = HiconiqueMoney.parse(e.target.value);
       recalcPrelimQty();
     });
 
@@ -1322,12 +1323,13 @@
         return '<tr data-ctr-price-row="' + i + '">' +
           '<td>' + escapeHtml(name) + '</td>' +
           '<td><input class="pr-input" data-ctr-note value="' + escapeHtml(d.note || '') + '"></td>' +
-          '<td class="num"><input class="pr-input mono" type="number" min="0" data-ctr-price="a" value="' + (Number(d.a) || 0) + '"></td>' +
-          '<td class="num"><input class="pr-input mono" type="number" min="0" data-ctr-price="b" value="' + (Number(d.b) || 0) + '"></td>' +
-          '<td class="num"><input class="pr-input mono" type="number" min="0" data-ctr-price="c" value="' + (Number(d.c) || 0) + '"></td>' +
+          '<td class="num"><input class="pr-input mono" type="text" inputmode="numeric" data-money-input data-ctr-price="a" value="' + (d.a ? HiconiqueMoney.format(d.a) : '') + '"></td>' +
+          '<td class="num"><input class="pr-input mono" type="text" inputmode="numeric" data-money-input data-ctr-price="b" value="' + (d.b ? HiconiqueMoney.format(d.b) : '') + '"></td>' +
+          '<td class="num"><input class="pr-input mono" type="text" inputmode="numeric" data-money-input data-ctr-price="c" value="' + (d.c ? HiconiqueMoney.format(d.c) : '') + '"></td>' +
           '<td><input class="pr-input" data-ctr-exclude value="' + escapeHtml(d.exclude || '') + '"></td>' +
         '</tr>';
       }).join('');
+      if (typeof HiconiqueMoney !== 'undefined') HiconiqueMoney.bindAll(document.getElementById('ctrPriceRows'));
       document.getElementById('ctrPriceTotals').textContent = 'A: ' + fmt(totals.a) + ' · B: ' + fmt(totals.b) + ' · C: ' + fmt(totals.c);
 
       var scoreTotals = { a: 0, b: 0, c: 0 };
@@ -1354,7 +1356,7 @@
       // render lại làm mất focus/con trỏ đang gõ giữa ô input.
       var totals = { a: 0, b: 0, c: 0 };
       document.querySelectorAll('#ctrPriceRows [data-ctr-price]').forEach(function (inp) {
-        totals[inp.getAttribute('data-ctr-price')] += parseFloat(inp.value) || 0;
+        totals[inp.getAttribute('data-ctr-price')] += HiconiqueMoney.parse(inp.value);
       });
       document.getElementById('ctrPriceTotals').textContent = 'A: ' + fmt(totals.a) + ' · B: ' + fmt(totals.b) + ' · C: ' + fmt(totals.c);
       var scoreTotals = { a: 0, b: 0, c: 0 };
@@ -1373,9 +1375,9 @@
       document.querySelectorAll('#ctrPriceRows tr[data-ctr-price-row]').forEach(function (tr) {
         var i = tr.getAttribute('data-ctr-price-row');
         priceData[i] = {
-          a: parseFloat(tr.querySelector('[data-ctr-price="a"]').value) || 0,
-          b: parseFloat(tr.querySelector('[data-ctr-price="b"]').value) || 0,
-          c: parseFloat(tr.querySelector('[data-ctr-price="c"]').value) || 0,
+          a: HiconiqueMoney.parse(tr.querySelector('[data-ctr-price="a"]').value),
+          b: HiconiqueMoney.parse(tr.querySelector('[data-ctr-price="b"]').value),
+          c: HiconiqueMoney.parse(tr.querySelector('[data-ctr-price="c"]').value),
           note: tr.querySelector('[data-ctr-note]').value,
           exclude: tr.querySelector('[data-ctr-exclude]').value
         };
@@ -1431,7 +1433,7 @@
       var r = currentCashflowRecord;
       var contractValue = r ? Number(r.contractValue) || 0 : 0;
       var milestoneData = (r && r.milestoneData) || {};
-      document.getElementById('cfContractValue').value = contractValue;
+      document.getElementById('cfContractValue').value = HiconiqueMoney.format(contractValue);
       var plannedTotal = 0, paidTotal = 0;
       document.getElementById('cfRows').innerHTML = CASHFLOW_MILESTONES.map(function (m, i) {
         var d = milestoneData[i] || {};
@@ -1442,7 +1444,7 @@
           '<td>' + escapeHtml(m.name) + '</td>' +
           '<td class="num">' + m.pct + '%</td>' +
           '<td class="num pr-amount">' + fmt(planned) + '</td>' +
-          '<td class="num"><input class="pr-input mono" type="number" min="0" data-cf-paid value="' + paid + '"></td>' +
+          '<td class="num"><input class="pr-input mono" type="text" inputmode="numeric" data-money-input data-cf-paid value="' + (paid ? HiconiqueMoney.format(paid) : '') + '"></td>' +
           '<td><input type="date" class="pr-input" data-cf-date value="' + escapeHtml(d.date || '') + '"></td>' +
           '<td><select class="pr-quote-select" data-cf-status>' +
             ['Chưa đến hạn', 'Đến hạn', 'Đã thanh toán', 'Trễ hạn'].map(function (s) { return '<option' + (d.status === s ? ' selected' : '') + '>' + s + '</option>'; }).join('') +
@@ -1450,6 +1452,7 @@
           '<td>' + escapeHtml(m.condition) + '</td>' +
         '</tr>';
       }).join('');
+      if (typeof HiconiqueMoney !== 'undefined') HiconiqueMoney.bindAll(document.getElementById('cfRows'));
       document.getElementById('cfPlannedTotal').textContent = fmt(plannedTotal);
       document.getElementById('cfPaidTotal').textContent = fmt(paidTotal);
     }
@@ -1458,22 +1461,22 @@
       document.querySelectorAll('#cfRows tr[data-cf-row]').forEach(function (tr) {
         var i = tr.getAttribute('data-cf-row');
         milestoneData[i] = {
-          paid: parseFloat(tr.querySelector('[data-cf-paid]').value) || 0,
+          paid: HiconiqueMoney.parse(tr.querySelector('[data-cf-paid]').value),
           date: tr.querySelector('[data-cf-date]').value,
           status: tr.querySelector('[data-cf-status]').value
         };
       });
-      return { projectId: activeToolProjectId, contractValue: parseFloat(document.getElementById('cfContractValue').value) || 0, milestoneData: milestoneData };
+      return { projectId: activeToolProjectId, contractValue: HiconiqueMoney.parse(document.getElementById('cfContractValue').value), milestoneData: milestoneData };
     }
     document.getElementById('cfContractValue').addEventListener('input', renderCashflowTotalsOnly);
     document.getElementById('cfRows').addEventListener('input', renderCashflowTotalsOnly);
     function renderCashflowTotalsOnly() {
-      var contractValue = parseFloat(document.getElementById('cfContractValue').value) || 0;
+      var contractValue = HiconiqueMoney.parse(document.getElementById('cfContractValue').value);
       var plannedTotal = 0, paidTotal = 0;
       document.querySelectorAll('#cfRows tr[data-cf-row]').forEach(function (tr) {
         var i = Number(tr.getAttribute('data-cf-row'));
         plannedTotal += contractValue * CASHFLOW_MILESTONES[i].pct / 100;
-        paidTotal += parseFloat(tr.querySelector('[data-cf-paid]').value) || 0;
+        paidTotal += HiconiqueMoney.parse(tr.querySelector('[data-cf-paid]').value);
         tr.children[2].textContent = fmt(contractValue * CASHFLOW_MILESTONES[i].pct / 100);
       });
       document.getElementById('cfPlannedTotal').textContent = fmt(plannedTotal);
@@ -1508,7 +1511,7 @@
           '<td><input class="pr-input" data-co-f="reason" value="' + escapeHtml(co.reason || '') + '"></td>' +
           '<td><input class="pr-input" data-co-f="unit" value="' + escapeHtml(co.unit || '') + '" style="width:60px;"></td>' +
           '<td class="num"><input class="pr-input mono" type="number" data-co-f="quantity" value="' + (Number(co.quantity) || 0) + '" style="width:70px;"></td>' +
-          '<td class="num"><input class="pr-input mono" type="number" data-co-f="unitPrice" value="' + (Number(co.unitPrice) || 0) + '"></td>' +
+          '<td class="num"><input class="pr-input mono" type="text" inputmode="numeric" data-money-input data-co-f="unitPrice" value="' + (co.unitPrice ? HiconiqueMoney.format(co.unitPrice) : '') + '"></td>' +
           '<td class="num pr-amount" data-co-amount>' + fmt(co.amount) + '</td>' +
           '<td><select class="pr-quote-select" data-co-f="status">' +
             ['Chờ duyệt', 'Đã duyệt', 'Từ chối'].map(function (s) { return '<option' + (co.status === s ? ' selected' : '') + '>' + s + '</option>'; }).join('') +
@@ -1516,13 +1519,14 @@
           '<td><button class="pr-btn pr-btn-ghost pr-btn-sm" data-co-save>Lưu</button> <button class="pr-btn pr-btn-danger pr-btn-sm" data-co-delete>Xoá</button></td>' +
         '</tr>';
       }).join('') || '<tr><td colspan="10" class="pr-empty">Chưa có phát sinh nào cho dự án này.</td></tr>';
+      if (typeof HiconiqueMoney !== 'undefined') HiconiqueMoney.bindAll(document.getElementById('coRows'));
       document.getElementById('coApprovedTotal').textContent = fmt(approvedTotal);
     }
     document.getElementById('coRows').addEventListener('input', function (e) {
       var tr = e.target.closest('tr[data-co-id]');
       if (!tr) return;
       var qty = parseFloat(tr.querySelector('[data-co-f="quantity"]').value) || 0;
-      var price = parseFloat(tr.querySelector('[data-co-f="unitPrice"]').value) || 0;
+      var price = HiconiqueMoney.parse(tr.querySelector('[data-co-f="unitPrice"]').value);
       tr.querySelector('[data-co-amount]').textContent = fmt(qty * price);
     });
     document.getElementById('coRows').addEventListener('click', function (e) {
@@ -1533,7 +1537,7 @@
         var updates = { projectId: activeToolProjectId };
         tr.querySelectorAll('[data-co-f]').forEach(function (inp) {
           var f = inp.getAttribute('data-co-f');
-          updates[f] = (f === 'quantity' || f === 'unitPrice') ? (parseFloat(inp.value) || 0) : inp.value;
+          updates[f] = f === 'quantity' ? (parseFloat(inp.value) || 0) : (f === 'unitPrice' ? HiconiqueMoney.parse(inp.value) : inp.value);
         });
         updates.amount = (updates.quantity || 0) * (updates.unitPrice || 0);
         gsWrite('updateChangeOrder', updates, id).then(function () { loadChangeOrders(); }).catch(function (err) { console.error(err); alert('Lưu thất bại.'); });
@@ -1866,11 +1870,12 @@
             '<td>' + (manager ? '<input class="pr-input" data-cat-field="category" value="' + escapeHtml(it.category || '') + '">' : '<span class="pr-cat-tag">' + escapeHtml(it.category || '') + '</span>') + '</td>' +
             '<td>' + (manager ? '<input class="pr-input" data-cat-field="name" value="' + escapeHtml(it.name || '') + '">' : escapeHtml(it.name || '')) + '</td>' +
             '<td>' + (manager ? '<input class="pr-input" data-cat-field="unit" value="' + escapeHtml(it.unit || '') + '">' : escapeHtml(it.unit || '')) + '</td>' +
-            '<td class="num">' + (manager ? '<input class="pr-input mono" data-cat-field="unitPrice" type="number" min="0" value="' + (Number(it.unitPrice) || 0) + '">' : '<span class="pr-amount">' + fmt(it.unitPrice) + '</span>') + '</td>' +
+            '<td class="num">' + (manager ? '<input class="pr-input mono" data-cat-field="unitPrice" type="text" inputmode="numeric" data-money-input value="' + (it.unitPrice ? HiconiqueMoney.format(it.unitPrice) : '') + '">' : '<span class="pr-amount">' + fmt(it.unitPrice) + '</span>') + '</td>' +
             '<td>' + (manager ? '<input class="pr-input" data-cat-field="note" value="' + escapeHtml(it.note || '') + '">' : escapeHtml(it.note || '')) + '</td>' +
             '<td>' + (manager ? '<button class="pr-btn pr-btn-ghost pr-btn-sm" data-save-catalog="' + it.id + '">Lưu</button> <button class="pr-btn pr-btn-danger pr-btn-sm" data-delete-catalog="' + it.id + '">Xoá</button>' : '') + '</td>' +
           '</tr>';
         }).join('');
+        if (typeof HiconiqueMoney !== 'undefined') HiconiqueMoney.bindAll(rows);
       }
 
       if (!manager) return;
@@ -1880,7 +1885,8 @@
           var tr = btn.closest('tr');
           var updates = {};
           tr.querySelectorAll('[data-cat-field]').forEach(function (input) {
-            updates[input.getAttribute('data-cat-field')] = input.type === 'number' ? (parseFloat(input.value) || 0) : input.value.trim();
+            var f = input.getAttribute('data-cat-field');
+            updates[f] = f === 'unitPrice' ? HiconiqueMoney.parse(input.value) : input.value.trim();
           });
           TaskManager.updatePriceCatalogItem(btn.getAttribute('data-save-catalog'), updates, user);
           renderCatalog();
@@ -1936,7 +1942,7 @@
         tr.querySelector('[data-q="name"]').value = prefill.name || '';
         tr.querySelector('[data-q="unit"]').value = prefill.unit || '';
         if (prefill.qty !== undefined) tr.querySelector('[data-q="qty"]').value = Number(prefill.qty) || 1;
-        tr.querySelector('[data-q="price"]').value = Number(prefill.price) || 0;
+        tr.querySelector('[data-q="price"]').value = HiconiqueMoney.format(Number(prefill.price) || 0);
       } else {
         tr = document.createElement('tr');
         tr.setAttribute('data-quote-row', id);
@@ -1945,10 +1951,11 @@
           '<td><input class="pr-input" data-q="name" value="' + escapeHtml(prefill.name || '') + '" placeholder="Tên dịch vụ"></td>' +
           '<td><input class="pr-input" data-q="unit" value="' + escapeHtml(prefill.unit || '') + '" placeholder="m2/bộ..."></td>' +
           '<td class="num"><input class="pr-input mono" data-q="qty" type="number" min="0" step="1" value="' + (Number(prefill.qty) || 1) + '"></td>' +
-          '<td class="num"><input class="pr-input mono" data-q="price" type="number" min="0" value="' + (Number(prefill.price) || 0) + '"></td>' +
+          '<td class="num"><input class="pr-input mono" data-q="price" type="text" inputmode="numeric" data-money-input value="' + (prefill.price ? HiconiqueMoney.format(prefill.price) : '') + '"></td>' +
           '<td class="num pr-amount" data-q="lineTotal">0</td>' +
           '<td><button class="pr-btn pr-btn-danger pr-btn-sm" data-remove-quote-row>Xoá</button></td>';
         quoteRowsEl.appendChild(tr);
+        if (typeof HiconiqueMoney !== 'undefined') HiconiqueMoney.bindAll(tr);
       }
       recalcQuote();
       return tr;
@@ -1963,7 +1970,7 @@
       var subtotal = 0;
       quoteRowsEl.querySelectorAll('tr[data-quote-row]').forEach(function (tr) {
         var qty = parseFloat(tr.querySelector('[data-q="qty"]').value) || 0;
-        var price = parseFloat(tr.querySelector('[data-q="price"]').value) || 0;
+        var price = HiconiqueMoney.parse(tr.querySelector('[data-q="price"]').value);
         var lineTotal = qty * price;
         tr.querySelector('[data-q="lineTotal"]').textContent = fmt(lineTotal);
         subtotal += lineTotal;
@@ -1987,7 +1994,7 @@
         if (item) {
           tr.querySelector('[data-q="name"]').value = item.name || '';
           tr.querySelector('[data-q="unit"]').value = item.unit || '';
-          tr.querySelector('[data-q="price"]').value = Number(item.unitPrice) || 0;
+          tr.querySelector('[data-q="price"]').value = HiconiqueMoney.format(Number(item.unitPrice) || 0);
         }
         recalcQuote();
       }
@@ -2046,7 +2053,7 @@
     function applyStructureDesignDefaults() {
       var t = STRUCTURE_DESIGN_TYPES.find(function (x) { return x.id === document.getElementById('desStructType').value; });
       if (!t) return;
-      document.getElementById('desStructPrice').value = t.price;
+      document.getElementById('desStructPrice').value = HiconiqueMoney.format(t.price);
     }
     document.getElementById('desStructType').addEventListener('change', function () { applyStructureDesignDefaults(); recalcDesign(); });
     applyStructureDesignDefaults();
@@ -2062,8 +2069,8 @@
       if (comboActive === lastComboState) return;
       lastComboState = comboActive;
       var price = comboActive ? ARCH_INTERIOR_COMBO_PRICE : ARCH_INTERIOR_STANDALONE_PRICE;
-      document.getElementById('desArchPrice').value = price;
-      document.getElementById('desInteriorPrice').value = price;
+      document.getElementById('desArchPrice').value = HiconiqueMoney.format(price);
+      document.getElementById('desInteriorPrice').value = HiconiqueMoney.format(price);
     }
     ['desInclArch', 'desInclInterior'].forEach(function (id) {
       document.getElementById(id).addEventListener('change', function () { applyArchInteriorCombo(); recalcDesign(); });
@@ -2077,13 +2084,13 @@
       var t = FOUNDATION_TYPES.find(function (x) { return x.id === document.getElementById('estFoundationType').value; });
       if (!t) return;
       document.getElementById('estFoundationCoef').value = t.coef;
-      document.getElementById('estFoundationPrice').value = t.price;
+      document.getElementById('estFoundationPrice').value = HiconiqueMoney.format(t.price);
     }
     function applyRoofDefaults() {
       var t = ROOF_TYPES.find(function (x) { return x.id === document.getElementById('estRoofType').value; });
       if (!t) return;
       document.getElementById('estRoofCoef').value = t.coef;
-      document.getElementById('estRoofPrice').value = t.price;
+      document.getElementById('estRoofPrice').value = HiconiqueMoney.format(t.price);
     }
     document.getElementById('estFoundationType').addEventListener('change', function () { applyFoundationDefaults(); recalcEstimate(); });
     document.getElementById('estRoofType').addEventListener('change', function () { applyRoofDefaults(); recalcEstimate(); });
@@ -2095,23 +2102,27 @@
       return '<tr data-pile-row="' + p.id + '">' +
         '<td>' + escapeHtml(p.label) + '</td>' +
         '<td class="num"><input class="pr-input mono" data-pile="count" type="number" min="0" step="1" value="0"></td>' +
-        '<td class="num"><input class="pr-input mono" data-pile="price" type="number" min="0" value="' + p.price + '"></td>' +
+        '<td class="num"><input class="pr-input mono" data-pile="price" type="text" inputmode="numeric" data-money-input value="' + (p.price ? HiconiqueMoney.format(p.price) : '') + '"></td>' +
         '<td class="num pr-amount" data-pile="lineTotal">0</td>' +
       '</tr>';
     }).join('');
+    if (typeof HiconiqueMoney !== 'undefined') HiconiqueMoney.bindAll(pileRowsEl);
 
     var lastEstimateResult = null;
 
     function num(id) { return parseFloat(document.getElementById(id).value) || 0; }
+    // Dùng riêng cho các ô tiền đã bind HiconiqueMoney (giá trị hiển thị có dấu
+    // chấm ngăn cách, VD "2.800.000" — parseFloat() thường sẽ đọc nhầm thành 2.8).
+    function moneyNum(id) { return HiconiqueMoney.parse(document.getElementById(id).value); }
 
     function recalcEstimate() {
       var length = num('estLength'), width = num('estWidth'), floors = num('estFloors'), tum = num('estTum');
       var floorArea = length * width;
       var totalFloorArea = floorArea * floors + tum;
 
-      var foundationCoef = num('estFoundationCoef'), foundationPrice = num('estFoundationPrice');
-      var roofCoef = num('estRoofCoef'), roofPrice = num('estRoofPrice');
-      var roughPrice = num('estRoughPrice'), finishPrice = num('estFinishPrice'), mepPrice = num('estMepPrice');
+      var foundationCoef = num('estFoundationCoef'), foundationPrice = moneyNum('estFoundationPrice');
+      var roofCoef = num('estRoofCoef'), roofPrice = moneyNum('estRoofPrice');
+      var roughPrice = moneyNum('estRoughPrice'), finishPrice = moneyNum('estFinishPrice'), mepPrice = moneyNum('estMepPrice');
 
       var foundationArea = floorArea * foundationCoef;
       var roofArea = floorArea * roofCoef;
@@ -2144,7 +2155,7 @@
       var pileTotal = 0;
       pileRowsEl.querySelectorAll('tr[data-pile-row]').forEach(function (tr) {
         var count = parseFloat(tr.querySelector('[data-pile="count"]').value) || 0;
-        var price = parseFloat(tr.querySelector('[data-pile="price"]').value) || 0;
+        var price = HiconiqueMoney.parse(tr.querySelector('[data-pile="price"]').value);
         var lineTotal = count * price;
         tr.querySelector('[data-pile="lineTotal"]').textContent = fmt(lineTotal);
         pileTotal += lineTotal;
@@ -2176,6 +2187,10 @@
     document.getElementById('prEstimateCard').addEventListener('input', function (e) {
       if (e.target.closest('#prEstimateCard')) recalcEstimate();
     });
+    // Gắn live-format cho MỌI ô tiền tĩnh có sẵn trong HTML lúc tải trang (đơn giá dự
+    // toán/thiết kế theo m², giá trị hợp đồng dòng tiền...) — các ô sinh động (theo dòng,
+    // theo tab) tự bindAll() ngay sau khi render ở đúng chỗ của chúng.
+    if (typeof HiconiqueMoney !== 'undefined') HiconiqueMoney.bindAll(document);
     recalcEstimate();
 
     // ---------- Dự toán chi phí thiết kế theo m² ----------
@@ -2207,11 +2222,11 @@
       document.getElementById('desMepArea').textContent = fmt(totalFloorArea);
 
       var lines = [
-        { key: 'arch', name: 'Thiết kế kiến trúc', area: totalFloorArea, price: num('desArchPrice'), included: document.getElementById('desInclArch').checked },
-        { key: 'struct', name: 'Thiết kế kết cấu', area: totalFloorArea, price: num('desStructPrice'), included: document.getElementById('desInclStruct').checked },
-        { key: 'mep', name: 'Thiết kế điện nước (M&E)', area: totalFloorArea, price: num('desMepPrice'), included: document.getElementById('desInclMep').checked },
-        { key: 'interior', name: 'Thiết kế nội thất', area: num('desInteriorArea'), price: num('desInteriorPrice'), included: document.getElementById('desInclInterior').checked },
-        { key: 'exterior', name: 'Thiết kế ngoại thất / cảnh quan sân vườn', area: num('desExteriorArea'), price: num('desExteriorPrice'), included: document.getElementById('desInclExterior').checked }
+        { key: 'arch', name: 'Thiết kế kiến trúc', area: totalFloorArea, price: moneyNum('desArchPrice'), included: document.getElementById('desInclArch').checked },
+        { key: 'struct', name: 'Thiết kế kết cấu', area: totalFloorArea, price: moneyNum('desStructPrice'), included: document.getElementById('desInclStruct').checked },
+        { key: 'mep', name: 'Thiết kế điện nước (M&E)', area: totalFloorArea, price: moneyNum('desMepPrice'), included: document.getElementById('desInclMep').checked },
+        { key: 'interior', name: 'Thiết kế nội thất', area: num('desInteriorArea'), price: moneyNum('desInteriorPrice'), included: document.getElementById('desInclInterior').checked },
+        { key: 'exterior', name: 'Thiết kế ngoại thất / cảnh quan sân vườn', area: num('desExteriorArea'), price: moneyNum('desExteriorPrice'), included: document.getElementById('desInclExterior').checked }
       ];
       // Không tích = loại khỏi tổng tiền VÀ khỏi báo giá — vẫn hiện đơn giá/diện tích trên bảng để
       // tham khảo, chỉ riêng cột Thành tiền và tổng cộng coi như 0 khi bỏ tích.
@@ -2274,7 +2289,7 @@
         var name = tr.querySelector('[data-q="name"]').value;
         var unit = tr.querySelector('[data-q="unit"]').value;
         var qty = parseFloat(tr.querySelector('[data-q="qty"]').value) || 0;
-        var price = parseFloat(tr.querySelector('[data-q="price"]').value) || 0;
+        var price = HiconiqueMoney.parse(tr.querySelector('[data-q="price"]').value);
         ws.getCell(r, 1).value = name;
         ws.getCell(r, 2).value = unit;
         ws.getCell(r, 3).value = qty;

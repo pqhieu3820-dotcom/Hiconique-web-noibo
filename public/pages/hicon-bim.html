@@ -18,6 +18,7 @@
   <script src="/js/gsheets-config.js"></script>
   <script src="/js/task-data.js"></script>
   <script src="/js/auth.js"></script>
+  <script src="/js/money-input.js"></script>
   <style>
     /* HICON-BIM giờ đồng bộ theo đúng theme sáng/tối chung của site (portal.js
        [data-theme] trên <html>) — các biến --w-* dưới đây chỉ là alias sang
@@ -461,7 +462,7 @@
                 <div class="w-field"><label>Nhóm</label><input class="w-input" id="productGroup" placeholder="Cửa đi, Tường..."></div>
                 <div class="w-field"><label>Vật liệu liên kết</label><select class="w-select" id="productMaterialId"><option value="">—</option></select></div>
                 <div class="w-field"><label>Đơn vị *</label><input class="w-input" id="productUnit" required placeholder="m², bộ, cái..."></div>
-                <div class="w-field"><label>Đơn giá tham khảo</label><input class="w-input" id="productRefPrice" type="number" min="0" placeholder="VNĐ"></div>
+                <div class="w-field"><label>Đơn giá tham khảo</label><input class="w-input" id="productRefPrice" type="text" inputmode="numeric" data-money-input placeholder="VNĐ"></div>
                 <div style="display:flex; gap:8px;"><button type="submit" class="w-btn w-btn-dark" style="flex:1; justify-content:center">Lưu</button><button type="button" class="w-btn w-btn-ghost" id="productCancel">Huỷ</button></div>
               </form>
             </div>
@@ -627,7 +628,7 @@
                     <div class="w-field" style="grid-column: span 2"><label>Sản phẩm *</label><select class="w-select" id="boqProductId" required><option value="">— Chọn sản phẩm —</option></select></div>
                     <div class="w-field"><label>Đơn vị</label><input class="w-input" id="boqUnit"></div>
                     <div class="w-field"><label>Khối lượng *</label><input class="w-input" id="boqQuantity" type="number" min="0" step="any" required></div>
-                    <div class="w-field"><label>Đơn giá</label><input class="w-input" id="boqUnitPrice" type="number" min="0"></div>
+                    <div class="w-field"><label>Đơn giá</label><input class="w-input" id="boqUnitPrice" type="text" inputmode="numeric" data-money-input></div>
                     <div style="display:flex; gap:8px; grid-column: span 6"><button type="submit" class="w-btn w-btn-dark">Lưu dòng BOQ</button><button type="button" class="w-btn w-btn-ghost" id="boqCancel" hidden>Huỷ</button></div>
                   </form>
                 </div>
@@ -967,7 +968,7 @@
       document.getElementById('productGroup').value = p.group || '';
       document.getElementById('productMaterialId').value = p.materialId || '';
       document.getElementById('productUnit').value = p.unit || '';
-      document.getElementById('productRefPrice').value = p.refPrice || '';
+      document.getElementById('productRefPrice').value = p.refPrice ? HiconiqueMoney.format(p.refPrice) : '';
       document.getElementById('productsFormTitle').textContent = 'Sửa sản phẩm';
       document.getElementById('productCancel').hidden = false;
       document.getElementById('productForm').scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -991,7 +992,7 @@
         group: document.getElementById('productGroup').value.trim(),
         materialId: document.getElementById('productMaterialId').value,
         unit: document.getElementById('productUnit').value.trim(),
-        refPrice: Number(document.getElementById('productRefPrice').value) || 0,
+        refPrice: HiconiqueMoney.parse(document.getElementById('productRefPrice').value),
         status: 'active', updatedAt: new Date().toISOString().split('T')[0]
       };
       if (!data.name || !data.unit) return;
@@ -999,6 +1000,7 @@
       req.then(function () { resetProductForm(); reloadAll(function () { renderProducts(); }); });
     });
     document.getElementById('productCancel').addEventListener('click', resetProductForm);
+    if (typeof HiconiqueMoney !== 'undefined') HiconiqueMoney.bindAll(document);
 
     // ---------- Vật liệu CRUD ----------
     document.getElementById('materialAddToggle').addEventListener('click', function () {
@@ -1271,7 +1273,7 @@
       if (!opt || !opt.value) return;
       document.getElementById('boqUnit').value = opt.getAttribute('data-unit') || '';
       var priceField = document.getElementById('boqUnitPrice');
-      if (!priceField.value) priceField.value = opt.getAttribute('data-price') || '';
+      if (!priceField.value) priceField.value = opt.getAttribute('data-price') ? HiconiqueMoney.format(opt.getAttribute('data-price')) : '';
     });
     function boqProduct(id) { return STORE.products.filter(function (x) { return x.id === id; })[0]; }
     function renderBoq() {
@@ -1337,7 +1339,7 @@
       document.getElementById('boqProductId').value = b.productId || '';
       document.getElementById('boqUnit').value = b.unit || '';
       document.getElementById('boqQuantity').value = b.quantity || '';
-      document.getElementById('boqUnitPrice').value = b.unitPrice || '';
+      document.getElementById('boqUnitPrice').value = b.unitPrice ? HiconiqueMoney.format(b.unitPrice) : '';
       document.getElementById('boqFormTitle').textContent = 'Sửa dòng BOQ';
       document.getElementById('boqCancel').hidden = false;
       document.getElementById('boqFormCard').hidden = false;
@@ -1365,7 +1367,7 @@
         name: productSel.options[productSel.selectedIndex] ? productSel.options[productSel.selectedIndex].text : '',
         unit: document.getElementById('boqUnit').value.trim(),
         quantity: Number(document.getElementById('boqQuantity').value) || 0,
-        unitPrice: Number(document.getElementById('boqUnitPrice').value) || 0,
+        unitPrice: HiconiqueMoney.parse(document.getElementById('boqUnitPrice').value),
         updatedAt: new Date().toISOString().split('T')[0]
       };
       if (!data.productId || !data.quantity) return;
