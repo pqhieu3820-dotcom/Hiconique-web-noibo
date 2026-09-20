@@ -1972,22 +1972,9 @@
     });
     modal.addEventListener('click', function (e) { if (e.target === modal) modal.hidden = true; });
 
-    var refreshBtn = document.getElementById('reportRefreshBtn');
-    if (refreshBtn) {
-      refreshBtn.addEventListener('click', function () {
-        refreshBtn.classList.add('spinning');
-        if (typeof TaskManager !== 'undefined' && TaskManager.refreshFromGSheets) {
-          TaskManager.refreshFromGSheets(function () {
-            populateReportFilters();
-            renderWorkReport();
-            refreshBtn.classList.remove('spinning');
-          });
-        } else {
-          renderWorkReport();
-          refreshBtn.classList.remove('spinning');
-        }
-      });
-    }
+    // 2026-09-21: bỏ nút refresh RIÊNG của modal này (đã có nút "Làm mới dữ
+    // liệu ngay" chung ở toolbar chính — portal.js ensureReloadAllButton() —
+    // theo yêu cầu người dùng, để đỡ trùng 2 nút cùng chức năng).
 
     var projectFilter = document.getElementById('reportProjectFilter');
     if (projectFilter) projectFilter.addEventListener('change', renderWorkReport);
