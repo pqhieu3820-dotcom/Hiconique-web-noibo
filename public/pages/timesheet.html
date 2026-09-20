@@ -678,6 +678,27 @@
       .report-stat-grid { grid-template-columns: repeat(2, 1fr); }
       .report-charts-grid { grid-template-columns: 1fr; }
       .report-chart-box-full { margin: 20px 16px 0; }
+      /* 2026-09-21: "Chi tiết theo người" vỡ trên điện thoại — cột
+         report-row-meta (VD "8 ngày · 23.3h · OT 8.7h · 2 lần quên
+         checkout") ép width:auto theo đúng độ dài text KHÔNG XUỐNG DÒNG
+         (white-space:nowrap), chiếm gần hết bề ngang 375px, ép cột tên
+         (report-row-name) co lại còn rất hẹp nên tên người phải xuống 3
+         dòng — chồng chéo lên đúng dòng meta đang nằm ngang hàng giữa
+         (align-items:center). Xuống hàng dọc thay vì cạnh nhau + cho meta
+         tự xuống dòng bình thường.
+      */
+      .report-row {
+        grid-template-columns: 1fr;
+        gap: 4px;
+        align-items: flex-start;
+      }
+      .report-row-meta { white-space: normal; }
+    }
+    @media (max-width: 480px) {
+      /* Tiêu đề "Tháng X/YYYY" + mũi tên trước/sau bị ép xuống dòng xấu ở
+         màn rất hẹp — thu nhỏ chữ + giảm khoảng cách cho vừa 1 hàng. */
+      .ts-report-month-nav { gap: 8px; font-size: 0.9375rem; padding: 10px 12px; }
+      .ts-report-month-nav button#tsReportTodayMonth { padding: 0 8px; font-size: 0.6875rem; }
     }
   </style>
 </head>

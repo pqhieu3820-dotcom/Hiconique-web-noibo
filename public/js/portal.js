@@ -174,6 +174,53 @@
     actions.insertBefore(btn, actions.firstChild);
   })();
 
+  // 2026-09-21 (theo yêu cầu): nút "Làm mới dữ liệu ngay" ở thanh công cụ
+  // chính — sốt lại TOÀN BỘ dữ liệu từ Google Sheets ngay lập tức thay vì
+  // đợi vòng lặp nền 20s (offline.js). CHỈ hiện trên web/desktop — điện
+  // thoại đã có kéo-thả-để-tải-lại riêng (initPullToRefresh() trong
+  // offline.js, tự reload cả trang) nên không cần thêm nút này (ẩn qua CSS
+  // @media, xem portal.css .header-reload-btn). Tự cài (self-installing)
+  // giống hệt pattern ensureSearchToggleButton() ở trên — portal.js load ở
+  // MỌI trang nên chỉ cần sửa 1 chỗ, không phải sửa lại header tĩnh của
+  // 16 trang đang tự chép markup header riêng.
+  (function ensureReloadAllButton() {
+    var actions = document.querySelector('.header-actions');
+    if (!actions || actions.querySelector('[data-reload-all]')) return;
+    var searchBtn = actions.querySelector('[data-search-toggle]');
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'icon-btn header-reload-btn';
+    btn.setAttribute('aria-label', 'Làm mới dữ liệu ngay');
+    btn.title = 'Làm mới dữ liệu ngay';
+    btn.setAttribute('data-reload-all', '');
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M23 4v6h-6M1 20v-6h6" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    if (searchBtn) actions.insertBefore(btn, searchBtn);
+    else actions.insertBefore(btn, actions.firstChild);
+
+    btn.addEventListener('click', function () {
+      if (btn.classList.contains('spinning')) return; // đang tải dở, bấm thêm không làm gì
+      if (typeof TaskManager === 'undefined' || !TaskManager.refreshFromGSheets) return;
+      btn.classList.add('spinning');
+      btn.disabled = true;
+      TaskManager.refreshFromGSheets(function () {
+        btn.classList.remove('spinning');
+        btn.disabled = false;
+        // Sự kiện 'hiconique:data-refreshed' (task-data.js) đã tự lo việc
+        // vẽ lại đúng phần dữ liệu của từng trang — không cần gọi gì thêm ở
+        // đây, tránh mỗi trang phải tự biết portal.js đang làm gì.
+        showReloadToast();
+      });
+    });
+
+    function showReloadToast() {
+      var toast = document.createElement('div');
+      toast.className = 'header-reload-toast';
+      toast.textContent = '✓ Đã làm mới dữ liệu';
+      document.body.appendChild(toast);
+      setTimeout(function () { toast.remove(); }, 2000);
+    }
+  })();
+
   var overlay = document.querySelector('[data-search-overlay]');
   if (!overlay) {
     overlay = document.createElement('div');

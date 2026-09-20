@@ -191,6 +191,30 @@ main { flex: 1; }
   border-color: var(--color-border);
   background: var(--color-surface);
 }
+
+/* 2026-09-21: nút "Làm mới dữ liệu ngay" ở thanh công cụ chính — chỉ web/
+   desktop, điện thoại đã có kéo-thả-để-tải-lại riêng (xem portal.js
+   ensureReloadAllButton()). */
+@keyframes headerReloadSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.header-reload-btn.spinning svg { animation: headerReloadSpin 0.7s linear infinite; }
+.header-reload-btn:disabled { cursor: default; opacity: 0.7; }
+.header-reload-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--color-bronze);
+  color: #0B0D10;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+@media (max-width: 768px) {
+  .header-reload-btn { display: none; }
+}
+
 .badge-dot {
   position: absolute;
   top: 9px; right: 10px;
