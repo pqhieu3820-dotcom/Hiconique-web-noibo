@@ -21,6 +21,7 @@
   <script src="/js/gsheets-config.js"></script>
   <script src="/js/task-data.js"></script>
   <script src="/js/auth.js"></script>
+  <script src="/js/money-input.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js" defer></script>
   <style>
     :root {
@@ -406,7 +407,7 @@
                     TYPE_ORDER.map(function (t) { return '<option value="' + t + '">' + TYPES[t].label + '</option>'; }).join('') +
                   '</select></div>' +
                   '<div><span class="fn-field-label">Danh mục</span><input type="text" class="fn-input" id="fnCategory" placeholder="VD: Vật liệu, Lương..."></div>' +
-                  '<div><span class="fn-field-label">Số tiền</span><input type="number" min="0" class="fn-input mono" id="fnAmount" value="0"></div>' +
+                  '<div><span class="fn-field-label">Số tiền</span><input type="text" inputmode="numeric" class="fn-input mono" id="fnAmount" data-money-input value="0"></div>' +
                   '<div><span class="fn-field-label">Ngày</span><input type="date" class="fn-input" id="fnDate"></div>' +
                   '<div style="grid-column: span 3;"><span class="fn-field-label">Mô tả</span><input type="text" class="fn-input" id="fnDescription" placeholder="Ghi chú chi tiết khoản này..."></div>' +
                   '<div><button class="fn-btn fn-btn-primary" id="fnAddBtn" style="width:100%;">+ Thêm giao dịch</button></div>' +
@@ -425,7 +426,7 @@
                 '<div class="fn-form-grid cols5">' +
                   '<div><span class="fn-field-label">Khách hàng</span><input type="text" class="fn-input" id="fnRcvClient" placeholder="Tên khách hàng"></div>' +
                   '<div><span class="fn-field-label">Mã dự án</span><input type="text" class="fn-input" id="fnRcvProject" placeholder="VD: DA001"></div>' +
-                  '<div><span class="fn-field-label">Số tiền</span><input type="number" min="0" class="fn-input mono" id="fnRcvAmount" value="0"></div>' +
+                  '<div><span class="fn-field-label">Số tiền</span><input type="text" inputmode="numeric" class="fn-input mono" id="fnRcvAmount" data-money-input value="0"></div>' +
                   '<div><span class="fn-field-label">Hạn thanh toán</span><input type="date" class="fn-input" id="fnRcvDue"></div>' +
                   '<div><span class="fn-field-label">Mô tả</span><input type="text" class="fn-input" id="fnRcvDesc" placeholder="Đợt thanh toán..."></div>' +
                   '<div style="grid-column: span 5;"><button class="fn-btn fn-btn-primary" id="fnRcvAddBtn">+ Thêm công nợ</button></div>' +
@@ -532,10 +533,11 @@
       HiconiqueMonthNav.mount(monthInput);
       document.getElementById('fnDate').value = new Date().toISOString().split('T')[0];
       document.getElementById('fnRcvDue').value = new Date().toISOString().split('T')[0];
+      if (typeof HiconiqueMoney !== 'undefined') HiconiqueMoney.bindAll(document);
 
       document.getElementById('fnAddBtn').addEventListener('click', function () {
         var type = document.getElementById('fnType').value;
-        var amount = parseFloat(document.getElementById('fnAmount').value) || 0;
+        var amount = HiconiqueMoney.parse(document.getElementById('fnAmount').value);
         var dateVal = document.getElementById('fnDate').value || new Date().toISOString().split('T')[0];
         var data = {
           type: type,
@@ -553,7 +555,7 @@
       });
 
       document.getElementById('fnRcvAddBtn').addEventListener('click', function () {
-        var amount = parseFloat(document.getElementById('fnRcvAmount').value) || 0;
+        var amount = HiconiqueMoney.parse(document.getElementById('fnRcvAmount').value);
         var data = {
           clientName: document.getElementById('fnRcvClient').value.trim(),
           projectId: document.getElementById('fnRcvProject').value.trim(),

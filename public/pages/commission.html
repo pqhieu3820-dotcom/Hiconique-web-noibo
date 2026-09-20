@@ -21,6 +21,7 @@
   <script src="/js/gsheets-config.js"></script>
   <script src="/js/task-data.js"></script>
   <script src="/js/auth.js"></script>
+  <script src="/js/money-input.js"></script>
   <style>
     :root {
       --cm-bg: var(--color-bg);
@@ -240,7 +241,7 @@
             '<div class="cm-budget-field">' +
               '<label>Giá trị dự án</label>' +
               (manager
-                ? '<input type="number" min="0" step="1000000" class="cm-budget-input" data-budget="' + p.id + '" value="' + budget + '">'
+                ? '<input type="text" inputmode="numeric" class="cm-budget-input" data-budget="' + p.id + '" data-money-input value="' + (budget ? HiconiqueMoney.format(budget) : '') + '">'
                 : '<span class="cm-amount">' + fmt(budget) + '</span>') +
               (manager ? '<button class="cm-btn cm-btn-ghost" data-save-budget="' + p.id + '">Lưu</button>' : '') +
             '</div>' +
@@ -248,6 +249,7 @@
           (memberRows || '<div class="cm-saved-tag">Dự án chưa có thành viên.</div>') +
         '</div>';
       }).join('');
+      if (typeof HiconiqueMoney !== 'undefined') HiconiqueMoney.bindAll(container);
 
       if (!manager) return;
 
@@ -260,13 +262,13 @@
           var pid = e.target.getAttribute('data-project');
           var mid = e.target.getAttribute('data-member');
           var budgetInput = document.querySelector('.cm-budget-input[data-budget="' + pid + '"]');
-          var budget = budgetInput ? (parseFloat(budgetInput.value) || 0) : 0;
+          var budget = budgetInput ? HiconiqueMoney.parse(budgetInput.value) : 0;
           var percent = parseFloat(e.target.value) || 0;
           var amountEl = document.querySelector('[data-amount-for="' + pid + '-' + mid + '"]');
           if (amountEl) amountEl.textContent = fmt(Math.round(budget * percent / 100));
         } else if (e.target.classList.contains('cm-budget-input')) {
           var bpid = e.target.getAttribute('data-budget');
-          var newBudget = parseFloat(e.target.value) || 0;
+          var newBudget = HiconiqueMoney.parse(e.target.value);
           document.querySelectorAll('.cm-percent-input[data-project="' + bpid + '"]').forEach(function (percentInput) {
             var bmid = percentInput.getAttribute('data-member');
             var pct = parseFloat(percentInput.value) || 0;
@@ -280,7 +282,7 @@
         btn.addEventListener('click', function () {
           var pid = btn.getAttribute('data-save-budget');
           var input = document.querySelector('.cm-budget-input[data-budget="' + pid + '"]');
-          TaskManager.updateProject(pid, { budget: parseFloat(input.value) || 0 });
+          TaskManager.updateProject(pid, { budget: HiconiqueMoney.parse(input.value) });
           renderAll();
         });
       });

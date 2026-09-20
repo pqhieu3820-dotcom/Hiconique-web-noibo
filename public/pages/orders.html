@@ -20,6 +20,7 @@
   <script src="/js/gsheets-config.js"></script>
   <script src="/js/task-data.js"></script>
   <script src="/js/auth.js"></script>
+  <script src="/js/money-input.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js" defer></script>
   <style>
     :root {
@@ -255,10 +256,11 @@
         '<td><input class="od-input" data-i="name" value="' + escapeHtml(prefill.name || '') + '" placeholder="Tên hạng mục"></td>' +
         '<td><input class="od-input" data-i="unit" value="' + escapeHtml(prefill.unit || '') + '" placeholder="m2/bộ..."></td>' +
         '<td class="num"><input class="od-input mono" data-i="qty" type="number" min="0" step="1" value="' + (Number(prefill.qty) || 1) + '"></td>' +
-        '<td class="num"><input class="od-input mono" data-i="price" type="number" min="0" value="' + (Number(prefill.price) || 0) + '"></td>' +
+        '<td class="num"><input class="od-input mono" data-i="price" type="text" inputmode="numeric" data-money-input value="' + (prefill.price ? HiconiqueMoney.format(prefill.price) : '') + '"></td>' +
         '<td class="num od-amount" data-i="lineTotal">0</td>' +
         '<td><button class="od-btn od-btn-danger od-btn-sm" data-remove-item-row>Xoá</button></td>';
       itemRowsEl.appendChild(tr);
+      if (typeof HiconiqueMoney !== 'undefined') HiconiqueMoney.bindAll(tr);
       recalcTotals();
     }
 
@@ -268,7 +270,7 @@
         var name = tr.querySelector('[data-i="name"]').value.trim();
         var unit = tr.querySelector('[data-i="unit"]').value.trim();
         var qty = parseFloat(tr.querySelector('[data-i="qty"]').value) || 0;
-        var price = parseFloat(tr.querySelector('[data-i="price"]').value) || 0;
+        var price = HiconiqueMoney.parse(tr.querySelector('[data-i="price"]').value);
         if (!name && qty === 0 && price === 0) return;
         items.push({ name: name, unit: unit, qty: qty, price: price, lineTotal: qty * price });
       });
@@ -279,7 +281,7 @@
       var subtotal = 0;
       itemRowsEl.querySelectorAll('tr[data-item-row]').forEach(function (tr) {
         var qty = parseFloat(tr.querySelector('[data-i="qty"]').value) || 0;
-        var price = parseFloat(tr.querySelector('[data-i="price"]').value) || 0;
+        var price = HiconiqueMoney.parse(tr.querySelector('[data-i="price"]').value);
         var lineTotal = qty * price;
         tr.querySelector('[data-i="lineTotal"]').textContent = fmt(lineTotal);
         subtotal += lineTotal;
@@ -305,7 +307,7 @@
         if (item) {
           tr.querySelector('[data-i="name"]').value = item.name || '';
           tr.querySelector('[data-i="unit"]').value = item.unit || '';
-          tr.querySelector('[data-i="price"]').value = Number(item.unitPrice) || 0;
+          tr.querySelector('[data-i="price"]').value = HiconiqueMoney.format(Number(item.unitPrice) || 0);
         }
         recalcTotals();
       }

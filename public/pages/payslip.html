@@ -21,6 +21,7 @@
   <script src="/js/gsheets-config.js"></script>
   <script src="/js/task-data.js"></script>
   <script src="/js/auth.js"></script>
+  <script src="/js/money-input.js"></script>
   <style>
     :root {
       --pl-bg: var(--color-bg);
@@ -307,11 +308,11 @@
             '<div><span class="pl-field-label">Hoa hồng dự án (tự động)</span><div class="pl-field-value">' + fmt(commissionAmount) + '</div></div>' +
           '</div>' +
           '<div class="pl-grid">' +
-            '<div><span class="pl-field-label">Thưởng khác</span><input type="number" min="0" step="10000" class="pl-input" id="plOtherBonus" value="0"></div>' +
+            '<div><span class="pl-field-label">Thưởng khác</span><input type="text" inputmode="numeric" class="pl-input" id="plOtherBonus" data-money-input value="0"></div>' +
             '<div style="grid-column: span 2;"><span class="pl-field-label">Ghi chú thưởng khác</span><input type="text" class="pl-input pl-note-input" id="plOtherBonusNote" placeholder="Ví dụ: thưởng KPI quý…"></div>' +
           '</div>' +
           '<div class="pl-grid">' +
-            '<div><span class="pl-field-label">Khấu trừ</span><input type="number" min="0" step="10000" class="pl-input" id="plDeduction" value="0"></div>' +
+            '<div><span class="pl-field-label">Khấu trừ</span><input type="text" inputmode="numeric" class="pl-input" id="plDeduction" data-money-input value="0"></div>' +
             '<div style="grid-column: span 2;"><span class="pl-field-label">Ghi chú khấu trừ</span><input type="text" class="pl-input pl-note-input" id="plDeductionNote" placeholder="Ví dụ: tạm ứng, BHXH…"></div>' +
           '</div>' +
           '<div class="pl-breakdown">' +
@@ -328,8 +329,8 @@
 
       function recalcTotal() {
         var otManual = parseFloat(document.getElementById('plOtManual').value) || 0;
-        var otherBonus = parseFloat(document.getElementById('plOtherBonus').value) || 0;
-        var deduction = parseFloat(document.getElementById('plDeduction').value) || 0;
+        var otherBonus = HiconiqueMoney.parse(document.getElementById('plOtherBonus').value);
+        var deduction = HiconiqueMoney.parse(document.getElementById('plDeduction').value);
         var otHours = otHoursAuto + otManual;
         var otAmount = otHours * otRate;
         var total = baseSalary + otAmount + commissionAmount + otherBonus - deduction;
@@ -344,6 +345,7 @@
       ['plOtManual', 'plOtherBonus', 'plDeduction'].forEach(function (id) {
         document.getElementById(id).addEventListener('input', recalcTotal);
       });
+      if (typeof HiconiqueMoney !== 'undefined') HiconiqueMoney.bindAll(document);
       recalcTotal();
 
       document.getElementById('plSubmitBtn').addEventListener('click', function () {
@@ -383,16 +385,17 @@
         return '<div class="pl-salary-row">' +
           '<span>' + m.name + ' <span style="color:var(--pl-muted);">(' + m.role + ')</span></span>' +
           '<span></span>' +
-          '<input type="number" min="0" step="100000" class="pl-salary-input" data-member="' + m.id + '" value="' + (Number(m.baseSalary) || 0) + '">' +
+          '<input type="text" inputmode="numeric" class="pl-salary-input" data-member="' + m.id + '" data-money-input value="' + (m.baseSalary ? HiconiqueMoney.format(m.baseSalary) : '') + '">' +
           '<button class="pl-btn pl-btn-ghost pl-btn-sm" data-save-salary="' + m.id + '">Lưu</button>' +
         '</div>';
       }).join('');
       document.getElementById('plSalaryRows').innerHTML = rows;
+      if (typeof HiconiqueMoney !== 'undefined') HiconiqueMoney.bindAll(document.getElementById('plSalaryRows'));
       document.querySelectorAll('[data-save-salary]').forEach(function (btn) {
         btn.addEventListener('click', function () {
           var id = btn.getAttribute('data-save-salary');
           var input = document.querySelector('.pl-salary-input[data-member="' + id + '"]');
-          TaskManager.setMemberBaseSalary(id, parseFloat(input.value) || 0, user);
+          TaskManager.setMemberBaseSalary(id, HiconiqueMoney.parse(input.value), user);
           renderAll();
         });
       });
