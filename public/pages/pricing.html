@@ -21,6 +21,7 @@
   <script src="/js/gsheets-config.js"></script>
   <script src="/js/task-data.js"></script>
   <script src="/js/auth.js"></script>
+  <script src="/js/money-input.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js" defer></script>
   <style>
     :root {
@@ -310,7 +311,7 @@
           <div class="form-row">
             <div class="form-group">
               <label for="project-budget">Tổng số tiền (VNĐ)</label>
-              <input type="number" id="project-budget" placeholder="0" min="0" step="1000000">
+              <input type="text" inputmode="numeric" id="project-budget" placeholder="0" data-money-input>
             </div>
           </div>
 
@@ -1115,6 +1116,8 @@
       var closeBtn = modal.querySelector('.modal-close-project');
       var cancelBtn = modal.querySelector('.modal-cancel-project');
 
+      if (typeof HiconiqueMoney !== 'undefined') HiconiqueMoney.bindAll(modal);
+
       var COLOR_PRESETS = ['#B08D57', '#C7A464', '#3B6B8C', '#4F6F52', '#8E7CC3', '#A04848', '#C77A40', '#475569'];
       var presetsEl = document.getElementById('colorPresets');
       presetsEl.innerHTML = COLOR_PRESETS.map(function (c) {
@@ -1239,7 +1242,7 @@
           province: document.getElementById('project-province').value,
           startDate: document.getElementById('project-start').value || '',
           endDate: document.getElementById('project-end').value || '',
-          budget: parseInt(document.getElementById('project-budget').value, 10) || 0,
+          budget: HiconiqueMoney.parse(document.getElementById('project-budget').value),
           priority: document.getElementById('project-priority').value,
           status: document.getElementById('project-status').value,
           description: document.getElementById('project-desc').value,

@@ -1370,7 +1370,7 @@
         province: document.getElementById('project-province').value,
         startDate: document.getElementById('project-start').value || '',
         endDate: document.getElementById('project-end').value || '',
-        budget: parseInt(document.getElementById('project-budget').value, 10) || 0,
+        budget: HiconiqueMoney.parse(document.getElementById('project-budget').value),
         priority: document.getElementById('project-priority').value,
         status: document.getElementById('project-status').value,
         description: document.getElementById('project-desc').value,
@@ -1436,7 +1436,7 @@
     document.getElementById('project-province').value = project.province || '';
     document.getElementById('project-start').value = project.startDate ? String(project.startDate).substring(0, 10) : '';
     document.getElementById('project-end').value = project.endDate ? String(project.endDate).substring(0, 10) : '';
-    document.getElementById('project-budget').value = project.budget || '';
+    document.getElementById('project-budget').value = project.budget ? HiconiqueMoney.format(project.budget) : '';
     document.getElementById('project-priority').value = project.priority || 'medium';
     document.getElementById('project-status').value = project.status || 'on-track';
     document.getElementById('project-desc').value = project.description || '';
@@ -2009,6 +2009,7 @@
     bindTimelineNav();
     bindTaskModal();
     bindProjectModal();
+    if (typeof HiconiqueMoney !== 'undefined') HiconiqueMoney.bindAll(document);
     bindProjectListModal();
     bindDetailModal();
     bindWorkReportModal();

@@ -21,6 +21,12 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   - `public/apple-touch-icon.png` (và các icon PNG cùng bộ: `icon-192.png`, `icon-512.png`, `apple-touch-icon-152/167.png`, `favicon.svg`) — bản logo TRẮNG + nền gradient chéo đen→xám→xanh (glossy, tương phản mạnh kiểu icon app Threads), có đổ bóng nhẹ cho nổi khối. Đây chính là icon "Thêm vào Màn hình chính" (iOS/Android) VÀ cũng dùng làm icon avatar tròn/vuông trong 2 modal đăng nhập/đăng ký (`auth.js`) và favicon tab trình duyệt (`favicon.svg`, SVG bọc 1 ảnh PNG base64 48×48 của chính icon này).
   - Script build lại các icon PNG từ `logo-soucre.png` (n<PIL>: đọc alpha-mask, crop theo bbox thật của hình chứ không theo canvas gốc 2990×2990, dựng nền gradient bằng numpy, compositing bằng Pillow) không lưu lại thành file cố định trong repo — nếu cần chỉnh sửa/tạo thêm size, đọc lại `logo-soucre.png` rồi lặp lại quy trình (crop alpha bbox → tô màu theo mục đích → composite lên nền tương ứng).
   - Khi thêm 1 vị trí hiển thị logo MỚI ở đâu đó trên web, PHẢI dùng lại 1 trong 2 biến thể trên (không tự tạo màu/kiểu thứ 3), và nếu vị trí đó có cả 19 trang cùng dùng chung 1 component thì sửa đồng bộ tất cả (xem quy tắc đầu tiên ở mục này).
+- **Mọi ô nhập TIỀN (VNĐ) — kể cả trang MỚI tạo sau này — PHẢI tự động hiện dấu chấm ngăn cách hàng nghìn NGAY LÚC GÕ** (chốt 2026-09-21 theo yêu cầu người dùng — lý do: gõ "90000000" không dấu chấm rất dễ đọc nhầm số 0, không biết ngay là 90 triệu). Dùng chung `public/js/money-input.js` (`HiconiqueMoney`):
+  - HTML: input phải là `type="text"` (không phải `type="number"` — trình duyệt chặn ký tự `.` không phải phân cách thập phân) + `inputmode="numeric"` (bàn phím số trên điện thoại) + thêm attribute `data-money-input`.
+  - JS: sau khi render form/modal xong gọi `HiconiqueMoney.bindAll(root)` (hoặc `HiconiqueMoney.bind(inputEl)` cho 1 ô lẻ) — tự gắn live-format, an toàn gọi lại nhiều lần.
+  - Lúc ĐỌC giá trị để lưu/tính toán: PHẢI dùng `HiconiqueMoney.parse(input.value)`, KHÔNG dùng `parseFloat`/`Number(input.value)` trực tiếp nữa — chuỗi đã có dấu chấm (VD "90.000.000") qua `Number()` sẽ đọc sai (`Number("90.000.000")` = `90`, mất hết phần sau dấu chấm đầu tiên).
+  - Nhớ thêm `<script src="/js/money-input.js"></script>` vào trang nếu trang đó chưa nạp sẵn.
+  - Chỉ áp dụng cho SỐ TIỀN thật (VNĐ) — KHÔNG áp dụng cho số lượng, phần trăm, giờ công hay các trường số khác không phải tiền.
 
 ## ⏳ VIỆC CÒN TỒN ĐỌNG (đọc mục này đầu tiên — cập nhật 2026-09-17 cuối phiên)
 

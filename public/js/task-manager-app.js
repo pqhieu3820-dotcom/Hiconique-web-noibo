@@ -464,6 +464,7 @@
     document.getElementById('modalFooter').innerHTML = footerContent;
     modalOverlay.classList.add('active');
     document.body.style.overflow = 'hidden';
+    if (typeof HiconiqueMoney !== 'undefined') HiconiqueMoney.bindAll(document.getElementById('modalBody'));
   }
 
   function closeModal() {
@@ -838,9 +839,9 @@
         <div class="form-group" style="display: flex; gap: 12px;">
           <div style="flex: 1;">
             <label class="form-label">Tổng số tiền (VNĐ)</label>
-            <input type="number" class="form-input" name="budget" min="0" step="1000000"
-              placeholder="0"
-              value="${project && project.budget ? project.budget : ''}">
+            <input type="text" inputmode="numeric" class="form-input" name="budget"
+              placeholder="0" data-money-input
+              value="${project && project.budget ? HiconiqueMoney.format(project.budget) : ''}">
           </div>
           <div style="flex: 1;">
             <label class="form-label">Độ ưu tiên</label>
@@ -934,7 +935,7 @@
       location: form.location.value.trim(),
       startDate: form.startDate.value || '',
       endDate: form.endDate.value || '',
-      budget: parseInt(form.budget.value, 10) || 0,
+      budget: HiconiqueMoney.parse(form.budget.value),
       priority: form.priority.value,
       description: form.description.value.trim(),
       progress: parseInt(form.progress.value),
@@ -2267,9 +2268,9 @@
 
         <div class="form-group">
           <label class="form-label">Số tiền dự kiến (VNĐ)</label>
-          <input type="number" class="form-input" name="amount"
-            placeholder="0"
-            value="${proposal ? proposal.amount : ''}">
+          <input type="text" inputmode="numeric" class="form-input" name="amount"
+            placeholder="0" data-money-input
+            value="${proposal && proposal.amount ? HiconiqueMoney.format(proposal.amount) : ''}">
         </div>
       </form>
     `;
@@ -2301,7 +2302,7 @@
       title: form.title.value.trim(),
       description: form.description.value.trim(),
       type: document.getElementById('proposalTypeInput').value,
-      amount: form.amount.value ? parseInt(form.amount.value) : 0,
+      amount: HiconiqueMoney.parse(form.amount.value),
       requesterId: TaskManager.getCurrentUser().id,
       reviewerId: 'HQ' // CEO reviews by default
     };
