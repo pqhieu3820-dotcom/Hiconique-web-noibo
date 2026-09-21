@@ -625,7 +625,14 @@
       padding: 12px 24px; border-bottom: 1px solid var(--ts-border);
       font-weight: 600; color: var(--ts-text);
     }
-    .ts-report-month-center { display: flex; align-items: center; justify-content: center; gap: 16px; }
+    /* 2026-09-21: "Tháng X/YYYY" phải nằm ĐÚNG GIỮA khoảng cách giữa 2 mũi
+       tên mép ngoài — nếu chỉ center() cả cụm [label + Hôm nay] thì label bị
+       lệch trái vì "Hôm nay" cộng thêm bề rộng bên phải. Dùng grid 3 cột đối
+       xứng (1fr auto 1fr): cột giữa luôn đúng tâm, "Hôm nay" nằm ở cột phải
+       (không ảnh hưởng vị trí cột giữa dù rộng hay hẹp). */
+    .ts-report-month-center { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; width: 100%; }
+    .ts-report-month-center #tsReportMonthPicker { justify-self: center; }
+    .ts-report-month-center #tsReportTodayMonth { justify-self: start; margin-left: 12px; }
     .ts-report-month-nav button {
       width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
       border-radius: 6px; color: var(--ts-muted); font-family: inherit;
