@@ -140,7 +140,14 @@ const FIELD_MAP = {
     ['Mã người phụ trách', 'assigneeIds'], ['Mức độ ưu tiên', 'priority'], ['Trạng thái', 'status'],
     ['Ngày bắt đầu', 'startDate'], ['Ngày tới hạn deadline', 'deadline'], ['Người tạo', 'createdBy'],
     ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt'], ['Tiến độ', 'progress'],
-    ['Update tiến độ việc hàng ngày', 'dailyTasks'], ['Ngày hoàn thành', 'completedAt']
+    ['Update tiến độ việc hàng ngày', 'dailyTasks'], ['Ngày hoàn thành', 'completedAt'],
+    // 2026-09-21: quy trình duyệt việc mới — Chờ xử lý -> Đang làm (nhân viên
+    // tự xác nhận nhận việc, hoặc tự tạo cho chính mình thì vào thẳng đây) ->
+    // Chờ duyệt (đủ 100% tiến độ, bấm "Hoàn thành") -> Quản lý/CEO duyệt
+    // (Hoàn thành) hoặc từ chối (quay lại Đang làm, giữ nguyên deadline, ghi
+    // lý do vào cột này để nhân viên biết cần sửa gì). Xem task-data.js
+    // submitTaskForReview()/approveTaskReview()/rejectTaskReview().
+    ['Ghi chú duyệt', 'reviewNote']
   ],
   proposals: [
     ['Mã ĐX', 'id'], ['Tiêu đề', 'title'], ['Nội dung', 'description'], ['Loại đề xuất', 'type'],

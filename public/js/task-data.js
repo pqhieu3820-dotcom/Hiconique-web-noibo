@@ -733,12 +733,109 @@ var TaskManager = (function() {
     return getById(STORAGE_KEYS.tasks, id);
   }
 
+  // 2026-09-21: quy trình 4 cột Chờ xử lý -> Đang làm -> Chờ duyệt -> Hoàn
+  // thành (giống "Dự án"). Tự suy trạng thái ban đầu thay vì luôn 'pending':
+  // NGƯỜI TẠO cũng nằm trong danh sách được giao (tự tạo việc cho chính mình,
+  // hoặc giao cho cả nhóm trong đó có mình) -> vào thẳng "Đang làm" (không ai
+  // cần tự xác nhận nhận việc của chính mình); còn lại (quản lý/CEO giao hẳn
+  // cho người khác, bản thân không có tên trong đó) -> "Chờ xử lý", chờ đúng
+  // người được giao tự xác nhận (xem confirmTaskAssignment()).
+  function taskAssigneeIdsOf(task) {
+    if (!task) return [];
+    if (Array.isArray(task.assigneeIds)) return task.assigneeIds;
+    if (typeof task.assigneeIds === 'string' && task.assigneeIds) {
+      try { var arr = JSON.parse(task.assigneeIds); if (Array.isArray(arr)) return arr; } catch (e) {}
+      return [task.assigneeIds];
+    }
+    return [];
+  }
   function createTask(task) {
-    task.status = task.status || 'pending';
+    if (!task.status) {
+      var assigneeIds = taskAssigneeIdsOf(task);
+      var selfAssigned = !assigneeIds.length || (task.createdBy && assigneeIds.indexOf(task.createdBy) !== -1);
+      task.status = selfAssigned ? 'in-progress' : 'pending';
+    }
     var newTask = add(STORAGE_KEYS.tasks, task);
-    // Sync to Google Sheets
     syncToGSheets('tasks', 'add', newTask);
+    // Giao việc hẳn cho người khác (không tự tạo cho mình) -> báo ngay cho
+    // TỪNG người được giao, trừ chính người tạo (nếu lỡ có tên trong đó thì
+    // task đã tự vào 'in-progress' ở trên rồi, không cần báo "chờ xử lý" nữa).
+    if (newTask.status === 'pending') {
+      var creator = task.createdBy ? getMember(task.createdBy) : null;
+      var recipientIds = taskAssigneeIdsOf(newTask).filter(function (aid) { return aid !== task.createdBy; });
+      if (recipientIds.length) {
+        addSystemNotificationsBatch(recipientIds.map(function (aid) {
+          return {
+            title: 'Bạn được giao việc mới',
+            message: (creator ? creator.name : 'Quản lý') + ' vừa giao việc "' + (newTask.title || '') + '" cho bạn — vào xem và bấm "Xác nhận nhận việc".',
+            type: 'task', scope: aid, recurring: false
+          };
+        }));
+      }
+    }
     return newTask;
+  }
+
+  // Người được giao TỰ xác nhận đã nhận việc (chỉ hợp lệ khi đang 'pending').
+  function confirmTaskAssignment(taskId, user) {
+    var task = getTask(taskId);
+    if (!task || task.status !== 'pending') return null;
+    if (!user || taskAssigneeIdsOf(task).indexOf(user.id) === -1) return null;
+    return updateTask(taskId, { status: 'in-progress' });
+  }
+
+  // Người được giao nộp việc để chờ duyệt — bắt buộc tiến độ đã đạt 100%
+  // (nút "Hoàn thành" chỉ hiện khi đủ điều kiện này, xem task-manager-app.js).
+  function submitTaskForReview(taskId, user) {
+    var task = getTask(taskId);
+    if (!task || task.status !== 'in-progress') return null;
+    if (!user || taskAssigneeIdsOf(task).indexOf(user.id) === -1) return null;
+    if ((Number(task.progress) || 0) < 100) return null;
+    var updated = updateTask(taskId, { status: 'review' });
+    addSystemNotificationsBatch(adminAndManagerMembers(user.id).map(function (mgr) {
+      return {
+        title: 'Công việc chờ duyệt',
+        message: (user.name || user.id) + ' đã hoàn thành "' + (task.title || '') + '" — đang chờ duyệt.',
+        type: 'task', scope: mgr.id, recurring: false
+      };
+    }));
+    return updated;
+  }
+
+  // CHỈ CEO/Quản lý (canReviewTasks) duyệt/từ chối 1 việc đang 'review'.
+  // Duyệt -> 'completed' (tự stamp completedAt trong updateTask()). Từ chối
+  // -> quay lại 'in-progress', GIỮ NGUYÊN deadline (không đụng tới field đó),
+  // ghi lý do vào reviewNote để người được giao biết cần sửa gì.
+  function canReviewTasks(user) {
+    return !!user && (user.roleLevel === 'admin' || user.roleLevel === 'manager');
+  }
+  function approveTaskReview(taskId, user) {
+    if (!canReviewTasks(user)) return null;
+    var task = getTask(taskId);
+    if (!task || task.status !== 'review') return null;
+    var updated = updateTask(taskId, { status: 'completed', reviewNote: '' });
+    addSystemNotificationsBatch(taskAssigneeIdsOf(task).map(function (aid) {
+      return {
+        title: 'Công việc đã được duyệt',
+        message: '"' + (task.title || '') + '" đã được ' + (user.name || 'quản lý') + ' duyệt hoàn thành.',
+        type: 'task', scope: aid, recurring: false
+      };
+    }));
+    return updated;
+  }
+  function rejectTaskReview(taskId, note, user) {
+    if (!canReviewTasks(user)) return null;
+    var task = getTask(taskId);
+    if (!task || task.status !== 'review') return null;
+    var updated = updateTask(taskId, { status: 'in-progress', reviewNote: note || '' });
+    addSystemNotificationsBatch(taskAssigneeIdsOf(task).map(function (aid) {
+      return {
+        title: 'Công việc bị từ chối',
+        message: '"' + (task.title || '') + '" bị ' + (user.name || 'quản lý') + ' từ chối' + (note ? ' — lý do: ' + note : '') + '. Vui lòng sửa lại.',
+        type: 'task', scope: aid, recurring: false
+      };
+    }));
+    return updated;
   }
 
   // completedAt tự set khi status chuyển SANG 'completed', tự xoá khi chuyển
@@ -2244,6 +2341,11 @@ var TaskManager = (function() {
     addDailyProgress: addDailyProgress,
     getTodayProgress: getTodayProgress,
     generateDailyTasks: generateDailyTasks,
+    confirmTaskAssignment: confirmTaskAssignment,
+    submitTaskForReview: submitTaskForReview,
+    approveTaskReview: approveTaskReview,
+    rejectTaskReview: rejectTaskReview,
+    canReviewTasks: canReviewTasks,
 
     // Members
     getMembers: getMembers,

@@ -32,6 +32,78 @@
     return getTaskAssigneeIds(task).indexOf(memberId) !== -1;
   }
 
+  // 2026-09-21: nhãn/màu 4 trạng thái (Chờ xử lý/Đang làm/Chờ duyệt/Hoàn
+  // thành) — thay 2 chỗ ternary 3-nhánh cũ (coi mọi trạng thái khác pending/
+  // in-progress là "Hoàn thành", khiến việc đang 'review' hiện SAI thành đã
+  // xong) bằng 1 hàm dùng chung duy nhất.
+  function taskStatusLabel(status) {
+    if (status === 'in-progress') return 'Đang làm';
+    if (status === 'review') return 'Chờ duyệt';
+    if (status === 'completed') return 'Hoàn thành';
+    return 'Chờ xử lý';
+  }
+
+  // showToast()/showConfirmDialog() — copy y hệt pattern cùng tên đã dùng ở
+  // timesheet.html/portal.js (dùng chung class .ts-confirm-overlay và tương
+  // đương cho toast, có sẵn trong portal.css) — file này CHƯA có bản riêng
+  // của nó, tasks-manager.html trước giờ toàn dùng alert()/confirm() gốc
+  // trình duyệt (vi phạm quy tắc cố định của dự án). Chỉ thêm để dùng cho
+  // code MỚI (quy trình duyệt việc) — không đi sửa lại toàn bộ alert() cũ có
+  // sẵn trong file này, ngoài phạm vi việc đang làm.
+  function showToast(message, ok) {
+    var el = document.createElement('div');
+    el.className = 'ts-confirm-toast';
+    el.style.cssText = 'position:fixed; bottom:24px; right:24px; z-index:100080; padding:10px 16px; border-radius:8px; font-size:0.8125rem; font-weight:600; color:#fff; background:' + (ok === false ? 'var(--color-destructive, #A04848)' : 'var(--color-bronze)') + '; box-shadow:0 6px 20px rgba(0,0,0,0.25);';
+    el.textContent = message;
+    document.body.appendChild(el);
+    setTimeout(function () { el.remove(); }, 2600);
+  }
+  function showConfirmDialog(title, onConfirm, confirmLabel) {
+    var overlay = document.createElement('div');
+    overlay.className = 'ts-confirm-overlay';
+    overlay.innerHTML =
+      '<div class="ts-confirm-box">' +
+        '<div class="ts-confirm-title">' + title + '</div>' +
+        '<div class="ts-confirm-actions">' +
+          '<button type="button" class="ts-confirm-cancel">Huỷ</button>' +
+          '<button type="button" class="ts-confirm-ok">' + (confirmLabel || 'Xác nhận') + '</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    overlay.querySelector('.ts-confirm-cancel').addEventListener('click', function () { overlay.remove(); });
+    overlay.querySelector('.ts-confirm-ok').addEventListener('click', function () {
+      overlay.remove();
+      onConfirm();
+    });
+  }
+  // Bảng nhập lý do từ chối duyệt việc — dùng chung style .ts-confirm-overlay/
+  // -box, thêm 1 textarea bắt buộc (không cho gửi trống, người bị từ chối
+  // cần biết rõ cần sửa gì).
+  function showTaskRejectDialog(onSubmit) {
+    var overlay = document.createElement('div');
+    overlay.className = 'ts-confirm-overlay';
+    overlay.innerHTML =
+      '<div class="ts-confirm-box" style="max-width:420px;">' +
+        '<div class="ts-confirm-title">Từ chối công việc này</div>' +
+        '<label style="display:block; font-size:0.8125rem; color:var(--color-text-muted); margin:-12px 0 8px;">Lý do từ chối (bắt buộc — người được giao sẽ thấy nội dung này)</label>' +
+        '<textarea id="taskRejectNoteInput" rows="3" style="width:100%; box-sizing:border-box; margin-bottom:16px; padding:8px; background:var(--color-bg); border:1px solid var(--color-border); border-radius:6px; color:var(--color-text); font-size:0.8125rem; font-family:inherit;" placeholder="VD: chưa đúng vật liệu, cần bổ sung ảnh nghiệm thu…"></textarea>' +
+        '<div class="ts-confirm-actions">' +
+          '<button type="button" class="ts-confirm-cancel">Huỷ</button>' +
+          '<button type="button" class="ts-confirm-ok">Từ chối</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    var input = overlay.querySelector('#taskRejectNoteInput');
+    input.focus();
+    overlay.querySelector('.ts-confirm-cancel').addEventListener('click', function () { overlay.remove(); });
+    overlay.querySelector('.ts-confirm-ok').addEventListener('click', function () {
+      var note = input.value.trim();
+      if (!note) { input.style.borderColor = '#A04848'; input.focus(); return; }
+      overlay.remove();
+      onSubmit(note);
+    });
+  }
+
   function escapeHtml(str) {
     return String(str == null ? '' : str).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
@@ -541,6 +613,7 @@
             <select class="form-select" name="status">
               <option value="pending" ${task && task.status === 'pending' ? 'selected' : ''}>Chờ xử lý</option>
               <option value="in-progress" ${task && task.status === 'in-progress' ? 'selected' : ''}>Đang làm</option>
+              <option value="review" ${task && task.status === 'review' ? 'selected' : ''}>Chờ duyệt</option>
               <option value="completed" ${task && task.status === 'completed' ? 'selected' : ''}>Hoàn thành</option>
             </select>
           </div>
@@ -606,14 +679,22 @@
       assigneeIds: assigneeIds,
       startDate: form.startDate.value,
       deadline: form.deadline.value,
-      status: form.status.value,
       priority: form.prioritySelect.value
     };
 
     if (taskId) {
+      // Sửa task có sẵn: giữ nguyên quyền chỉnh tay trạng thái (dropdown) —
+      // đây là lối tắt cho CEO/Quản lý, không đi qua các nút Xác nhận/Hoàn
+      // thành/Duyệt trong "Chi tiết Task".
+      taskData.status = form.status.value;
       TaskManager.updateTask(taskId, taskData);
     } else {
       taskData.createdBy = TaskManager.getCurrentUser().id;
+      // 2026-09-21: KHÔNG gán taskData.status ở đây — để createTask() tự
+      // quyết theo đúng quy trình (tự tạo cho mình/cho nhóm có mình -> "Đang
+      // làm" luôn; giao hẳn cho người khác -> "Chờ xử lý", chờ họ tự bấm
+      // "Xác nhận nhận việc"). Dropdown Trạng thái trong form tạo mới giờ chỉ
+      // còn tác dụng khi SỬA task, không áp dụng lúc tạo mới.
       TaskManager.createTask(taskData);
     }
 
@@ -629,15 +710,42 @@
     const project = task.projectId ? TaskManager.getProject(task.projectId) : null;
     const assignees = TaskManager.getTaskAssignees(task);
     const creator = task.createdBy ? TaskManager.getMember(task.createdBy) : null;
+    const currentUser = TaskManager.getCurrentUser();
 
     const priorityClass = task.priority === 'high' ? 'priority-high' : task.priority === 'medium' ? 'priority-medium' : 'priority-low';
     const priorityLabel = task.priority === 'high' ? 'Cao' : task.priority === 'medium' ? 'Trung bình' : 'Thấp';
 
-    const statusLabel = task.status === 'pending' ? 'Chờ xử lý' : task.status === 'in-progress' ? 'Đang làm' : 'Hoàn thành';
+    const statusLabel = taskStatusLabel(task.status);
 
     // Get today's progress
     const todayProgress = TaskManager.getTodayProgress(taskId) || { progress: task.progress || 0, note: '', done: false };
     const dailyTasks = task.dailyTasks || [];
+
+    // 2026-09-21: quy trình duyệt việc — xem hàm nào hiện nút gì:
+    // pending -> người được giao tự "Xác nhận nhận việc" (confirmTaskAssignment).
+    // in-progress + đạt 100% -> người được giao bấm "Hoàn thành" để nộp duyệt
+    // (submitTaskForReview). review -> CEO/Quản lý (canReviewTasks) "Duyệt"
+    // hoặc "Từ chối" kèm lý do (approveTaskReview/rejectTaskReview).
+    const isAssignee = !!currentUser && assignees.some(a => a.id === currentUser.id);
+    const canReview = TaskManager.canReviewTasks && TaskManager.canReviewTasks(currentUser);
+    const progressPct = Number(task.progress) || 0;
+
+    let workflowActionsHtml = '';
+    if (task.status === 'pending' && isAssignee) {
+      workflowActionsHtml = `<button type="button" id="taskConfirmBtn" class="btn btn-primary" style="width:100%;">✅ Xác nhận nhận việc</button>`;
+    } else if (task.status === 'in-progress' && isAssignee) {
+      workflowActionsHtml = progressPct >= 100
+        ? `<button type="button" id="taskSubmitReviewBtn" class="btn btn-primary" style="width:100%;">🏁 Hoàn thành — nộp duyệt</button>`
+        : `<p style="font-size:0.75rem; color:var(--color-text-muted); margin:0;">Đạt 100% tiến độ để nộp duyệt.</p>`;
+    } else if (task.status === 'review' && canReview) {
+      workflowActionsHtml = `
+        <div style="display:flex; gap:8px;">
+          <button type="button" id="taskRejectBtn" class="btn btn-danger" style="flex:1;">Từ chối</button>
+          <button type="button" id="taskApproveBtn" class="btn btn-primary" style="flex:1;">Duyệt hoàn thành</button>
+        </div>`;
+    } else if (task.status === 'review') {
+      workflowActionsHtml = `<p style="font-size:0.75rem; color:var(--color-text-muted); margin:0;">Đang chờ CEO/Quản lý duyệt.</p>`;
+    }
 
     const body = `
       <div class="task-detail-header">
@@ -653,6 +761,15 @@
       <div class="task-detail-body">
         ${task.description ? `<p class="task-detail-description">${task.description}</p>` : '<p class="task-detail-description" style="opacity: 0.5;">Không có mô tả</p>'}
       </div>
+
+      ${task.reviewNote ? `
+        <div style="background: rgba(160,72,72,0.1); border: 1px solid var(--color-destructive, #A04848); border-radius: 8px; padding: 10px 12px; margin-bottom: 16px;">
+          <div style="font-size: 0.75rem; font-weight: 600; color: var(--color-destructive, #A04848); margin-bottom: 2px;">⚠ Bị từ chối — cần sửa</div>
+          <div style="font-size: 0.8125rem; color: var(--color-text);">${task.reviewNote}</div>
+        </div>
+      ` : ''}
+
+      ${workflowActionsHtml ? `<div style="margin-bottom: 16px;">${workflowActionsHtml}</div>` : ''}
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
         <div>
@@ -753,8 +870,56 @@
           var progress = document.getElementById('dailyProgressInput').value;
           var note = document.getElementById('dailyNoteInput').value;
           TaskManager.addDailyProgress(taskId, progress, note);
-          alert('Đã lưu tiến độ!');
+          showToast('Đã lưu tiến độ!', true);
           openTaskDetailModal(taskId); // Refresh
+        });
+      }
+
+      var confirmBtn = document.getElementById('taskConfirmBtn');
+      if (confirmBtn) {
+        confirmBtn.addEventListener('click', function () {
+          var updated = TaskManager.confirmTaskAssignment(taskId, TaskManager.getCurrentUser());
+          if (!updated) { showToast('Không xác nhận được, thử lại.', false); return; }
+          showToast('Đã xác nhận nhận việc — chuyển sang "Đang làm".', true);
+          openTaskDetailModal(taskId);
+          renderDashboard();
+        });
+      }
+
+      var submitReviewBtn = document.getElementById('taskSubmitReviewBtn');
+      if (submitReviewBtn) {
+        submitReviewBtn.addEventListener('click', function () {
+          var updated = TaskManager.submitTaskForReview(taskId, TaskManager.getCurrentUser());
+          if (!updated) { showToast('Không nộp duyệt được — kiểm tra lại tiến độ đã đạt 100% chưa.', false); return; }
+          showToast('Đã nộp duyệt — chuyển sang "Chờ duyệt".', true);
+          openTaskDetailModal(taskId);
+          renderDashboard();
+        });
+      }
+
+      var approveBtn = document.getElementById('taskApproveBtn');
+      if (approveBtn) {
+        approveBtn.addEventListener('click', function () {
+          showConfirmDialog('Duyệt hoàn thành công việc "' + task.title.replace(/"/g, '&quot;') + '"?', function () {
+            var updated = TaskManager.approveTaskReview(taskId, TaskManager.getCurrentUser());
+            if (!updated) { showToast('Duyệt thất bại, thử lại.', false); return; }
+            showToast('Đã duyệt hoàn thành.', true);
+            openTaskDetailModal(taskId);
+            renderDashboard();
+          }, 'Duyệt');
+        });
+      }
+
+      var rejectBtn = document.getElementById('taskRejectBtn');
+      if (rejectBtn) {
+        rejectBtn.addEventListener('click', function () {
+          showTaskRejectDialog(function (note) {
+            var updated = TaskManager.rejectTaskReview(taskId, note, TaskManager.getCurrentUser());
+            if (!updated) { showToast('Từ chối thất bại, thử lại.', false); return; }
+            showToast('Đã từ chối — việc quay lại "Đang làm".', true);
+            openTaskDetailModal(taskId);
+            renderDashboard();
+          });
         });
       }
     }, 100);
@@ -1335,14 +1500,18 @@
     const tasks = TaskManager.getTasks();
     const currentUser = TaskManager.getCurrentUser();
 
-    // Group tasks by status. "Done" chỉ hiện việc hoàn thành TRONG TUẦN NÀY
-    // (tự ẩn sau khi qua 0h Thứ Hai tuần sau — dữ liệu vẫn còn, chỉ ẩn khỏi
-    // Board cho gọn) — xem TaskManager.isCompletedThisWeek().
+    // 2026-09-21: đổi sang 4 cột giống hệt quy trình "Dự án" (Chờ xử lý ->
+    // Đang làm -> Chờ duyệt -> Hoàn thành, xem taskStatusLabel()) thay vì 3
+    // cột cũ (Kanban của tasks-manager.html không có nơi hiện việc đang
+    // 'review' — bị "mất tích" khỏi board). "Hoàn thành" chỉ hiện việc hoàn
+    // thành TRONG TUẦN NÀY (tự ẩn sau khi qua 0h Thứ Hai tuần sau — dữ liệu
+    // vẫn còn, chỉ ẩn khỏi Board cho gọn) — xem TaskManager.isCompletedThisWeek().
     const todo = tasks.filter(t => t.status === 'pending');
     const inProgress = tasks.filter(t => t.status === 'in-progress');
+    const review = tasks.filter(t => t.status === 'review');
     const done = tasks.filter(t => t.status === 'completed' && (!TaskManager.isCompletedThisWeek || TaskManager.isCompletedThisWeek(t.completedAt)));
 
-    const columnHTML = (title, dotColor, dotBg, tasks, colId) => `
+    const columnHTML = (title, dotColor, tasks, colId) => `
       <div class="kanban-col" id="${colId}">
         <div class="kanban-col-header">
           <span class="kanban-dot" style="background:${dotColor}"></span>
@@ -1373,9 +1542,10 @@
       <div class="stats-grid" id="statsGrid"></div>
       <div id="mainObjectiveContainer"></div>
       <div class="kanban-board">
-        ${columnHTML('To Do', 'var(--color-text-faint)', 'rgba(154,160,166,0.15)', todo, 'col-pending')}
-        ${columnHTML('In Progress', '#C7A464', 'rgba(199,164,100,0.15)', inProgress, 'col-in-progress')}
-        ${columnHTML('Done', '#4F6F52', 'rgba(79,111,82,0.15)', done, 'col-completed')}
+        ${columnHTML('Chờ xử lý', 'var(--color-text-faint)', todo, 'col-pending')}
+        ${columnHTML('Đang làm', 'var(--color-blue)', inProgress, 'col-in-progress')}
+        ${columnHTML('Chờ duyệt', 'var(--color-terracotta)', review, 'col-review')}
+        ${columnHTML('Hoàn thành', 'var(--color-success)', done, 'col-completed')}
       </div>
     `;
 
@@ -1464,15 +1634,25 @@
   function setupKanbanDragDrop() {
     const cards = document.querySelectorAll('.kanban-card');
     const columns = document.querySelectorAll('.kanban-cards');
+    // 2026-09-21: kéo-thả đổi cột TRỰC TIẾP (bỏ qua hết bước xác nhận/nộp
+    // duyệt/lý do từ chối) — chỉ để CEO/Quản lý dùng như công cụ chỉnh tay
+    // khi cần (canReviewTasks()), nhân viên thường PHẢI đi qua đúng nút bấm
+    // trong "Chi tiết Task" (Xác nhận nhận việc/Hoàn thành) để giữ đúng quy
+    // trình duyệt việc.
+    const currentUser = TaskManager.getCurrentUser();
+    const canDrag = TaskManager.canReviewTasks && TaskManager.canReviewTasks(currentUser);
 
     cards.forEach(card => {
-      card.addEventListener('dragstart', function(e) {
-        e.dataTransfer.setData('text/plain', card.dataset.taskId);
-        card.classList.add('dragging');
-      });
-      card.addEventListener('dragend', function() {
-        card.classList.remove('dragging');
-      });
+      card.setAttribute('draggable', canDrag ? 'true' : 'false');
+      if (canDrag) {
+        card.addEventListener('dragstart', function(e) {
+          e.dataTransfer.setData('text/plain', card.dataset.taskId);
+          card.classList.add('dragging');
+        });
+        card.addEventListener('dragend', function() {
+          card.classList.remove('dragging');
+        });
+      }
       // Click to open detail
       card.addEventListener('click', function(e) {
         if (!card.classList.contains('dragging')) {
@@ -1481,6 +1661,7 @@
       });
     });
 
+    if (!canDrag) return;
     columns.forEach(col => {
       col.addEventListener('dragover', function(e) {
         e.preventDefault();
@@ -1736,8 +1917,7 @@
                               task.priority === 'medium' ? 'priority-medium' : 'priority-low';
           const priorityLabel = task.priority === 'high' ? 'Cao' :
                               task.priority === 'medium' ? 'Trung bình' : 'Thấp';
-          const statusLabel = task.status === 'pending' ? 'Chờ xử lý' :
-                              task.status === 'in-progress' ? 'Đang làm' : 'Hoàn thành';
+          const statusLabel = taskStatusLabel(task.status);
           const deadline = task.deadline ? new Date(task.deadline).toLocaleString('vi-VN', {
             weekday: 'short', hour: '2-digit', minute: '2-digit'
           }) : 'Không có deadline';
