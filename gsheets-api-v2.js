@@ -168,6 +168,11 @@ const FIELD_MAP = {
   attendanceLocations: [
     ['Mã', 'id'], ['Tên địa điểm / mạng', 'name'], ['Vĩ độ (lat)', 'lat'], ['Kinh độ (lng)', 'lng'],
     ['Bán kính (m)', 'radiusMeters'], ['Địa chỉ IP', 'ip'], ['Đang dùng', 'active'], ['Ghi chú', 'note'],
+    // 2026-09-21: Văn phòng (mặc định, rỗng cũng coi là văn phòng — xem
+    // client) yêu cầu đủ 3 điều kiện chấm công; Công trình chỉ yêu cầu GPS +
+    // Thiết bị (bỏ Wifi vì công trình thường không có mạng nội bộ). Xem
+    // applySiteRelaxation() trong timesheet.html.
+    ['Loại địa điểm', 'locationType'],
     ['Ngày tạo', 'createdAt']
   ],
   // 2026-09-19: giờ làm việc chuẩn (ca sáng/chiều) — CHỈ 1 dòng duy nhất
@@ -383,6 +388,11 @@ const VALUE_MAP = {
   ],
   'proposals.status': [
     ['Chờ duyệt', 'pending'], ['Đã duyệt', 'approved'], ['Từ chối', 'rejected']
+  ],
+  // 2026-09-21: Văn phòng/Công trình cho sheet "Địa điểm chấm công" — xem
+  // FIELD_MAP.attendanceLocations và applySiteRelaxation() (timesheet.html).
+  'attendanceLocations.locationType': [
+    ['Văn phòng', 'office'], ['Công trình', 'site']
   ],
   // 2026-09-19: cột "Trạng thái Thiết bị 1/2" (mirror của trạng thái đã gộp
   // sẵn trong "Thiết bị 1"/"Thiết bị 2" dạng "id::tên::trạng") — cho CEO/

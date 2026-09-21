@@ -286,6 +286,16 @@
     .ts-manage-device-row .ts-manage-device-info { min-width: 0; }
     .ts-manage-device-row .ts-manage-device-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 
+    /* 2026-09-21: nhãn Văn phòng/Công trình trong danh sách địa điểm chấm
+       công — Công trình tô màu đồng để nổi bật (nhắc admin đây là địa điểm
+       được nới lỏng, bỏ yêu cầu Wifi). */
+    .ts-loc-type-badge {
+      display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px;
+      font-size: 0.6875rem; font-weight: 600; white-space: nowrap;
+    }
+    .ts-loc-type-badge.office { background: var(--color-bg); color: var(--ts-muted); border: 1px solid var(--ts-border); }
+    .ts-loc-type-badge.site { background: rgba(199,164,100,0.15); color: var(--ts-bronze); border: 1px solid var(--ts-bronze); }
+
     /* "Đồng bộ mã thiết bị" — Safari và app "Thêm vào Màn hình chính" trên
        cùng 1 điện thoại bị hệ điều hành coi là 2 nơi lưu trữ RIÊNG (iOS đặc
        biệt hay gặp), nên tự sinh 2 deviceId khác nhau dù cùng 1 máy — không
@@ -894,6 +904,13 @@
               <label class="form-label">Tên địa điểm / mạng</label>
               <input type="text" class="form-input" id="tsLocName" placeholder="VD: Văn phòng chính, Công trình Vũng Tàu..." required>
             </div>
+            <div class="form-group">
+              <label class="form-label">Loại địa điểm</label>
+              <select class="form-select" id="tsLocType">
+                <option value="office">Văn phòng — chấm công cần đủ 3 điều kiện (GPS + Wifi + Thiết bị)</option>
+                <option value="site">Công trình — chỉ cần GPS + Thiết bị (bỏ Wifi vì thường không có mạng nội bộ)</option>
+              </select>
+            </div>
             <div class="form-row">
               <div class="form-group">
                 <label class="form-label">Vĩ độ (lat) — để trống nếu chỉ ép IP</label>
@@ -1495,10 +1512,10 @@
             geoLocations.forEach(function (loc) {
               var radius = Number(loc.radiusMeters) || GEO_RESTRICTION.radiusMetersDefault;
               var dist = Math.round(haversineMeters(lat, lng, Number(loc.lat), Number(loc.lng)));
-              if (!best || dist < best.dist) best = { dist: dist, radius: radius, name: loc.name || '' };
+              if (!best || dist < best.dist) best = { dist: dist, radius: radius, name: loc.name || '', locationType: loc.locationType === 'site' ? 'site' : 'office' };
             });
             if (best.dist <= best.radius) {
-              resolve({ ok: true, skip: false, message: 'Đang ở gần ' + (best.name || 'địa điểm cho phép'), lat: lat, lng: lng, distance: best.dist });
+              resolve({ ok: true, skip: false, message: 'Đang ở gần ' + (best.name || 'địa điểm cho phép'), lat: lat, lng: lng, distance: best.dist, locationType: best.locationType });
             } else if (best.dist > GEO_MAX_PLAUSIBLE_DISTANCE_M) {
               // Thỉnh thoảng trình duyệt/Windows Location Service trả về 1 vị
               // trí mạng sai lệch cực lớn (có lúc cách xa cả chục nghìn km,
@@ -1522,6 +1539,21 @@
           });
         });
       });
+    }
+
+    // 2026-09-21: Văn phòng cần đủ 3 điều kiện (GPS + Wifi + Thiết bị), Công
+    // trình chỉ cần 2 (GPS + Thiết bị) vì công trình thường không có mạng
+    // nội bộ để ép IP. "Đang ở đâu" xác định bằng GPS gần nhất (checkGeoStatus()
+    // đã tự chọn địa điểm gần nhất trong TẤT CẢ địa điểm đang bật) — nếu địa
+    // điểm khớp đó là loại 'site', ép ipResult thành skip (không tính vào
+    // điều kiện bắt buộc) thay vì bắt đúng mạng Wifi công ty. Dùng CHUNG cho
+    // cả verifyThenProceed() (lúc bấm Chấm công) và runLiveStatusCheck()
+    // (panel 3 điều kiện hiển thị liên tục) để không lệch nhau.
+    function applySiteRelaxation(geoResult, ipResult) {
+      if (geoResult && geoResult.ok && geoResult.locationType === 'site') {
+        return { ok: true, skip: true, message: 'Không yêu cầu (đang ở công trình)', ip: ipResult ? ipResult.ip : '' };
+      }
+      return ipResult;
     }
 
     function renderVerifyRow(dotId, stateId, result, retryBtnId) {
@@ -1565,11 +1597,13 @@
       // nên panel giờ luôn hiện để còn thấy trạng thái thiết bị.
       panel.hidden = false;
       return Promise.all([checkGeoStatus(), checkIpStatus()]).then(function (results) {
+        var geoResult = results[0];
+        var ipResult = applySiteRelaxation(geoResult, results[1]);
         var deviceResult = checkDeviceStatus();
-        renderVerifyRow('tsVerifyGeoDot', 'tsVerifyGeoState', results[0], 'tsGeoRetryBtn');
-        renderVerifyRow('tsVerifyIpDot', 'tsVerifyIpState', results[1]);
+        renderVerifyRow('tsVerifyGeoDot', 'tsVerifyGeoState', geoResult, 'tsGeoRetryBtn');
+        renderVerifyRow('tsVerifyIpDot', 'tsVerifyIpState', ipResult);
         renderVerifyRow('tsVerifyDeviceDot', 'tsVerifyDeviceState', deviceResult);
-        return { geo: results[0], ip: results[1], device: deviceResult };
+        return { geo: geoResult, ip: ipResult, device: deviceResult };
       });
     }
 
@@ -2419,7 +2453,7 @@
       btn.textContent = 'Đang kiểm tra...';
 
       Promise.all([checkGeoStatus(), checkIpStatus()]).then(function (results) {
-        var geoResult = results[0], ipResult = results[1];
+        var geoResult = results[0], ipResult = applySiteRelaxation(geoResult, results[1]);
         var deviceResult = checkDeviceStatus();
         renderVerifyRow('tsVerifyGeoDot', 'tsVerifyGeoState', geoResult, 'tsGeoRetryBtn');
         renderVerifyRow('tsVerifyIpDot', 'tsVerifyIpState', ipResult);
@@ -3077,6 +3111,7 @@
         }
         list.innerHTML = rows.map(function (loc) {
           var isOff = loc.active === false;
+          var isSite = loc.locationType === 'site';
           var detail = [];
           if (loc.lat !== '' && loc.lat != null) detail.push('GPS ' + loc.lat + ', ' + loc.lng + ' (±' + (loc.radiusMeters || 50) + 'm)');
           if (loc.ip) detail.push('IP ' + loc.ip);
@@ -3085,6 +3120,7 @@
             +   '<div style="min-width:0;">'
             +     '<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">'
             +       '<span style="font-weight:600; font-size:0.9375rem;">' + escapeHtmlTs(loc.name || '(chưa đặt tên)') + '</span>'
+            +       '<span class="ts-loc-type-badge ' + (isSite ? 'site' : 'office') + '">' + (isSite ? 'Công trình' : 'Văn phòng') + '</span>'
             +       '<span class="tl-project" style="font-size:0.6875rem;">' + locTypeLabel(loc) + '</span>'
             +       (isOff ? '<span style="font-size:0.6875rem; color:var(--color-text-faint);">Đã tắt</span>' : '')
             +     '</div>'
@@ -3130,6 +3166,7 @@
     function fillLocationForm(loc) {
       document.getElementById('tsLocEditId').value = loc.id;
       document.getElementById('tsLocName').value = loc.name || '';
+      document.getElementById('tsLocType').value = loc.locationType === 'site' ? 'site' : 'office';
       document.getElementById('tsLocLat').value = loc.lat != null ? loc.lat : '';
       document.getElementById('tsLocLng').value = loc.lng != null ? loc.lng : '';
       document.getElementById('tsLocRadius').value = loc.radiusMeters != null ? loc.radiusMeters : '';
@@ -3144,6 +3181,7 @@
     function resetLocationForm() {
       document.getElementById('tsLocationForm').reset();
       document.getElementById('tsLocEditId').value = '';
+      document.getElementById('tsLocType').value = 'office';
       document.getElementById('tsLocActive').checked = true;
       document.getElementById('tsLocSubmitBtn').textContent = 'Thêm thông tin';
       document.getElementById('tsLocCancelEdit').hidden = true;
@@ -3171,6 +3209,7 @@
         var editId = document.getElementById('tsLocEditId').value;
         var data = {
           name: document.getElementById('tsLocName').value.trim(),
+          locationType: document.getElementById('tsLocType').value,
           lat: document.getElementById('tsLocLat').value.trim(),
           lng: document.getElementById('tsLocLng').value.trim(),
           radiusMeters: document.getElementById('tsLocRadius').value.trim(),
