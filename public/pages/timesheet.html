@@ -625,15 +625,22 @@
       padding: 12px 24px; border-bottom: 1px solid var(--ts-border);
       font-weight: 600; color: var(--ts-text);
     }
-    /* 2026-09-21: "Tháng X/YYYY" phải nằm ĐÚNG GIỮA khoảng cách giữa 2 mũi
-       tên mép ngoài — nếu chỉ center() cả cụm [label + Hôm nay] thì label bị
-       lệch trái vì "Hôm nay" cộng thêm bề rộng bên phải. Dùng grid 3 cột đối
-       xứng (1fr auto 1fr): cột giữa luôn đúng tâm, "Hôm nay" nằm ở cột phải
+    /* "Tháng X/YYYY" phải nằm ĐÚNG GIỮA khoảng cách giữa 2 mũi tên mép ngoài
+       — nếu chỉ center() cả cụm [label + Hôm nay] thì label bị lệch trái vì
+       "Hôm nay" cộng thêm bề rộng bên phải. Dùng grid 3 cột đối xứng
+       (1fr auto 1fr): cột giữa luôn đúng tâm, "Hôm nay" nằm ở cột phải
        (không ảnh hưởng vị trí cột giữa dù rộng hay hẹp). */
     .ts-report-month-center { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; width: 100%; }
     .ts-report-month-center #tsReportMonthPicker { justify-self: center; }
     .ts-report-month-center #tsReportTodayMonth { justify-self: start; margin-left: 12px; }
-    .ts-report-month-nav button {
+    /* :not(#tsReportMonthLabelBtn) — quy tắc size 28x28 này vốn dành cho cặp
+       mũi tên nhỏ đã bỏ (xem lịch sử), nhưng vì cùng là "button" trong
+       .ts-report-month-nav nên vô tình đè luôn kích thước của nút bấm mở
+       bảng chọn tháng (.timeline-title-btn, vốn tự co giãn theo nội dung),
+       ép nó xuống còn 28px khiến "Tháng X/YYYY" không còn đúng tâm giữa 2
+       mũi tên mép ngoài (canh giữa dựa trên hộp 28px ảo, không phải chữ
+       thật). Loại trừ nút đó ra khỏi rule này. */
+    .ts-report-month-nav button:not(#tsReportMonthLabelBtn) {
       width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
       border-radius: 6px; color: var(--ts-muted); font-family: inherit;
     }
@@ -937,9 +944,10 @@
           </button>
         </div>
         <div class="ts-report-month-nav">
-          <!-- 2026-09-21: chỉ còn 2 mũi tên to (đen) ở 2 mép ngoài để điều
-               hướng tháng — đã bỏ hẳn cặp mũi tên nhỏ ở giữa (trùng chức
-               năng, người dùng phản hồi thấy rối mắt). -->
+          <!-- 2026-09-21: về lại 1 hàng — 2 mũi tên to (đen) ở 2 mép ngoài,
+               "Tháng X/YYYY" canh ĐÚNG GIỮA khoảng cách giữa 2 mũi tên,
+               "Hôm nay" nằm CÙNG HÀNG, bên phải (không kéo lệch tâm của
+               "Tháng" vì nằm ở cột riêng, xem .ts-report-month-center). -->
           <button type="button" class="ts-report-edge-arrow" id="tsReportPrevMonthEdge" aria-label="Tháng trước">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M11 18l-6-6 6-6"/></svg>
           </button>
