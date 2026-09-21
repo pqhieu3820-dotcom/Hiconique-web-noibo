@@ -3237,8 +3237,15 @@
           // GPS/Wifi/Thiết bị — tránh chấm nhầm ca/nhầm hành động vì nút không
           // còn tự nói lên nó đang làm gì. Dùng showConfirmDialog() tự dựng
           // (KHÔNG dùng confirm() gốc — đã cấm, xem GHI_CHU_DU_AN.md).
+          // 2026-09-21: nhắc cập nhật Báo cáo tiến độ công việc hàng ngày (panel
+          // "Tiến độ hôm nay", tasks-manager.html) ngay trong hộp xác nhận CHECK
+          // OUT — dễ quên cập nhật cuối ngày, đặt đúng lúc sắp checkout để không
+          // phải thêm 1 bước/1 popup riêng, không chặn checkout nếu bỏ qua.
+          var checkoutReminder = isCheckout
+            ? '<div style="margin-top:12px; padding:10px 12px; background:rgba(199,164,100,0.12); border:1px solid var(--ts-bronze); border-radius:8px; font-size:0.8125rem; font-weight:500; color:var(--ts-text); text-align:left;">📋 Nhớ cập nhật <strong>Báo cáo tiến độ công việc hôm nay</strong> (mục Tasks) trước khi checkout nhé!</div>'
+            : '';
           var confirmTitle = 'Bạn đang chấm công <strong>' + (isCheckout ? 'CHECK OUT' : 'CHECK IN') +
-            '</strong> cho ca ' + label.toLowerCase() + ' vào lúc ' + time + ' ngày ' + dateLabel;
+            '</strong> cho ca ' + label.toLowerCase() + ' vào lúc ' + time + ' ngày ' + dateLabel + checkoutReminder;
           showConfirmDialog(confirmTitle, function () {
             if (isCheckout) {
               var early = isLateOrEarly(shift, 'out', time, ws);
