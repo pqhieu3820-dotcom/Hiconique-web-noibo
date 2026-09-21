@@ -628,19 +628,24 @@
     /* "Tháng X/YYYY" phải nằm ĐÚNG GIỮA khoảng cách giữa 2 mũi tên mép ngoài
        — nếu chỉ center() cả cụm [label + Hôm nay] thì label bị lệch trái vì
        "Hôm nay" cộng thêm bề rộng bên phải. Dùng grid 3 cột đối xứng
-       (1fr auto 1fr): cột giữa luôn đúng tâm, "Hôm nay" nằm ở cột phải
-       (không ảnh hưởng vị trí cột giữa dù rộng hay hẹp). */
+       (1fr auto 1fr): cột giữa luôn đúng tâm, "Hôm nay" nằm ở cột phải.
+       QUAN TRỌNG: chỉ có 2 phần tử con (picker + Hôm nay) nên PHẢI gán
+       grid-column tay cho từng đứa — nếu không, grid tự xếp chúng lần lượt
+       vào cột 1 rồi cột 2 (bỏ trống hẳn cột 3), khiến "cột giữa" thật ra là
+       cột 1 (lệch hẳn sang trái) chứ không phải cột auto ở giữa như ý muốn
+       — đúng lỗi đã xảy ra trước đó. */
     .ts-report-month-center { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; width: 100%; }
-    .ts-report-month-center #tsReportMonthPicker { justify-self: center; }
-    .ts-report-month-center #tsReportTodayMonth { justify-self: start; margin-left: 12px; }
-    /* :not(#tsReportMonthLabelBtn) — quy tắc size 28x28 này vốn dành cho cặp
-       mũi tên nhỏ đã bỏ (xem lịch sử), nhưng vì cùng là "button" trong
-       .ts-report-month-nav nên vô tình đè luôn kích thước của nút bấm mở
-       bảng chọn tháng (.timeline-title-btn, vốn tự co giãn theo nội dung),
-       ép nó xuống còn 28px khiến "Tháng X/YYYY" không còn đúng tâm giữa 2
-       mũi tên mép ngoài (canh giữa dựa trên hộp 28px ảo, không phải chữ
-       thật). Loại trừ nút đó ra khỏi rule này. */
-    .ts-report-month-nav button:not(#tsReportMonthLabelBtn) {
+    .ts-report-month-center #tsReportMonthPicker { grid-column: 2; justify-self: center; }
+    .ts-report-month-center #tsReportTodayMonth { grid-column: 3; justify-self: start; margin-left: 12px; }
+    /* :not(.timeline-title-btn):not(.ts-report-edge-arrow) — quy tắc size
+       28x28 này vốn dành cho cặp mũi tên nhỏ đã bỏ (xem lịch sử), nhưng vì
+       cùng là "button" trong .ts-report-month-nav nên vô tình đè luôn kích
+       thước của nút mở bảng chọn tháng (.timeline-title-btn, tự co giãn
+       theo nội dung) VÀ 2 mũi tên to mép ngoài (.ts-report-edge-arrow, ép
+       nhầm từ 40px xuống 28px vì :not(#id) có độ đặc hiệu cao hơn class
+       thường). Loại cả 2 ra khỏi rule bằng class thay vì ID để tránh lặp
+       lại vấn đề độ đặc hiệu này. */
+    .ts-report-month-nav button:not(.timeline-title-btn):not(.ts-report-edge-arrow) {
       width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
       border-radius: 6px; color: var(--ts-muted); font-family: inherit;
     }
