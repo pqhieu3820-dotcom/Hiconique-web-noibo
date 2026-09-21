@@ -2652,6 +2652,23 @@
     // dưới) để khỏi phải gọi lại TaskManager.getTimesheetEntries() lần nữa.
     var reportEntriesByMember = {};
     var reportMembersById = {};
+    // 2026-09-21: lưu thống kê từng người + của cả công ty để bấm vào 1
+    // người (openReportMemberDetail) đổi 4 ô thống kê đầu trang (Tổng ngày
+    // công/Tổng giờ làm/Tổng giờ OT/Quên check-out) sang ĐÚNG số của người đó
+    // thay vì vẫn hiện số cả công ty gây hiểu lầm — "Quay lại danh sách" trả
+    // lại đúng số cả công ty đã lưu sẵn, không cần tính lại.
+    var reportStatsByMember = {};
+    var reportCompanyStats = { workDays: 0, totalHours: 0, overtimeHours: 0, forgotCount: 0 };
+
+    function renderReportStatGrid(stats) {
+      var statGrid = document.getElementById('tsReportStatGrid');
+      if (!statGrid) return;
+      statGrid.innerHTML =
+        '<div class="report-stat"><span class="report-stat-label">Tổng ngày công</span><span class="report-stat-value">' + stats.workDays + '</span></div>'
+        + '<div class="report-stat"><span class="report-stat-label">Tổng giờ làm</span><span class="report-stat-value">' + (Math.round(stats.totalHours * 10) / 10) + 'h</span></div>'
+        + '<div class="report-stat"><span class="report-stat-label">Tổng giờ OT</span><span class="report-stat-value" style="color:var(--ts-bronze)">' + (Math.round(stats.overtimeHours * 10) / 10) + 'h</span></div>'
+        + '<div class="report-stat"><span class="report-stat-label">Quên check-out</span><span class="report-stat-value" style="' + (stats.forgotCount ? 'color:var(--ts-danger)' : '') + '">' + stats.forgotCount + '</span></div>';
+    }
 
     function renderAttendanceReportModal() {
       var monthLabel = document.getElementById('tsReportMonthLabel');
@@ -2700,14 +2717,10 @@
       var sumOT = perMember.reduce(function (s, r) { return s + r.overtimeHours; }, 0);
       var sumForgot = perMember.reduce(function (s, r) { return s + r.forgotCount; }, 0);
 
-      var statGrid = document.getElementById('tsReportStatGrid');
-      if (statGrid) {
-        statGrid.innerHTML =
-          '<div class="report-stat"><span class="report-stat-label">Tổng ngày công</span><span class="report-stat-value">' + sumDays + '</span></div>'
-          + '<div class="report-stat"><span class="report-stat-label">Tổng giờ làm</span><span class="report-stat-value">' + (Math.round(sumHours * 10) / 10) + 'h</span></div>'
-          + '<div class="report-stat"><span class="report-stat-label">Tổng giờ OT</span><span class="report-stat-value" style="color:var(--ts-bronze)">' + (Math.round(sumOT * 10) / 10) + 'h</span></div>'
-          + '<div class="report-stat"><span class="report-stat-label">Quên check-out</span><span class="report-stat-value" style="' + (sumForgot ? 'color:var(--ts-danger)' : '') + '">' + sumForgot + '</span></div>';
-      }
+      reportCompanyStats = { workDays: sumDays, totalHours: sumHours, overtimeHours: sumOT, forgotCount: sumForgot };
+      reportStatsByMember = {};
+      perMember.forEach(function (r) { reportStatsByMember[r.member.id] = r; });
+      renderReportStatGrid(reportCompanyStats);
 
       // ----- Trạng thái ngày công cả công ty (member × ngày trong tháng) -----
       var statusCounts = { work: 0, forgot: 0, missing: 0, weekend: 0, future: 0 };
@@ -2807,6 +2820,12 @@
       var member = reportMembersById[memberId];
       document.getElementById('tsReportMemberDetailName').textContent = member ? (member.name || member.id) : memberId;
       document.getElementById('tsReportMemberDayDetail').style.display = 'none';
+      // 2026-09-21: 4 ô thống kê đầu trang đổi sang số CỦA ĐÚNG NGƯỜI ĐANG
+      // XEM thay vì vẫn hiện số cả công ty — dễ hiểu lầm số của người đó là
+      // của cả công ty nếu không đổi. "Quay lại danh sách" trả lại đúng số
+      // cả công ty (reportCompanyStats).
+      var memberStats = reportStatsByMember[memberId];
+      if (memberStats) renderReportStatGrid(memberStats);
       renderReportMemberCalendar(memberId);
     }
 
@@ -2952,6 +2971,7 @@
       document.getElementById('tsReportMemberBackBtn').addEventListener('click', function () {
         document.getElementById('tsReportMemberDetail').hidden = true;
         document.getElementById('tsReportByMember').hidden = false;
+        renderReportStatGrid(reportCompanyStats);
       });
     }
 
