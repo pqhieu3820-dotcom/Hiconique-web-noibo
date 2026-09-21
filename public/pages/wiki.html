@@ -67,23 +67,35 @@
         <input type="text" id="docSearchInput" placeholder="Tìm tài liệu theo tên hoặc danh mục…" autocomplete="off">
       </div>
 
-      <div id="docAdminBar" style="margin-top:var(--space-md);display:none;">
-        <button class="btn-secondary" id="docAddBtn" type="button">+ Thêm tài liệu</button>
-        <form id="docForm" class="notice-form" hidden>
-          <div class="doc-cat-row">
-            <select id="docCategoryInput" required></select>
-            <button type="button" class="doc-cat-manage-btn" id="docCatManageBtn">Quản lý danh mục</button>
+      <div id="docAdminBar" class="doc-admin-bar" style="margin-top:var(--space-md);display:none;">
+        <button class="doc-toggle-btn" id="docAddBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          Thêm tài liệu
+        </button>
+        <form id="docForm" class="doc-form" hidden>
+          <div class="doc-field">
+            <label class="doc-field-label" for="docCategoryInput">Danh mục</label>
+            <div class="doc-cat-row">
+              <select id="docCategoryInput" required></select>
+              <button type="button" class="doc-cat-manage-btn" id="docCatManageBtn">Quản lý danh mục</button>
+            </div>
           </div>
           <div class="doc-cat-manage" id="docCatManage" hidden>
             <div class="doc-cat-manage-add">
               <input type="text" id="docCatNewInput" placeholder="Tên danh mục mới">
-              <button type="button" class="btn-secondary" id="docCatAddBtn">Thêm danh mục</button>
+              <button type="button" class="doc-cat-add-btn" id="docCatAddBtn">Thêm</button>
             </div>
             <ul class="doc-cat-list" id="docCatList"></ul>
           </div>
 
-          <input type="text" id="docNameInput" placeholder="Tên tài liệu" required>
-          <input type="text" id="docUrlInput" placeholder="Link (Notion / Google Drive...)" required>
+          <div class="doc-field">
+            <label class="doc-field-label" for="docNameInput">Tên tài liệu</label>
+            <input type="text" id="docNameInput" placeholder="VD: Quy trình nghiệm thu hạng mục sơn" required>
+          </div>
+          <div class="doc-field">
+            <label class="doc-field-label" for="docUrlInput">Link tài liệu</label>
+            <input type="text" id="docUrlInput" placeholder="Notion / Google Drive…" required>
+          </div>
 
           <div class="doc-code-block">
             <div class="doc-code-label-row">
@@ -98,7 +110,7 @@
             <div class="doc-code-info-panel" id="docCodeInfoPanel" hidden></div>
           </div>
 
-          <button type="submit" class="btn-primary">Thêm</button>
+          <button type="submit" class="doc-submit-btn">Thêm tài liệu</button>
         </form>
       </div>
 
@@ -115,10 +127,59 @@
   </main>
 
   <style>
-    .notice-form { display: flex; flex-direction: column; gap: 10px; max-width: 480px; margin-top: 14px; padding: 16px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 8px; }
-    .notice-form[hidden] { display: none; }
+    /* 2026-09-21: làm lại khối "Thêm tài liệu" — bản cũ dùng .notice-form/
+       .btn-primary/.btn-secondary (định nghĩa trong task-manager.css/
+       projects.css, trang này KHÔNG nạp 2 file đó) nên mọi nút bấm hiện ra
+       như CHỮ THƯỜNG không viền/không nền, trông như link hỏng thay vì nút
+       — đúng bẫy CSS đã gặp ở notices.html trước đây (trang không nạp file
+       định nghĩa .btn-*). Định nghĩa riêng bộ class .doc-* ngay trong trang
+       này (không phụ thuộc file ngoài) theo đúng tông màu đồng/vàng
+       (--color-bronze) toàn hệ thống. */
+    .doc-admin-bar { max-width: 520px; }
+    .doc-toggle-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 18px; border-radius: 8px; border: 1px solid var(--color-bronze);
+      background: transparent; color: var(--color-bronze);
+      font-family: 'Inter', sans-serif; font-size: 0.875rem; font-weight: 600; cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .doc-toggle-btn:hover { background: var(--color-bronze); color: var(--color-bg); }
+    .doc-toggle-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+    .doc-form {
+      display: flex; flex-direction: column; gap: 16px;
+      margin-top: 16px; padding: 22px; background: var(--color-surface);
+      border: 1px solid var(--color-border); border-radius: 14px;
+      box-shadow: var(--shadow-md, 0 6px 20px rgba(0,0,0,0.08));
+    }
+    .doc-form[hidden] { display: none; }
     .doc-cat-manage[hidden] { display: none; }
-    .notice-form input, .notice-form select { padding: 8px 10px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 4px; color: var(--color-text); font-family: 'Inter', sans-serif; font-size: 0.875rem; }
+    .doc-field { display: flex; flex-direction: column; gap: 6px; }
+    .doc-field-label {
+      font-size: 0.6875rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.04em; color: var(--color-text-muted);
+    }
+    .doc-form input, .doc-form select {
+      padding: 10px 12px; background: var(--color-bg); border: 1px solid var(--color-border);
+      border-radius: 8px; color: var(--color-text); font-family: 'Inter', sans-serif; font-size: 0.875rem;
+      transition: border-color 0.15s ease;
+    }
+    .doc-form input:focus, .doc-form select:focus { outline: none; border-color: var(--color-bronze); }
+    .doc-form input::placeholder { color: var(--color-text-faint); }
+    .doc-submit-btn {
+      padding: 12px; border: none; border-radius: 8px;
+      background: var(--color-bronze); color: var(--color-bg);
+      font-family: 'Inter', sans-serif; font-size: 0.875rem; font-weight: 700; cursor: pointer;
+      transition: opacity 0.15s ease;
+    }
+    .doc-submit-btn:hover { opacity: 0.88; }
+    .doc-cat-add-btn {
+      padding: 0 14px; border-radius: 8px; border: 1px solid var(--color-border);
+      background: var(--color-bg); color: var(--color-text); font-family: 'Inter', sans-serif;
+      font-size: 0.8125rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+      transition: border-color 0.15s ease, color 0.15s ease;
+    }
+    .doc-cat-add-btn:hover { border-color: var(--color-bronze); color: var(--color-bronze); }
     .wiki-col-del { background: none; border: none; color: var(--color-text-faint); font-size: 0.6875rem; cursor: pointer; padding: 0; margin-left: 8px; }
     .wiki-col-del:hover { color: var(--color-destructive); }
     .wiki-col li a { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -141,7 +202,7 @@
     .doc-cat-row select { flex: 1; }
     .doc-cat-manage-btn { background: none; border: none; color: var(--color-text-faint); font-size: 0.75rem; text-decoration: underline; cursor: pointer; padding: 0; white-space: nowrap; }
     .doc-cat-manage-btn:hover { color: var(--color-bronze); }
-    .doc-cat-manage { border: 1px dashed var(--color-border); border-radius: 6px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+    .doc-cat-manage { border: 1px dashed var(--color-border); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
     .doc-cat-manage-add { display: flex; gap: 8px; }
     .doc-cat-manage-add input { flex: 1; }
     .doc-cat-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -179,6 +240,32 @@
     function escapeHtml(s) {
       return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
         return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+
+    // showConfirmDialog() — copy y hệt hàm cùng tên trong portal.js/timesheet.html
+    // (dùng chung class .ts-confirm-overlay/.ts-confirm-box đã có sẵn trong
+    // portal.css). Hàm gốc trong portal.js khai báo bên trong 1 IIFE riêng,
+    // KHÔNG gắn lên window — trang nào cần dùng cũng phải tự có 1 bản của
+    // riêng mình, không gọi thẳng được từ ngoài (đã gặp lỗi "showConfirmDialog
+    // is not defined" khi quên bước này). Thay hẳn cho confirm() gốc trình
+    // duyệt theo quy tắc cố định của dự án.
+    function showConfirmDialog(title, onConfirm, confirmLabel) {
+      var overlay = document.createElement('div');
+      overlay.className = 'ts-confirm-overlay';
+      overlay.innerHTML =
+        '<div class="ts-confirm-box">' +
+          '<div class="ts-confirm-title">' + title + '</div>' +
+          '<div class="ts-confirm-actions">' +
+            '<button type="button" class="ts-confirm-cancel">Huỷ</button>' +
+            '<button type="button" class="ts-confirm-ok">' + (confirmLabel || 'Xác nhận') + '</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(overlay);
+      overlay.querySelector('.ts-confirm-cancel').addEventListener('click', function () { overlay.remove(); });
+      overlay.querySelector('.ts-confirm-ok').addEventListener('click', function () {
+        overlay.remove();
+        onConfirm();
       });
     }
 
@@ -252,9 +339,10 @@
       wrap.querySelectorAll('.wiki-col-del').forEach(function (btn) {
         btn.addEventListener('click', function (e) {
           e.preventDefault();
-          if (!confirm('Xoá tài liệu này?')) return;
-          TaskManager.deleteDocument(btn.dataset.id, user);
-          render();
+          showConfirmDialog('Xoá tài liệu này?', function () {
+            TaskManager.deleteDocument(btn.dataset.id, user);
+            render();
+          }, 'Xoá');
         });
       });
 
@@ -300,10 +388,11 @@
 
       list.querySelectorAll('.doc-cat-del').forEach(function (btn) {
         btn.addEventListener('click', function () {
-          if (!confirm('Xoá danh mục "' + btn.dataset.name + '"? (Tài liệu đã gán danh mục này sẽ không bị xoá.)')) return;
-          TaskManager.deleteDocCategory(btn.dataset.name, Auth.getCurrentUser());
-          renderCategoryManageList();
-          renderCategorySelect();
+          showConfirmDialog('Xoá danh mục "' + escapeHtml(btn.dataset.name) + '"? (Tài liệu đã gán danh mục này sẽ không bị xoá.)', function () {
+            TaskManager.deleteDocCategory(btn.dataset.name, Auth.getCurrentUser());
+            renderCategoryManageList();
+            renderCategorySelect();
+          }, 'Xoá');
         });
       });
     }
