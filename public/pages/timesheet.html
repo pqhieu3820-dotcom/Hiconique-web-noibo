@@ -621,15 +621,22 @@
        không load projects.css. ─── */
     .ts-report-modal { max-width: 900px; }
     .ts-report-month-nav {
-      display: flex; align-items: center; justify-content: center; gap: 16px;
+      display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px;
       padding: 12px 24px; border-bottom: 1px solid var(--ts-border);
       font-weight: 600; color: var(--ts-text);
     }
+    .ts-report-month-center { display: flex; align-items: center; justify-content: center; gap: 16px; }
     .ts-report-month-nav button {
       width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
       border-radius: 6px; color: var(--ts-muted); font-family: inherit;
     }
     .ts-report-month-nav button:hover { background: var(--ts-surface); color: var(--ts-text); }
+    .ts-report-edge-arrow {
+      width: 40px; height: 40px; border-radius: 10px; color: var(--ts-text) !important;
+      background: var(--color-bg) !important; border: 1px solid var(--ts-border) !important;
+    }
+    .ts-report-edge-arrow svg { width: 22px; height: 22px; }
+    .ts-report-edge-arrow:hover { background: var(--ts-surface) !important; }
     .ts-report-month-nav button#tsReportTodayMonth {
       width: auto;
       height: 28px;
@@ -696,6 +703,8 @@
       padding: 10px 0; border-bottom: 1px solid var(--ts-border); font-size: 0.8125rem;
     }
     .report-row:last-child { border-bottom: none; }
+    .report-row-clickable { cursor: pointer; border-radius: 8px; margin: 0 -8px; padding: 10px 8px; transition: background 0.15s; }
+    .report-row-clickable:hover { background: var(--color-bg); }
     .report-row-name { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--ts-text); font-weight: 500; }
     .report-row-meta { font-size: 0.75rem; color: var(--ts-muted); white-space: nowrap; font-family: 'SF Mono', monospace; }
     .report-avatar {
@@ -726,8 +735,11 @@
     @media (max-width: 480px) {
       /* Tiêu đề "Tháng X/YYYY" + mũi tên trước/sau bị ép xuống dòng xấu ở
          màn rất hẹp — thu nhỏ chữ + giảm khoảng cách cho vừa 1 hàng. */
-      .ts-report-month-nav { gap: 8px; font-size: 0.9375rem; padding: 10px 12px; }
+      .ts-report-month-nav { gap: 4px; font-size: 0.9375rem; padding: 10px 8px; }
+      .ts-report-month-center { gap: 8px; }
       .ts-report-month-nav button#tsReportTodayMonth { padding: 0 8px; font-size: 0.6875rem; }
+      .ts-report-edge-arrow { width: 32px; height: 32px; }
+      .ts-report-edge-arrow svg { width: 18px; height: 18px; }
     }
   </style>
 </head>
@@ -918,23 +930,32 @@
           </button>
         </div>
         <div class="ts-report-month-nav">
-          <button type="button" id="tsReportPrevMonth" aria-label="Tháng trước">&larr;</button>
-          <div class="timeline-month-picker" id="tsReportMonthPicker">
-            <button type="button" class="timeline-title-btn" id="tsReportMonthLabelBtn">
-              <span id="tsReportMonthLabel">Tháng 9/2026</span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-            <div class="timeline-month-panel" id="tsReportMonthPanel" hidden>
-              <div class="timeline-year-nav">
-                <button type="button" id="tsReportYearPrev" aria-label="Năm trước">&larr;</button>
-                <span id="tsReportYearLabel">2026</span>
-                <button type="button" id="tsReportYearNext" aria-label="Năm sau">&rarr;</button>
+          <!-- 2026-09-21: chỉ còn 2 mũi tên to (đen) ở 2 mép ngoài để điều
+               hướng tháng — đã bỏ hẳn cặp mũi tên nhỏ ở giữa (trùng chức
+               năng, người dùng phản hồi thấy rối mắt). -->
+          <button type="button" class="ts-report-edge-arrow" id="tsReportPrevMonthEdge" aria-label="Tháng trước">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M11 18l-6-6 6-6"/></svg>
+          </button>
+          <div class="ts-report-month-center">
+            <div class="timeline-month-picker" id="tsReportMonthPicker">
+              <button type="button" class="timeline-title-btn" id="tsReportMonthLabelBtn">
+                <span id="tsReportMonthLabel">Tháng 9/2026</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="timeline-month-panel" id="tsReportMonthPanel" hidden>
+                <div class="timeline-year-nav">
+                  <button type="button" id="tsReportYearPrev" aria-label="Năm trước">&larr;</button>
+                  <span id="tsReportYearLabel">2026</span>
+                  <button type="button" id="tsReportYearNext" aria-label="Năm sau">&rarr;</button>
+                </div>
+                <div class="timeline-month-grid" id="tsReportMonthGrid"></div>
               </div>
-              <div class="timeline-month-grid" id="tsReportMonthGrid"></div>
             </div>
+            <button type="button" class="hq-month-nav-today" id="tsReportTodayMonth">Hôm nay</button>
           </div>
-          <button type="button" id="tsReportNextMonth" aria-label="Tháng sau">&rarr;</button>
-          <button type="button" class="hq-month-nav-today" id="tsReportTodayMonth">Hôm nay</button>
+          <button type="button" class="ts-report-edge-arrow" id="tsReportNextMonthEdge" aria-label="Tháng sau">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 18l6-6-6-6"/></svg>
+          </button>
         </div>
         <div class="modal-body">
           <div class="report-stat-grid" id="tsReportStatGrid"></div>
@@ -951,6 +972,62 @@
           <div class="report-chart-box report-chart-box-full">
             <h4>Chi tiết theo người</h4>
             <div id="tsReportByMember"></div>
+
+            <!-- Bấm vào 1 người ở trên -> hiện lịch cả tháng của đúng người đó
+                 (renderReportMemberCalendar()), bấm tiếp 1 ngày -> hiện chi tiết
+                 giờ vào/ra từng ca, đi muộn/về sớm, OT, ghi chú đúng ngày đó
+                 (showReportMemberDayDetail()) — tái dùng đúng class .ts-cal-day/
+                 .ts-detail-* của lịch chấm công cá nhân cho đồng nhất giao diện. -->
+            <div id="tsReportMemberDetail" hidden>
+              <div style="display:flex; align-items:center; gap:12px; margin:16px 0 12px;">
+                <button type="button" class="btn btn-secondary" id="tsReportMemberBackBtn" style="padding:6px 12px; font-size:0.8125rem;">&larr; Quay lại danh sách</button>
+                <span id="tsReportMemberDetailName" style="font-weight:600; font-size:0.9375rem;"></span>
+              </div>
+              <div class="ts-cal-grid" id="tsReportMemberCalGrid"></div>
+              <div class="ts-day-detail" id="tsReportMemberDayDetail" style="display:none; margin-top:16px;">
+                <div class="ts-detail-header">
+                  <span class="ts-detail-date" id="tsRmDetailDate">--</span>
+                  <span class="ts-detail-badge none" id="tsRmDetailBadge">Chưa chấm</span>
+                </div>
+                <div class="ts-checkin-status late" id="tsRmDetailLateEarly" style="margin:-4px 0 12px; display:inline-block;" hidden></div>
+                <div class="ts-detail-row">
+                  <div class="ts-detail-field">
+                    <div class="ts-detail-field-label">Check-in ca sáng</div>
+                    <div class="ts-detail-field-value" id="tsRmDetailIn">--:--</div>
+                  </div>
+                  <div class="ts-detail-field">
+                    <div class="ts-detail-field-label">Check-out ca sáng</div>
+                    <div class="ts-detail-field-value" id="tsRmDetailOut">--:--</div>
+                  </div>
+                </div>
+                <div class="ts-detail-row">
+                  <div class="ts-detail-field">
+                    <div class="ts-detail-field-label">Check-in ca chiều</div>
+                    <div class="ts-detail-field-value" id="tsRmDetailAfternoonIn">--:--</div>
+                  </div>
+                  <div class="ts-detail-field">
+                    <div class="ts-detail-field-label">Check-out ca chiều</div>
+                    <div class="ts-detail-field-value" id="tsRmDetailAfternoonOut">--:--</div>
+                  </div>
+                </div>
+                <div class="ts-detail-row">
+                  <div class="ts-detail-field">
+                    <div class="ts-detail-field-label">Tổng giờ</div>
+                    <div class="ts-detail-field-value" id="tsRmDetailTotal">--</div>
+                  </div>
+                  <div class="ts-detail-field">
+                    <div class="ts-detail-field-label">Tăng ca</div>
+                    <div class="ts-detail-field-value" id="tsRmDetailOT">--</div>
+                  </div>
+                </div>
+                <div class="ts-detail-note" id="tsRmDetailNoteBox">
+                  <div class="ts-detail-note-head">
+                    <div class="ts-detail-note-label">Ghi chú</div>
+                  </div>
+                  <div class="ts-detail-note-value" id="tsRmDetailNote">--</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -2555,6 +2632,11 @@
 
     var reportMonth = calMonth;
     var reportYear = calYear;
+    // Gán lại mỗi lần renderAttendanceReportModal() chạy — dùng chung cho
+    // renderReportMemberCalendar()/showReportMemberDayDetail() (xem 2 hàm ở
+    // dưới) để khỏi phải gọi lại TaskManager.getTimesheetEntries() lần nữa.
+    var reportEntriesByMember = {};
+    var reportMembersById = {};
 
     function renderAttendanceReportModal() {
       var monthLabel = document.getElementById('tsReportMonthLabel');
@@ -2570,6 +2652,15 @@
         if (!entriesByMember[e.memberId]) entriesByMember[e.memberId] = {};
         entriesByMember[e.memberId][e.date] = e;
       });
+      reportEntriesByMember = entriesByMember;
+      reportMembersById = {};
+      members.forEach(function (m) { reportMembersById[m.id] = m; });
+      // Đổi tháng/đóng-mở lại modal thì quay về danh sách (không giữ trạng
+      // thái đang xem chi tiết 1 người của tháng cũ, dễ gây hiểu nhầm).
+      var memberDetailBox = document.getElementById('tsReportMemberDetail');
+      var memberListBox = document.getElementById('tsReportByMember');
+      if (memberDetailBox) memberDetailBox.hidden = true;
+      if (memberListBox) memberListBox.hidden = false;
 
       var nDays = tsDaysInMonth(reportYear, reportMonth);
       var todayKey = getToday();
@@ -2675,12 +2766,134 @@
       if (byMemberEl) {
         byMemberEl.innerHTML = perMember.length === 0 ? '<div class="report-empty">Chưa có nhân viên nào.</div>' : perMember.map(function (r) {
           var m = r.member;
-          return '<div class="report-row">'
+          // 2026-09-21: bấm vào 1 dòng -> xem lịch cả tháng + chi tiết từng
+          // ngày của đúng người đó (renderReportMemberCalendar()).
+          return '<div class="report-row report-row-clickable" data-member="' + m.id + '" title="Bấm để xem lịch chấm công cả tháng của ' + (m.name || m.id) + '">'
             + '<div class="report-row-name"><span class="report-avatar" style="background:' + (m.color || '#6B7280') + '">' + (m.avatar || (m.name || '?').substring(0, 2).toUpperCase()) + '</span><span>' + (m.name || m.id) + '</span></div>'
             + '<div class="report-row-meta">' + r.workDays + ' ngày · ' + (Math.round(r.totalHours * 10) / 10) + 'h' + (r.overtimeHours ? ' · OT ' + (Math.round(r.overtimeHours * 10) / 10) + 'h' : '') + (r.forgotCount ? ' · ' + r.forgotCount + ' lần quên checkout' : '') + '</div>'
             + '</div>';
         }).join('');
+        byMemberEl.querySelectorAll('.report-row-clickable').forEach(function (row) {
+          row.addEventListener('click', function () { openReportMemberDetail(row.getAttribute('data-member')); });
+        });
       }
+    }
+
+    // ====== Xem lịch chấm công cả tháng của 1 người (bấm từ "Chi tiết theo
+    // người" trong Báo cáo chấm công) — tái dùng đúng kiểu ô lịch/khung chi
+    // tiết ngày của lịch chấm công cá nhân (renderCalendar()/showDayDetail())
+    // để giao diện đồng nhất, chỉ đổi nguồn dữ liệu sang reportEntriesByMember. ======
+    function openReportMemberDetail(memberId) {
+      var listBox = document.getElementById('tsReportByMember');
+      var detailBox = document.getElementById('tsReportMemberDetail');
+      if (!listBox || !detailBox) return;
+      listBox.hidden = true;
+      detailBox.hidden = false;
+      var member = reportMembersById[memberId];
+      document.getElementById('tsReportMemberDetailName').textContent = member ? (member.name || member.id) : memberId;
+      document.getElementById('tsReportMemberDayDetail').style.display = 'none';
+      renderReportMemberCalendar(memberId);
+    }
+
+    function renderReportMemberCalendar(memberId) {
+      var grid = document.getElementById('tsReportMemberCalGrid');
+      if (!grid) return;
+      var dayNames = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+      var html = '';
+      for (var d = 0; d < 7; d++) html += '<div class="ts-cal-day-header">' + dayNames[d] + '</div>';
+
+      var firstDay = new Date(reportYear, reportMonth - 1, 1);
+      var startDay = (firstDay.getDay() + 6) % 7; // Mon=0
+      var lastDay = new Date(reportYear, reportMonth, 0).getDate();
+      var today = getToday();
+      var byDate = reportEntriesByMember[memberId] || {};
+
+      var prevMonth = new Date(reportYear, reportMonth - 1, 0).getDate();
+      for (var p = startDay - 1; p >= 0; p--) {
+        html += '<div class="ts-cal-day other-month"><span class="ts-day-num">' + (prevMonth - p) + '</span></div>';
+      }
+
+      for (var day = 1; day <= lastDay; day++) {
+        var dateStr = reportYear + '-' + String(reportMonth).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+        var isToday = dateStr === today;
+        var record = byDate[dateStr] || null;
+        var isWeekend = (typeof TaskManager !== 'undefined' && TaskManager.isOtDay)
+          ? TaskManager.isOtDay(dateStr)
+          : (new Date(dateStr).getDay() === 0 || new Date(dateStr).getDay() === 6);
+
+        var cls = 'ts-cal-day';
+        if (isToday) cls += ' today';
+        if (record) cls += record.checkoutTime ? ' checked' : ' partial-check';
+        if (isWeekend) cls += ' weekend';
+
+        var dot = '';
+        if (record) dot = '<span class="ts-day-dot">' + (record.checkoutTime ? '●' : '○') + '</span>';
+
+        html += '<div class="' + cls + '" data-date="' + dateStr + '">' +
+          '<span class="ts-day-num">' + day + '</span>' + dot + '</div>';
+      }
+
+      var totalCells = startDay + lastDay;
+      var remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+      for (var n = 1; n <= remaining; n++) {
+        html += '<div class="ts-cal-day other-month"><span class="ts-day-num">' + n + '</span></div>';
+      }
+
+      grid.innerHTML = html;
+      grid.querySelectorAll('.ts-cal-day[data-date]').forEach(function (cell) {
+        cell.addEventListener('click', function () { showReportMemberDayDetail(memberId, cell.dataset.date); });
+      });
+    }
+
+    function showReportMemberDayDetail(memberId, dateStr) {
+      var detail = document.getElementById('tsReportMemberDayDetail');
+      var d = new Date(dateStr + 'T00:00:00');
+      var dow = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][d.getDay()];
+      document.getElementById('tsRmDetailDate').textContent =
+        dow + ', ' + d.toLocaleDateString('vi-VN', { day: 'numeric', month: 'long', year: 'numeric' });
+
+      var record = (reportEntriesByMember[memberId] || {})[dateStr] || null;
+      var badge = document.getElementById('tsRmDetailBadge');
+      var lateEarlyEl = document.getElementById('tsRmDetailLateEarly');
+
+      if (record && (record.isLate || record.isEarly)) {
+        var parts = [];
+        if (record.isLate) parts.push('Đi muộn');
+        if (record.isEarly) parts.push('Về sớm');
+        lateEarlyEl.className = 'ts-checkin-status ' + (record.isLate ? 'late' : 'early');
+        lateEarlyEl.textContent = parts.join(' · ') + (record.lateEarlyNote ? ' — ' + record.lateEarlyNote : '');
+        lateEarlyEl.hidden = false;
+      } else {
+        lateEarlyEl.hidden = true;
+      }
+
+      document.getElementById('tsRmDetailIn').textContent = (record && record.morningCheckin) || '—';
+      document.getElementById('tsRmDetailOut').textContent = (record && record.morningCheckout) || '—';
+      document.getElementById('tsRmDetailAfternoonIn').textContent = (record && record.afternoonCheckin) || '—';
+      document.getElementById('tsRmDetailAfternoonOut').textContent = (record && record.afternoonCheckout) || '—';
+
+      if (record && record.checkoutTime) {
+        badge.className = 'ts-detail-badge full';
+        badge.textContent = 'Đã chấm đủ';
+        document.getElementById('tsRmDetailTotal').textContent = record.totalHours + 'h';
+        document.getElementById('tsRmDetailOT').textContent = record.overtimeHours > 0 ? record.overtimeHours + 'h' : '—';
+        document.getElementById('tsRmDetailNote').textContent = record.note || '—';
+      } else if (record) {
+        badge.className = 'ts-detail-badge partial';
+        badge.textContent = 'Chỉ check-in';
+        document.getElementById('tsRmDetailTotal').textContent = 'Đang làm';
+        document.getElementById('tsRmDetailOT').textContent = '—';
+        document.getElementById('tsRmDetailNote').textContent = record.note || '—';
+      } else {
+        badge.className = 'ts-detail-badge none';
+        badge.textContent = 'Chưa chấm';
+        document.getElementById('tsRmDetailTotal').textContent = '—';
+        document.getElementById('tsRmDetailOT').textContent = '—';
+        document.getElementById('tsRmDetailNote').textContent = '—';
+      }
+
+      detail.style.display = 'block';
+      detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
     function bindAttendanceReportBtn() {
@@ -2698,16 +2911,19 @@
       document.getElementById('tsReportModalClose').addEventListener('click', closeModal);
       modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
 
-      document.getElementById('tsReportPrevMonth').addEventListener('click', function () {
+      function goToPrevReportMonth() {
         reportMonth--;
         if (reportMonth < 1) { reportMonth = 12; reportYear--; }
         renderAttendanceReportModal();
-      });
-      document.getElementById('tsReportNextMonth').addEventListener('click', function () {
+      }
+      function goToNextReportMonth() {
         reportMonth++;
         if (reportMonth > 12) { reportMonth = 1; reportYear++; }
         renderAttendanceReportModal();
-      });
+      }
+      // Chỉ còn 2 mũi tên to ở mép ngoài — đã bỏ cặp mũi tên nhỏ trùng chức năng.
+      document.getElementById('tsReportPrevMonthEdge').addEventListener('click', goToPrevReportMonth);
+      document.getElementById('tsReportNextMonthEdge').addEventListener('click', goToNextReportMonth);
       document.getElementById('tsReportTodayMonth').addEventListener('click', function () {
         var t = new Date();
         reportMonth = t.getMonth() + 1;
@@ -2716,7 +2932,12 @@
       });
 
       bindReportMonthPicker();
-      bindWheelMonthNav(document.querySelector('.ts-report-month-nav'), document.getElementById('tsReportPrevMonth'), document.getElementById('tsReportNextMonth'));
+      bindWheelMonthNav(document.querySelector('.ts-report-month-nav'), document.getElementById('tsReportPrevMonthEdge'), document.getElementById('tsReportNextMonthEdge'));
+
+      document.getElementById('tsReportMemberBackBtn').addEventListener('click', function () {
+        document.getElementById('tsReportMemberDetail').hidden = true;
+        document.getElementById('tsReportByMember').hidden = false;
+      });
     }
 
     // Lăn chuột khi trỏ vào cụm điều hướng tháng (mũi tên trái/phải + nhãn)
