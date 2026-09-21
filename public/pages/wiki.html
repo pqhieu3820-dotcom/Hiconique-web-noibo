@@ -219,9 +219,12 @@
       display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; line-height: 1;
     }
     .doc-code-info-btn:hover { color: var(--color-bronze); border-color: var(--color-bronze); }
-    .doc-code-selects { display: flex; gap: 8px; align-items: center; }
-    .doc-code-selects select { flex: 1; }
-    .doc-code-preview { font-family: 'JetBrains Mono', monospace; font-size: 0.8125rem; color: var(--color-bronze); white-space: nowrap; min-width: 90px; }
+    /* min-width:0 bắt buộc — mặc định flex item không co xuống dưới bề rộng
+       nội dung của nó (VD chữ dài nhất trong <select>), khiến cả hàng tràn ra
+       ngoài card cha dù card có max-width. Không co được thì phải tràn. */
+    .doc-code-selects { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .doc-code-selects select { flex: 1; min-width: 0; }
+    .doc-code-preview { font-family: 'JetBrains Mono', monospace; font-size: 0.8125rem; color: var(--color-bronze); white-space: nowrap; }
     .doc-code-info-panel {
       position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; right: 0;
       max-height: 320px; overflow-y: auto;
