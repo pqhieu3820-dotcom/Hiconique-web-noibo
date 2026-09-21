@@ -30,7 +30,9 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
 ## ⏳ VIỆC CÒN TỒN ĐỌNG (đọc mục này đầu tiên — cập nhật 2026-09-21 cuối phiên)
 
-Không có việc gì đang dở dang trong code. Đã commit local 6 lần trong phiên này (CHƯA push — theo quy tắc luôn hỏi trước khi push). KHÔNG đổi gì ở Apps Script (`gsheets-api-v2.js`) phiên này — vẫn phiên bản 71, không cần redeploy.
+Không có việc gì đang dở dang trong code. Đã push hết. Apps Script đã redeploy lên **phiên bản 72** (thêm cột `Loại địa điểm`/`locationType` cho sheet "Địa điểm chấm công" — xem mục ngay dưới).
+
+- **Phân loại Văn phòng/Công trình cho địa điểm chấm công** (`timesheet.html` — modal "Quản lý địa điểm GPS/IP") — Văn phòng vẫn yêu cầu đủ 3 điều kiện (GPS + Wifi + Thiết bị), Công trình chỉ cần 2 (GPS + Thiết bị, bỏ Wifi vì công trình thường không có mạng nội bộ). "Đang ở đâu" vẫn xác định bằng GPS gần nhất (logic có sẵn trong `checkGeoStatus()` — chọn địa điểm gần nhất trong TẤT CẢ địa điểm đang bật); chỉ thêm `applySiteRelaxation()` để ép `ipResult` thành skip khi địa điểm khớp là loại `site` — dùng CHUNG cho cả lúc bấm "Chấm công" (`verifyThenProceed()`) lẫn panel 3 điều kiện hiển thị liên tục (`runLiveStatusCheck()`) để 2 nơi không lệch nhau. Thêm cột `['Loại địa điểm', 'locationType']` vào `FIELD_MAP.attendanceLocations` + `VALUE_MAP['attendanceLocations.locationType']` (Văn phòng/Công trình) trong `gsheets-api-v2.js` — **ĐÃ REDEPLOY lên phiên bản 72** và xác nhận round-trip đúng qua API thật (thêm/đọc lại/xoá dữ liệu test, không để sót trên Sheet).
 
 ### Phiên 2026-09-21 — Dinh dạng tiền VNĐ toàn app + quản lý thiết bị chấm công + popup lý do đi muộn giữa màn hình
 
