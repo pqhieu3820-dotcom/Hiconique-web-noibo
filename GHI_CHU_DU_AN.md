@@ -31,7 +31,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
 ## ⏳ VIỆC CÒN TỒN ĐỌNG (đọc mục này đầu tiên — cập nhật 2026-09-22 cuối phiên)
 
-Đã đẩy hết lên GitHub tính tới các phần trước trong phiên 2026-09-22. Phần "5 chế độ xem Ngày/Tuần/Tháng/Quý/Năm cho mục Lịch" + phần "Tự động đóng ca sáng 12h30 + mặc định hiện chi tiết hôm nay" (2 mục ngay dưới) đã COMMIT LOCAL, **CHƯA PUSH** — chờ người dùng gõ "push". Apps Script đã redeploy lên **phiên bản 75** (thêm `autoCheckoutForgottenMorningShifts()` + trigger 12h30 — xem mục "Tự động đóng ca sáng" bên dưới; mục 5 chế độ xem Lịch không đụng gì tới Apps Script, chỉ CSS/JS thuần client).
+**Đã đẩy hết lên GitHub tính tới hết phiên 2026-09-22** (kể cả 2 mục (d)/(e) về Lịch + mục (e) tiến độ/nút nộp duyệt bên dưới — không còn gì COMMIT LOCAL mà chưa push). Apps Script đang chạy **phiên bản 77** (v76: giờ auto-checkout ca sáng cấu hình được; v77: bản ghi mới chèn đầu Sheet thay vì nối cuối — xem 2 mục tương ứng bên dưới). Các thay đổi Lịch/tiến độ/nút nộp duyệt ở các mục ngay dưới đây là JS/CSS thuần client, không đụng gì tới Apps Script nên không cần redeploy thêm.
 
 ### Phiên 2026-09-22 (e) — Tiến độ hàng ngày chỉ tăng không giảm + nút "Nộp duyệt" sáng ở 95%
 
