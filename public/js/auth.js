@@ -352,8 +352,11 @@ const Auth = (function() {
             </button>
           </div>
 
-          <p style="margin: 20px 0 0; padding-top: 20px; border-top: 1px solid var(--color-border); text-align: center; font-size: 0.75rem; color: var(--color-text-muted);">
-            🔒 Chỉ nhân viên HICONIQUE được cấp quyền truy cập
+          <p style="margin: 20px 0 0; padding-top: 20px; border-top: 1px solid var(--color-border); text-align: center; font-size: 0.75rem; color: var(--color-text-muted); display: flex; align-items: center; justify-content: center; gap: 6px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; flex-shrink: 0;">
+              <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            Chỉ nhân viên HICONIQUE được cấp quyền truy cập
           </p>
         </div>
       </div>
