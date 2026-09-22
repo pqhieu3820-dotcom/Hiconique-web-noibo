@@ -215,14 +215,11 @@
     // Update badges with real data
     updateNavBadges();
 
-    // Start auto-polling from Google Sheets every 15s
-    startAutoPolling();
-
-    // 2026-09-19: TaskManager.refreshFromGSheets() (chạy ngầm mỗi 20s qua
-    // offline.js, và cả bản 60s riêng của startAutoPolling() ở trên) tự
-    // phát sự kiện 'hiconique:data-refreshed' khi xong — vẽ lại đúng view
-    // đang mở (không chỉ badge/số liệu như startAutoPolling() cố tình bỏ
-    // qua để tránh giật màn hình lúc đang thao tác Kanban).
+    // 2026-09-22: TaskManager.refreshFromGSheets() chạy ngầm mỗi 5s qua
+    // silentRefresh() (offline.js) tự phát sự kiện 'hiconique:data-refreshed'
+    // khi xong — rerenderActiveView() vẽ lại đúng view đang mở + badge/stats/
+    // panel "Tiến độ hôm nay" (gộp về 1 nguồn duy nhất, bỏ vòng poll riêng
+    // 60s cũ của file này — xem startAutoPolling()).
     window.addEventListener('hiconique:data-refreshed', rerenderActiveView);
   }
 
@@ -244,26 +241,6 @@
   function applyPermissions(roleLevel) {
     // 2026-09-22: mọi cấp bậc (kể cả Nhân viên) đều tạo được dự án theo yêu
     // cầu người dùng — không còn ẩn ".add-project-btn" theo roleLevel nữa.
-  }
-
-  // Auto-poll from Google Sheets every 60s — gentle update to avoid UI flicker
-  function startAutoPolling() {
-    if (typeof GSHEETS_CONFIG === 'undefined' || !GSHEETS_CONFIG.USE_GSHEETS) return;
-    setInterval(function() {
-      if (!TaskManager.refreshFromGSheets) return;
-      // Skip polling if modal is open or user is interacting
-      var modalOpen = document.getElementById('modalOverlay') &&
-                      document.getElementById('modalOverlay').classList.contains('active');
-      if (modalOpen) return;
-
-      TaskManager.refreshFromGSheets(function() {
-        // Only update badges and stats numbers — don't rebuild the whole DOM
-        updateNavBadges();
-        var stats = TaskManager.getStats();
-        if (stats) updateStats(stats);
-        renderDailyProgressPanel();
-      });
-    }, 60000);
   }
 
   // Update nav badge counts with real data
@@ -304,9 +281,15 @@
   // duyệt" đã fix ở timesheet.html. Bỏ qua nếu đang mở modal (tránh mất
   // trạng thái form đang nhập dở).
   function rerenderActiveView() {
+    updateNavBadges();
+    // 2026-09-22: gộp luôn phần startAutoPolling() cũ đã bỏ (stats/panel
+    // "Tiến độ hôm nay") vào đây — 1 nguồn cập nhật duy nhất mỗi chu kỳ
+    // silentRefresh() (5s, xem offline.js) thay vì 2 vòng poll trùng nhau.
+    var stats = TaskManager.getStats ? TaskManager.getStats() : null;
+    if (stats) updateStats(stats);
     var modalOpen = document.getElementById('modalOverlay') &&
                     document.getElementById('modalOverlay').classList.contains('active');
-    if (modalOpen) { updateNavBadges(); return; }
+    if (modalOpen) { renderDailyProgressPanel(); return; }
     var activeNav = document.querySelector('.tm-nav-item.active');
     var view = activeNav ? activeNav.dataset.view : 'dashboard';
     if (view === 'dashboard') renderDashboard();

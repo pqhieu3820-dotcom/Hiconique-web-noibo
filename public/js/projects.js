@@ -2028,14 +2028,12 @@
       renderAll();
     }
 
-    // Listen for data refresh
-    if (typeof TaskManager !== 'undefined') {
-      setInterval(function () {
-        if (typeof TaskManager.refreshFromGSheets === 'function') {
-          TaskManager.refreshFromGSheets(function () { renderAll(); });
-        }
-      }, 30000);
-    }
+    // 2026-09-22: trước đây tự chạy setInterval() riêng gọi
+    // refreshFromGSheets() mỗi 30s — trùng việc với silentRefresh()
+    // (offline.js, đã rút xuống 5s) vốn CŨNG gọi đúng hàm đó rồi phát sự kiện
+    // 'hiconique:data-refreshed'. Giữ cả 2 = gấp đôi request lên Apps Script
+    // mỗi chu kỳ. Nghe chung 1 sự kiện đó thay vì tự poll riêng.
+    window.addEventListener('hiconique:data-refreshed', renderAll);
   }
 
   if (document.readyState === 'loading') {

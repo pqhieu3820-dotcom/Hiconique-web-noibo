@@ -334,7 +334,14 @@ var Offline = (function () {
   // Mọi lúc còn lại (đang mở app liên tục, chuyển tab ngắn rồi quay lại...)
   // chỉ làm mới dữ liệu NGẦM qua TaskManager.silentRefresh() — không reload,
   // không giật màn hình, không mất trạng thái form/modal đang mở.
-  var SILENT_REFRESH_MS = 20000;
+  // 2026-09-22: rút từ 20s xuống 5s theo yêu cầu người dùng ("thao tác xong
+  // đợi mãi vẫn không thấy") — không hạ xuống đúng 1s như yêu cầu ban đầu vì
+  // mỗi chu kỳ silentRefresh() bắn tới 16 request GET song song lên Apps
+  // Script (refreshFromGSheets() đọc đủ loại dữ liệu) — 1 giây/lần nhân với
+  // vài người cùng mở app dễ vượt quota thực thi của Apps Script (tài khoản
+  // Google cá nhân), sập hẳn cho TẤT CẢ mọi người chứ không riêng máy đó.
+  // 5s vẫn nhanh hơn hẳn (gấp 4 lần) mà vẫn an toàn quota.
+  var SILENT_REFRESH_MS = 5000;
   function silentRefresh() {
     if (!online) return;
     if (typeof TaskManager === 'undefined' || !TaskManager.silentRefresh) return;
