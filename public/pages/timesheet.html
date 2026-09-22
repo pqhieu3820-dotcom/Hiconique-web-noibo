@@ -2319,15 +2319,31 @@
       // trước/sau (không có data-date, đúng là không click được) VÀ ô T7/CN
       // trong tháng hiện tại (có data-date, chỉ mờ màu — vẫn phải click được
       // để xem chi tiết công/OT đã chấm ngày đó).
+      // 2026-09-22: bấm LẦN 2 vào đúng ngày đang mở chi tiết thì ĐÓNG bảng lại
+      // (toggle) — xem currentDetailDate + hideDayDetail() bên dưới. Vẫn
+      // luôn mặc định mở sẵn ngày hôm nay mỗi lần tải trang (không đổi gì).
       grid.querySelectorAll('.ts-cal-day[data-date]').forEach(function(cell) {
         cell.addEventListener('click', function() {
           var dateStr = cell.dataset.date;
-          showDayDetail(dateStr);
+          if (dateStr === currentDetailDate) {
+            hideDayDetail();
+          } else {
+            showDayDetail(dateStr);
+          }
         });
       });
     }
 
+    // Ngày đang mở chi tiết trên lịch (null = đang đóng) — dùng để bấm lần 2
+    // vào cùng 1 ngày thì tự đóng lại thay vì mở lại y hệt.
+    var currentDetailDate = null;
+    function hideDayDetail() {
+      currentDetailDate = null;
+      document.getElementById('tsDayDetail').style.display = 'none';
+    }
+
     function showDayDetail(dateStr) {
+      currentDetailDate = dateStr;
       var detail = document.getElementById('tsDayDetail');
       var d = new Date(dateStr + 'T00:00:00');
       var dow = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][d.getDay()];
@@ -3571,14 +3587,14 @@
     document.getElementById('tsPrevMonth').addEventListener('click', function() {
       calMonth--;
       if (calMonth < 1) { calMonth = 12; calYear--; }
-      document.getElementById('tsDayDetail').style.display = 'none';
+      hideDayDetail();
       renderCalendar();
     });
 
     document.getElementById('tsNextMonth').addEventListener('click', function() {
       calMonth++;
       if (calMonth > 12) { calMonth = 1; calYear++; }
-      document.getElementById('tsDayDetail').style.display = 'none';
+      hideDayDetail();
       renderCalendar();
     });
     document.getElementById('tsTodayMonth').addEventListener('click', function() {
