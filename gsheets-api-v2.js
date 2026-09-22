@@ -1871,6 +1871,84 @@ function setupAutoCheckoutTrigger() {
   Logger.log('Đã cài trigger tự động đóng ca — chạy hàng ngày lúc ~0h05.');
 }
 
+// ===== Tự động đóng CA SÁNG "quên check-out" lúc 12h30 trưa (2026-09-22) =====
+// autoCheckoutForgottenEntries() ở trên CHỈ dọn NGÀY ĐÃ QUA (chạy lúc 0h05
+// hôm sau) — theo yêu cầu người dùng, thêm 1 ngưỡng riêng cho CA SÁNG ngay
+// TRONG NGÀY: 12h30 trưa mà đã check-in ca sáng (`morningCheckin`) nhưng
+// chưa check-out ca sáng (`morningCheckout`) thì tự đóng NGAY (0 giờ công ca
+// đó), không đợi tới nửa đêm — để bảng chấm công/thông báo phản ánh đúng
+// ngay buổi trưa thay vì phải chờ qua ngày hôm sau mới biết. Dùng CHUNG
+// AUTO_CHECKOUT_NOTE_TAG với hàm trên (client task-manager-app.js/
+// timesheet.html chỉ cần dò đúng 1 tag này để đếm "số lần quên checkout",
+// không cần sửa gì thêm ở client cho tag riêng).
+function autoCheckoutForgottenMorningShifts() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const todayKey = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd');
+  const entries = getAllData(ss, SHEETS.timesheet);
+  const members = getAllData(ss, SHEETS.members);
+  const memberById = {};
+  members.forEach(function (m) { memberById[m.id] = m; });
+  const managers = members.filter(function (m) { return m.roleLevel === 'admin' || m.roleLevel === 'manager'; });
+
+  const fixed = [];
+  entries.forEach(function (e) {
+    if (e.date !== todayKey) return; // chỉ xét ĐÚNG hôm nay — ngày đã qua đã có autoCheckoutForgottenEntries() lo
+    if (!e.morningCheckin || e.morningCheckout) return; // chưa check-in ca sáng, hoặc đã check-out rồi — bỏ qua
+    const note = (e.note ? e.note + ' | ' : '') + AUTO_CHECKOUT_NOTE_TAG + ' ca sáng lúc ' + e.morningCheckin + ' — vui lòng xác nhận lại giờ làm thực tế.';
+    updateData(ss, SHEETS.timesheet, e.id, {
+      morningCheckout: e.morningCheckin,
+      note: note
+    });
+    fixed.push(e);
+  });
+
+  fixed.forEach(function (e) {
+    const member = memberById[e.memberId];
+    const name = member ? member.name : e.memberId;
+    const msg = name + ' quên check-out ca sáng hôm nay (check-in lúc ' + e.morningCheckin + ') — hệ thống đã tự động đóng ca sáng (0 giờ công ca này) lúc 12h30 trưa, vui lòng kiểm tra và điều chỉnh lại nếu cần.';
+    addData(ss, SHEETS.notifications, {
+      title: 'Quên check-out ca sáng',
+      message: msg,
+      type: 'attendance',
+      scope: e.memberId,
+      recurring: false,
+      active: true,
+      createdBy: 'SYSTEM'
+    });
+    managers.forEach(function (mgr) {
+      if (mgr.id === e.memberId) return;
+      addData(ss, SHEETS.notifications, {
+        title: 'NV quên check-out ca sáng: ' + name,
+        message: msg,
+        type: 'attendance',
+        scope: mgr.id,
+        recurring: false,
+        active: true,
+        createdBy: 'SYSTEM'
+      });
+    });
+  });
+
+  Logger.log('autoCheckoutForgottenMorningShifts: đã tự đóng ' + fixed.length + ' ca sáng quên check-out.');
+  return fixed.length;
+}
+
+// Cài time-driven trigger chạy autoCheckoutForgottenMorningShifts() mỗi ngày
+// lúc ~12h30 trưa — chạy TAY hàm này ĐÚNG 1 LẦN từ trình chỉnh sửa Apps
+// Script để cài đặt (Chạy > chọn setupAutoCheckoutMorningTrigger).
+function setupAutoCheckoutMorningTrigger() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'autoCheckoutForgottenMorningShifts') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('autoCheckoutForgottenMorningShifts')
+    .timeBased()
+    .everyDays(1)
+    .atHour(12)
+    .nearMinute(30)
+    .create();
+  Logger.log('Đã cài trigger tự động đóng ca sáng — chạy hàng ngày lúc ~12h30.');
+}
+
 // Tạo sheet "Địa điểm chấm công" ngay CẠNH sheet "Chấm công" (nếu chưa có) và
 // seed sẵn 1 điểm GPS + 2 IP đang hard-code trong timesheet.html (GEO_RESTRICTION/
 // IP_RESTRICTION), để chuyển hẳn qua quản lý bằng Sheet — thêm/sửa/xoá GPS hoặc

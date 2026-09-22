@@ -3585,12 +3585,21 @@
       var t = new Date();
       calMonth = t.getMonth() + 1;
       calYear = t.getFullYear();
-      document.getElementById('tsDayDetail').style.display = 'none';
       renderCalendar();
+      // 2026-09-22: quay về tháng hiện tại thì hiện luôn chi tiết hôm nay
+      // (giống lúc mới tải trang) thay vì ẩn đi — xem chú thích ở lệnh gọi
+      // showDayDetail() lúc khởi tạo bên dưới.
+      showDayDetail(getToday());
     });
     bindWheelMonthNav(document.querySelector('.ts-cal-header'), document.getElementById('tsPrevMonth'), document.getElementById('tsNextMonth'));
 
     renderCalendar();
+    // 2026-09-22: hiện sẵn chi tiết chấm công NGÀY HÔM NAY ngay khi tải trang
+    // (theo yêu cầu người dùng) — trước đây showDayDetail() CHỈ chạy khi tự
+    // bấm vào 1 ô ngày trên lịch, #tsDayDetail mặc định ẩn (display:none)
+    // nên phải click mới thấy. Bấm ngày khác vẫn đổi lại đúng ngày đó bình
+    // thường (showDayDetail() không đổi gì ở đây, chỉ thêm 1 lệnh gọi sẵn).
+    showDayDetail(getToday());
     updateShiftUI();
     renderDeviceTable();
     bindExportAttendanceBtn();
