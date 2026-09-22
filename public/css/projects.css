@@ -2482,6 +2482,137 @@
 
 .todo-cal-empty { font-size: 0.8125rem; color: var(--color-text-muted); }
 
+/* 2026-09-22: 5 chế độ xem Ngày/Tuần/Tháng/Quý/Năm — xem renderCalendarView()
+   trong projects.js. Copy nguyên khối CSS này từ task-manager.css (cùng tên
+   class, chủ đích trùng lặp — xem ghi chú convention đầu khối "Lịch" ở trên). */
+.todo-cal-modeswitch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: var(--space-lg);
+}
+
+.todo-cal-mode-btn {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  border-radius: var(--radius-md);
+  padding: 6px 14px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+.todo-cal-mode-btn:hover { background: var(--color-surface-3); color: var(--color-text); }
+.todo-cal-mode-btn.active {
+  background: rgba(176, 141, 87, 0.16);
+  border-color: var(--color-bronze);
+  color: var(--color-bronze);
+}
+
+.todo-cal-nav-btn {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  border-radius: var(--radius-md);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.todo-cal-nav-btn:hover { background: var(--color-surface-3); }
+
+.todo-cal-nav-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text);
+  min-width: 160px;
+  text-align: center;
+  text-transform: capitalize;
+}
+.todo-cal-nav-label--day { min-width: 220px; }
+
+/* Tuần: giống lưới tháng nhưng cao hơn (7 cột, chỉ 1 hàng, nhiều chỗ hơn) */
+.todo-cal-week-grid .todo-cal-day { min-height: 220px; }
+
+/* Ngày: dòng thống kê nhỏ phía trên khung chi tiết (luôn hiện, không cần bấm chọn) */
+.todo-cal-day-stat {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  padding: var(--space-md) 2px;
+}
+
+/* Quý/Năm: lưới các mini-lịch tháng thu nhỏ (chỉ chấm bi, không hiện tên task) */
+.todo-cal-quarter-grid,
+.todo-cal-year-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-md);
+}
+.todo-cal-year-grid { grid-template-columns: repeat(4, 1fr); }
+
+.todo-cal-mini-month {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  background: var(--color-surface-2);
+}
+
+.todo-cal-mini-month-title {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--color-text);
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.todo-cal-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.todo-cal-mini-day-header {
+  font-size: 0.5625rem;
+  font-weight: 600;
+  color: var(--color-text-faint);
+  text-align: center;
+  padding-bottom: 2px;
+}
+
+.todo-cal-mini-day {
+  position: relative;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.todo-cal-mini-day:hover { background: var(--color-surface-3); }
+.todo-cal-mini-day.other-month { cursor: default; opacity: 0.35; }
+.todo-cal-mini-day.today { background: rgba(176, 141, 87, 0.18); color: var(--color-bronze); font-weight: 700; }
+.todo-cal-mini-day.selected { outline: 2px solid var(--color-bronze); outline-offset: -1px; }
+
+.todo-cal-mini-daynum { position: relative; z-index: 1; }
+
+.todo-cal-mini-dot {
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--color-bronze);
+}
+
 @media (max-width: 640px) {
   .todo-cal-grid {
     grid-template-columns: repeat(7, minmax(76px, 1fr));
@@ -2492,4 +2623,8 @@
   .todo-cal-day { min-height: 64px; }
   .todo-cal-pill { display: none; }
   .todo-cal-day-header { font-size: 0.5625rem; }
+  .todo-cal-week-grid .todo-cal-day { min-height: 90px; }
+  .todo-cal-quarter-grid,
+  .todo-cal-year-grid { grid-template-columns: 1fr; }
+  .todo-cal-nav-label { min-width: 0; font-size: 0.8125rem; }
 }

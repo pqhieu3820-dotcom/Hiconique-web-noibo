@@ -18,6 +18,11 @@
     calMonth: new Date().getMonth() + 1,
     calYear: new Date().getFullYear(),
     calSelectedDate: null,
+    // 2026-09-22: che do xem cua muc Lich (ngay/tuan/thang/quy/nam) + neo
+    // ngay/tuan rieng cho 2 che do Ngay/Tuan (khong map dep vao calMonth/calYear).
+    calViewMode: 'month',
+    calDayDate: null,
+    calWeekAnchor: null,
     // Sắp xếp bằng cách bấm header cột trong bảng List — khác với sortBy ở
     // trên (dropdown "Sắp xếp", chỉ có deadline/priority/createdAt, áp dụng
     // cho mọi view). listSortKey null = dùng nguyên thứ tự mặc định từ
@@ -660,46 +665,31 @@
     var tasks = getFilteredTasks ? getFilteredTasks() : getTasks();
     var today = new Date();
     var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+    if (!state.calViewMode) state.calViewMode = 'month';
+    if (!state.calDayDate) state.calDayDate = todayStr;
+    if (!state.calWeekAnchor) state.calWeekAnchor = todayStr;
 
     var monthNames = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
     var dayHeaders = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
     var yearsOptions = [];
     for (var y = today.getFullYear() - 2; y <= today.getFullYear() + 2; y++) yearsOptions.push(y);
 
-    var firstDay = new Date(state.calYear, state.calMonth - 1, 1);
-    var startWeekday = (firstDay.getDay() + 6) % 7;
-    var daysInMonth = new Date(state.calYear, state.calMonth, 0).getDate();
+    function pad2(n) { return String(n).padStart(2, '0'); }
+    function fmtDate(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+    function addDays(dateStr, n) { var d = new Date(dateStr + 'T00:00:00'); d.setDate(d.getDate() + n); return fmtDate(d); }
+    function mondayOf(dateStr) { var d = new Date(dateStr + 'T00:00:00'); var wd = (d.getDay() + 6) % 7; d.setDate(d.getDate() - wd); return d; }
 
-    var cellsHtml = '';
-    for (var p = 0; p < startWeekday; p++) cellsHtml += '<div class="todo-cal-day other-month"></div>';
-    for (var d = 1; d <= daysInMonth; d++) {
-      var dateStr = state.calYear + '-' + String(state.calMonth).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-      var dueTasks = tasksDueOn(tasks, dateStr);
-      var isToday = dateStr === todayStr;
-      var isSelected = dateStr === state.calSelectedDate;
-      var pillsHtml = dueTasks.slice(0, 3).map(function (t) {
-        var isDone = t.status === 'completed';
-        var dotColor = isDone ? 'var(--color-success)' : (t.priority === 'high' ? 'var(--color-destructive)' : t.priority === 'medium' ? 'var(--color-terracotta)' : 'var(--color-bronze)');
-        return '<div class="todo-cal-pill" style="border-left-color:' + dotColor + '" title="' + escapeHtml(t.title) + '">' + escapeHtml(t.title) + '</div>';
-      }).join('');
-      var moreHtml = dueTasks.length > 3 ? '<div class="todo-cal-more">+' + (dueTasks.length - 3) + ' việc khác</div>' : '';
-      cellsHtml += '<div class="todo-cal-day' + (isToday ? ' today' : '') + (isSelected ? ' selected' : '') + '" data-date="' + dateStr + '">' +
-        '<span class="todo-cal-daynum">' + String(d).padStart(2, '0') + '</span>' +
-        '<div class="todo-cal-pills">' + pillsHtml + moreHtml + '</div>' +
-        '</div>';
-    }
-    var totalCells = startWeekday + daysInMonth;
-    var trailing = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
-    for (var n = 0; n < trailing; n++) cellsHtml += '<div class="todo-cal-day other-month"></div>';
-
-    var selectedTasks = state.calSelectedDate ? tasksDueOn(tasks, state.calSelectedDate) : [];
-    var detailHtml = '';
-    if (state.calSelectedDate) {
-      var selD = new Date(state.calSelectedDate + 'T00:00:00');
+    // 2026-09-22: mục "Lịch" giờ có 5 chế độ xem (Ngày/Tuần/Tháng/Quý/Năm) —
+    // copy nguyên logic từ renderCalendar() ở tasks-manager (task-manager-app.js)
+    // để 2 nơi nhìn giống hệt nhau (xem ghi chú convention ở đầu file này).
+    function buildDetailHtml(dateStr) {
+      if (!dateStr) return '';
+      var dTasks = tasksDueOn(tasks, dateStr);
+      var selD = new Date(dateStr + 'T00:00:00');
       var selLabel = selD.toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' });
-      detailHtml = '<div class="todo-cal-detail">' +
+      return '<div class="todo-cal-detail">' +
         '<h3>Việc cần làm — ' + selLabel + '</h3>' +
-        (selectedTasks.length ? '<ul class="todo-cal-tasklist">' + selectedTasks.map(function (t) {
+        (dTasks.length ? '<ul class="todo-cal-tasklist">' + dTasks.map(function (t) {
           var isDone = t.status === 'completed';
           var project = t.projectId ? getProjectById(t.projectId) : null;
           return '<li class="todo-cal-task' + (isDone ? ' done' : '') + '" data-task-id="' + t.id + '">' +
@@ -712,39 +702,178 @@
       '</div>';
     }
 
+    function buildMonthCells(y, m, mini) {
+      var firstDay = new Date(y, m - 1, 1);
+      var startWeekday = (firstDay.getDay() + 6) % 7;
+      var daysInMonth = new Date(y, m, 0).getDate();
+      var otherCls = mini ? 'todo-cal-mini-day other-month' : 'todo-cal-day other-month';
+      var html = '';
+      for (var p = 0; p < startWeekday; p++) html += '<div class="' + otherCls + '"></div>';
+      for (var d = 1; d <= daysInMonth; d++) {
+        var dateStr = y + '-' + pad2(m) + '-' + pad2(d);
+        var dueTasks = tasksDueOn(tasks, dateStr);
+        var isToday = dateStr === todayStr;
+        var isSelected = dateStr === state.calSelectedDate;
+        if (mini) {
+          html += '<div class="todo-cal-mini-day' + (isToday ? ' today' : '') + (isSelected ? ' selected' : '') + (dueTasks.length ? ' has-tasks' : '') + '" data-date="' + dateStr + '">' +
+            '<span class="todo-cal-mini-daynum">' + d + '</span>' +
+            (dueTasks.length ? '<span class="todo-cal-mini-dot"></span>' : '') +
+          '</div>';
+        } else {
+          var pillsHtml = dueTasks.slice(0, 3).map(function (t) {
+            var isDone = t.status === 'completed';
+            var dotColor = isDone ? 'var(--color-success)' : (t.priority === 'high' ? 'var(--color-destructive)' : t.priority === 'medium' ? 'var(--color-terracotta)' : 'var(--color-bronze)');
+            return '<div class="todo-cal-pill" style="border-left-color:' + dotColor + '" title="' + escapeHtml(t.title) + '">' + escapeHtml(t.title) + '</div>';
+          }).join('');
+          var moreHtml = dueTasks.length > 3 ? '<div class="todo-cal-more">+' + (dueTasks.length - 3) + ' việc khác</div>' : '';
+          html += '<div class="todo-cal-day' + (isToday ? ' today' : '') + (isSelected ? ' selected' : '') + '" data-date="' + dateStr + '">' +
+            '<span class="todo-cal-daynum">' + pad2(d) + '</span>' +
+            '<div class="todo-cal-pills">' + pillsHtml + moreHtml + '</div>' +
+            '</div>';
+        }
+      }
+      var totalCells = startWeekday + daysInMonth;
+      var trailing = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+      for (var n = 0; n < trailing; n++) html += '<div class="' + otherCls + '"></div>';
+      return html;
+    }
+
+    function buildWeekCells(anchorDateStr) {
+      var monday = mondayOf(anchorDateStr);
+      var html = '';
+      for (var i = 0; i < 7; i++) {
+        var d = new Date(monday); d.setDate(d.getDate() + i);
+        var dateStr = fmtDate(d);
+        var dueTasks = tasksDueOn(tasks, dateStr);
+        var isToday = dateStr === todayStr;
+        var isSelected = dateStr === state.calSelectedDate;
+        var pillsHtml = dueTasks.map(function (t) {
+          var isDone = t.status === 'completed';
+          var dotColor = isDone ? 'var(--color-success)' : (t.priority === 'high' ? 'var(--color-destructive)' : t.priority === 'medium' ? 'var(--color-terracotta)' : 'var(--color-bronze)');
+          return '<div class="todo-cal-pill" style="border-left-color:' + dotColor + '" title="' + escapeHtml(t.title) + '">' + escapeHtml(t.title) + '</div>';
+        }).join('');
+        html += '<div class="todo-cal-day' + (isToday ? ' today' : '') + (isSelected ? ' selected' : '') + '" data-date="' + dateStr + '">' +
+          '<span class="todo-cal-daynum">' + pad2(d.getDate()) + '</span>' +
+          '<div class="todo-cal-pills">' + pillsHtml + '</div>' +
+          '</div>';
+      }
+      return html;
+    }
+
+    var modes = [['day', 'Ngày'], ['week', 'Tuần'], ['month', 'Tháng'], ['quarter', 'Quý'], ['year', 'Năm']];
+    var modeSwitchHtml = '<div class="todo-cal-modeswitch">' + modes.map(function (m) {
+      return '<button type="button" class="todo-cal-mode-btn' + (state.calViewMode === m[0] ? ' active' : '') + '" data-mode="' + m[0] + '">' + m[1] + '</button>';
+    }).join('') + '</div>';
+
+    var dayHeadersHtml = dayHeaders.map(function (h) { return '<div class="todo-cal-day-header">' + h + '</div>'; }).join('');
+    var miniDayHeadersHtml = dayHeaders.map(function (h) { return '<div class="todo-cal-mini-day-header">' + h + '</div>'; }).join('');
+
+    var controlsHtml = '';
+    var bodyHtml = '';
+    var detailHtml = '';
+    var q = Math.floor((state.calMonth - 1) / 3);
+
+    if (state.calViewMode === 'month') {
+      controlsHtml =
+        '<label>Tháng<select id="pCalMonth">' + monthNames.map(function (m, i) { return '<option value="' + (i + 1) + '"' + (i + 1 === state.calMonth ? ' selected' : '') + '>' + m + '</option>'; }).join('') + '</select></label>' +
+        '<label>Năm<select id="pCalYear">' + yearsOptions.map(function (yy) { return '<option value="' + yy + '"' + (yy === state.calYear ? ' selected' : '') + '>' + yy + '</option>'; }).join('') + '</select></label>' +
+        '<button type="button" class="todo-cal-reload" id="pCalToday"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="12" cy="15" r="2" fill="currentColor" stroke="none"/></svg> Hôm nay</button>';
+      bodyHtml = '<div class="todo-cal-grid">' + dayHeadersHtml + buildMonthCells(state.calYear, state.calMonth, false) + '</div>';
+      if (state.calSelectedDate) detailHtml = buildDetailHtml(state.calSelectedDate);
+    } else if (state.calViewMode === 'week') {
+      var monday = mondayOf(state.calWeekAnchor);
+      var sunday = new Date(monday); sunday.setDate(sunday.getDate() + 6);
+      var wLabel = pad2(monday.getDate()) + '/' + pad2(monday.getMonth() + 1) + ' – ' + pad2(sunday.getDate()) + '/' + pad2(sunday.getMonth() + 1) + '/' + sunday.getFullYear();
+      controlsHtml =
+        '<button type="button" class="todo-cal-nav-btn" id="pCalPrevW" aria-label="Tuần trước">&larr;</button>' +
+        '<div class="todo-cal-nav-label">' + wLabel + '</div>' +
+        '<button type="button" class="todo-cal-nav-btn" id="pCalNextW" aria-label="Tuần sau">&rarr;</button>' +
+        '<button type="button" class="todo-cal-reload" id="pCalToday"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="12" cy="15" r="2" fill="currentColor" stroke="none"/></svg> Hôm nay</button>';
+      bodyHtml = '<div class="todo-cal-grid todo-cal-week-grid">' + dayHeadersHtml + buildWeekCells(state.calWeekAnchor) + '</div>';
+      if (state.calSelectedDate) detailHtml = buildDetailHtml(state.calSelectedDate);
+    } else if (state.calViewMode === 'day') {
+      var dLabel = new Date(state.calDayDate + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      controlsHtml =
+        '<button type="button" class="todo-cal-nav-btn" id="pCalPrevD" aria-label="Ngày trước">&larr;</button>' +
+        '<div class="todo-cal-nav-label todo-cal-nav-label--day">' + dLabel + '</div>' +
+        '<button type="button" class="todo-cal-nav-btn" id="pCalNextD" aria-label="Ngày sau">&rarr;</button>' +
+        '<button type="button" class="todo-cal-reload" id="pCalToday"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="12" cy="15" r="2" fill="currentColor" stroke="none"/></svg> Hôm nay</button>';
+      var dCount = tasksDueOn(tasks, state.calDayDate).length;
+      bodyHtml = '<div class="todo-cal-day-stat">' + dCount + ' việc cần làm ' + (state.calDayDate === todayStr ? 'hôm nay' : 'ngày này') + '</div>';
+      detailHtml = buildDetailHtml(state.calDayDate);
+    } else if (state.calViewMode === 'quarter') {
+      var qMonths = [q * 3 + 1, q * 3 + 2, q * 3 + 3];
+      controlsHtml =
+        '<button type="button" class="todo-cal-nav-btn" id="pCalPrevQ" aria-label="Quý trước">&larr;</button>' +
+        '<div class="todo-cal-nav-label">Quý ' + (q + 1) + '/' + state.calYear + '</div>' +
+        '<button type="button" class="todo-cal-nav-btn" id="pCalNextQ" aria-label="Quý sau">&rarr;</button>' +
+        '<label>Năm<select id="pCalYear">' + yearsOptions.map(function (yy) { return '<option value="' + yy + '"' + (yy === state.calYear ? ' selected' : '') + '>' + yy + '</option>'; }).join('') + '</select></label>' +
+        '<button type="button" class="todo-cal-reload" id="pCalToday"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="12" cy="15" r="2" fill="currentColor" stroke="none"/></svg> Hôm nay</button>';
+      bodyHtml = '<div class="todo-cal-quarter-grid">' + qMonths.map(function (mm) {
+        return '<div class="todo-cal-mini-month">' +
+          '<div class="todo-cal-mini-month-title">' + monthNames[mm - 1] + '</div>' +
+          '<div class="todo-cal-mini-grid">' + miniDayHeadersHtml + buildMonthCells(state.calYear, mm, true) + '</div>' +
+        '</div>';
+      }).join('') + '</div>';
+      if (state.calSelectedDate) detailHtml = buildDetailHtml(state.calSelectedDate);
+    } else if (state.calViewMode === 'year') {
+      controlsHtml =
+        '<button type="button" class="todo-cal-nav-btn" id="pCalPrevY" aria-label="Năm trước">&larr;</button>' +
+        '<div class="todo-cal-nav-label">Năm ' + state.calYear + '</div>' +
+        '<button type="button" class="todo-cal-nav-btn" id="pCalNextY" aria-label="Năm sau">&rarr;</button>' +
+        '<button type="button" class="todo-cal-reload" id="pCalToday"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="12" cy="15" r="2" fill="currentColor" stroke="none"/></svg> Hôm nay</button>';
+      var miniMonths = [];
+      for (var mm = 1; mm <= 12; mm++) {
+        miniMonths.push('<div class="todo-cal-mini-month">' +
+          '<div class="todo-cal-mini-month-title">' + monthNames[mm - 1] + '</div>' +
+          '<div class="todo-cal-mini-grid">' + miniDayHeadersHtml + buildMonthCells(state.calYear, mm, true) + '</div>' +
+        '</div>');
+      }
+      bodyHtml = '<div class="todo-cal-year-grid">' + miniMonths.join('') + '</div>';
+      if (state.calSelectedDate) detailHtml = buildDetailHtml(state.calSelectedDate);
+    }
+
     root.innerHTML =
       '<div class="todo-cal-card">' +
         '<div class="todo-cal-header">' +
           '<h2><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M9 16l2 2 4-4"/><path d="M16 2v4M8 2v4M3 10h18"/></svg> Lịch công việc</h2>' +
-          '<div class="todo-cal-controls">' +
-            '<label>Tháng<select id="pCalMonth">' + monthNames.map(function (m, i) { return '<option value="' + (i + 1) + '"' + (i + 1 === state.calMonth ? ' selected' : '') + '>' + m + '</option>'; }).join('') + '</select></label>' +
-            '<label>Năm<select id="pCalYear">' + yearsOptions.map(function (yy) { return '<option value="' + yy + '"' + (yy === state.calYear ? ' selected' : '') + '>' + yy + '</option>'; }).join('') + '</select></label>' +
-            '<button type="button" class="todo-cal-reload" id="pCalToday"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="12" cy="15" r="2" fill="currentColor" stroke="none"/></svg> Hôm nay</button>' +
-          '</div>' +
+          '<div class="todo-cal-controls">' + controlsHtml + '</div>' +
         '</div>' +
-        '<div class="todo-cal-grid">' +
-          dayHeaders.map(function (h) { return '<div class="todo-cal-day-header">' + h + '</div>'; }).join('') +
-          cellsHtml +
-        '</div>' +
+        modeSwitchHtml +
+        bodyHtml +
       '</div>' +
       detailHtml;
 
-    document.getElementById('pCalMonth').addEventListener('change', function () {
-      state.calMonth = parseInt(this.value, 10);
-      renderCalendarView();
-    });
-    document.getElementById('pCalYear').addEventListener('change', function () {
-      state.calYear = parseInt(this.value, 10);
-      renderCalendarView();
-    });
     document.getElementById('pCalToday').addEventListener('click', function () {
       var t = new Date();
+      var tStr = fmtDate(t);
       state.calYear = t.getFullYear();
       state.calMonth = t.getMonth() + 1;
+      state.calDayDate = tStr;
+      state.calWeekAnchor = tStr;
       state.calSelectedDate = null;
       renderCalendarView();
     });
-    root.querySelectorAll('.todo-cal-day:not(.other-month)').forEach(function (cell) {
+    var monthSelectEl = document.getElementById('pCalMonth');
+    if (monthSelectEl) monthSelectEl.addEventListener('change', function () { state.calMonth = parseInt(this.value, 10); renderCalendarView(); });
+    var yearSelectEl = document.getElementById('pCalYear');
+    if (yearSelectEl) yearSelectEl.addEventListener('change', function () { state.calYear = parseInt(this.value, 10); renderCalendarView(); });
+    var prevW = document.getElementById('pCalPrevW'); if (prevW) prevW.addEventListener('click', function () { state.calWeekAnchor = addDays(state.calWeekAnchor, -7); renderCalendarView(); });
+    var nextW = document.getElementById('pCalNextW'); if (nextW) nextW.addEventListener('click', function () { state.calWeekAnchor = addDays(state.calWeekAnchor, 7); renderCalendarView(); });
+    var prevD = document.getElementById('pCalPrevD'); if (prevD) prevD.addEventListener('click', function () { state.calDayDate = addDays(state.calDayDate, -1); renderCalendarView(); });
+    var nextD = document.getElementById('pCalNextD'); if (nextD) nextD.addEventListener('click', function () { state.calDayDate = addDays(state.calDayDate, 1); renderCalendarView(); });
+    var prevQ = document.getElementById('pCalPrevQ'); if (prevQ) prevQ.addEventListener('click', function () { var total = state.calYear * 12 + (state.calMonth - 1) - 3; state.calYear = Math.floor(total / 12); state.calMonth = (total % 12) + 1; renderCalendarView(); });
+    var nextQ = document.getElementById('pCalNextQ'); if (nextQ) nextQ.addEventListener('click', function () { var total = state.calYear * 12 + (state.calMonth - 1) + 3; state.calYear = Math.floor(total / 12); state.calMonth = (total % 12) + 1; renderCalendarView(); });
+    var prevY = document.getElementById('pCalPrevY'); if (prevY) prevY.addEventListener('click', function () { state.calYear -= 1; renderCalendarView(); });
+    var nextY = document.getElementById('pCalNextY'); if (nextY) nextY.addEventListener('click', function () { state.calYear += 1; renderCalendarView(); });
+
+    root.querySelectorAll('.todo-cal-mode-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        state.calViewMode = btn.dataset.mode;
+        renderCalendarView();
+      });
+    });
+    root.querySelectorAll('.todo-cal-day:not(.other-month), .todo-cal-mini-day:not(.other-month)').forEach(function (cell) {
       cell.addEventListener('click', function () {
         state.calSelectedDate = state.calSelectedDate === cell.dataset.date ? null : cell.dataset.date;
         renderCalendarView();
