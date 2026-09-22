@@ -121,7 +121,7 @@ var Offline = (function () {
     if (!online) {
       var ts = null;
       try { ts = localStorage.getItem(LAST_SYNC_KEY); } catch (e) {}
-      el.innerHTML = '⚠️ Đang không có kết nối mạng — dữ liệu hiển thị từ lúc <b>' + formatVNDateTime(ts) + '</b>. Chỉ xem được, chưa thể tạo/sửa dữ liệu.';
+      el.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;vertical-align:-2px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> Đang không có kết nối mạng — dữ liệu hiển thị từ lúc <b>' + formatVNDateTime(ts) + '</b>. Chỉ xem được, chưa thể tạo/sửa dữ liệu.';
       el.style.display = 'flex';
       document.documentElement.style.setProperty('--offline-banner-h', el.offsetHeight + 'px');
       document.body.classList.add('hiconique-offline');

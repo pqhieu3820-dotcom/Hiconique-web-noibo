@@ -720,10 +720,10 @@
 
     let workflowActionsHtml = '';
     if (task.status === 'pending' && isAssignee) {
-      workflowActionsHtml = `<button type="button" id="taskConfirmBtn" class="btn btn-primary" style="width:100%;">✅ Xác nhận nhận việc</button>`;
+      workflowActionsHtml = `<button type="button" id="taskConfirmBtn" class="btn btn-primary" style="width:100%;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;vertical-align:-2px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Xác nhận nhận việc</button>`;
     } else if (task.status === 'in-progress' && isAssignee) {
       workflowActionsHtml = progressPct >= 100
-        ? `<button type="button" id="taskSubmitReviewBtn" class="btn btn-primary" style="width:100%;">🏁 Hoàn thành — nộp duyệt</button>`
+        ? `<button type="button" id="taskSubmitReviewBtn" class="btn btn-primary" style="width:100%;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;vertical-align:-2px;"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg> Hoàn thành — nộp duyệt</button>`
         : `<p style="font-size:0.75rem; color:var(--color-text-muted); margin:0;">Đạt 100% tiến độ để nộp duyệt.</p>`;
     } else if (task.status === 'review' && canReview) {
       workflowActionsHtml = `
@@ -752,7 +752,7 @@
 
       ${task.reviewNote ? `
         <div style="background: rgba(160,72,72,0.1); border: 1px solid var(--color-destructive, #A04848); border-radius: 8px; padding: 10px 12px; margin-bottom: 16px;">
-          <div style="font-size: 0.75rem; font-weight: 600; color: var(--color-destructive, #A04848); margin-bottom: 2px;">⚠ Bị từ chối — cần sửa</div>
+          <div style="font-size: 0.75rem; font-weight: 600; color: var(--color-destructive, #A04848); margin-bottom: 2px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;vertical-align:-2px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> Bị từ chối — cần sửa</div>
           <div style="font-size: 0.8125rem; color: var(--color-text);">${task.reviewNote}</div>
         </div>
       ` : ''}
@@ -785,7 +785,7 @@
       <!-- Daily Progress Section -->
       <div style="background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 10px; padding: 16px; margin-top: 16px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-          <h4 style="font-size: 0.875rem; font-weight: 600; color: var(--color-text); margin: 0;">📊 Cập nhật tiến độ hôm nay</h4>
+          <h4 style="font-size: 0.875rem; font-weight: 600; color: var(--color-text); margin: 0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;vertical-align:-2px;"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg> Cập nhật tiến độ hôm nay</h4>
           <span style="font-size: 0.75rem; color: var(--color-text-muted);">${new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
         </div>
 
@@ -810,7 +810,7 @@
         </div>
 
         <div style="margin-bottom: 12px;">
-          <label style="font-size: 0.75rem; color: var(--color-text-muted); display: block; margin-bottom: 4px;">📝 Đã làm gì hôm nay?</label>
+          <label style="font-size: 0.75rem; color: var(--color-text-muted); display: block; margin-bottom: 4px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;vertical-align:-2px;"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg> Đã làm gì hôm nay?</label>
           <textarea id="dailyNoteInput" placeholder="Mô tả công việc đã làm hôm nay..." style="width: 100%; min-height: 60px; padding: 8px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 6px; color: var(--color-text); font-size: 0.8125rem; resize: vertical;">${todayProgress.note || ''}</textarea>
         </div>
 
@@ -1231,7 +1231,7 @@
     if (tasks.length === 0) {
       taskListEl.innerHTML = `
         <li class="empty-state">
-          <div class="empty-state-icon">🔍</div>
+          <div class="empty-state-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:44px;height:44px;flex-shrink:0;vertical-align:-2px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></div>
           <div class="empty-state-title">Không có task nào</div>
         </li>
       `;
@@ -1616,8 +1616,8 @@
           ${taskAssignees.map(a => `<span class="avatar-xs-tm" style="background:${a.color}" title="${a.name}">${a.avatar}</span>`).join('')}
         </div>
         <div class="kanban-card-title">${task.title}</div>
-        ${project ? `<div class="kanban-card-project">📁 ${project.name}</div>` : ''}
-        ${deadline ? `<div class="kanban-card-deadline ${isOverdue ? 'overdue' : ''}">📅 ${deadline}</div>` : ''}
+        ${project ? `<div class="kanban-card-project"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;vertical-align:-2px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg> ${project.name}</div>` : ''}
+        ${deadline ? `<div class="kanban-card-deadline ${isOverdue ? 'overdue' : ''}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> ${deadline}</div>` : ''}
       </div>
     `;
   }
@@ -1692,7 +1692,7 @@
     if (tasks.length === 0) {
       taskListEl.innerHTML = `
         <li class="empty-state">
-          <div class="empty-state-icon">📋</div>
+          <div class="empty-state-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:44px;height:44px;flex-shrink:0;vertical-align:-2px;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg></div>
           <div class="empty-state-title">Không có task nào</div>
           <div class="empty-state-desc">Tạo task đầu tiên để bắt đầu</div>
         </li>
@@ -1740,7 +1740,7 @@
     if (projects.length === 0) {
       projectsGrid.innerHTML = `
         <div class="empty-state" style="grid-column: 1/-1;">
-          <div class="empty-state-icon">📁</div>
+          <div class="empty-state-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:44px;height:44px;flex-shrink:0;vertical-align:-2px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg></div>
           <div class="empty-state-title">Không có dự án nào</div>
           <div class="empty-state-desc">Tạo dự án đầu tiên</div>
         </div>
@@ -1924,9 +1924,9 @@
               <div class="task-content">
                 <h4>${task.title}</h4>
                 <p style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                  ${project ? `<span>📁 ${project.name}</span>` : ''}
-                  <span ${isOverdue ? 'style="color: #A04848; font-weight: 500;"' : ''}>📅 ${deadline}</span>
-                  <span>⚙️ ${statusLabel}</span>
+                  ${project ? `<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;flex-shrink:0;vertical-align:-2px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg> ${project.name}</span>` : ''}
+                  <span ${isOverdue ? 'style="color: #A04848; font-weight: 500;"' : ''}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;flex-shrink:0;vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> ${deadline}</span>
+                  <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;flex-shrink:0;vertical-align:-2px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg> ${statusLabel}</span>
                 </p>
               </div>
               <span class="task-priority-badge ${priorityClass}">${priorityLabel}</span>
@@ -1934,7 +1934,7 @@
           `;
         }).join('') : `
           <li class="empty-state">
-            <div class="empty-state-icon">✓</div>
+            <div class="empty-state-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:44px;height:44px;flex-shrink:0;vertical-align:-2px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div>
             <div class="empty-state-title">Không có task nào</div>
             <div class="empty-state-desc">Bạn chưa được giao task nào</div>
           </li>
@@ -1986,7 +1986,7 @@
                 `;
               }).join('');
             } else {
-              listEl.innerHTML = '<li class="empty-state"><div class="empty-state-icon">🔍</div><div class="empty-state-title">Không có task khớp bộ lọc</div></li>';
+              listEl.innerHTML = '<li class="empty-state"><div class="empty-state-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:44px;height:44px;flex-shrink:0;vertical-align:-2px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></div><div class="empty-state-title">Không có task khớp bộ lọc</div></li>';
             }
           });
         }

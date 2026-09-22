@@ -584,24 +584,24 @@
     // 2026-09-22: sửa Cấp bậc — chỉ Founder, chỉ cho thành viên KHÁC (theo yêu
     // cầu người dùng, tránh tự đổi cấp bậc của chính mình qua nút này).
     if (canEditLevel && !isSelf) {
-      actionButtons += '<button type="button" class="team-modal-action" data-action="editLevel">⚙ Sửa cấp bậc</button>';
+      actionButtons += '<button type="button" class="team-modal-action" data-action="editLevel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;vertical-align:-2px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg> Sửa cấp bậc</button>';
     }
     if (m.status === 'pending' && canManage) {
-      actionButtons += '<button type="button" class="team-modal-action approve" data-action="approve">✓ Duyệt tài khoản</button>';
-      actionButtons += '<button type="button" class="team-modal-action reject" data-action="reject">✕ Từ chối</button>';
+      actionButtons += '<button type="button" class="team-modal-action approve" data-action="approve"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;vertical-align:-2px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Duyệt tài khoản</button>';
+      actionButtons += '<button type="button" class="team-modal-action reject" data-action="reject"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;vertical-align:-2px;"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg> Từ chối</button>';
     } else if (m.status === 'rejected' && canManage) {
       // Duyệt lại TRƯỚC KHI hết 48h sẽ huỷ luôn lịch xoá — xem
       // stampMemberRejection()/clearMemberRejection() trong gsheets-api-v2.js
       // (chuyển status ra khỏi 'rejected' tự xoá mốc rejectedAt).
-      actionButtons += '<button type="button" class="team-modal-action approve" data-action="approve">✓ Duyệt lại tài khoản</button>';
+      actionButtons += '<button type="button" class="team-modal-action approve" data-action="approve"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;vertical-align:-2px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Duyệt lại tài khoản</button>';
     } else if (m.status === 'inactive' && canTerminate) {
       actionButtons += '<button type="button" class="team-modal-action approve" data-action="reinstate">↺ Khôi phục công tác</button>';
     } else if (m.status === 'on-leave') {
       if (canManage) actionButtons += '<button type="button" class="team-modal-action approve" data-action="return">↺ Trở lại làm việc</button>';
-      if (canTerminate && !isSelf) actionButtons += '<button type="button" class="team-modal-action reject" data-action="terminate">⏸ Ngưng công tác</button>';
+      if (canTerminate && !isSelf) actionButtons += '<button type="button" class="team-modal-action reject" data-action="terminate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;vertical-align:-2px;"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg> Ngưng công tác</button>';
     } else if (!m.status || m.status === 'active') {
       if (canManage && !isSelf) actionButtons += '<button type="button" class="team-modal-action leave" data-action="leave">‖ Tạm nghỉ việc</button>';
-      if (canTerminate && !isSelf) actionButtons += '<button type="button" class="team-modal-action reject" data-action="terminate">⏸ Ngưng công tác</button>';
+      if (canTerminate && !isSelf) actionButtons += '<button type="button" class="team-modal-action reject" data-action="terminate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;vertical-align:-2px;"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg> Ngưng công tác</button>';
     }
 
     document.getElementById('teamModalContent').innerHTML =
@@ -868,7 +868,7 @@
       var msg = filter === 'all'
         ? 'Chưa có công việc nào. Hãy tạo việc mới từ Dashboard Dự án.'
         : 'Không có việc nào khớp với bộ lọc này.';
-      list.innerHTML = '<li class="empty-state-mini"><div class="empty-icon">📋</div><div class="empty-title">' + msg + '</div></li>';
+      list.innerHTML = '<li class="empty-state-mini"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:40px;height:40px;flex-shrink:0;vertical-align:-2px;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg></div><div class="empty-title">' + msg + '</div></li>';
       return;
     }
 
@@ -878,11 +878,11 @@
       var taskAssignees = (typeof TaskManager !== 'undefined' && TaskManager.getTaskAssignees) ? TaskManager.getTaskAssignees(task) : [];
       var assignee = taskAssignees[0] || null;
       var dueClass = '';
-      var dueIcon = '📅';
+      var dueIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>';
       var dueText = '';
       if (task.deadline) {
-        if (isOverdue(task)) { dueClass = 'overdue'; dueIcon = '⚠'; }
-        else if (isTodayOrTomorrow(task.deadline)) { dueClass = 'today'; dueIcon = '⏰'; }
+        if (isOverdue(task)) { dueClass = 'overdue'; dueIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;vertical-align:-2px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>'; }
+        else if (isTodayOrTomorrow(task.deadline)) { dueClass = 'today'; dueIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;vertical-align:-2px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>'; }
         dueText = fmtDate(task.deadline);
       }
       var assigneeInitials = assignee ? escapeHtml(assignee.avatar || (assignee.name || '?').substring(0, 2).toUpperCase()) : '';
@@ -897,9 +897,9 @@
         +   '<div class="tl-content">'
         +     '<div class="tl-top">'
         +       '<span class="tl-title ' + (isDone ? 'is-done' : '') + '">' + escapeHtml(task.title || '—') + '</span>'
-        +       (project ? '<span class="tl-project">📁 ' + escapeHtml(project.name) + '</span>' : '')
+        +       (project ? '<span class="tl-project"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;vertical-align:-2px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg> ' + escapeHtml(project.name) + '</span>' : '')
         +     '</div>'
-        +     (assignee ? '<div class="tl-meta"><span>👤 ' + assigneeName + '</span></div>' : '')
+        +     (assignee ? '<div class="tl-meta"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;vertical-align:-2px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> ' + assigneeName + '</span></div>' : '')
         +   '</div>'
         +   '<div class="tl-right">'
         +     '<span class="tl-priority priority-' + (task.priority || 'medium') + '">' + priorityLabel(task.priority) + '</span>'
@@ -974,7 +974,7 @@
         +   '<p class="pcm-type">' + escapeHtml(p.type || '') + '</p>'
         +   '<div class="pcm-progress"><span style="width:' + progress + '%"></span></div>'
         +   '<div class="pcm-meta">'
-        +     '<span class="pcm-tasks">📋 ' + projOpen + ' việc mở · ' + progress + '%</span>'
+        +     '<span class="pcm-tasks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;vertical-align:-2px;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg> ' + projOpen + ' việc mở · ' + progress + '%</span>'
         +     '<span class="pcm-avatars">' + avatarsHtml + '</span>'
         +   '</div>'
         + '</article>';

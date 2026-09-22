@@ -328,7 +328,7 @@
     var memberList = document.getElementById('memberList');
     if (memberList) {
       memberList.innerHTML = '<div class="member-chip member-chip-all' + (!state.memberFilter ? ' active' : '') + '" data-member-filter="">' +
-        '<span class="avatar-sm" style="background:var(--color-bronze)">⚡</span>' +
+        '<span class="avatar-sm" style="background:var(--color-bronze)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;vertical-align:-2px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></span>' +
         '<span>Tất cả</span>' +
       '</div>' +
       members.map(function (m) {
@@ -370,7 +370,7 @@
     if (tasks.length === 0) {
       var firstCol = document.querySelector('.column-tasks');
       if (firstCol) {
-        firstCol.innerHTML = '<div class="empty-column"><div class="empty-icon">📋</div><p>Không có việc nào.<br>Bấm "Thêm task" để tạo.</p></div>';
+        firstCol.innerHTML = '<div class="empty-column"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:40px;height:40px;flex-shrink:0;vertical-align:-2px;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg></div><p>Không có việc nào.<br>Bấm "Thêm task" để tạo.</p></div>';
       }
     }
 
@@ -387,12 +387,12 @@
       var dueClass = '';
       var dueText = '';
       if (task.status !== 'completed') {
-        if (isOverdue(task)) { dueClass = 'overdue'; dueText = '⚠ ' + fmtDate(task.deadline); }
+        if (isOverdue(task)) { dueClass = 'overdue'; dueText = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;vertical-align:-2px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> ' + fmtDate(task.deadline); }
         else if (isDueToday(task)) { dueClass = 'due-soon'; dueText = fmtDate(task.deadline); }
         else { dueText = fmtDate(task.deadline); }
       } else {
         dueClass = 'done-date';
-        dueText = '✓ ' + fmtDate(task.deadline);
+        dueText = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;vertical-align:-2px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> ' + fmtDate(task.deadline);
       }
 
       var progress = task.progress || 0;
@@ -573,7 +573,7 @@
     var html = '';
 
     if (keys.length === 0) {
-      html = '<div class="timeline-empty"><div class="empty-icon">📅</div><p>Không có deadline nào trong tháng này</p></div>';
+      html = '<div class="timeline-empty"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:40px;height:40px;flex-shrink:0;vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></div><p>Không có deadline nào trong tháng này</p></div>';
     } else {
       keys.forEach(function (dateStr) {
         var d = new Date(dateStr);
@@ -590,7 +590,7 @@
           var color = '#B08D57';
           if (task.priority === 'high') color = '#DC2626';
           else if (task.priority === 'low') color = '#059669';
-          var overdue = isOverdue(task) ? 'Quá hạn' : (task.status === 'completed' ? '✓ Hoàn thành' : 'Deadline');
+          var overdue = isOverdue(task) ? 'Quá hạn' : (task.status === 'completed' ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;vertical-align:-2px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Hoàn thành' : 'Deadline');
 
           html += '<div class="timeline-event" data-task-id="' + escapeHtml(task.id) + '" style="border-left-color:' + color + '">';
           html += '<span class="event-time">' + overdue + '</span>';
@@ -1089,7 +1089,7 @@
     var priorityClass = 'priority-' + (task.priority || 'medium');
     var priorityText = priorityLabel(task.priority);
     var dueClass = isOverdue(task) ? 'overdue' : '';
-    var dueLabel = isOverdue(task) ? '⚠ Quá hạn' : (isDueToday(task) ? '📅 Hôm nay' : '📅 ' + fmtDate(task.deadline));
+    var dueLabel = isOverdue(task) ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;vertical-align:-2px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> Quá hạn' : (isDueToday(task) ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> Hôm nay' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> ' + fmtDate(task.deadline));
 
     var metaHtml = ''
       + '<span class="detail-tag ' + priorityClass + '">' + priorityText + '</span>'
@@ -1112,10 +1112,10 @@
 
     var workflowActionsHtml = '';
     if (task.status === 'pending' && isAssignee) {
-      workflowActionsHtml = '<button type="button" id="taskConfirmBtn" class="btn-primary" style="width:100%;">✅ Xác nhận nhận việc</button>';
+      workflowActionsHtml = '<button type="button" id="taskConfirmBtn" class="btn-primary" style="width:100%;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;vertical-align:-2px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Xác nhận nhận việc</button>';
     } else if (task.status === 'in-progress' && isAssignee) {
       workflowActionsHtml = progressPct >= 100
-        ? '<button type="button" id="taskSubmitReviewBtn" class="btn-primary" style="width:100%;">🏁 Hoàn thành — nộp duyệt</button>'
+        ? '<button type="button" id="taskSubmitReviewBtn" class="btn-primary" style="width:100%;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;vertical-align:-2px;"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg> Hoàn thành — nộp duyệt</button>'
         : '<p style="font-size:0.75rem; color:var(--color-text-muted); margin:0;">Đạt 100% tiến độ để nộp duyệt.</p>';
     } else if (task.status === 'review' && canReview) {
       workflowActionsHtml =
@@ -1129,7 +1129,7 @@
 
     var workflowHtml = ''
       + (task.reviewNote ? '<div style="background:rgba(160,72,72,0.1); border:1px solid var(--color-destructive,#A04848); border-radius:8px; padding:10px 12px; margin-bottom:16px;">'
-          + '<div style="font-size:0.75rem; font-weight:600; color:var(--color-destructive,#A04848); margin-bottom:2px;">⚠ Bị từ chối — cần sửa</div>'
+          + '<div style="font-size:0.75rem; font-weight:600; color:var(--color-destructive,#A04848); margin-bottom:2px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;vertical-align:-2px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> Bị từ chối — cần sửa</div>'
           + '<div style="font-size:0.8125rem; color:var(--color-text);">' + escapeHtml(task.reviewNote) + '</div>'
         + '</div>' : '')
       + (workflowActionsHtml ? '<div style="margin-bottom:16px;">' + workflowActionsHtml + '</div>' : '');
@@ -1145,7 +1145,7 @@
       + (task.description ? '<div class="detail-desc">' + escapeHtml(task.description) + '</div>' : '')
       + '<div class="daily-progress-section">'
       +   '<div class="dps-header">'
-      +     '<h4>📊 Cập nhật tiến độ hôm nay</h4>'
+      +     '<h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;vertical-align:-2px;"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg> Cập nhật tiến độ hôm nay</h4>'
       +     '<span class="dps-date">' + new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' }) + '</span>'
       +   '</div>'
       +   '<div class="dps-bar-wrap">'
@@ -1157,7 +1157,7 @@
       +     '<span id="dpValue">' + todayProgress.progress + '%</span>'
       +   '</div>'
       +   '<div class="dps-note">'
-      +     '<label>📝 Đã làm gì hôm nay?</label>'
+      +     '<label><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;vertical-align:-2px;"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg> Đã làm gì hôm nay?</label>'
       +     '<textarea id="dpNote" placeholder="Mô tả công việc đã làm hôm nay...">' + escapeHtml(todayProgress.note || '') + '</textarea>'
       +   '</div>'
       +   '<button type="button" id="dpSaveBtn" class="btn-primary dps-save">Lưu tiến độ hôm nay</button>'
@@ -1713,7 +1713,7 @@
 
     var allChipHtml = '<label class="member-multi-item' + (reportMemberFilterId === 'all' ? ' active' : '') + '" data-member-id="all">'
       + '<input type="radio" name="reportMemberChip" value="all"' + (reportMemberFilterId === 'all' ? ' checked' : '') + '>'
-      + '<span class="avatar-xs" style="background:var(--color-bronze)">⚡</span>'
+      + '<span class="avatar-xs" style="background:var(--color-bronze)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;vertical-align:-2px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></span>'
       + '<span>Tất cả</span>'
     + '</label>';
     var itemsHtml = members.map(function (m) {
@@ -1869,7 +1869,7 @@
             +   '<div class="report-daily-meta">' + escapeHtml(project ? project.name : '—') + (assignees ? ' · ' + escapeHtml(assignees) : '') + '</div>'
             +   (entry.note ? '<div class="report-daily-note">"' + escapeHtml(entry.note) + '"</div>' : '')
             + '</div>'
-            + '<div class="report-daily-pct">' + (entry.progress || 0) + '%' + (entry.done ? ' ✓' : '') + '</div>'
+            + '<div class="report-daily-pct">' + (entry.progress || 0) + '%' + (entry.done ? ' <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;vertical-align:-2px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>' : '') + '</div>'
             + '</div>';
         }).join('')) + '</div>';
     }

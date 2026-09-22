@@ -2060,7 +2060,7 @@
           btn.disabled = true;
           btn.className = 'ts-checkin-btn done';
           status.className = 'ts-checkin-status working' + (record.isLate || record.isEarly ? ' late' : '');
-          status.innerHTML = '✓ Sáng: ' + record.morningCheckin + '–' + record.morningCheckout +
+          status.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;flex-shrink:0;vertical-align:-2px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Sáng: ' + record.morningCheckin + '–' + record.morningCheckout +
             ' &nbsp;|&nbsp; Chiều: ' + record.afternoonCheckin + '–' + record.afternoonCheckout +
             (record.isLate ? ' <strong>(đi muộn)</strong>' : '') + (record.isEarly ? ' <strong>(về sớm)</strong>' : '');
           return;
@@ -3446,7 +3446,7 @@
             ? '<span style="color:var(--ts-warning, #C7A464); font-weight:600;">Chờ duyệt</span>'
             : '<span style="color:var(--ts-success, #4F6F52); font-weight:600;">Đã duyệt</span>';
           var dupWarning = d.fingerprintDup
-            ? '<div style="font-size:0.6875rem; color:var(--ts-danger); font-weight:600; margin-top:2px;" title="Đặc điểm máy (vân tay trình duyệt) của thiết bị này trùng với thiết bị của MỘT NGƯỜI KHÁC — chỉ là gợi ý thô, có thể trùng ngẫu nhiên nếu 2 máy cùng đời/cấu hình, nhưng nên kiểm tra lại nếu nghi ngờ chấm công hộ.">⚠️ Trùng đặc điểm máy với người khác</div>'
+            ? '<div style="font-size:0.6875rem; color:var(--ts-danger); font-weight:600; margin-top:2px;" title="Đặc điểm máy (vân tay trình duyệt) của thiết bị này trùng với thiết bị của MỘT NGƯỜI KHÁC — chỉ là gợi ý thô, có thể trùng ngẫu nhiên nếu 2 máy cùng đời/cấu hình, nhưng nên kiểm tra lại nếu nghi ngờ chấm công hộ."><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;flex-shrink:0;vertical-align:-2px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> Trùng đặc điểm máy với người khác</div>'
             : '';
           return ''
             + '<div class="ts-manage-device-row">'
@@ -3581,7 +3581,7 @@
           // OUT — dễ quên cập nhật cuối ngày, đặt đúng lúc sắp checkout để không
           // phải thêm 1 bước/1 popup riêng, không chặn checkout nếu bỏ qua.
           var checkoutReminder = isCheckout
-            ? '<div style="margin-top:12px; padding:10px 12px; background:rgba(199,164,100,0.12); border:1px solid var(--ts-bronze); border-radius:8px; font-size:0.8125rem; font-weight:500; color:var(--ts-text); text-align:left;">📋 Nhớ cập nhật <strong>Báo cáo tiến độ công việc hôm nay</strong> (mục Tasks) trước khi checkout nhé!</div>'
+            ? '<div style="margin-top:12px; padding:10px 12px; background:rgba(199,164,100,0.12); border:1px solid var(--ts-bronze); border-radius:8px; font-size:0.8125rem; font-weight:500; color:var(--ts-text); text-align:left;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;vertical-align:-2px;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg> Nhớ cập nhật <strong>Báo cáo tiến độ công việc hôm nay</strong> (mục Tasks) trước khi checkout nhé!</div>'
             : '';
           var confirmTitle = 'Bạn đang chấm công <strong>' + (isCheckout ? 'CHECK OUT' : 'CHECK IN') +
             '</strong> cho ca ' + label.toLowerCase() + ' vào lúc ' + time + ' ngày ' + dateLabel + checkoutReminder;
