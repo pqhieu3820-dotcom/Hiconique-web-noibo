@@ -1098,7 +1098,44 @@
 
     document.getElementById('detailMeta').innerHTML = metaHtml;
 
+    // 2026-09-22: các nút quy trình duyệt việc (Chờ xử lý -> Đang làm -> Chờ
+    // duyệt -> Hoàn thành, xem submitTaskForReview()/approveTaskReview()/
+    // rejectTaskReview() trong task-data.js) — trước đây CHỈ có ở modal chi
+    // tiết task bên trang Tasks (task-manager-app.js), trang Dự án bị thiếu
+    // hẳn (người dùng phản ánh: cột "Chưa bắt đầu" không có nút xác nhận).
+    // Dùng biến `currentUser` Ở NGOÀI (đã set 1 lần lúc init(), xem getUser())
+    // — KHÔNG tự gọi lại TaskManager.getCurrentUser() ở đây: nó có fallback
+    // riêng về "CEO" mặc định khi Auth chưa kịp sẵn sàng, dễ đọc sai user thật.
+    var isAssignee = !!currentUser && assignees.some(function (a) { return a.id === currentUser.id; });
+    var canReview = typeof TaskManager !== 'undefined' && TaskManager.canReviewTasks && TaskManager.canReviewTasks(currentUser);
+    var progressPct = Number(task.progress) || 0;
+
+    var workflowActionsHtml = '';
+    if (task.status === 'pending' && isAssignee) {
+      workflowActionsHtml = '<button type="button" id="taskConfirmBtn" class="btn-primary" style="width:100%;">✅ Xác nhận nhận việc</button>';
+    } else if (task.status === 'in-progress' && isAssignee) {
+      workflowActionsHtml = progressPct >= 100
+        ? '<button type="button" id="taskSubmitReviewBtn" class="btn-primary" style="width:100%;">🏁 Hoàn thành — nộp duyệt</button>'
+        : '<p style="font-size:0.75rem; color:var(--color-text-muted); margin:0;">Đạt 100% tiến độ để nộp duyệt.</p>';
+    } else if (task.status === 'review' && canReview) {
+      workflowActionsHtml =
+        '<div style="display:flex; gap:8px;">' +
+          '<button type="button" id="taskRejectBtn" class="btn-danger" style="flex:1;">Từ chối</button>' +
+          '<button type="button" id="taskApproveBtn" class="btn-primary" style="flex:1;">Duyệt hoàn thành</button>' +
+        '</div>';
+    } else if (task.status === 'review') {
+      workflowActionsHtml = '<p style="font-size:0.75rem; color:var(--color-text-muted); margin:0;">Đang chờ CEO/Quản lý duyệt.</p>';
+    }
+
+    var workflowHtml = ''
+      + (task.reviewNote ? '<div style="background:rgba(160,72,72,0.1); border:1px solid var(--color-destructive,#A04848); border-radius:8px; padding:10px 12px; margin-bottom:16px;">'
+          + '<div style="font-size:0.75rem; font-weight:600; color:var(--color-destructive,#A04848); margin-bottom:2px;">⚠ Bị từ chối — cần sửa</div>'
+          + '<div style="font-size:0.8125rem; color:var(--color-text);">' + escapeHtml(task.reviewNote) + '</div>'
+        + '</div>' : '')
+      + (workflowActionsHtml ? '<div style="margin-bottom:16px;">' + workflowActionsHtml + '</div>' : '');
+
     var bodyHtml = ''
+      + workflowHtml
       + '<div class="detail-grid">'
       +   '<div class="detail-field"><label>Dự án</label><p>' + (project ? escapeHtml(project.name) : 'Chưa có') + '</p></div>'
       +   '<div class="detail-field"><label>Thành viên tham gia</label><p>' + (assignees.length ? escapeHtml(assignees.map(function (a) { return a.name; }).join(', ')) : 'Chưa giao') + '</p></div>'
@@ -1172,6 +1209,54 @@
             renderAll();
           }
         };
+      }
+
+      // 2026-09-22: nút quy trình duyệt việc — xem workflowActionsHtml() ở
+      // trên. Refresh lại chính modal này sau mỗi thao tác (giống hệt
+      // task-manager-app.js) để đổi nút hiển thị đúng theo trạng thái mới.
+      var confirmBtn = document.getElementById('taskConfirmBtn');
+      if (confirmBtn) {
+        confirmBtn.addEventListener('click', function () {
+          var updated = TaskManager.confirmTaskAssignment(taskId, currentUser);
+          if (!updated) { showToast('Không xác nhận được, thử lại.'); return; }
+          showToast('Đã xác nhận nhận việc — chuyển sang "Đang làm".');
+          openTaskDetail(taskId);
+          renderAll();
+        });
+      }
+      var submitReviewBtn = document.getElementById('taskSubmitReviewBtn');
+      if (submitReviewBtn) {
+        submitReviewBtn.addEventListener('click', function () {
+          var updated = TaskManager.submitTaskForReview(taskId, currentUser);
+          if (!updated) { showToast('Không nộp duyệt được — kiểm tra lại tiến độ đã đạt 100% chưa.'); return; }
+          showToast('Đã nộp duyệt — chuyển sang "Chờ duyệt".');
+          openTaskDetail(taskId);
+          renderAll();
+        });
+      }
+      var approveBtn = document.getElementById('taskApproveBtn');
+      if (approveBtn) {
+        approveBtn.addEventListener('click', function () {
+          showConfirmDialog('Duyệt hoàn thành công việc "' + escapeHtml(task.title) + '"?', function () {
+            var updated = TaskManager.approveTaskReview(taskId, currentUser);
+            if (!updated) { showToast('Duyệt thất bại, thử lại.'); return; }
+            showToast('Đã duyệt hoàn thành.');
+            openTaskDetail(taskId);
+            renderAll();
+          }, 'Duyệt');
+        });
+      }
+      var rejectBtn = document.getElementById('taskRejectBtn');
+      if (rejectBtn) {
+        rejectBtn.addEventListener('click', function () {
+          showTaskRejectDialog(function (note) {
+            var updated = TaskManager.rejectTaskReview(taskId, note, currentUser);
+            if (!updated) { showToast('Từ chối thất bại, thử lại.'); return; }
+            showToast('Đã từ chối — việc quay lại "Đang làm".');
+            openTaskDetail(taskId);
+            renderAll();
+          });
+        });
       }
     }, 50);
   }
@@ -1999,6 +2084,54 @@
       toast.classList.remove('show');
       setTimeout(function () { toast.remove(); }, 300);
     }, 2500);
+  }
+
+  // 2026-09-22: copy y hệt showConfirmDialog()/showTaskRejectDialog() đã có
+  // trong task-manager-app.js (dùng chung class .ts-confirm-overlay/-box có
+  // sẵn trong portal.css) — cần cho các nút quy trình duyệt việc mới thêm ở
+  // openTaskDetail() bên dưới (trang Dự án trước đây thiếu hẳn các nút này,
+  // chỉ có ở trang Tasks, xem GHI_CHU_DU_AN.md). KHÔNG dùng confirm() gốc.
+  function showConfirmDialog(title, onConfirm, confirmLabel) {
+    var overlay = document.createElement('div');
+    overlay.className = 'ts-confirm-overlay';
+    overlay.innerHTML =
+      '<div class="ts-confirm-box">' +
+        '<div class="ts-confirm-title">' + title + '</div>' +
+        '<div class="ts-confirm-actions">' +
+          '<button type="button" class="ts-confirm-cancel">Huỷ</button>' +
+          '<button type="button" class="ts-confirm-ok">' + (confirmLabel || 'Xác nhận') + '</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    overlay.querySelector('.ts-confirm-cancel').addEventListener('click', function () { overlay.remove(); });
+    overlay.querySelector('.ts-confirm-ok').addEventListener('click', function () {
+      overlay.remove();
+      onConfirm();
+    });
+  }
+  function showTaskRejectDialog(onSubmit) {
+    var overlay = document.createElement('div');
+    overlay.className = 'ts-confirm-overlay';
+    overlay.innerHTML =
+      '<div class="ts-confirm-box" style="max-width:420px;">' +
+        '<div class="ts-confirm-title">Từ chối công việc này</div>' +
+        '<label style="display:block; font-size:0.8125rem; color:var(--color-text-muted); margin:-12px 0 8px;">Lý do từ chối (bắt buộc — người được giao sẽ thấy nội dung này)</label>' +
+        '<textarea id="taskRejectNoteInput" rows="3" style="width:100%; box-sizing:border-box; margin-bottom:16px; padding:8px; background:var(--color-bg); border:1px solid var(--color-border); border-radius:6px; color:var(--color-text); font-size:0.8125rem; font-family:inherit;" placeholder="VD: chưa đúng vật liệu, cần bổ sung ảnh nghiệm thu…"></textarea>' +
+        '<div class="ts-confirm-actions">' +
+          '<button type="button" class="ts-confirm-cancel">Huỷ</button>' +
+          '<button type="button" class="ts-confirm-ok">Từ chối</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    var input = overlay.querySelector('#taskRejectNoteInput');
+    input.focus();
+    overlay.querySelector('.ts-confirm-cancel').addEventListener('click', function () { overlay.remove(); });
+    overlay.querySelector('.ts-confirm-ok').addEventListener('click', function () {
+      var note = input.value.trim();
+      if (!note) { input.style.borderColor = '#A04848'; input.focus(); return; }
+      overlay.remove();
+      onSubmit(note);
+    });
   }
 
   // ----- Init -----
