@@ -1363,6 +1363,14 @@
     var todayProgress = (typeof TaskManager !== 'undefined' && TaskManager.getTodayProgress) ? TaskManager.getTodayProgress(taskId) : null;
     if (!todayProgress) todayProgress = { progress: task.progress || 0, note: '', done: false };
     var dailyTasks = task.dailyTasks || [];
+    // 2026-09-22: tiến độ chỉ được phép TĂNG, không cho kéo lùi lại — mốc
+    // % cao nhất đã từng lưu (mọi ngày, kể cả hôm nay nếu đã lưu 1 lần) trở
+    // thành "sàn" (min) của thanh trượt ngày hôm nay, đúng ý người dùng
+    // "nếu đang để 50% thì mai chỉ có thể kéo lên từ 50% trở lên". Ép cứng
+    // qua thuộc tính min của input range (trình duyệt tự chặn kéo xuống
+    // dưới), KHÔNG chỉ chặn ở JS (kéo bằng bàn phím/chạm vẫn bị chặn).
+    var progressFloor = dailyTasks.length ? Math.max.apply(null, dailyTasks.map(function (d) { return Number(d.progress) || 0; })) : 0;
+    var todayStartPct = Math.max(todayProgress.progress, progressFloor);
 
     document.getElementById('detailTitle').textContent = task.title;
 
@@ -1394,9 +1402,13 @@
     if (task.status === 'pending' && isAssignee) {
       workflowActionsHtml = '<button type="button" id="taskConfirmBtn" class="btn-primary" style="width:100%;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;vertical-align:-2px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Xác nhận nhận việc</button>';
     } else if (task.status === 'in-progress' && isAssignee) {
-      workflowActionsHtml = progressPct >= 100
-        ? '<button type="button" id="taskSubmitReviewBtn" class="btn-primary" style="width:100%;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;vertical-align:-2px;"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg> Hoàn thành — nộp duyệt</button>'
-        : '<p style="font-size:0.75rem; color:var(--color-text-muted); margin:0;">Đạt 100% tiến độ để nộp duyệt.</p>';
+      // 2026-09-22: nút "Hoàn thành — nộp duyệt" LUÔN hiện (không thay bằng
+      // dòng chữ như trước) nhưng bị làm TỐI/khoá khi chưa đạt ngưỡng, để
+      // người làm luôn thấy đích cần tới. Sáng lên + bấm được khi tiến độ
+      // đạt >= 95% (không bắt buộc đúng 100%, theo yêu cầu người dùng).
+      var canSubmitReview = progressPct >= 95;
+      workflowActionsHtml = '<button type="button" id="taskSubmitReviewBtn" class="btn-primary"' + (canSubmitReview ? '' : ' disabled') + ' style="width:100%;' + (canSubmitReview ? '' : ' opacity:0.35; cursor:not-allowed; filter:grayscale(60%);') + '" title="' + (canSubmitReview ? 'Nộp duyệt hoàn thành' : 'Đạt tối thiểu 95% tiến độ để nộp duyệt (hiện ' + progressPct + '%)') + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;vertical-align:-2px;"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg> Hoàn thành — nộp duyệt</button>'
+        + (canSubmitReview ? '' : '<p style="font-size:0.6875rem; color:var(--color-text-muted); margin:6px 0 0;">Đạt tối thiểu 95% tiến độ để bấm được (hiện ' + progressPct + '%).</p>');
     } else if (task.status === 'review' && canReview) {
       workflowActionsHtml =
         '<div style="display:flex; gap:8px;">' +
@@ -1432,10 +1444,12 @@
       +     '<div class="dps-bar-row"><span>Tiến độ hôm nay: <strong style="color:var(--color-bronze)">' + todayProgress.progress + '%</strong></span><span>Tổng: <strong>' + (task.progress || 0) + '%</strong></span></div>'
       +     '<div class="dps-bar"><span style="width:' + todayProgress.progress + '%"></span></div>'
       +   '</div>'
-      +   '<div class="dps-slider-row">'
-      +     '<input type="range" id="dpSlider" min="0" max="100" value="' + todayProgress.progress + '" />'
-      +     '<span id="dpValue">' + todayProgress.progress + '%</span>'
+      +   '<div class="dps-slider-row" style="display:flex; align-items:center; gap:0;">'
+      +     (progressFloor > 0 ? '<div class="dps-slider-lock" style="width:' + progressFloor + '%; flex-shrink:0; height:6px; background:var(--color-border-strong); border-radius:3px 0 0 3px;" title="Đã đạt ' + progressFloor + '% — không thể kéo lùi xuống dưới mốc này"></div>' : '')
+      +     '<input type="range" id="dpSlider" min="' + progressFloor + '" max="100" value="' + todayStartPct + '" style="flex:1; min-width:0;" />'
+      +     '<span id="dpValue">' + todayStartPct + '%</span>'
       +   '</div>'
+      +   (progressFloor > 0 ? '<p style="font-size:0.6875rem; color:var(--color-text-muted); margin:4px 0 0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px;flex-shrink:0;vertical-align:-1px;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Đã khoá tới ' + progressFloor + '% — tiến độ chỉ tăng, không giảm được.</p>' : '')
       +   '<div class="dps-note">'
       +     '<label><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;vertical-align:-2px;"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg> Đã làm gì hôm nay?</label>'
       +     '<textarea id="dpNote" placeholder="Mô tả công việc đã làm hôm nay...">' + escapeHtml(todayProgress.note || '') + '</textarea>'

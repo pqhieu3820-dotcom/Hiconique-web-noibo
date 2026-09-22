@@ -900,7 +900,11 @@ var TaskManager = (function() {
     var task = getTask(taskId);
     if (!task || task.status !== 'in-progress') return null;
     if (!user || taskAssigneeIdsOf(task).indexOf(user.id) === -1) return null;
-    if ((Number(task.progress) || 0) < 100) return null;
+    // 2026-09-22: hạ ngưỡng nộp duyệt từ 100% xuống 95% theo yêu cầu người
+    // dùng — nút "Hoàn thành — nộp duyệt" ở UI cũng sáng lên đúng mốc này
+    // (xem openTaskDetail() trong projects.js / openTaskDetailModal() trong
+    // task-manager-app.js), phải khớp ngưỡng ở cả 2 nơi.
+    if ((Number(task.progress) || 0) < 95) return null;
     var updated = updateTask(taskId, { status: 'review' });
     addSystemNotificationsBatch(adminAndManagerMembers(user.id).map(function (mgr) {
       return {

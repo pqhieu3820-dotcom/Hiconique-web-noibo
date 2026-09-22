@@ -711,6 +711,10 @@
     // Get today's progress
     const todayProgress = TaskManager.getTodayProgress(taskId) || { progress: task.progress || 0, note: '', done: false };
     const dailyTasks = task.dailyTasks || [];
+    // 2026-09-22: tiến độ chỉ được TĂNG, không kéo lùi được — xem chú thích
+    // đầy đủ ở openTaskDetail() trong projects.js (cùng logic, đồng bộ 2 nơi).
+    const progressFloor = dailyTasks.length ? Math.max.apply(null, dailyTasks.map(function (d) { return Number(d.progress) || 0; })) : 0;
+    const todayStartPct = Math.max(todayProgress.progress, progressFloor);
 
     // 2026-09-21: quy trình duyệt việc — xem hàm nào hiện nút gì:
     // pending -> người được giao tự "Xác nhận nhận việc" (confirmTaskAssignment).
@@ -725,9 +729,10 @@
     if (task.status === 'pending' && isAssignee) {
       workflowActionsHtml = `<button type="button" id="taskConfirmBtn" class="btn btn-primary" style="width:100%;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;vertical-align:-2px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Xác nhận nhận việc</button>`;
     } else if (task.status === 'in-progress' && isAssignee) {
-      workflowActionsHtml = progressPct >= 100
-        ? `<button type="button" id="taskSubmitReviewBtn" class="btn btn-primary" style="width:100%;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;vertical-align:-2px;"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg> Hoàn thành — nộp duyệt</button>`
-        : `<p style="font-size:0.75rem; color:var(--color-text-muted); margin:0;">Đạt 100% tiến độ để nộp duyệt.</p>`;
+      // 2026-09-22: nút LUÔN hiện (tối/khoá khi chưa đủ) thay vì ẩn hẳn —
+      // xem chú thích đầy đủ ở openTaskDetail() trong projects.js.
+      const canSubmitReview = progressPct >= 95;
+      workflowActionsHtml = `<button type="button" id="taskSubmitReviewBtn" class="btn btn-primary"${canSubmitReview ? '' : ' disabled'} style="width:100%;${canSubmitReview ? '' : ' opacity:0.35; cursor:not-allowed; filter:grayscale(60%);'}" title="${canSubmitReview ? 'Nộp duyệt hoàn thành' : 'Đạt tối thiểu 95% tiến độ để nộp duyệt (hiện ' + progressPct + '%)'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;vertical-align:-2px;"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg> Hoàn thành — nộp duyệt</button>${canSubmitReview ? '' : `<p style="font-size:0.6875rem; color:var(--color-text-muted); margin:6px 0 0;">Đạt tối thiểu 95% tiến độ để bấm được (hiện ${progressPct}%).</p>`}`;
     } else if (task.status === 'review' && canReview) {
       workflowActionsHtml = `
         <div style="display:flex; gap:8px;">
@@ -804,12 +809,16 @@
 
         <div style="margin-bottom: 12px;">
           <label style="font-size: 0.75rem; color: var(--color-text-muted); display: block; margin-bottom: 4px;">Tiến độ (%)</label>
-          <input type="range" id="dailyProgressInput" min="0" max="100" value="${todayProgress.progress}" style="width: 100%;">
+          <div style="display:flex; align-items:center; gap:0;">
+            ${progressFloor > 0 ? `<div style="width:${progressFloor}%; flex-shrink:0; height:6px; background:var(--color-border-strong); border-radius:3px 0 0 3px;" title="Đã đạt ${progressFloor}% — không thể kéo lùi xuống dưới mốc này"></div>` : ''}
+            <input type="range" id="dailyProgressInput" min="${progressFloor}" max="100" value="${todayStartPct}" style="flex:1; min-width:0;">
+          </div>
           <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--color-text-muted);">
-            <span>0%</span>
-            <span id="dailyProgressValue" style="font-weight: 600; color: var(--color-bronze);">${todayProgress.progress}%</span>
+            <span>${progressFloor}%</span>
+            <span id="dailyProgressValue" style="font-weight: 600; color: var(--color-bronze);">${todayStartPct}%</span>
             <span>100%</span>
           </div>
+          ${progressFloor > 0 ? `<p style="font-size:0.6875rem; color:var(--color-text-muted); margin:4px 0 0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px;flex-shrink:0;vertical-align:-1px;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Đã khoá tới ${progressFloor}% — tiến độ chỉ tăng, không giảm được.</p>` : ''}
         </div>
 
         <div style="margin-bottom: 12px;">
