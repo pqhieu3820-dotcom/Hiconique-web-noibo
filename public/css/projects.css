@@ -2628,3 +2628,139 @@
   .todo-cal-year-grid { grid-template-columns: 1fr; }
   .todo-cal-nav-label { min-width: 0; font-size: 0.8125rem; }
 }
+
+/* 2026-09-22b: lưới giờ thật (kiểu Google Lịch) cho chế độ Ngày/Tuần — copy
+   nguyên CSS từ task-manager.css (cùng class name, xem ghi chú đầy đủ ở đó)
+   để 2 trang nhìn giống hệt nhau đúng convention duplicate của dự án. */
+.todo-cal-timegrid-wrap {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--color-surface-2);
+}
+
+.todo-cal-timegrid-headrow {
+  display: flex;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.todo-cal-timegrid-gutter { flex: 0 0 52px; }
+
+.todo-cal-timegrid-headcells {
+  flex: 1 1 auto;
+  display: grid;
+}
+
+.todo-cal-timegrid-headcell {
+  padding: 8px 4px;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  border-left: 1px solid var(--color-border);
+  cursor: pointer;
+}
+.todo-cal-timegrid-headcell:first-child { border-left: none; }
+.todo-cal-timegrid-headcell b { color: var(--color-text); font-size: 0.8125rem; }
+.todo-cal-timegrid-headcell.today { color: var(--color-bronze); }
+.todo-cal-timegrid-headcell.today b { color: var(--color-bronze); }
+
+.todo-cal-timegrid-scroll {
+  display: flex;
+  max-height: 560px;
+  overflow-y: auto;
+}
+
+.todo-cal-timegrid-hours {
+  flex: 0 0 52px;
+  position: relative;
+  height: 1152px;
+}
+
+.todo-cal-timegrid-hourlabel {
+  position: absolute;
+  right: 6px;
+  transform: translateY(-50%);
+  font-size: 0.6875rem;
+  color: var(--color-text-faint);
+  white-space: nowrap;
+}
+
+.todo-cal-timegrid-days {
+  flex: 1 1 auto;
+  display: grid;
+  position: relative;
+}
+
+.todo-cal-timegrid-day {
+  position: relative;
+  height: 1152px;
+  border-left: 1px solid var(--color-border);
+  cursor: pointer;
+  background-image: repeating-linear-gradient(to bottom, var(--color-border) 0, var(--color-border) 1px, transparent 1px, transparent 48px);
+}
+.todo-cal-timegrid-day:first-child { border-left: none; }
+.todo-cal-timegrid-day.today { background-color: rgba(176, 141, 87, 0.06); }
+
+.todo-cal-band-divider {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 2px dashed rgba(176, 141, 87, 0.55);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.todo-cal-event {
+  position: absolute;
+  z-index: 2;
+  background: var(--color-surface-3);
+  border-left: 3px solid var(--color-bronze);
+  border-radius: 4px;
+  padding: 2px 5px;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+.todo-cal-event:hover { filter: brightness(1.12); }
+.todo-cal-event.done { opacity: 0.6; }
+.todo-cal-event.done .todo-cal-event-title { text-decoration: line-through; }
+
+.todo-cal-event-check {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  margin-top: 1px;
+  border: 1.5px solid var(--color-text-faint);
+  border-radius: 3px;
+  background: transparent;
+  color: #fff;
+  padding: 0;
+  cursor: pointer;
+}
+.todo-cal-event.done .todo-cal-event-check { background: var(--color-success); border-color: var(--color-success); }
+
+.todo-cal-event-title {
+  font-size: 0.6875rem;
+  line-height: 1.15;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 640px) {
+  .todo-cal-timegrid-scroll { max-height: 440px; }
+  .todo-cal-timegrid-gutter, .todo-cal-timegrid-hours { flex-basis: 40px; }
+  .todo-cal-timegrid-hourlabel { font-size: 0.5625rem; right: 3px; }
+  .todo-cal-timegrid-headcell { font-size: 0.625rem; padding: 6px 2px; }
+  .todo-cal-event-title { font-size: 0.625rem; }
+}

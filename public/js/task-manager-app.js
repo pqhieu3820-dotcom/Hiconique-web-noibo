@@ -2075,6 +2075,143 @@
     function addDays(dateStr, n) { var d = new Date(dateStr + 'T00:00:00'); d.setDate(d.getDate() + n); return fmtDate(d); }
     function mondayOf(dateStr) { var d = new Date(dateStr + 'T00:00:00'); var wd = (d.getDay() + 6) % 7; d.setDate(d.getDate() - wd); return d; }
 
+    // 2026-09-22b: lưới giờ thật cho chế độ Ngày/Tuần (kiểu Google Lịch) —
+    // trục giờ 00:00-24:00, mỗi task đặt theo giờ trong deadline (và startDate
+    // cùng ngày nếu có, vẽ thành khối kéo dài), việc chồng giờ nhau chia cột
+    // đứng cạnh nhau (thuật toán interval-graph-coloring theo cụm chồng lấn).
+    // 1px = 1 phút / PX_PER_MIN -> 1440 phút * 0.8 = 1152px cho 1 ngày.
+    var PX_PER_MIN = 0.8;
+    var BAND_MORNING_END = 11 * 60 + 30;   // hết Sáng — theo DEFAULT_WORK_SCHEDULE.morningEnd (07:30-11:30)
+    var BAND_AFTERNOON_END = 17 * 60 + 30; // hết Chiều — theo DEFAULT_WORK_SCHEDULE.afternoonEnd (13:30-17:30), sau đó là Tối
+
+    function taskTimeBlock(t) {
+      var d = new Date(t.deadline);
+      var endMin = d.getHours() * 60 + d.getMinutes();
+      var startMin = endMin - 30; // task chỉ có deadline -> khối "điểm" cao ~30 phút
+      if (t.startDate) {
+        var sd = new Date(t.startDate);
+        if (!isNaN(sd.getTime()) && sd.getFullYear() === d.getFullYear() && sd.getMonth() === d.getMonth() && sd.getDate() === d.getDate() && sd.getTime() < d.getTime()) {
+          startMin = sd.getHours() * 60 + sd.getMinutes();
+        }
+      }
+      if (startMin < 0) startMin = 0;
+      if (endMin > 1439) endMin = 1439;
+      if (endMin - startMin < 20) endMin = Math.min(1440, startMin + 20);
+      return { startMin: startMin, endMin: endMin };
+    }
+
+    // Nhóm các khối chồng giờ nhau thành từng cụm (cluster), trong mỗi cụm
+    // gán cột (col) theo kiểu tham lam (greedy interval coloring) — giống hệt
+    // cách Google Lịch chia việc trùng giờ đứng cạnh nhau thay vì đè lên nhau.
+    function layoutDayBlocks(blocks) {
+      var sorted = blocks.slice().sort(function (a, b) { return a.startMin - b.startMin || a.endMin - b.endMin; });
+      var clusters = [];
+      var current = null;
+      sorted.forEach(function (b) {
+        if (!current || b.startMin >= current.maxEnd) {
+          current = { items: [], maxEnd: b.endMin };
+          clusters.push(current);
+        }
+        current.items.push(b);
+        if (b.endMin > current.maxEnd) current.maxEnd = b.endMin;
+      });
+      clusters.forEach(function (cluster) {
+        var columns = []; // columns[i] = giờ kết thúc muộn nhất đã xếp ở cột i
+        cluster.items.forEach(function (b) {
+          var placed = false;
+          for (var i = 0; i < columns.length; i++) {
+            if (columns[i] <= b.startMin) { b.col = i; columns[i] = b.endMin; placed = true; break; }
+          }
+          if (!placed) { b.col = columns.length; columns.push(b.endMin); }
+        });
+        cluster.items.forEach(function (b) { b.cols = columns.length; });
+      });
+      return sorted;
+    }
+
+    function buildTimeGridDayCol(dateStr) {
+      var dueTasks = tasksDueOn(tasks, dateStr);
+      var blocks = layoutDayBlocks(dueTasks.map(function (t) {
+        var tb = taskTimeBlock(t);
+        return { task: t, startMin: tb.startMin, endMin: tb.endMin };
+      }));
+      var eventsHtml = blocks.map(function (b) {
+        var t = b.task;
+        var isDone = t.status === 'completed';
+        var color = isDone ? 'var(--color-success)' : (t.priority === 'high' ? 'var(--color-destructive)' : t.priority === 'medium' ? 'var(--color-terracotta)' : 'var(--color-bronze)');
+        var top = b.startMin * PX_PER_MIN;
+        var height = Math.max((b.endMin - b.startMin) * PX_PER_MIN, 18);
+        var widthPct = 100 / b.cols;
+        var leftPct = b.col * widthPct;
+        return '<div class="todo-cal-event' + (isDone ? ' done' : '') + '" data-open-id="' + t.id + '" style="top:' + top + 'px;height:' + height + 'px;left:calc(' + leftPct + '% + 1px);width:calc(' + widthPct + '% - 3px);border-left-color:' + color + '" title="' + escapeHtml(t.title) + '">' +
+          '<button type="button" class="todo-cal-event-check" data-toggle-id="' + t.id + '" aria-label="Đánh dấu hoàn thành">' + (isDone ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>' : '') + '</button>' +
+          '<span class="todo-cal-event-title">' + escapeHtml(t.title) + '</span>' +
+        '</div>';
+      }).join('');
+      var dividersHtml =
+        '<div class="todo-cal-band-divider" style="top:' + (BAND_MORNING_END * PX_PER_MIN) + 'px"></div>' +
+        '<div class="todo-cal-band-divider" style="top:' + (BAND_AFTERNOON_END * PX_PER_MIN) + 'px"></div>';
+      var isToday = dateStr === todayStr;
+      return '<div class="todo-cal-timegrid-day' + (isToday ? ' today' : '') + '" data-date="' + dateStr + '">' + dividersHtml + eventsHtml + '</div>';
+    }
+
+    // dateStrs: 1 phần tử (chế độ Ngày, 1 cột rộng) hoặc 7 phần tử (chế độ
+    // Tuần, 7 cột chia đều) — dùng chung 1 trục giờ bên trái.
+    function buildTimeGrid(dateStrs) {
+      var hourLabelsHtml = '';
+      for (var h = 0; h < 24; h++) hourLabelsHtml += '<div class="todo-cal-timegrid-hourlabel" style="top:' + (h * 60 * PX_PER_MIN) + 'px">' + pad2(h) + ':00</div>';
+      var headerHtml = dateStrs.map(function (ds) {
+        var dObj = new Date(ds + 'T00:00:00');
+        var isToday = ds === todayStr;
+        return '<div class="todo-cal-timegrid-headcell' + (isToday ? ' today' : '') + '" data-date="' + ds + '">' + dayHeaders[(dObj.getDay() + 6) % 7] + ' <b>' + pad2(dObj.getDate()) + '</b></div>';
+      }).join('');
+      var daysHtml = dateStrs.map(buildTimeGridDayCol).join('');
+      return '<div class="todo-cal-timegrid-wrap">' +
+        '<div class="todo-cal-timegrid-headrow"><div class="todo-cal-timegrid-gutter"></div><div class="todo-cal-timegrid-headcells" style="grid-template-columns:repeat(' + dateStrs.length + ',1fr)">' + headerHtml + '</div></div>' +
+        '<div class="todo-cal-timegrid-scroll">' +
+          '<div class="todo-cal-timegrid-hours">' + hourLabelsHtml + '</div>' +
+          '<div class="todo-cal-timegrid-days" style="grid-template-columns:repeat(' + dateStrs.length + ',1fr)">' + daysHtml + '</div>' +
+        '</div>' +
+      '</div>';
+    }
+
+    // 2026-09-22b: Ctrl/Cmd + lăn chuột để zoom in/out qua các chế độ xem —
+    // dùng ĐÚNG modifier key + chiều cuộn như HiconiqueGantt.bindWheelZoom()
+    // (public/js/gantt.js) để đồng bộ thao tác toàn app: cuộn lên (deltaY<0)
+    // = zoom in (view hẹp hơn, chi tiết hơn), cuộn xuống = zoom out. Bậc
+    // thang: Ngày -> Tuần -> Tháng -> Quý -> Năm, ở 2 đầu thì không làm gì.
+    var MODE_LADDER = ['day', 'week', 'month', 'quarter', 'year'];
+    function calQuarterFirstMonth() { return Math.floor((state.month - 1) / 3) * 3 + 1; }
+    function getCalRefDate() {
+      if (state.viewMode === 'day') return state.dayDate;
+      if (state.viewMode === 'week') return state.weekAnchor;
+      if (state.viewMode === 'month') return state.selectedDate || (state.year + '-' + pad2(state.month) + '-01');
+      if (state.viewMode === 'quarter') return state.selectedDate || (state.year + '-' + pad2(calQuarterFirstMonth()) + '-01');
+      return state.selectedDate || (state.year + '-01-01'); // year
+    }
+    function setCalMode(newMode) {
+      var ref = getCalRefDate();
+      var refD = new Date(ref + 'T00:00:00');
+      state.viewMode = newMode;
+      if (newMode === 'day') state.dayDate = ref;
+      else if (newMode === 'week') state.weekAnchor = ref;
+      else if (newMode === 'month' || newMode === 'quarter') { state.year = refD.getFullYear(); state.month = refD.getMonth() + 1; }
+      else if (newMode === 'year') { state.year = refD.getFullYear(); }
+    }
+    function bindCalZoomWheel(container) {
+      if (!container) return;
+      container.addEventListener('wheel', function (e) {
+        if (!(e.ctrlKey || e.metaKey)) return;
+        e.preventDefault();
+        var idx = MODE_LADDER.indexOf(state.viewMode);
+        if (idx === -1) return;
+        var nextIdx = idx + (e.deltaY < 0 ? -1 : 1);
+        if (nextIdx < 0 || nextIdx >= MODE_LADDER.length) return;
+        setCalMode(MODE_LADDER[nextIdx]);
+        renderCalendar();
+      }, { passive: false });
+    }
+
     // 2026-09-22: "Calendar To Do List" giờ có 5 chế độ xem (Ngày/Tuần/Tháng/
     // Quý/Năm) — buildDetailHtml() và buildMonthCells() dùng chung cho mọi
     // chế độ để tránh lặp logic pill/badge + khung to-do-list chi tiết.
@@ -2185,7 +2322,8 @@
         '<div class="todo-cal-nav-label">' + wLabel + '</div>' +
         '<button type="button" class="todo-cal-nav-btn" id="todoCalNextW" aria-label="Tuần sau">&rarr;</button>' +
         '<button type="button" class="todo-cal-reload" id="todoCalToday"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="12" cy="15" r="2" fill="currentColor" stroke="none"/></svg> Hôm nay</button>';
-      bodyHtml = '<div class="todo-cal-grid todo-cal-week-grid">' + dayHeadersHtml + buildWeekCells(state.weekAnchor) + '</div>';
+      var weekDates = []; for (var wi = 0; wi < 7; wi++) { var wd2 = new Date(monday); wd2.setDate(wd2.getDate() + wi); weekDates.push(fmtDate(wd2)); }
+      bodyHtml = buildTimeGrid(weekDates);
       if (state.selectedDate) detailHtml = buildDetailHtml(state.selectedDate);
     } else if (state.viewMode === 'day') {
       var dLabel = new Date(state.dayDate + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -2195,7 +2333,7 @@
         '<button type="button" class="todo-cal-nav-btn" id="todoCalNextD" aria-label="Ngày sau">&rarr;</button>' +
         '<button type="button" class="todo-cal-reload" id="todoCalToday"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="12" cy="15" r="2" fill="currentColor" stroke="none"/></svg> Hôm nay</button>';
       var dCount = tasksDueOn(tasks, state.dayDate).length;
-      bodyHtml = '<div class="todo-cal-day-stat">' + dCount + ' việc cần làm ' + (state.dayDate === todayStr ? 'hôm nay' : 'ngày này') + '</div>';
+      bodyHtml = '<div class="todo-cal-day-stat">' + dCount + ' việc cần làm ' + (state.dayDate === todayStr ? 'hôm nay' : 'ngày này') + '</div>' + buildTimeGrid([state.dayDate]);
       detailHtml = buildDetailHtml(state.dayDate);
     } else if (state.viewMode === 'quarter') {
       var qMonths = [q * 3 + 1, q * 3 + 2, q * 3 + 3];
@@ -2292,7 +2430,7 @@
         renderCalendar();
       });
     });
-    tmContent.querySelectorAll('.todo-cal-day:not(.other-month), .todo-cal-mini-day:not(.other-month)').forEach(function (cell) {
+    tmContent.querySelectorAll('.todo-cal-day:not(.other-month), .todo-cal-mini-day:not(.other-month), .todo-cal-timegrid-day, .todo-cal-timegrid-headcell').forEach(function (cell) {
       cell.addEventListener('click', function () {
         state.selectedDate = state.selectedDate === cell.dataset.date ? null : cell.dataset.date;
         renderCalendar();
@@ -2311,6 +2449,9 @@
         openTaskDetailModal(el.dataset.openId);
       });
     });
+    // Ctrl/Cmd + lăn chuột trên toàn khung lịch (kể cả lưới giờ) để zoom qua
+    // các chế độ xem — xem ghi chú bindCalZoomWheel() phía trên.
+    bindCalZoomWheel(tmContent.querySelector('.todo-cal-card'));
   }
 
   // "Gantt" (mục Gantt, sidebar) — dùng lại NGUYÊN VẸN component HiconiqueGantt
