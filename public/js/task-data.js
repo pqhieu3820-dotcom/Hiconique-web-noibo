@@ -315,6 +315,47 @@ var TaskManager = (function() {
   };
   var gsCacheTime = {};
 
+  // 2026-09-22: fix bug "đổi trạng thái xong, rời trang rồi quay lại thì bị
+  // trả về giá trị cũ" — người dùng phản ánh Sheet đã ghi nhận đúng nhưng app
+  // hiện lại sai. Nguyên nhân: updateTask()/updateProject() ghi localStorage
+  // NGAY (đúng) nhưng chỉ BẮN request lên Apps Script (syncToGSheets — fire-
+  // and-forget, không chờ), việc ghi thật trên Sheet có thể mất 1-3s+ (đặc
+  // biệt lúc Apps Script "cold start"). Nếu refreshFromGSheets() chạy TRONG
+  // lúc đó (chuyển trang = initData() tự gọi lại, hoặc silentRefresh() định
+  // kỳ 20s) thì bản GET trả về data CŨ (ghi chưa kịp lên Sheet) và bị
+  // `localStorage.setItem()` ghi đè thẳng lên bản local ĐÚNG vừa đổi — đây
+  // chính là bug. Fix: khi nhận dữ liệu mới từ Sheet, GỘP theo từng bản ghi
+  // thay vì ghi đè cả mảng — giữ lại bản có `updatedAt` MỚI HƠN (local hay
+  // server), và giữ luôn các bản ghi CHỈ có ở local trong vài phút gần đây
+  // (mới tạo/mới xoá mềm, server chưa kịp phản ánh). Chỉ áp dụng cho
+  // tasks/projects (nơi người dùng phản ánh bug, sửa đổi nhiều nhất).
+  var MERGE_GRACE_MS = 5 * 60 * 1000; // 5 phút — đủ qua khỏi 1 lần cold-start Apps Script chậm nhất
+  function mergeServerData(storageKey, serverArr) {
+    var localArr = [];
+    try { localArr = JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch (e) {}
+    var localById = {};
+    localArr.forEach(function (it) { if (it && it.id) localById[it.id] = it; });
+    var now = Date.now();
+    var seenIds = {};
+    var merged = serverArr.map(function (serverItem) {
+      seenIds[serverItem.id] = true;
+      var localItem = localById[serverItem.id];
+      if (!localItem) return serverItem;
+      var localTime = localItem.updatedAt ? new Date(localItem.updatedAt).getTime() : 0;
+      var serverTime = serverItem.updatedAt ? new Date(serverItem.updatedAt).getTime() : 0;
+      return localTime > serverTime ? localItem : serverItem;
+    });
+    // Bản ghi CHỈ có ở local (mới tạo, hoặc mới xoá mềm nên visible vừa đổi)
+    // và còn trong "grace period" — giữ lại, server sẽ tự phản ánh ở lần sau.
+    localArr.forEach(function (it) {
+      if (!it || !it.id || seenIds[it.id]) return;
+      var stamp = it.updatedAt || it.createdAt;
+      var t = stamp ? new Date(stamp).getTime() : 0;
+      if (t && now - t < MERGE_GRACE_MS) merged.push(it);
+    });
+    return merged;
+  }
+
   // Force refresh from Google Sheets (bypass cache).
   // Bug 2026-09-19 phát hiện khi rà lỗi "đăng ký thiết bị mãi không được":
   // file này có 2 hàm CÙNG TÊN `refreshFromGSheets` (hàm này, thêm 2026-09-10
@@ -350,6 +391,7 @@ var TaskManager = (function() {
     function checkDone() {
       done++;
       if (done >= total) {
+        if (success) autoHideExpiredCompleted();
         if (callback) callback(success);
         try { window.dispatchEvent(new CustomEvent('hiconique:data-refreshed')); } catch (e) {}
       }
@@ -357,14 +399,14 @@ var TaskManager = (function() {
 
     getFromGSheets('projects', function(projects) {
       if (projects.length > 0) {
-        localStorage.setItem(STORAGE_KEYS.projects, JSON.stringify(projects));
+        localStorage.setItem(STORAGE_KEYS.projects, JSON.stringify(mergeServerData(STORAGE_KEYS.projects, projects)));
         success = true;
       }
       checkDone();
     });
     getFromGSheets('tasks', function(tasks) {
       if (tasks.length > 0) {
-        localStorage.setItem(STORAGE_KEYS.tasks, JSON.stringify(tasks));
+        localStorage.setItem(STORAGE_KEYS.tasks, JSON.stringify(mergeServerData(STORAGE_KEYS.tasks, tasks)));
       }
       checkDone();
     });
@@ -646,6 +688,70 @@ var TaskManager = (function() {
     return d >= monday && d < nextMonday;
   }
 
+  // 2026-09-22: quy tắc ẨN HIỂN THỊ hợp nhất cho task/dự án (thay thế
+  // isCompletedThisWeek() ở phần Kanban "Hoàn thành" — nay tính theo THÁNG
+  // hoàn thành thay vì tuần, theo yêu cầu người dùng). Dùng ở board/list UI
+  // (task-manager-app.js, projects.js); các nơi cần thống kê/báo cáo năm/quý
+  // PHẢI đọc thẳng getTasks()/getProjects() (không lọc), KHÔNG gọi hàm này.
+  //   - visible === false (đã bấm Xoá, hoặc tự ẩn sau khi qua tháng hoàn
+  //     thành) -> luôn ẩn.
+  //   - status 'completed' và completedAt KHÔNG cùng tháng/năm hiện tại ->
+  //     ẩn (sẽ được autoHideExpiredCompleted() ghi hẳn visible=false ở lần
+  //     đồng bộ kế tiếp, nhưng lọc ngay ở đây để không phải chờ).
+  //   - còn lại -> hiển thị.
+  function isVisibleNow(item) {
+    if (!item) return false;
+    if (item.visible === false || item.visible === 'FALSE' || item.visible === 'false') return false;
+    if (item.status === 'completed' && item.completedAt) {
+      var d = new Date(item.completedAt);
+      if (!isNaN(d.getTime())) {
+        var now = new Date();
+        if (d.getFullYear() !== now.getFullYear() || d.getMonth() !== now.getMonth()) return false;
+      }
+    }
+    return true;
+  }
+
+  // Tự ẩn (visible=false) hàng loạt task/dự án Hoàn thành đã qua tháng hoàn
+  // thành — ghi THẬT xuống cột "Hiển thị" trên Sheet (không chỉ lọc phía
+  // client) để CEO/quản lý nhìn thẳng trên Sheet cũng thấy đúng trạng thái.
+  // Chạy 1 lần/ngày/máy (throttle qua localStorage, tránh quét + ghi lại mỗi
+  // lần refreshFromGSheets() chạy ngầm mỗi 20s). Ghi bằng 1 lệnh batch duy
+  // nhất mỗi loại (updateTasksBatch/updateProjectsBatch) — không loop gọi API
+  // đơn lẻ song song (xem quy tắc addDataBatch()).
+  var AUTO_HIDE_THROTTLE_KEY = 'hiconique_last_auto_hide_check';
+  function collectExpiredCompletedIds(list) {
+    var now = new Date();
+    return list.filter(function (item) {
+      if (!item || item.visible === false || item.visible === 'FALSE' || item.visible === 'false') return false;
+      if (item.status !== 'completed' || !item.completedAt) return false;
+      var d = new Date(item.completedAt);
+      if (isNaN(d.getTime())) return false;
+      return d.getFullYear() !== now.getFullYear() || d.getMonth() !== now.getMonth();
+    }).map(function (item) { return item.id; });
+  }
+  function autoHideExpiredCompleted() {
+    if (!isUsingGSheets()) return;
+    if (typeof Offline !== 'undefined' && !Offline.isOnline()) return;
+    var todayStr = new Date().toISOString().split('T')[0];
+    if (localStorage.getItem(AUTO_HIDE_THROTTLE_KEY) === todayStr) return;
+    localStorage.setItem(AUTO_HIDE_THROTTLE_KEY, todayStr);
+
+    var expiredTaskIds = collectExpiredCompletedIds(getAll(STORAGE_KEYS.tasks));
+    var expiredProjectIds = collectExpiredCompletedIds(getAll(STORAGE_KEYS.projects));
+
+    if (expiredTaskIds.length) {
+      var taskUpdates = expiredTaskIds.map(function (id) { return { id: id, visible: false }; });
+      taskUpdates.forEach(function (u) { update(STORAGE_KEYS.tasks, u.id, { visible: false }); });
+      callGSheetsAPI('updateTasksBatch', taskUpdates);
+    }
+    if (expiredProjectIds.length) {
+      var projectUpdates = expiredProjectIds.map(function (id) { return { id: id, visible: false }; });
+      projectUpdates.forEach(function (u) { update(STORAGE_KEYS.projects, u.id, { visible: false }); });
+      callGSheetsAPI('updateProjectsBatch', projectUpdates);
+    }
+  }
+
   // Projects
   function getProjects() {
     return getAll(STORAGE_KEYS.projects);
@@ -655,10 +761,12 @@ var TaskManager = (function() {
     return getById(STORAGE_KEYS.projects, id);
   }
 
-  // Chỉ CEO/quản lý được tạo, sửa, xoá dự án — thành viên chỉ xem.
+  // 2026-09-22: mở quyền TẠO dự án cho mọi cấp bậc (kể cả Nhân viên) theo yêu
+  // cầu người dùng — chỉ bỏ gate ở đây, sửa/xoá dự án vẫn giữ nguyên chỉ CEO/
+  // quản lý (canManageNotifications() bên dưới) vì không được yêu cầu mở rộng.
   function createProject(project, user) {
     user = user || getCurrentUser();
-    if (!canManageNotifications(user)) return null;
+    if (!user) return null;
     project.status = project.status || 'on-track';
     project.progress = project.progress || 0;
     var newProject = add(STORAGE_KEYS.projects, project);
@@ -685,15 +793,17 @@ var TaskManager = (function() {
     return updated;
   }
 
+  // 2026-09-22: "Xoá" dự án giờ chỉ ẨN (cột "Hiển thị" -> FALSE) như task,
+  // KHÔNG xoá thật — xem chú thích deleteTask(). Các task thuộc dự án này
+  // TRƯỚC ĐÂY bị xoá cứng theo, giờ giữ nguyên (dự án ẩn thì Kanban/board tự
+  // lọc theo projectId sẽ không còn ai điều hướng vào được, nhưng dữ liệu
+  // task không mất — nhất quán với việc dự án chỉ ẩn chứ không mất).
   function deleteProject(id, user) {
     user = user || getCurrentUser();
     if (!canManageNotifications(user)) return null;
-    var tasks = getAll(STORAGE_KEYS.tasks).filter(function(t) { return t.projectId !== id; });
-    localStorage.setItem(STORAGE_KEYS.tasks, JSON.stringify(tasks));
-    var result = remove(STORAGE_KEYS.projects, id);
-    // Sync to Google Sheets
-    syncToGSheets('projects', 'delete', {}, id);
-    return result;
+    var updated = updateProject(id, { visible: false }, user);
+    if (!updated) return null;
+    return getAll(STORAGE_KEYS.projects).filter(function (p) { return p.id !== id; });
   }
 
   // Tasks
@@ -858,11 +968,15 @@ var TaskManager = (function() {
     return updated;
   }
 
+  // 2026-09-22: "Xoá" giờ chỉ ẨN (cột "Hiển thị" -> FALSE), KHÔNG xoá dòng
+  // thật khỏi Sheet nữa, theo yêu cầu người dùng — lỡ ẩn nhầm còn cứu được
+  // bằng cách vào thẳng Sheet sửa lại cột "Hiển thị". Trả về mảng còn lại
+  // giống hệt remove() cũ (đã lọc bỏ item vừa ẩn) để không phá vỡ các chỗ
+  // đang gọi deleteTask() và mong đợi UI tự cập nhật danh sách ngay.
   function deleteTask(id) {
-    var result = remove(STORAGE_KEYS.tasks, id);
-    // Sync to Google Sheets
-    syncToGSheets('tasks', 'delete', {}, id);
-    return result;
+    var updated = updateTask(id, { visible: false });
+    if (!updated) return getAll(STORAGE_KEYS.tasks);
+    return getAll(STORAGE_KEYS.tasks).filter(function (t) { return t.id !== id; });
   }
 
   function toggleTaskStatus(id) {
@@ -1341,6 +1455,25 @@ var TaskManager = (function() {
     if (!allowed) return null;
     var updated = update(STORAGE_KEYS.members, id, { status: status });
     if (updated) syncToGSheets('members', 'update', { status: status }, id);
+    return updated;
+  }
+
+  // 2026-09-22: sửa Cấp bậc (level) của thành viên khác — CHỈ Founder (level
+  // code 'founder', đỉnh của 5 mức) mới làm được, theo đúng yêu cầu người
+  // dùng. `roleLevel` (3 mức cũ, ~25 chỗ check quyền rải khắp client) được tự
+  // suy lại từ level mới qua LEVELS ở trên để không lệch nhau.
+  function isFounder(user) {
+    return !!user && user.level === 'founder';
+  }
+
+  function updateMemberLevel(id, levelCode, user) {
+    user = user || getCurrentUser();
+    if (!isFounder(user)) return null;
+    var levelInfo = getLevelByCode(levelCode);
+    if (!levelInfo) return null;
+    var updates = { level: levelCode, roleLevel: levelInfo.roleLevel };
+    var updated = update(STORAGE_KEYS.members, id, updates);
+    if (updated) syncToGSheets('members', 'update', updates, id);
     return updated;
   }
 
@@ -2330,6 +2463,7 @@ var TaskManager = (function() {
     updateProject: updateProject,
     deleteProject: deleteProject,
     isCompletedThisWeek: isCompletedThisWeek,
+    isVisibleNow: isVisibleNow,
 
     // Tasks
     getTasks: getTasks,
@@ -2366,6 +2500,8 @@ var TaskManager = (function() {
     canManageMembers: canManageMembers,
     canTerminateMembers: canTerminateMembers,
     updateMemberStatus: updateMemberStatus,
+    isFounder: isFounder,
+    updateMemberLevel: updateMemberLevel,
 
     // Proposals
     getProposals: getProposals,

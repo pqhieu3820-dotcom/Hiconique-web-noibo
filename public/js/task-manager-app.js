@@ -43,6 +43,18 @@
     return 'Chờ xử lý';
   }
 
+  // 2026-09-22: helper dùng chung — lọc bỏ task đã "Xoá" (visible=false,
+  // không xoá thật nữa) và task Hoàn thành đã qua tháng hoàn thành khỏi MỌI
+  // danh sách/board hiển thị hàng ngày (List, Kanban, badge số lượng, lịch,
+  // "Tasks của tôi"...). Dùng ở mọi nơi gọi TaskManager.getTasks() để render
+  // ra màn hình cho người dùng browse — KHÔNG dùng ở chỗ tính thống kê/báo
+  // cáo theo năm/quý (những chỗ đó đọc thẳng TaskManager.getTasks() không lọc).
+  function visibleTasks(filters) {
+    var tasks = TaskManager.getTasks(filters);
+    if (!TaskManager.isVisibleNow) return tasks;
+    return tasks.filter(function (t) { return TaskManager.isVisibleNow(t); });
+  }
+
   // showToast()/showConfirmDialog() — copy y hệt pattern cùng tên đã dùng ở
   // timesheet.html/portal.js (dùng chung class .ts-confirm-overlay và tương
   // đương cho toast, có sẵn trong portal.css) — file này CHƯA có bản riêng
@@ -230,15 +242,8 @@
 
   // Apply UI permissions
   function applyPermissions(roleLevel) {
-    var canManageMembers = roleLevel === 'admin';
-    var canCreateProject = roleLevel === 'admin' || roleLevel === 'manager';
-
-    // Hide "Tạo dự án" buttons for members
-    if (!canCreateProject) {
-      var style = document.createElement('style');
-      style.textContent = '.add-project-btn { display: none !important; }';
-      document.head.appendChild(style);
-    }
+    // 2026-09-22: mọi cấp bậc (kể cả Nhân viên) đều tạo được dự án theo yêu
+    // cầu người dùng — không còn ẩn ".add-project-btn" theo roleLevel nữa.
   }
 
   // Auto-poll from Google Sheets every 60s — gentle update to avoid UI flicker
@@ -264,7 +269,7 @@
   // Update nav badge counts with real data
   function updateNavBadges() {
     var projects = TaskManager.getProjects();
-    var tasks = TaskManager.getTasks();
+    var tasks = visibleTasks();
     var proposals = TaskManager.getProposals();
     var currentUser = TaskManager.getCurrentUser();
 
@@ -1221,7 +1226,7 @@
     var taskListEl = document.querySelector('.task-list');
     if (!taskListEl) return;
 
-    var tasks = TaskManager.getTasks();
+    var tasks = visibleTasks();
 
     if (label.includes('Tasks')) {
       // All tasks
@@ -1324,7 +1329,7 @@
     var user = TaskManager.getCurrentUser ? TaskManager.getCurrentUser() : null;
     if (!user) return;
 
-    var myTasks = TaskManager.getTasks({ assigneeId: user.id }) || [];
+    var myTasks = visibleTasks({ assigneeId: user.id }) || [];
     var activeTasks = myTasks.filter(function (t) { return t.status !== 'completed'; });
     var today = new Date();
     var todayKey = ymd(today);
@@ -1497,19 +1502,22 @@
     const tmContent = document.querySelector('.tm-content');
     if (!tmContent) return;
 
-    const tasks = TaskManager.getTasks();
+    // 2026-09-22: lọc theo TaskManager.isVisibleNow() — ẩn task đã bấm "Xoá"
+    // (visible=false, không xoá thật nữa) khỏi MỌI cột, và "Hoàn thành" chỉ
+    // hiện việc hoàn thành TRONG THÁNG NÀY (tự ẩn khi qua tháng kế tiếp —
+    // trước đây tính theo tuần, đổi thành tháng theo yêu cầu người dùng; dữ
+    // liệu KHÔNG mất, thống kê năm/quý vẫn đọc thẳng TaskManager.getTasks()).
+    const tasks = visibleTasks();
     const currentUser = TaskManager.getCurrentUser();
 
     // 2026-09-21: đổi sang 4 cột giống hệt quy trình "Dự án" (Chờ xử lý ->
     // Đang làm -> Chờ duyệt -> Hoàn thành, xem taskStatusLabel()) thay vì 3
     // cột cũ (Kanban của tasks-manager.html không có nơi hiện việc đang
-    // 'review' — bị "mất tích" khỏi board). "Hoàn thành" chỉ hiện việc hoàn
-    // thành TRONG TUẦN NÀY (tự ẩn sau khi qua 0h Thứ Hai tuần sau — dữ liệu
-    // vẫn còn, chỉ ẩn khỏi Board cho gọn) — xem TaskManager.isCompletedThisWeek().
+    // 'review' — bị "mất tích" khỏi board).
     const todo = tasks.filter(t => t.status === 'pending');
     const inProgress = tasks.filter(t => t.status === 'in-progress');
     const review = tasks.filter(t => t.status === 'review');
-    const done = tasks.filter(t => t.status === 'completed' && (!TaskManager.isCompletedThisWeek || TaskManager.isCompletedThisWeek(t.completedAt)));
+    const done = tasks.filter(t => t.status === 'completed');
 
     const columnHTML = (title, dotColor, tasks, colId) => `
       <div class="kanban-col" id="${colId}">
@@ -1696,7 +1704,7 @@
     const taskListEl = document.querySelector('.task-list');
     if (!taskListEl) return;
 
-    const tasks = TaskManager.getTasks();
+    const tasks = visibleTasks();
 
     if (tasks.length === 0) {
       taskListEl.innerHTML = `
@@ -1843,7 +1851,7 @@
     if (!tmContent) return;
 
     const currentUser = TaskManager.getCurrentUser();
-    const allTasks = TaskManager.getTasks();
+    const allTasks = visibleTasks();
     const myTasks = allTasks.filter(t => taskHasAssignee(t, currentUser.id));
     const allMyTasks = allTasks.filter(t => taskHasAssignee(t, currentUser.id) || t.createdBy === currentUser.id);
 
@@ -2016,7 +2024,7 @@
 
       <div class="team-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
         ${members.map(member => {
-          const tasks = TaskManager.getTasks({ assigneeId: member.id });
+          const tasks = visibleTasks({ assigneeId: member.id });
           const activeTasks = tasks.filter(t => t.status !== 'completed').length;
 
           return `
@@ -2053,7 +2061,7 @@
     if (!tmContent) return;
 
     const state = todoCalState;
-    const tasks = TaskManager.getTasks();
+    const tasks = visibleTasks();
     const today = new Date();
     const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
 

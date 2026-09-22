@@ -577,9 +577,15 @@
     var currentUser = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
     var canManage = typeof TaskManager !== 'undefined' && TaskManager.canManageMembers && TaskManager.canManageMembers(currentUser);
     var canTerminate = typeof TaskManager !== 'undefined' && TaskManager.canTerminateMembers && TaskManager.canTerminateMembers(currentUser);
+    var canEditLevel = typeof TaskManager !== 'undefined' && TaskManager.isFounder && TaskManager.isFounder(currentUser);
     var isSelf = currentUser && currentUser.id === m.id;
 
     var actionButtons = '';
+    // 2026-09-22: sửa Cấp bậc — chỉ Founder, chỉ cho thành viên KHÁC (theo yêu
+    // cầu người dùng, tránh tự đổi cấp bậc của chính mình qua nút này).
+    if (canEditLevel && !isSelf) {
+      actionButtons += '<button type="button" class="team-modal-action" data-action="editLevel">⚙ Sửa cấp bậc</button>';
+    }
     if (m.status === 'pending' && canManage) {
       actionButtons += '<button type="button" class="team-modal-action approve" data-action="approve">✓ Duyệt tài khoản</button>';
       actionButtons += '<button type="button" class="team-modal-action reject" data-action="reject">✕ Từ chối</button>';
@@ -655,6 +661,33 @@
     contentEl.querySelectorAll('.team-modal-action').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var action = btn.dataset.action;
+        // 2026-09-22: "Sửa cấp bậc" không theo mẫu đổi trạng thái bên dưới —
+        // thay khối nút bằng 1 dropdown chọn cấp bậc + Lưu/Huỷ ngay tại chỗ.
+        if (action === 'editLevel') {
+          var levels = TaskManager.getLevels ? TaskManager.getLevels() : [];
+          var actionsEl = contentEl.querySelector('.team-modal-actions');
+          if (!actionsEl) return;
+          actionsEl.innerHTML =
+            '<select class="team-modal-level-select">' +
+              levels.map(function (l) {
+                return '<option value="' + l.code + '"' + (l.code === m.level ? ' selected' : '') + '>' + escapeHtml(l.label) + '</option>';
+              }).join('') +
+            '</select>' +
+            '<button type="button" class="team-modal-action" data-level-save="1">Lưu</button>' +
+            '<button type="button" class="team-modal-action reject" data-level-cancel="1">Huỷ</button>';
+          actionsEl.querySelector('[data-level-cancel]').addEventListener('click', function () { openTeamMemberModal(m); });
+          actionsEl.querySelector('[data-level-save]').addEventListener('click', function () {
+            var newLevel = actionsEl.querySelector('.team-modal-level-select').value;
+            var result = TaskManager.updateMemberLevel(m.id, newLevel, currentUser);
+            if (!result) { showToast('Bạn không có quyền thực hiện thao tác này.', false); return; }
+            m.level = result.level;
+            m.roleLevel = result.roleLevel;
+            showToast('Đã cập nhật cấp bậc.', true);
+            openTeamMemberModal(m);
+            loadTeam();
+          });
+          return;
+        }
         var newStatus = action === 'approve' ? 'active'
           : action === 'reject' ? 'rejected'
           : action === 'reinstate' ? 'active'

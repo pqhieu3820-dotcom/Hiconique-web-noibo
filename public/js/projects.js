@@ -36,8 +36,18 @@
   // vẫn giữ nguyên cho những chỗ khác (VD tra tên/avatar của người ĐÃ được
   // gán từ trước trên thẻ dự án/việc cũ).
   function getActiveMembers() { return (typeof TaskManager !== 'undefined' && TaskManager.getActiveMembers) ? TaskManager.getActiveMembers() : getMembers(); }
-  function getProjects() { return (typeof TaskManager !== 'undefined' && TaskManager.getProjects) ? TaskManager.getProjects() : []; }
-  function getTasks() { return (typeof TaskManager !== 'undefined' && TaskManager.getTasks) ? TaskManager.getTasks() : []; }
+  // 2026-09-22: lọc bỏ dự án/task đã "Xoá" (visible=false, không xoá thật
+  // nữa) VÀ dự án/task Hoàn thành đã qua tháng hoàn thành (TaskManager.
+  // isVisibleNow() — thay logic tuần cũ isCompletedThisWeek() ở dưới) khỏi
+  // MỌI nơi trong file này (cả 2 wrapper dùng chung cho toàn bộ danh sách/
+  // board/progress bar) — dữ liệu KHÔNG mất, thống kê năm/quý vẫn đọc thẳng
+  // TaskManager.getProjects()/getTasks() (không qua 2 wrapper này).
+  function visibleFilter(list) {
+    if (typeof TaskManager === 'undefined' || !TaskManager.isVisibleNow) return list;
+    return list.filter(function (it) { return TaskManager.isVisibleNow(it); });
+  }
+  function getProjects() { return (typeof TaskManager !== 'undefined' && TaskManager.getProjects) ? visibleFilter(TaskManager.getProjects()) : []; }
+  function getTasks() { return (typeof TaskManager !== 'undefined' && TaskManager.getTasks) ? visibleFilter(TaskManager.getTasks()) : []; }
   function getProjectById(id) { return (typeof TaskManager !== 'undefined' && TaskManager.getProject) ? TaskManager.getProject(id) : null; }
   function getMemberById(id) { return (typeof TaskManager !== 'undefined' && TaskManager.getMember) ? TaskManager.getMember(id) : null; }
   function getAssigneesForTask(task) { return (typeof TaskManager !== 'undefined' && TaskManager.getTaskAssignees) ? TaskManager.getTaskAssignees(task) : []; }
@@ -345,15 +355,13 @@
   }
 
   // ----- Render Board (Kanban) -----
-  // Việc đã "Hoàn thành" chỉ hiện trên Board trong TUẦN hoàn thành đó — hết
-  // tuần (qua 0h Thứ Hai tuần sau) tự ẩn khỏi cột này để cột không dài vô tận
-  // theo thời gian. Dữ liệu KHÔNG mất — List/Timeline/Gantt và quick-filter
-  // "Đã hoàn thành" vẫn thấy đủ, xem TaskManager.isCompletedThisWeek().
+  // 2026-09-22: việc/dự án Hoàn thành chỉ hiện trên Board trong THÁNG hoàn
+  // thành đó (trước đây tính theo tuần — đổi thành tháng theo yêu cầu người
+  // dùng) — đã lọc sẵn ở getTasks()/getProjects() (wrapper đầu file, xem
+  // TaskManager.isVisibleNow()), không cần lọc lại ở đây nữa. Dữ liệu KHÔNG
+  // mất — List/Timeline/Gantt và quick-filter "Đã hoàn thành" vẫn thấy đủ.
   function renderBoard() {
-    var tasks = getFilteredTasks().filter(function (t) {
-      if (t.status !== 'completed') return true;
-      return !TaskManager.isCompletedThisWeek || TaskManager.isCompletedThisWeek(t.completedAt);
-    });
+    var tasks = getFilteredTasks();
     var columns = document.querySelectorAll('.column-tasks');
     var counts = { pending: 0, 'in-progress': 0, review: 0, completed: 0 };
 
@@ -1996,9 +2004,8 @@
   // ----- Init -----
   function init() {
     currentUser = getUser();
-    var canManageProjects = !!currentUser && (currentUser.roleLevel === 'admin' || currentUser.roleLevel === 'manager');
-    var addProjectBtn = document.getElementById('btnAddProject');
-    if (addProjectBtn && !canManageProjects) addProjectBtn.style.display = 'none';
+    // 2026-09-22: mọi cấp bậc (kể cả Nhân viên) đều tạo được dự án theo yêu
+    // cầu người dùng — nút "Tạo dự án" không còn bị ẩn theo roleLevel nữa.
     bindViewTabs();
     renderProjectNav();
     bindProjectNav();

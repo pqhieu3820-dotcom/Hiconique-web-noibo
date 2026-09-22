@@ -133,7 +133,14 @@ const FIELD_MAP = {
     // thành" trên Kanban tự ẩn việc/dự án đã xong QUA TUẦN đó (xem
     // TaskManager.isCompletedThisWeek() trong task-data.js). Tự set/xoá ở
     // updateProject()/updateTask(), không phải người dùng tự nhập tay.
-    ['Ngày hoàn thành', 'completedAt']
+    ['Ngày hoàn thành', 'completedAt'],
+    // 2026-09-22: cờ ẨN HIỂN THỊ (không xoá dữ liệu) — bấm "Xoá" trên web giờ
+    // chỉ set cột này = FALSE thay vì xoá thật dòng Sheet (xem deleteProject()
+    // trong task-data.js). Dự án Hoàn thành cũng tự set FALSE khi qua khỏi
+    // tháng hoàn thành (autoHideExpiredCompleted() trong task-data.js) để
+    // Kanban không dài vô tận — dữ liệu vẫn còn nguyên trên Sheet, thống kê
+    // năm/quý vẫn đọc được (đọc thẳng getProjects() không lọc cột này).
+    ['Hiển thị', 'visible']
   ],
   tasks: [
     ['Mã CV', 'id'], ['Tên công việc', 'title'], ['Mô tả', 'description'], ['Mã dự án', 'projectId'],
@@ -147,7 +154,9 @@ const FIELD_MAP = {
     // (Hoàn thành) hoặc từ chối (quay lại Đang làm, giữ nguyên deadline, ghi
     // lý do vào cột này để nhân viên biết cần sửa gì). Xem task-data.js
     // submitTaskForReview()/approveTaskReview()/rejectTaskReview().
-    ['Ghi chú duyệt', 'reviewNote']
+    ['Ghi chú duyệt', 'reviewNote'],
+    // 2026-09-22: cờ ẨN HIỂN THỊ — xem chú thích y hệt ở FIELD_MAP.projects.
+    ['Hiển thị', 'visible']
   ],
   proposals: [
     ['Mã ĐX', 'id'], ['Tiêu đề', 'title'], ['Nội dung', 'description'], ['Loại đề xuất', 'type'],
@@ -608,6 +617,12 @@ function handleRequest(e) {
       result = updateData(ss, SHEETS.members, params.id, JSON.parse(params.data));
     } else if (action === 'updateProposal') {
       result = updateData(ss, SHEETS.proposals, params.id, JSON.parse(params.data));
+    } else if (action === 'updateTasksBatch') {
+      // 2026-09-22: xem chú thích updateDataBatch() — tự ẩn hàng loạt task
+      // Hoàn thành đã qua tháng.
+      result = updateDataBatch(ss, SHEETS.tasks, JSON.parse(params.data));
+    } else if (action === 'updateProjectsBatch') {
+      result = updateDataBatch(ss, SHEETS.projects, JSON.parse(params.data));
     } else if (action === 'deleteProject') {
       result = deleteData(ss, SHEETS.projects, params.id);
     } else if (action === 'deleteTask') {
@@ -1253,6 +1268,22 @@ function updateData(ss, sheetName, id, updates) {
     }
   }
   return Object.assign({}, data[index], updates);
+}
+
+// 2026-09-22: cập nhật NHIỀU dòng cùng lúc trong 1 lần thực thi (VD tự ẩn
+// hàng loạt task/dự án Hoàn thành đã qua tháng — autoHideExpiredCompleted()
+// trong task-data.js) — KHÔNG gọi updateData() nhiều lần song song từ client
+// cho việc này (xem chú thích addDataBatch() ở trên, cùng lý do). updatesList
+// là mảng {id, ...field cần sửa}, mỗi item chỉ cần chứa field muốn đổi.
+function updateDataBatch(ss, sheetName, updatesList) {
+  const results = [];
+  (updatesList || []).forEach(function (item) {
+    if (!item || !item.id) return;
+    var updates = Object.assign({}, item);
+    delete updates.id;
+    results.push(updateData(ss, sheetName, item.id, updates));
+  });
+  return results;
 }
 
 function deleteData(ss, sheetName, id) {
