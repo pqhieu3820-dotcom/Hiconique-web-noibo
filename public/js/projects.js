@@ -12,6 +12,12 @@
     sortBy: 'deadline',
     timelineMonth: new Date().getMonth(),
     timelineYear: new Date().getFullYear(),
+    // 2026-09-22: state cho mục "Lịch" (calendar-view) — tach rieng voi
+    // timelineMonth/timelineYear cua mục Timeline ben tren de 2 view doi
+    // thang/nam doc lap nhau.
+    calMonth: new Date().getMonth() + 1,
+    calYear: new Date().getFullYear(),
+    calSelectedDate: null,
     // Sắp xếp bằng cách bấm header cột trong bảng List — khác với sortBy ở
     // trên (dropdown "Sắp xếp", chỉ có deadline/priority/createdAt, áp dụng
     // cho mọi view). listSortKey null = dùng nguyên thứ tự mặc định từ
@@ -169,6 +175,21 @@
     var d = new Date(deadline);
     if (isNaN(d.getTime())) return deadline;
     return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
+  }
+  function fmtDateTime(value) {
+    if (!value) return '';
+    var d = new Date(value);
+    if (isNaN(d.getTime())) return value;
+    var hasTime = String(value).indexOf('T') !== -1 && !/T00:00(:00)?$/.test(String(value));
+    return d.toLocaleDateString('vi-VN') + (hasTime ? ' ' + d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '');
+  }
+  function toDatetimeLocalValue(value) {
+    // Nhan ca datetime day du ("...T14:30...") lan ngay-only cu ("2026-09-22")
+    // de dien vao input type="datetime-local" (yeu cau dung dinh dang YYYY-MM-DDTHH:mm).
+    if (!value) return '';
+    var s = String(value);
+    if (s.indexOf('T') === -1) return s.slice(0, 10) + 'T00:00';
+    return s.slice(0, 16);
   }
   function priorityLabel(p) {
     if (p === 'high') return 'Cao';
@@ -616,12 +637,141 @@
     });
   }
 
+  // 2026-09-22: mục "Lịch" — lưới lịch tháng thật, mỗi ngày hiện các task có
+  // deadline đúng ngày đó, bấm vào 1 ngày mở khung to-do-list bên dưới (tick
+  // hoàn thành ngay tại chỗ, bấm tên task mở modal chi tiết đầy đủ — dùng lại
+  // openTaskDetail() đã có). Copy nguyên logic renderCalendar() ở trang Tasks
+  // của tôi (task-manager-app.js) để 2 nơi nhìn giống hệt nhau, chỉ đổi sang
+  // dùng getTasks()/getProjectById()/openTaskDetail() cục bộ của file này.
+  function tasksDueOn(tasks, dateStr) {
+    return tasks.filter(function (t) {
+      if (!t.deadline) return false;
+      var d = new Date(t.deadline);
+      if (isNaN(d.getTime())) return false;
+      var s = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      return s === dateStr;
+    });
+  }
+
+  function renderCalendarView() {
+    var root = document.getElementById('calendar-view');
+    if (!root) return;
+
+    var tasks = getFilteredTasks ? getFilteredTasks() : getTasks();
+    var today = new Date();
+    var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+
+    var monthNames = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
+    var dayHeaders = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+    var yearsOptions = [];
+    for (var y = today.getFullYear() - 2; y <= today.getFullYear() + 2; y++) yearsOptions.push(y);
+
+    var firstDay = new Date(state.calYear, state.calMonth - 1, 1);
+    var startWeekday = (firstDay.getDay() + 6) % 7;
+    var daysInMonth = new Date(state.calYear, state.calMonth, 0).getDate();
+
+    var cellsHtml = '';
+    for (var p = 0; p < startWeekday; p++) cellsHtml += '<div class="todo-cal-day other-month"></div>';
+    for (var d = 1; d <= daysInMonth; d++) {
+      var dateStr = state.calYear + '-' + String(state.calMonth).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+      var dueTasks = tasksDueOn(tasks, dateStr);
+      var isToday = dateStr === todayStr;
+      var isSelected = dateStr === state.calSelectedDate;
+      var pillsHtml = dueTasks.slice(0, 3).map(function (t) {
+        var isDone = t.status === 'completed';
+        var dotColor = isDone ? 'var(--color-success)' : (t.priority === 'high' ? 'var(--color-destructive)' : t.priority === 'medium' ? 'var(--color-terracotta)' : 'var(--color-bronze)');
+        return '<div class="todo-cal-pill" style="border-left-color:' + dotColor + '" title="' + escapeHtml(t.title) + '">' + escapeHtml(t.title) + '</div>';
+      }).join('');
+      var moreHtml = dueTasks.length > 3 ? '<div class="todo-cal-more">+' + (dueTasks.length - 3) + ' việc khác</div>' : '';
+      cellsHtml += '<div class="todo-cal-day' + (isToday ? ' today' : '') + (isSelected ? ' selected' : '') + '" data-date="' + dateStr + '">' +
+        '<span class="todo-cal-daynum">' + String(d).padStart(2, '0') + '</span>' +
+        '<div class="todo-cal-pills">' + pillsHtml + moreHtml + '</div>' +
+        '</div>';
+    }
+    var totalCells = startWeekday + daysInMonth;
+    var trailing = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+    for (var n = 0; n < trailing; n++) cellsHtml += '<div class="todo-cal-day other-month"></div>';
+
+    var selectedTasks = state.calSelectedDate ? tasksDueOn(tasks, state.calSelectedDate) : [];
+    var detailHtml = '';
+    if (state.calSelectedDate) {
+      var selD = new Date(state.calSelectedDate + 'T00:00:00');
+      var selLabel = selD.toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' });
+      detailHtml = '<div class="todo-cal-detail">' +
+        '<h3>Việc cần làm — ' + selLabel + '</h3>' +
+        (selectedTasks.length ? '<ul class="todo-cal-tasklist">' + selectedTasks.map(function (t) {
+          var isDone = t.status === 'completed';
+          var project = t.projectId ? getProjectById(t.projectId) : null;
+          return '<li class="todo-cal-task' + (isDone ? ' done' : '') + '" data-task-id="' + t.id + '">' +
+            '<button type="button" class="todo-cal-check" data-toggle-id="' + t.id + '" aria-label="Đánh dấu hoàn thành">' +
+              (isDone ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>' : '') +
+            '</button>' +
+            '<span class="todo-cal-task-title" data-open-id="' + t.id + '">' + escapeHtml(t.title) + (project ? ' <span class="todo-cal-task-project">· ' + escapeHtml(project.name) + '</span>' : '') + '</span>' +
+          '</li>';
+        }).join('') + '</ul>' : '<p class="todo-cal-empty">Không có việc nào đến hạn ngày này.</p>') +
+      '</div>';
+    }
+
+    root.innerHTML =
+      '<div class="todo-cal-card">' +
+        '<div class="todo-cal-header">' +
+          '<h2><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M9 16l2 2 4-4"/><path d="M16 2v4M8 2v4M3 10h18"/></svg> Lịch công việc</h2>' +
+          '<div class="todo-cal-controls">' +
+            '<label>Tháng<select id="pCalMonth">' + monthNames.map(function (m, i) { return '<option value="' + (i + 1) + '"' + (i + 1 === state.calMonth ? ' selected' : '') + '>' + m + '</option>'; }).join('') + '</select></label>' +
+            '<label>Năm<select id="pCalYear">' + yearsOptions.map(function (yy) { return '<option value="' + yy + '"' + (yy === state.calYear ? ' selected' : '') + '>' + yy + '</option>'; }).join('') + '</select></label>' +
+            '<button type="button" class="todo-cal-reload" id="pCalToday"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="12" cy="15" r="2" fill="currentColor" stroke="none"/></svg> Hôm nay</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="todo-cal-grid">' +
+          dayHeaders.map(function (h) { return '<div class="todo-cal-day-header">' + h + '</div>'; }).join('') +
+          cellsHtml +
+        '</div>' +
+      '</div>' +
+      detailHtml;
+
+    document.getElementById('pCalMonth').addEventListener('change', function () {
+      state.calMonth = parseInt(this.value, 10);
+      renderCalendarView();
+    });
+    document.getElementById('pCalYear').addEventListener('change', function () {
+      state.calYear = parseInt(this.value, 10);
+      renderCalendarView();
+    });
+    document.getElementById('pCalToday').addEventListener('click', function () {
+      var t = new Date();
+      state.calYear = t.getFullYear();
+      state.calMonth = t.getMonth() + 1;
+      state.calSelectedDate = null;
+      renderCalendarView();
+    });
+    root.querySelectorAll('.todo-cal-day:not(.other-month)').forEach(function (cell) {
+      cell.addEventListener('click', function () {
+        state.calSelectedDate = state.calSelectedDate === cell.dataset.date ? null : cell.dataset.date;
+        renderCalendarView();
+      });
+    });
+    root.querySelectorAll('[data-toggle-id]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (typeof TaskManager !== 'undefined' && TaskManager.toggleTaskStatus) TaskManager.toggleTaskStatus(btn.dataset.toggleId);
+        renderCalendarView();
+      });
+    });
+    root.querySelectorAll('[data-open-id]').forEach(function (el) {
+      el.addEventListener('click', function (e) {
+        e.stopPropagation();
+        openTaskDetail(el.dataset.openId);
+      });
+    });
+  }
+
   function renderAll() {
     renderStats();
     renderSidebarCounts();
     if (state.viewType === 'board') renderBoard();
     else if (state.viewType === 'list') renderList();
     else if (state.viewType === 'timeline') renderTimeline();
+    else if (state.viewType === 'calendar') renderCalendarView();
     else if (state.viewType === 'gantt' && typeof HiconiqueGantt !== 'undefined') {
       HiconiqueGantt.render(document.getElementById('gantt-view'));
     }
@@ -637,6 +787,7 @@
     document.getElementById('kanban-board').style.display = viewType === 'board' ? 'flex' : 'none';
     document.getElementById('list-view').style.display = viewType === 'list' ? 'block' : 'none';
     document.getElementById('timeline-view').style.display = viewType === 'timeline' ? 'block' : 'none';
+    document.getElementById('calendar-view').style.display = viewType === 'calendar' ? 'block' : 'none';
     document.getElementById('gantt-view').style.display = viewType === 'gantt' ? 'block' : 'none';
 
     renderAll();
@@ -944,8 +1095,8 @@
     setSelectedAssignees(Array.isArray(task.assigneeIds) ? task.assigneeIds : []);
     document.getElementById('task-priority').value = task.priority || 'medium';
     document.getElementById('task-status').value = task.status || 'pending';
-    document.getElementById('task-start').value = task.startDate ? task.startDate.substring(0, 10) : '';
-    document.getElementById('task-due').value = task.deadline ? task.deadline.substring(0, 10) : '';
+    document.getElementById('task-start').value = toDatetimeLocalValue(task.startDate);
+    document.getElementById('task-due').value = toDatetimeLocalValue(task.deadline);
     document.getElementById('task-desc').value = task.description || '';
 
     if (taskForm) taskForm.dataset.editingId = id;
@@ -1139,8 +1290,8 @@
       + '<div class="detail-grid">'
       +   '<div class="detail-field"><label>Dự án</label><p>' + (project ? escapeHtml(project.name) : 'Chưa có') + '</p></div>'
       +   '<div class="detail-field"><label>Thành viên tham gia</label><p>' + (assignees.length ? escapeHtml(assignees.map(function (a) { return a.name; }).join(', ')) : 'Chưa giao') + '</p></div>'
-      +   '<div class="detail-field"><label>Ngày bắt đầu</label><p>' + (task.startDate ? fmtDate(task.startDate) : '—') + '</p></div>'
-      +   '<div class="detail-field"><label>Deadline</label><p>' + (task.deadline ? fmtDate(task.deadline) : '—') + '</p></div>'
+      +   '<div class="detail-field"><label>Ngày bắt đầu</label><p>' + (task.startDate ? fmtDateTime(task.startDate) : '—') + '</p></div>'
+      +   '<div class="detail-field"><label>Deadline</label><p>' + (task.deadline ? fmtDateTime(task.deadline) : '—') + '</p></div>'
       + '</div>'
       + (task.description ? '<div class="detail-desc">' + escapeHtml(task.description) + '</div>' : '')
       + '<div class="daily-progress-section">'

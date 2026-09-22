@@ -189,6 +189,10 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             Timeline
           </button>
+          <button class="view-tab" data-view="calendar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            Lịch
+          </button>
           <button class="view-tab" data-view="gantt">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             Gantt
@@ -303,6 +307,11 @@
         <div class="timeline-body" id="timelineBody"></div>
       </div>
 
+      <!-- Calendar View "Lịch" (hidden by default) - lưới lịch tháng, mỗi ngày
+           hiện task có deadline đúng ngày đó (giống mục Lịch ở trang Tasks
+           của tôi, xem renderCalendarView() trong projects.js) -->
+      <div class="calendar-view" id="calendar-view" style="display:none"></div>
+
       <!-- Gantt View (hidden by default) -->
       <div class="gantt-view" id="gantt-view" style="display:none">
         <div class="gantt-toolbar">
@@ -413,11 +422,11 @@
         <div class="form-row">
           <div class="form-group">
             <label for="task-start">Ngày bắt đầu</label>
-            <input type="date" id="task-start">
+            <input type="datetime-local" id="task-start">
           </div>
           <div class="form-group">
             <label for="task-due">Ngày kết thúc (Deadline)</label>
-            <input type="date" id="task-due">
+            <input type="datetime-local" id="task-due">
           </div>
         </div>
         <div class="form-group">

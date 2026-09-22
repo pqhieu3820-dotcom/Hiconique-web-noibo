@@ -2290,3 +2290,206 @@
 .sort-dd-item.selected { color: var(--color-bronze); font-weight: 600; }
 .sort-dd-item .check { width: 15px; height: 15px; flex-shrink: 0; opacity: 0; }
 .sort-dd-item.selected .check { opacity: 1; }
+
+/* ========== "Lịch" (mục Lịch, xem renderCalendarView() trong projects.js) —
+   copy nguyên CSS .todo-cal-* từ task-manager.css (trang Tasks của tôi) để
+   dùng chung 1 kiểu lưới lịch tháng, tránh load cả file task-manager.css
+   (nhiều class trùng tên có thể đụng CSS của trang Dự án). ========== */
+.todo-cal-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: var(--space-xl);
+}
+
+.todo-cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.todo-cal-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-success);
+  letter-spacing: 0.02em;
+}
+
+.todo-cal-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-md);
+}
+
+.todo-cal-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.todo-cal-controls select {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  border-radius: var(--radius-md);
+  padding: 6px 10px;
+  font-size: 0.8125rem;
+  font-family: inherit;
+}
+
+.todo-cal-reload {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  color: var(--color-success);
+  border-radius: var(--radius-md);
+  padding: 7px 12px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+.todo-cal-reload:hover { background: var(--color-surface-3); }
+.todo-cal-reload svg.spinning,
+.todo-cal-reload.spinning svg { animation: todoCalSpin 0.8s linear infinite; }
+@keyframes todoCalSpin { to { transform: rotate(360deg); } }
+
+.todo-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.todo-cal-day-header {
+  background: var(--color-surface-3);
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: center;
+  padding: 14px 4px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.todo-cal-day {
+  min-height: 130px;
+  min-width: 0;
+  padding: 10px;
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.todo-cal-day:nth-child(7n) { border-right: none; }
+.todo-cal-day:hover { background: var(--color-surface-2); }
+.todo-cal-day.other-month { background: var(--color-surface-2); cursor: default; }
+.todo-cal-day.today { background: rgba(176, 141, 87, 0.14); }
+.todo-cal-day.today .todo-cal-daynum {
+  background: var(--color-bronze);
+  color: #0B0D10;
+  border-radius: 50%;
+}
+.todo-cal-day.selected { outline: 2px solid var(--color-bronze); outline-offset: -2px; }
+
+.todo-cal-daynum {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.todo-cal-pills { margin-top: 6px; display: flex; flex-direction: column; gap: 3px; }
+
+.todo-cal-pill {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  background: var(--color-surface-2);
+  border-left: 3px solid var(--color-bronze);
+  border-radius: 3px;
+  padding: 3px 7px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todo-cal-more { font-size: 0.6875rem; color: var(--color-text-faint); padding: 0 2px; }
+
+.todo-cal-detail {
+  margin-top: var(--space-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: var(--space-lg);
+}
+
+.todo-cal-detail h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--space-md);
+  text-transform: capitalize;
+}
+
+.todo-cal-tasklist { display: flex; flex-direction: column; gap: 2px; }
+
+.todo-cal-task {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--color-border);
+}
+.todo-cal-task:last-child { border-bottom: none; }
+
+.todo-cal-check {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 2px solid var(--color-border-strong);
+  background: transparent;
+  color: var(--color-success);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.todo-cal-task.done .todo-cal-check { background: var(--color-success); border-color: var(--color-success); color: #fff; }
+
+.todo-cal-task-title { font-size: 0.875rem; color: var(--color-text); cursor: pointer; }
+.todo-cal-task-title:hover { text-decoration: underline; }
+.todo-cal-task.done .todo-cal-task-title { color: var(--color-text-muted); text-decoration: line-through; }
+.todo-cal-task-project { color: var(--color-text-faint); font-weight: 400; text-decoration: none !important; }
+
+.todo-cal-empty { font-size: 0.8125rem; color: var(--color-text-muted); }
+
+@media (max-width: 640px) {
+  .todo-cal-grid {
+    grid-template-columns: repeat(7, minmax(76px, 1fr));
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .todo-cal-day, .todo-cal-day-header { min-width: 76px; }
+  .todo-cal-day { min-height: 64px; }
+  .todo-cal-pill { display: none; }
+  .todo-cal-day-header { font-size: 0.5625rem; }
+}
