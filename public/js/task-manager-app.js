@@ -2163,7 +2163,7 @@
       var headerHtml = dateStrs.map(function (ds) {
         var dObj = new Date(ds + 'T00:00:00');
         var isToday = ds === todayStr;
-        return '<div class="todo-cal-timegrid-headcell' + (isToday ? ' today' : '') + '" data-date="' + ds + '">' + dayHeaders[(dObj.getDay() + 6) % 7] + ' <b>' + pad2(dObj.getDate()) + '</b></div>';
+        return '<div class="todo-cal-timegrid-headcell' + (isToday ? ' today' : '') + '" data-date="' + ds + '"><span class="todo-cal-timegrid-headcell-dow">' + dayHeaders[(dObj.getDay() + 6) % 7] + '</span><span class="todo-cal-timegrid-headcell-num">' + pad2(dObj.getDate()) + '</span></div>';
       }).join('');
       var daysHtml = dateStrs.map(buildTimeGridDayCol).join('');
       return '<div class="todo-cal-timegrid-wrap">' +

@@ -2656,18 +2656,37 @@
 }
 
 .todo-cal-timegrid-headcell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
   padding: 8px 4px;
   text-align: center;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
   border-left: 1px solid var(--color-border);
   cursor: pointer;
 }
 .todo-cal-timegrid-headcell:first-child { border-left: none; }
-.todo-cal-timegrid-headcell b { color: var(--color-text); font-size: 0.8125rem; }
-.todo-cal-timegrid-headcell.today { color: var(--color-bronze); }
-.todo-cal-timegrid-headcell.today b { color: var(--color-bronze); }
+/* 2026-09-22c: tach doi-so-va-chu thanh 2 dong xep chong deu nhau (thay vi
+   nam chung 1 dong tuy y roi tu wrap khac nhau tuy be rong con - ly do UI
+   bi "chu va so khong dong nhat" nguoi dung phan anh) - dow luon nho/mo,
+   num luon dam/to hon, CUNG 1 kieu o moi cell bat ke rong hep the nao. */
+.todo-cal-timegrid-headcell-dow {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+  line-height: 1;
+}
+.todo-cal-timegrid-headcell-num {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1;
+}
+.todo-cal-timegrid-headcell.today .todo-cal-timegrid-headcell-dow,
+.todo-cal-timegrid-headcell.today .todo-cal-timegrid-headcell-num { color: var(--color-bronze); }
 
 .todo-cal-timegrid-scroll {
   display: flex;
@@ -2761,6 +2780,8 @@
   .todo-cal-timegrid-scroll { max-height: 440px; }
   .todo-cal-timegrid-gutter, .todo-cal-timegrid-hours { flex-basis: 40px; }
   .todo-cal-timegrid-hourlabel { font-size: 0.5625rem; right: 3px; }
-  .todo-cal-timegrid-headcell { font-size: 0.625rem; padding: 6px 2px; }
+  .todo-cal-timegrid-headcell { padding: 6px 2px; gap: 2px; }
+  .todo-cal-timegrid-headcell-dow { font-size: 0.5625rem; }
+  .todo-cal-timegrid-headcell-num { font-size: 0.8125rem; }
   .todo-cal-event-title { font-size: 0.625rem; }
 }
