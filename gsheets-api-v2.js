@@ -197,7 +197,12 @@ const FIELD_MAP = {
   workSchedule: [
     ['Mã', 'id'], ['Giờ vào ca sáng', 'morningStart'], ['Giờ ra ca sáng', 'morningEnd'],
     ['Giờ vào ca chiều', 'afternoonStart'], ['Giờ ra ca chiều', 'afternoonEnd'],
-    ['Thời gian cho phép muộn (phút)', 'lateGraceMinutes'], ['Ngày cập nhật', 'updatedAt']
+    ['Thời gian cho phép muộn (phút)', 'lateGraceMinutes'],
+    // 2026-09-22: giờ TỰ ĐỘNG đóng ca sáng nếu quên check-out — đọc field này
+    // trong autoCheckoutForgottenMorningShifts() mỗi lần trigger chạy (mỗi
+    // 15 phút), đổi giờ ở web có hiệu lực ngay, không cần cài lại trigger.
+    ['Giờ tự động đóng ca sáng nếu quên checkout', 'morningAutoCheckoutTime'],
+    ['Ngày cập nhật', 'updatedAt']
   ],
   notifications: [
     ['Mã TB', 'id'], ['Tiêu đề', 'title'], ['Nội dung', 'message'], ['Loại', 'type'], ['Phạm vi', 'scope'],
@@ -1871,19 +1876,38 @@ function setupAutoCheckoutTrigger() {
   Logger.log('Đã cài trigger tự động đóng ca — chạy hàng ngày lúc ~0h05.');
 }
 
-// ===== Tự động đóng CA SÁNG "quên check-out" lúc 12h30 trưa (2026-09-22) =====
+// ===== Tự động đóng CA SÁNG "quên check-out" theo giờ CẤU HÌNH (2026-09-22) =====
 // autoCheckoutForgottenEntries() ở trên CHỈ dọn NGÀY ĐÃ QUA (chạy lúc 0h05
 // hôm sau) — theo yêu cầu người dùng, thêm 1 ngưỡng riêng cho CA SÁNG ngay
-// TRONG NGÀY: 12h30 trưa mà đã check-in ca sáng (`morningCheckin`) nhưng
-// chưa check-out ca sáng (`morningCheckout`) thì tự đóng NGAY (0 giờ công ca
-// đó), không đợi tới nửa đêm — để bảng chấm công/thông báo phản ánh đúng
-// ngay buổi trưa thay vì phải chờ qua ngày hôm sau mới biết. Dùng CHUNG
+// TRONG NGÀY: tới đúng giờ CẤU HÌNH (field `morningAutoCheckoutTime` trong
+// sheet "TLCC-Giờ làm việc", sửa được ở web qua modal "Setup thời gian làm
+// việc" — mặc định 12:30 nếu chưa cấu hình) mà đã check-in ca sáng
+// (`morningCheckin`) nhưng chưa check-out ca sáng (`morningCheckout`) thì tự
+// đóng NGAY (0 giờ công ca đó), không đợi tới nửa đêm. Dùng CHUNG
 // AUTO_CHECKOUT_NOTE_TAG với hàm trên (client task-manager-app.js/
 // timesheet.html chỉ cần dò đúng 1 tag này để đếm "số lần quên checkout",
 // không cần sửa gì thêm ở client cho tag riêng).
+// 2026-09-22: trigger CHẠY MỖI 15 PHÚT (xem setupAutoCheckoutMorningTrigger()
+// bên dưới) thay vì 1 giờ CỐ ĐỊNH — để đổi giờ cấu hình ở web có hiệu lực
+// NGAY trong ngày mà không cần vào Apps Script cài lại trigger mỗi lần đổi.
+// Hàm tự so sánh giờ hiện tại với giờ cấu hình mỗi lần chạy, chỉ xử lý khi
+// ĐÃ QUA giờ đó — kiểm tra `!e.morningCheckout` mỗi entry nên không xử lý
+// trùng dù chạy nhiều lần/ngày.
 function autoCheckoutForgottenMorningShifts() {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const todayKey = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd');
+  const tz = Session.getScriptTimeZone() || 'Asia/Ho_Chi_Minh';
+  const now = new Date();
+  const todayKey = Utilities.formatDate(now, tz, 'yyyy-MM-dd');
+  const nowHM = Utilities.formatDate(now, tz, 'HH:mm');
+
+  const wsRows = getAllData(ss, SHEETS.workSchedule);
+  const thresholdHM = (wsRows[0] && /^([0-1][0-9]|2[0-3]):([0-5][0-9])$/.test(wsRows[0].morningAutoCheckoutTime))
+    ? wsRows[0].morningAutoCheckoutTime : '12:30';
+  if (nowHM < thresholdHM) {
+    Logger.log('autoCheckoutForgottenMorningShifts: chưa tới giờ cấu hình (' + thresholdHM + '), hiện ' + nowHM + ' — bỏ qua.');
+    return 0;
+  }
+
   const entries = getAllData(ss, SHEETS.timesheet);
   const members = getAllData(ss, SHEETS.members);
   const memberById = {};
@@ -1905,7 +1929,7 @@ function autoCheckoutForgottenMorningShifts() {
   fixed.forEach(function (e) {
     const member = memberById[e.memberId];
     const name = member ? member.name : e.memberId;
-    const msg = name + ' quên check-out ca sáng hôm nay (check-in lúc ' + e.morningCheckin + ') — hệ thống đã tự động đóng ca sáng (0 giờ công ca này) lúc 12h30 trưa, vui lòng kiểm tra và điều chỉnh lại nếu cần.';
+    const msg = name + ' quên check-out ca sáng hôm nay (check-in lúc ' + e.morningCheckin + ') — hệ thống đã tự động đóng ca sáng (0 giờ công ca này) lúc ' + thresholdHM + ', vui lòng kiểm tra và điều chỉnh lại nếu cần.';
     addData(ss, SHEETS.notifications, {
       title: 'Quên check-out ca sáng',
       message: msg,
@@ -1933,20 +1957,20 @@ function autoCheckoutForgottenMorningShifts() {
   return fixed.length;
 }
 
-// Cài time-driven trigger chạy autoCheckoutForgottenMorningShifts() mỗi ngày
-// lúc ~12h30 trưa — chạy TAY hàm này ĐÚNG 1 LẦN từ trình chỉnh sửa Apps
-// Script để cài đặt (Chạy > chọn setupAutoCheckoutMorningTrigger).
+// Cài time-driven trigger chạy autoCheckoutForgottenMorningShifts() MỖI 15
+// PHÚT (bản thân hàm tự so giờ hiện tại với giờ cấu hình rồi mới quyết định
+// có làm gì hay không — xem chú thích ở trên) — chạy TAY hàm này ĐÚNG 1 LẦN
+// từ trình chỉnh sửa Apps Script để cài đặt (Chạy > chọn
+// setupAutoCheckoutMorningTrigger).
 function setupAutoCheckoutMorningTrigger() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
     if (t.getHandlerFunction() === 'autoCheckoutForgottenMorningShifts') ScriptApp.deleteTrigger(t);
   });
   ScriptApp.newTrigger('autoCheckoutForgottenMorningShifts')
     .timeBased()
-    .everyDays(1)
-    .atHour(12)
-    .nearMinute(30)
+    .everyMinutes(15)
     .create();
-  Logger.log('Đã cài trigger tự động đóng ca sáng — chạy hàng ngày lúc ~12h30.');
+  Logger.log('Đã cài trigger tự động đóng ca sáng — chạy mỗi 15 phút, tự đối chiếu giờ cấu hình.');
 }
 
 // Tạo sheet "Địa điểm chấm công" ngay CẠNH sheet "Chấm công" (nếu chưa có) và

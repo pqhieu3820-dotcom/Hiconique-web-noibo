@@ -1908,7 +1908,12 @@ var TaskManager = (function() {
   // công trước 07:35 vẫn OK). CHỈ áp dụng cho check-IN (đi muộn đầu giờ),
   // không áp dụng cho check-OUT (về sớm) — xem isLateOrEarly() trong
   // timesheet.html.
-  var DEFAULT_WORK_SCHEDULE = { morningStart: '07:30', morningEnd: '11:30', afternoonStart: '13:30', afternoonEnd: '17:30', lateGraceMinutes: 5 };
+  // `morningAutoCheckoutTime` (2026-09-22): giờ hệ thống TỰ ĐỘNG đóng ca sáng
+  // nếu đã check-in mà quên check-out — xem autoCheckoutForgottenMorningShifts()
+  // trong gsheets-api-v2.js (đọc field này mỗi lần chạy, KHÔNG cần cài lại
+  // trigger khi đổi giờ — trigger tự chạy mỗi 15 phút, tự so sánh giờ hiện
+  // tại với giờ cấu hình ở đây).
+  var DEFAULT_WORK_SCHEDULE = { morningStart: '07:30', morningEnd: '11:30', afternoonStart: '13:30', afternoonEnd: '17:30', lateGraceMinutes: 5, morningAutoCheckoutTime: '12:30' };
 
   // Ngày nghỉ lễ chính thức theo lịch nhà nước — KHÔNG có API/thư viện âm
   // lịch nào trong dự án để tự tính, nên liệt kê tay theo từng năm (thêm
@@ -1948,6 +1953,9 @@ var TaskManager = (function() {
         ws.lateGraceMinutes = DEFAULT_WORK_SCHEDULE.lateGraceMinutes;
       } else {
         ws.lateGraceMinutes = Number(ws.lateGraceMinutes);
+      }
+      if (!/^([0-1][0-9]|2[0-3]):([0-5][0-9])$/.test(ws.morningAutoCheckoutTime || '')) {
+        ws.morningAutoCheckoutTime = DEFAULT_WORK_SCHEDULE.morningAutoCheckoutTime;
       }
       callback(ws);
     });

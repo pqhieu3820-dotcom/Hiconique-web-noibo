@@ -769,6 +769,15 @@
       .ts-report-month-nav button#tsReportTodayMonth { padding: 0 8px; font-size: 0.6875rem; }
       .ts-report-edge-arrow { width: 32px; height: 32px; }
       .ts-report-edge-arrow svg { width: 18px; height: 18px; }
+
+      /* 2026-09-22: "Báo cáo chấm công" trên điện thoại — .ts-detail-header
+         (dùng chung cho cả lịch cá nhân LẪN chi tiết theo người ở báo cáo,
+         xem .ts-day-detail) xếp ngày ("T3, ngày 22 tháng 9, 2026") và badge
+         trạng thái trên CÙNG 1 hàng ngang (space-between) — ở màn hẹp, chữ
+         ngày dài bị ép xuống 2 dòng nhưng hàng không cao thêm (align-items:
+         center giữ nguyên 1 dòng), khiến badge đè chồng lên chữ ngày dòng 2.
+         Xếp dọc ở màn hẹp: ngày trên, badge dưới, không còn đè nhau. */
+      .ts-detail-header { flex-direction: column; align-items: flex-start; gap: 6px; }
     }
   </style>
 </head>
@@ -873,6 +882,11 @@
               <label class="form-label">Thời gian cho phép muộn đầu giờ (phút)</label>
               <input type="number" class="form-input" id="tsWsLateGrace" min="0" max="60" step="1" placeholder="5" style="max-width:120px;">
               <p style="font-size:0.75rem; color:var(--ts-muted); margin:6px 0 0;">Chấm công trong khoảng phút này SAU giờ vào ca vẫn tính đúng giờ, không bị đánh dấu "đi muộn" — VD giờ vào 07:30, cho phép 5 phút thì chấm công trước 07:35 vẫn OK. Chỉ áp dụng lúc vào ca, không áp dụng lúc ra ca.</p>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Giờ tự động check-out khi quên chấm công (ca sáng)</label>
+              <input type="text" class="form-input" id="tsWsMorningAutoCheckout" inputmode="numeric" maxlength="5" placeholder="12:30" style="max-width:120px;">
+              <p style="font-size:0.75rem; color:var(--ts-muted); margin:6px 0 0;">Đã check-in ca sáng nhưng chưa check-out — tới đúng giờ này hệ thống tự đóng ca đó (0 giờ công ca sáng), không cần đợi tới nửa đêm mới biết. Đổi giờ ở đây có hiệu lực ngay trong ngày, không cần cài đặt lại gì thêm.</p>
             </div>
             <div class="form-group" style="display:flex; justify-content:flex-end;">
               <button type="submit" class="btn btn-primary" id="tsWorkScheduleSaveBtn">Lưu giờ làm việc</button>
@@ -1872,9 +1886,9 @@
           '<button type="button" id="tsDeviceMyCodeCopyBtn">Sao chép</button>' +
         '</div>' +
         '<div class="ts-device-sync">' +
-          '<button type="button" class="ts-device-sync-toggle" id="tsDeviceSyncToggle">Cùng 1 máy nhưng bị tính thành 2 thiết bị (VD dùng cả Safari lẫn app đã "Thêm vào Màn hình chính")?</button>' +
+          '<button type="button" class="ts-device-sync-toggle" id="tsDeviceSyncToggle">Cùng 1 máy nhưng bị tính thành 2 thiết bị (điện thoại: dùng cả Safari lẫn app đã "Thêm vào Màn hình chính" — máy tính: dùng cả Chrome lẫn Edge/Firefox...)?</button>' +
           '<div class="ts-device-sync-body" id="tsDeviceSyncBody" hidden>' +
-            '<p>iOS/Android coi trình duyệt và app "Thêm vào Màn hình chính" là 2 nơi lưu trữ riêng dù cùng 1 điện thoại, nên tự sinh 2 mã khác nhau. Mở trang này ở CẢ HAI nơi, rồi dán mã của bên kia vào đây để 2 nơi được tính là 1 thiết bị — nếu bên kia đã lỡ đăng ký riêng, bấm "Gỡ" thiết bị đó ở trên trước.</p>' +
+            '<p>Mỗi trình duyệt (hoặc app "Thêm vào Màn hình chính" trên điện thoại) lưu trữ RIÊNG, nên dù cùng 1 máy vẫn tự sinh 2 mã khác nhau — kể cả trên máy tính (VD vừa chấm công bằng Chrome vừa bằng Edge/Firefox trên cùng 1 PC) lẫn điện thoại (Safari và app trên màn hình chính). Cách gộp lại thành 1: mở trang này ở CẢ HAI trình duyệt/nơi, rồi dán mã của bên kia vào đây để 2 nơi được tính là 1 thiết bị — nếu bên kia đã lỡ đăng ký riêng, bấm "Gỡ" thiết bị đó ở trên trước.</p>' +
             '<div class="ts-device-sync-row"><input type="text" id="tsDeviceSyncInput" placeholder="Dán mã thiết bị từ nơi kia vào đây"><button type="button" id="tsDeviceSyncApplyBtn">Đồng bộ</button></div>' +
           '</div>' +
         '</div>';
@@ -3283,6 +3297,7 @@
         return document.getElementById(id);
       });
       var graceInput = document.getElementById('tsWsLateGrace');
+      var morningAutoCheckoutInput = document.getElementById('tsWsMorningAutoCheckout');
       var saveBtn = document.getElementById('tsWorkScheduleSaveBtn');
       var viewOnlyNote = document.getElementById('tsWorkScheduleViewOnlyNote');
       timeInputs.forEach(function (input) {
@@ -3290,6 +3305,8 @@
         if (canEdit) bindTimeTextMask(input);
       });
       graceInput.readOnly = !canEdit;
+      morningAutoCheckoutInput.readOnly = !canEdit;
+      if (canEdit) bindTimeTextMask(morningAutoCheckoutInput);
       saveBtn.hidden = !canEdit;
       viewOnlyNote.hidden = canEdit;
 
@@ -3299,6 +3316,7 @@
         document.getElementById('tsWsAfternoonStart').value = ws.afternoonStart || DEFAULT_WORK_SCHEDULE.afternoonStart;
         document.getElementById('tsWsAfternoonEnd').value = ws.afternoonEnd || DEFAULT_WORK_SCHEDULE.afternoonEnd;
         graceInput.value = (ws.lateGraceMinutes === '' || ws.lateGraceMinutes == null) ? DEFAULT_WORK_SCHEDULE.lateGraceMinutes : ws.lateGraceMinutes;
+        morningAutoCheckoutInput.value = ws.morningAutoCheckoutTime || DEFAULT_WORK_SCHEDULE.morningAutoCheckoutTime;
       }
 
       function openModal() {
@@ -3321,10 +3339,15 @@
           morningEnd: document.getElementById('tsWsMorningEnd').value,
           afternoonStart: document.getElementById('tsWsAfternoonStart').value,
           afternoonEnd: document.getElementById('tsWsAfternoonEnd').value,
-          lateGraceMinutes: graceRaw === '' ? 0 : Math.max(0, Math.round(Number(graceRaw)))
+          lateGraceMinutes: graceRaw === '' ? 0 : Math.max(0, Math.round(Number(graceRaw))),
+          morningAutoCheckoutTime: morningAutoCheckoutInput.value.trim() || DEFAULT_WORK_SCHEDULE.morningAutoCheckoutTime
         };
         if (!isValidHM(data.morningStart) || !isValidHM(data.morningEnd) || !isValidHM(data.afternoonStart) || !isValidHM(data.afternoonEnd)) {
           showToast('Giờ không hợp lệ, nhập theo định dạng HH:MM (24h), VD: 07:30.', false);
+          return;
+        }
+        if (!isValidHM(data.morningAutoCheckoutTime)) {
+          showToast('Giờ tự động check-out ca sáng không hợp lệ, nhập theo định dạng HH:MM (24h), VD: 12:30.', false);
           return;
         }
         if (graceRaw !== '' && (isNaN(Number(graceRaw)) || Number(graceRaw) < 0)) {
