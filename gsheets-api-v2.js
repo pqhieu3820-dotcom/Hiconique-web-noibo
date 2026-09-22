@@ -1123,7 +1123,10 @@ function addDataBatch(ss, sheetName, dataList) {
     });
   });
   if (rows.length) {
-    const firstNewRow = sheet.getLastRow() + 1;
+    // 2026-09-22: chèn cả khối ngay dưới header (dòng 2) thay vì nối cuối —
+    // xem chú thích trong addData() ở trên, áp dụng cùng quy tắc cho batch.
+    const firstNewRow = 2;
+    sheet.insertRowsBefore(firstNewRow, rows.length);
     sheet.getRange(firstNewRow, 1, rows.length, headers.length).setValues(rows);
     fillComputedHelperFormulas(sheet, headers, firstNewRow, rows.length);
   }
@@ -1138,11 +1141,15 @@ function addDataBatch(ss, sheetName, dataList) {
 // công thức" khi thêm dòng bằng tay) để dòng mới luôn có công thức, không
 // cần người dùng tự kéo lại mỗi lần.
 var COMPUTED_HELPER_HEADERS = ['Tên dự án'];
+// 2026-09-22: dữ liệu mới giờ chèn ở ĐẦU (dòng 2, xem addData()/addDataBatch()),
+// nên dòng có công thức để copy nằm NGAY DƯỚI khối vừa chèn (dòng dữ liệu cũ
+// bị đẩy xuống) chứ không còn nằm phía TRÊN như kiểu appendRow() cũ.
 function fillComputedHelperFormulas(sheet, headers, startRow, numRows) {
-  if (startRow < 3) return; // không có dòng trên (dòng 1 là header) để copy công thức từ
+  var srcRow = startRow + numRows;
+  if (srcRow > sheet.getLastRow()) return; // dòng dữ liệu đầu tiên, chưa có công thức nào để copy
   headers.forEach(function (h, i) {
     if (COMPUTED_HELPER_HEADERS.indexOf(h) === -1) return;
-    var srcCell = sheet.getRange(startRow - 1, i + 1);
+    var srcCell = sheet.getRange(srcRow, i + 1);
     if (!srcCell.getFormula()) return;
     srcCell.copyTo(sheet.getRange(startRow, i + 1, numRows, 1));
   });
@@ -1218,8 +1225,13 @@ function addData(ss, sheetName, data) {
     }
     return val !== undefined && val !== null ? val : '';
   });
-  sheet.appendRow(row);
-  const newRowNum = sheet.getLastRow();
+  // 2026-09-22: bản ghi MỚI luôn chèn ngay dưới header (dòng 2), đẩy dữ liệu
+  // cũ xuống dưới — thay vì appendRow() nối vào cuối như trước. Áp dụng cho
+  // MỌI sheet/mục tạo mới trong toàn bộ Web (task, dự án, đề xuất, đơn hàng,
+  // thông báo...) vì tất cả đều đi qua addData()/addDataBatch() này.
+  const newRowNum = 2;
+  sheet.insertRowBefore(newRowNum);
+  sheet.getRange(newRowNum, 1, 1, row.length).setValues([row]);
   textForcedCols.forEach(function (tf) { writeTextForcedCell(sheet.getRange(newRowNum, tf.col), tf.val); });
   fillComputedHelperFormulas(sheet, headers, newRowNum, 1);
   return data;
