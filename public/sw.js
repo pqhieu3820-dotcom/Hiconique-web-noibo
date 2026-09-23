@@ -21,7 +21,54 @@
  * bản MỚI NHẤT, chỉ rơi về cache khi thật sự mất mạng. Đổi tên phiên bản để
  * mọi client tự xoá sạch cache cũ ngay lần cài đặt SW mới này.
  */
-const CACHE_VERSION = 'hiconique-shell-v2';
+// 2026-09-23: Web Push (Firebase Cloud Messaging) — cho phép popup thông báo
+// thật trên điện thoại/máy tính (giống Zalo) kể cả khi tab đang đóng. Nạp SDK
+// Firebase bằng importScripts() (service worker cổ điển, không phải ES module
+// nên không dùng import/export được) NGAY ĐẦU file, trước CACHE_VERSION —
+// không liên quan gì tới phần cache app-shell bên dưới, chỉ dùng chung 1 file
+// sw.js vì mỗi origin chỉ nên có 1 service worker đang active.
+importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
+
+firebase.initializeApp({
+  apiKey: 'AIzaSyBbMw5HI4cJjcXJtPFglFn2yFKahSv8d9s',
+  authDomain: 'hiconique-internal-hub-f77f2.firebaseapp.com',
+  projectId: 'hiconique-internal-hub-f77f2',
+  storageBucket: 'hiconique-internal-hub-f77f2.firebasestorage.app',
+  messagingSenderId: '794909117053',
+  appId: '1:794909117053:web:a9dd484a37d26288577f14'
+});
+
+// Tự bắt push lúc tab đang ĐÓNG/nền (lúc tab đang MỞ dùng onMessage() phía
+// public/js/push-notifications.js — 2 đường khác nhau, cùng phải xử lý).
+// Định nghĩa onBackgroundMessage() ở đây thay hẳn cách Firebase tự hiện
+// notification mặc định, để ép đúng icon/badge thương hiệu HICONIQUE.
+var messaging = firebase.messaging();
+messaging.onBackgroundMessage(function (payload) {
+  var n = payload.notification || {};
+  var link = (payload.fcmOptions && payload.fcmOptions.link) || (payload.data && payload.data.link) || '/';
+  self.registration.showNotification(n.title || 'HICONIQUE', {
+    body: n.body || '',
+    icon: '/apple-touch-icon.png',
+    badge: '/icon-192.png',
+    data: { link: link }
+  });
+});
+
+self.addEventListener('notificationclick', function (event) {
+  event.notification.close();
+  var link = (event.notification.data && event.notification.data.link) || '/';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].url.indexOf(self.location.origin) === 0 && 'focus' in list[i]) return list[i].focus();
+      }
+      return clients.openWindow(link);
+    })
+  );
+});
+
+const CACHE_VERSION = 'hiconique-shell-v4';
 
 const PRECACHE_URLS = [
   '/',
@@ -65,6 +112,7 @@ const PRECACHE_URLS = [
   '/js/gsheets-config.js',
   '/js/offline.js',
   '/js/portal.js',
+  '/js/push-notifications.js',
   '/js/projects.js',
   '/js/task-data.js',
   '/js/task-manager-app.js'

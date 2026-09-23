@@ -23,6 +23,10 @@ const SHEETS = {
   notifications: 'TT-Thông báo',
   notices: 'TT-Bảng tin',
   documents: 'TT-Tài liệu',
+  // 2026-09-23: danh sách "địa chỉ đăng ký" (FCM registration token) để gửi
+  // thông báo pop-up (Web Push) tới điện thoại/máy tính từng nhân viên — xem
+  // pushForNotificationRow_()/sendPushToMember_() cuối file.
+  pushDevices: 'TT-Thiết bị đăng ký thông báo',
   payslips: 'TLCC-Phiếu lương',
   commissions: 'TLCC-Hoa hồng dự án',
   commissionRates: 'TLCC-Mức hoa hồng',
@@ -216,6 +220,11 @@ const FIELD_MAP = {
   documents: [
     ['Mã TL', 'id'], ['Danh mục', 'category'], ['Tên tài liệu', 'name'], ['Đường liên kết', 'url'],
     ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
+  ],
+  pushDevices: [
+    ['Mã đăng ký', 'id'], ['Mã nhân viên', 'memberId'], ['Mã token FCM', 'fcmToken'],
+    ['Tên thiết bị', 'deviceLabel'], ['Trình duyệt', 'browserFamily'], ['Đang hoạt động', 'active'],
+    ['Ngày tạo', 'createdAt'], ['Hoạt động gần nhất', 'lastActiveAt']
   ],
   payslips: [
     ['Mã PL', 'id'], ['Mã thành viên', 'memberId'], ['Tháng', 'month'], ['Ngày công', 'workDays'],
@@ -690,6 +699,27 @@ function handleRequest(e) {
       // KHÔNG gọi addNotification() nhiều lần song song từ client cho việc
       // này (xem comment addDataBatch()) — dễ đua nhau ghi đè, rớt dữ liệu.
       result = addDataBatch(ss, SHEETS.notifications, JSON.parse(params.data));
+    } else if (action === 'registerPushDevice') {
+      // 2026-09-23: đăng ký/làm mới 1 "địa chỉ nhận thông báo" (FCM token)
+      // cho 1 thiết bị (trình duyệt/điện thoại cụ thể) của 1 nhân viên — xem
+      // pushForNotificationRow_() cuối file. UPSERT theo fcmToken (browser
+      // giữ nguyên cùng 1 token qua nhiều lần đăng nhập trên cùng máy đó,
+      // trừ khi tự xoá dữ liệu trình duyệt).
+      var pdData = JSON.parse(params.data);
+      var pdExisting = getAllData(ss, SHEETS.pushDevices).find(function (d) { return d.fcmToken === pdData.fcmToken; });
+      if (pdExisting) {
+        result = updateData(ss, SHEETS.pushDevices, pdExisting.id, {
+          memberId: pdData.memberId, deviceLabel: pdData.deviceLabel, browserFamily: pdData.browserFamily,
+          active: true, lastActiveAt: new Date().toISOString()
+        });
+      } else {
+        pdData.active = true;
+        pdData.lastActiveAt = new Date().toISOString();
+        result = addData(ss, SHEETS.pushDevices, pdData);
+      }
+    } else if (action === 'unregisterPushDevice') {
+      var updExisting = getAllData(ss, SHEETS.pushDevices).find(function (d) { return d.fcmToken === params.fcmToken; });
+      result = updExisting ? updateData(ss, SHEETS.pushDevices, updExisting.id, { active: false }) : null;
     } else if (action === 'getNotices') {
       result = getAllData(ss, SHEETS.notices);
     } else if (action === 'addNotice') {
@@ -1130,6 +1160,7 @@ function addDataBatch(ss, sheetName, dataList) {
     sheet.getRange(firstNewRow, 1, rows.length, headers.length).setValues(rows);
     fillComputedHelperFormulas(sheet, headers, firstNewRow, rows.length);
   }
+  if (sheetName === SHEETS.notifications) dataList.forEach(function (d) { pushForNotificationRow_(ss, d); });
   return dataList;
 }
 
@@ -1234,6 +1265,7 @@ function addData(ss, sheetName, data) {
   sheet.getRange(newRowNum, 1, 1, row.length).setValues([row]);
   textForcedCols.forEach(function (tf) { writeTextForcedCell(sheet.getRange(newRowNum, tf.col), tf.val); });
   fillComputedHelperFormulas(sheet, headers, newRowNum, 1);
+  if (sheetName === SHEETS.notifications) pushForNotificationRow_(ss, data);
   return data;
 }
 
@@ -2747,4 +2779,114 @@ function applyLevelDropdown() {
   const report = 'Cấp bậc: đã đặt dropdown mới cho ' + numRows + ' dòng trống từ dòng ' + startRow + ' trở đi (' + labels.join(', ') + '). Các dòng dữ liệu hiện có (2-' + lastRow + ') giữ nguyên, không đụng vào để tránh mất dữ liệu.';
   Logger.log(report);
   return report;
+}
+
+// ================= THÔNG BÁO ĐẨY (WEB PUSH QUA FIREBASE) — 2026-09-23 =================
+// Bật popup thông báo thật trên điện thoại/máy tính (giống Zalo) khi có
+// thông báo mới, thay vì chỉ hiện trong chuông 🔔 lúc đang mở web. Dùng
+// Firebase Cloud Messaging (FCM) — Apps Script không có sẵn thư viện push
+// riêng, nên tự làm luồng OAuth2 service-account (ký JWT RS256 bằng
+// Utilities.computeRsaSha256Signature, đổi lấy access token) rồi gọi thẳng
+// REST API `fcm.googleapis.com/v1/.../messages:send`.
+//
+// CẦN CẤU HÌNH 1 LẦN (Tiện ích > Thuộc tính dự án > Thuộc tính Script):
+//   FCM_SERVICE_ACCOUNT_JSON = dán TOÀN BỘ nội dung file JSON service
+//     account (Firebase Console > Project settings > Service accounts >
+//     Generate new private key). KHÔNG commit file này vào git — chỉ dán
+//     vào Script Properties (Apps Script tự lưu riêng, không nằm trong mã
+//     nguồn), xem GHI_CHU_DU_AN.md mục thông báo đẩy.
+// Chưa cấu hình xong 2 việc trên → các hàm dưới tự bỏ qua im lặng (return
+// sớm, không throw) — vì push chỉ là lớp "thêm", KHÔNG được làm hỏng luồng
+// ghi Thông báo chính (Sheet) nếu Firebase tạm lỗi/chưa cấu hình.
+function getFcmAccessToken_() {
+  var cache = CacheService.getScriptCache();
+  var cached = cache.get('fcm_access_token');
+  if (cached) return cached;
+
+  var json = PropertiesService.getScriptProperties().getProperty('FCM_SERVICE_ACCOUNT_JSON');
+  if (!json) return null;
+  var sa;
+  try { sa = JSON.parse(json); } catch (e) { Logger.log('getFcmAccessToken_: FCM_SERVICE_ACCOUNT_JSON không phải JSON hợp lệ.'); return null; }
+
+  function b64url(bytes) {
+    return Utilities.base64EncodeWebSafe(bytes).replace(/=+$/, '');
+  }
+  var header = { alg: 'RS256', typ: 'JWT' };
+  var now = Math.floor(Date.now() / 1000);
+  var claim = {
+    iss: sa.client_email,
+    scope: 'https://www.googleapis.com/auth/firebase.messaging',
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now,
+    exp: now + 3600
+  };
+  var signingInput = b64url(Utilities.newBlob(JSON.stringify(header)).getBytes()) + '.' + b64url(Utilities.newBlob(JSON.stringify(claim)).getBytes());
+  var signatureBytes = Utilities.computeRsaSha256Signature(signingInput, sa.private_key);
+  var jwt = signingInput + '.' + b64url(signatureBytes);
+
+  var resp = UrlFetchApp.fetch('https://oauth2.googleapis.com/token', {
+    method: 'post',
+    contentType: 'application/x-www-form-urlencoded',
+    payload: { grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: jwt },
+    muteHttpExceptions: true
+  });
+  var body;
+  try { body = JSON.parse(resp.getContentText()); } catch (e) { Logger.log('getFcmAccessToken_: phản hồi lạ - ' + resp.getContentText()); return null; }
+  if (!body.access_token) { Logger.log('getFcmAccessToken_: lỗi lấy token - ' + resp.getContentText()); return null; }
+  cache.put('fcm_access_token', body.access_token, Math.min((body.expires_in || 3600) - 60, 1800));
+  return body.access_token;
+}
+
+// Gửi push tới TẤT CẢ thiết bị đang hoạt động (active=true) của 1 nhân viên.
+// Token hết hạn/bị thu hồi (404/400 từ FCM) → tự tắt active để lần sau không
+// gửi nhầm nữa (không xoá dòng — giữ lịch sử, người dùng đăng nhập lại trên
+// máy đó sẽ tự đăng ký token mới đè lên qua registerPushDevice upsert).
+function sendPushToMember_(ss, memberId, title, body, extra) {
+  try {
+    var json = PropertiesService.getScriptProperties().getProperty('FCM_SERVICE_ACCOUNT_JSON');
+    if (!json) return;
+    var sa = JSON.parse(json);
+    var token = getFcmAccessToken_();
+    if (!token) return;
+
+    var devices = getAllData(ss, SHEETS.pushDevices).filter(function (d) {
+      return d.memberId === memberId && d.active !== false && d.active !== 'FALSE';
+    });
+    if (!devices.length) return;
+
+    devices.forEach(function (dev) {
+      var message = {
+        token: dev.fcmToken,
+        notification: { title: title, body: body },
+        webpush: { notification: { icon: '/apple-touch-icon.png' } }
+      };
+      if (extra && extra.link) message.webpush.fcm_options = { link: extra.link };
+      var resp = UrlFetchApp.fetch('https://fcm.googleapis.com/v1/projects/' + sa.project_id + '/messages:send', {
+        method: 'post',
+        contentType: 'application/json',
+        headers: { Authorization: 'Bearer ' + token },
+        payload: JSON.stringify({ message: message }),
+        muteHttpExceptions: true
+      });
+      var code = resp.getResponseCode();
+      if (code === 404 || code === 400) {
+        updateData(ss, SHEETS.pushDevices, dev.id, { active: false });
+      } else if (code >= 400) {
+        Logger.log('sendPushToMember_: FCM lỗi ' + code + ' cho memberId=' + memberId + ' - ' + resp.getContentText());
+      }
+    });
+  } catch (e) {
+    Logger.log('sendPushToMember_ exception: ' + e);
+  }
+}
+
+// Móc DUY NHẤT cho MỌI thông báo mới — gọi từ addData()/addDataBatch() ngay
+// sau khi ghi xong dòng vào SHEETS.notifications, bất kể dòng đó tới từ
+// action addNotification/addNotificationsBatch (client gọi) HAY từ các hàm
+// server tự ghi thẳng addData(ss, SHEETS.notifications, ...) (VD
+// autoCheckoutForgottenEntries, notifyFounderMemberRejected...) — chỉ cần 1
+// chỗ móc, không phải sửa từng nơi tạo thông báo.
+function pushForNotificationRow_(ss, row) {
+  if (!row || !row.scope) return;
+  sendPushToMember_(ss, row.scope, row.title || 'Thông báo mới', row.message || '', { link: '/' });
 }

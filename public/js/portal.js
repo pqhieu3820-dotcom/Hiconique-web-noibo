@@ -1118,6 +1118,12 @@
     var user = Auth.getCurrentUser();
     if (!user) return;
 
+    // 2026-09-23: popup thông báo đẩy thật (Web Push qua Firebase) — hỏi
+    // quyền 1 lần/trình duyệt (banner riêng, không phải confirm() gốc) hoặc
+    // tự làm mới đăng ký nếu đã bật từ trước. Đặt ngay khi biết user (mọi
+    // trang có portal.js đều chạy qua initNotifications() này).
+    if (typeof PushNotify !== 'undefined') PushNotify.initAutoPrompt(user);
+
     var bell = document.querySelector('.icon-btn-bell');
     var actions = document.querySelector('.header-actions');
     if (!bell && actions) {
