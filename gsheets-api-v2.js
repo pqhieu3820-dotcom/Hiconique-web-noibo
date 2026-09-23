@@ -1237,6 +1237,19 @@ function addData(ss, sheetName, data) {
   if (!data.id) {
     const prefix = (sheetKeyFor(sheetName) || sheetName).toLowerCase().replace(/s$/, '');
     data.id = makeId(prefix);
+  } else if (sheet.getLastRow() > 1) {
+    // 2026-09-23: chặn ghi trùng dòng khi request "add" bị gửi/thực thi 2 lần
+    // (mạng chập chờn phía client, hoặc Apps Script Web App đôi khi tự chạy
+    // doGet() 2 lần cho cùng 1 request qua redirect — đã xác nhận thực tế xảy
+    // ra ở sheet chấm công: 2 dòng TRÙNG Y HỆT "Mã CC" cho cùng 1 lần check-in).
+    // ID đã có sẵn (client tự sinh trước khi gọi API) nên chỉ cần soi cột A —
+    // nếu đã tồn tại thì coi như update, không chèn thêm dòng mới.
+    const idCol = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues();
+    for (let i = 0; i < idCol.length; i++) {
+      if (idCol[i][0] === data.id) {
+        return updateData(ss, sheetName, data.id, data);
+      }
+    }
   }
   data.createdAt = data.createdAt || new Date().toISOString().split('T')[0];
   // Cột cần ép TEXT (ip/phone/cccd/bankAccount...) để trống lúc appendRow —
@@ -2907,6 +2920,61 @@ function sortAllLogSheetsNewestFirst() {
     report.push(sheetName + ': đã sắp lại ' + (lastRow - 1) + ' dòng theo ' + (dateColIdx !== -1 ? headers[dateColIdx] + ' + ' : '') + 'ID (mới nhất lên trên)');
   });
   var msg = report.join('\n');
+  Logger.log(msg);
+  return msg;
+}
+
+// 2026-09-23: dọn dữ liệu trùng lặp trên sheet TLCC-Chấm công — phát hiện qua
+// báo cáo thực tế (Khánh check-out 11:32 nhưng app không hiển thị). Nguyên
+// nhân: request "check-in" đôi khi bị gọi/thực thi 2 lần (mạng chập chờn,
+// hoặc Apps Script Web App tự chạy doGet() 2 lần cho cùng 1 request), tạo
+// RA 2 DÒNG TRÙNG Y HỆT "Mã CC" cho cùng 1 lần chấm công — lần check-out sau
+// đó chỉ cập nhật ĐÚNG 1 trong 2 dòng (dòng khớp đầu tiên), dòng còn lại kẹt
+// mãi ở trạng thái "working"/chưa checkout. Khi app đọc dữ liệu và build map
+// theo memberId+ngày, dòng đọc SAU (bất kể đầy đủ hay không) ghi đè dòng đọc
+// TRƯỚC — nên đôi khi dòng "working" trống lại thắng, làm mất hẳn checkout đã
+// có. addData() đã được vá để không tạo trùng nữa (xem guard theo ID ở trên);
+// hàm này dọn NHỮNG DÒNG TRÙNG ĐÃ LỠ GHI TRƯỚC ĐÓ — gộp theo memberId+ngày,
+// giữ lại 1 dòng (ưu tiên dòng đã có giờ checkout), lấy field nào đang trống
+// ở dòng giữ lại từ (các) dòng trùng để không mất dữ liệu, rồi xoá dòng thừa.
+function dedupeTimesheetSheet() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = findSheet(ss, SHEETS.timesheet);
+  if (!sheet) return 'Không tìm thấy sheet ' + SHEETS.timesheet;
+  var data = getAllData(ss, SHEETS.timesheet); // thứ tự data[i] khớp đúng dòng sheet i+2
+  var groups = {};
+  data.forEach(function (e, i) {
+    var key = e.memberId + '|' + e.date;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push({ rowNum: i + 2, entry: e });
+  });
+  var mergedPairs = 0;
+  var deletedRows = [];
+  var mergedLog = [];
+  Object.keys(groups).forEach(function (key) {
+    var items = groups[key];
+    if (items.length < 2) return;
+    var keepItem = items.filter(function (it) { return it.entry.checkoutTime; })[0] || items[0];
+    var patch = {};
+    items.forEach(function (it) {
+      if (it === keepItem) return;
+      Object.keys(it.entry).forEach(function (k) {
+        var val = it.entry[k];
+        var keepVal = keepItem.entry[k];
+        if (val !== '' && val !== null && val !== undefined && (keepVal === '' || keepVal === null || keepVal === undefined)) {
+          patch[k] = val;
+          keepItem.entry[k] = val;
+        }
+      });
+      deletedRows.push(it.rowNum);
+    });
+    if (Object.keys(patch).length > 0) updateData(ss, SHEETS.timesheet, keepItem.entry.id, patch);
+    mergedPairs++;
+    mergedLog.push(key + ' (giữ dòng ' + keepItem.rowNum + ', gộp/xoá ' + (items.length - 1) + ' dòng thừa)');
+  });
+  deletedRows.sort(function (a, b) { return b - a; }); // xoá từ dưới lên để không lệch số dòng
+  deletedRows.forEach(function (r) { sheet.deleteRow(r); });
+  var msg = 'dedupeTimesheetSheet: gộp ' + mergedPairs + ' nhóm trùng (cùng mã NV+ngày), xoá ' + deletedRows.length + ' dòng thừa.\n' + mergedLog.join('\n');
   Logger.log(msg);
   return msg;
 }

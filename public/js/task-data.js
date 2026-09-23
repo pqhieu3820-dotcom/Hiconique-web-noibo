@@ -1857,9 +1857,34 @@ var TaskManager = (function() {
   }
 
   // Timesheet
+  // 2026-09-23: phòng hờ dữ liệu trùng còn sót/lỡ lọt (VD do mạng chập chờn
+  // gọi trùng request check-in trước khi addData() phía server được vá chặn —
+  // xem gsheets-api-v2.js) — gộp mọi dòng CÙNG memberId+date thành 1, ưu tiên
+  // giữ field đã có giá trị (đặc biệt checkoutTime/status/totalHours của dòng
+  // đã check-out), thay vì để dòng đọc SAU ghi đè trắng dòng đọc TRƯỚC như
+  // trước đây (nguyên nhân "có checkout trong Sheet nhưng app không hiển thị").
+  function dedupeTimesheetEntries_(entries) {
+    var byKey = {};
+    var order = [];
+    entries.forEach(function (e) {
+      var key = e.memberId + '|' + e.date;
+      if (!byKey[key]) { byKey[key] = e; order.push(key); return; }
+      var merged = byKey[key];
+      if (e.checkoutTime && !merged.checkoutTime) merged = Object.assign({}, e);
+      Object.keys(e).forEach(function (k) {
+        var val = e[k];
+        if (val !== '' && val !== null && val !== undefined && (merged[k] === '' || merged[k] === null || merged[k] === undefined)) {
+          merged[k] = val;
+        }
+      });
+      byKey[key] = merged;
+    });
+    return order.map(function (k) { return byKey[k]; });
+  }
+
   function getTimesheetEntries(filters) {
     filters = filters || {};
-    var entries = getAll(STORAGE_KEYS.timesheet);
+    var entries = dedupeTimesheetEntries_(getAll(STORAGE_KEYS.timesheet));
     if (filters.memberId) {
       entries = entries.filter(function(e) { return e.memberId === filters.memberId; });
     }
