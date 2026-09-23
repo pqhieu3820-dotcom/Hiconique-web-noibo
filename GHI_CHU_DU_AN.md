@@ -31,7 +31,19 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
 ## ⏳ VIỆC CÒN TỒN ĐỌNG (đọc mục này đầu tiên — cập nhật 2026-09-23)
 
-**Phiên 2026-09-23 — Đã chạy XONG `sortAllLogSheetsNewestFirst()` 1 lần — dữ liệu cũ trên Sheet đã sắp lại đúng thứ tự mới nhất lên trên.** Apps Script đang chạy **phiên bản 80** (thêm hàm 1 lần này — bản push thông báo v79 vẫn y nguyên, không đổi gì thêm).
+**Phiên 2026-09-23 (d) — CÒN 1 DÒNG TRÙNG CHƯA XOÁ THỦ CÔNG**: sheet `TLCC-Chấm công`, dòng của `NV_VK_210593` ngày 23/09 (ID `timesheet_260923_1790123459507`) — có 2 dòng trùng y hệt ID, 1 dòng `completed`/có checkout 11:32 (dòng cần GIỮ) và 1 dòng `working`/không checkout (dòng CẦN XOÁ). Đã thử tự xoá qua automation nhiều lần nhưng bị chặn/click không ăn — người dùng cần tự vào Sheet, chọn dòng "working" (không có giờ checkout) của NV_VK_210593 ngày 23/09, chuột phải → Xoá hàng. Không gấp — bug hiển thị đã được vá ở phía app (xem mục (d) dưới) nên không ảnh hưởng người dùng, dòng thừa này chỉ để dọn cho sạch.
+
+**Phiên 2026-09-23 — Đã chạy XONG `sortAllLogSheetsNewestFirst()` 1 lần — dữ liệu cũ trên Sheet đã sắp lại đúng thứ tự mới nhất lên trên.** Apps Script đang chạy **phiên bản 81** (v81: vá `addData()` chặn ghi trùng dòng theo ID + thêm hàm dọn 1 lần `dedupeTimesheetSheet()`; v80: thêm hàm sort 1 lần này — bản push thông báo v79 vẫn y nguyên, không đổi gì thêm).
+
+### Phiên 2026-09-23 (d) — Fix bug chấm công có checkout trong Sheet nhưng app không hiển thị (dòng chấm công bị ghi trùng)
+
+- **Triệu chứng người dùng báo**: Khánh check-out lúc 11:32 (thấy rõ trong Sheet) nhưng app không hiển thị bất kỳ thông tin checkout nào cho Khánh; đồng thời sheet `TLCC-Chấm công` có "quá nhiều cột đầu mục check in/check out" gây rối (legacy `checkinTime`/`checkoutTime` 1-lần/ngày cũ VÀ 4 cột ca sáng/chiều mới `morningCheckin`/`morningCheckout`/`afternoonCheckin`/`afternoonCheckout` cùng tồn tại — đây là thiết kế có chủ đích từ 2026-09-17/19, không phải lỗi: cột cũ vẫn được `shiftCheckIn()`/`shiftCheckOut()` ghi song song để lịch/báo cáo tháng cũ vẫn đọc được, xem `task-data.js`).
+- **Nguyên nhân gốc thật sự**: request check-in đôi khi bị gọi/thực thi **2 lần** (mạng chập chờn, hoặc Apps Script Web App tự chạy `doGet()` 2 lần cho cùng 1 request qua cơ chế redirect nội bộ của Google) → ghi ra **2 dòng TRÙNG Y HỆT "Mã CC"** cho cùng 1 lần chấm công. Lần check-out sau đó (`updateData()` tìm theo ID, `Array.findIndex` chỉ khớp dòng ĐẦU TIÊN) chỉ cập nhật đúng 1 trong 2 dòng — dòng còn lại kẹt mãi ở `working`/chưa checkout. Khi client đọc dữ liệu và gộp theo `memberId+ngày` (`entriesByMember[e.memberId][e.date] = e` trong `timesheet.html`), dòng đọc SAU (bất kể đầy đủ hay không) ghi đè dòng đọc TRƯỚC — nên dòng "working" rỗng đôi khi lại thắng, xoá mất hẳn checkout đã có trên UI dù dữ liệu vẫn còn nguyên trong Sheet.
+- **Đã vá 3 lớp** (commit `e0d1467`):
+  1. `gsheets-api-v2.js` `addData()` — soi cột ID (cột A) trước khi chèn dòng mới; nếu ID đã tồn tại thì coi như `update` thay vì chèn trùng → **chặn tận gốc, không cho tạo dòng trùng nữa**.
+  2. `gsheets-api-v2.js` — thêm hàm dọn 1 lần `dedupeTimesheetSheet()` (cuối file) để gộp/xoá các dòng trùng ĐÃ LỠ ghi trước khi có vá #1 — **lưu ý: đã chạy thử, báo "0 nhóm trùng" dù Sheet vẫn còn dòng trùng của Khánh (xem mục tồn đọng ở trên) — có bug trong logic gom nhóm (`e.memberId + '|' + e.date`) chưa kịp debug, cần xem lại nếu dùng hàm này cho lần dọn tiếp theo**.
+  3. `public/js/task-data.js` `getTimesheetEntries()` — thêm `dedupeTimesheetEntries_()` gộp dữ liệu trùng NGAY Ở PHÍA CLIENT (ưu tiên giữ dòng đã có `checkoutTime`), nên **kể cả Sheet còn dòng rác, app vẫn hiển thị đúng** — đây là lớp vá thực sự giải quyết triệu chứng người dùng báo.
+- Apps Script đã redeploy **phiên bản 81** (bản mới nhất, có cả vá #1 và hàm #2).
 
 ### Phiên 2026-09-23 (c) — Sắp xếp lại TOÀN BỘ dữ liệu CŨ trong Sheet cho đúng quy tắc "mới lên trên" (chạy 1 lần)
 
