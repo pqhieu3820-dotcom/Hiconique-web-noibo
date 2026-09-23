@@ -2784,57 +2784,30 @@ function applyLevelDropdown() {
 // ================= THÔNG BÁO ĐẨY (WEB PUSH QUA FIREBASE) — 2026-09-23 =================
 // Bật popup thông báo thật trên điện thoại/máy tính (giống Zalo) khi có
 // thông báo mới, thay vì chỉ hiện trong chuông 🔔 lúc đang mở web. Dùng
-// Firebase Cloud Messaging (FCM) — Apps Script không có sẵn thư viện push
-// riêng, nên tự làm luồng OAuth2 service-account (ký JWT RS256 bằng
-// Utilities.computeRsaSha256Signature, đổi lấy access token) rồi gọi thẳng
-// REST API `fcm.googleapis.com/v1/.../messages:send`.
+// Firebase Cloud Messaging (FCM) qua REST API `fcm.googleapis.com/v1/.../
+// messages:send`.
 //
-// CẦN CẤU HÌNH 1 LẦN (Tiện ích > Thuộc tính dự án > Thuộc tính Script):
-//   FCM_SERVICE_ACCOUNT_JSON = dán TOÀN BỘ nội dung file JSON service
-//     account (Firebase Console > Project settings > Service accounts >
-//     Generate new private key). KHÔNG commit file này vào git — chỉ dán
-//     vào Script Properties (Apps Script tự lưu riêng, không nằm trong mã
-//     nguồn), xem GHI_CHU_DU_AN.md mục thông báo đẩy.
-// Chưa cấu hình xong 2 việc trên → các hàm dưới tự bỏ qua im lặng (return
-// sớm, không throw) — vì push chỉ là lớp "thêm", KHÔNG được làm hỏng luồng
-// ghi Thông báo chính (Sheet) nếu Firebase tạm lỗi/chưa cấu hình.
+// 2026-09-23 (v2): BỎ HẲN cách dùng file JSON service account (JWT RS256 tự
+// ký) — thay bằng `ScriptApp.getOAuthToken()`, lấy token NGAY BẰNG danh
+// tính của chính Apps Script này (tài khoản sở hữu script — hiconique.group@
+// gmail.com, CÙNG tài khoản sở hữu project Firebase `hiconique-internal-hub-
+// f77f2`) miễn là đã khai `https://www.googleapis.com/auth/firebase.
+// messaging` trong mảng `oauthScopes` của appsscript.json (Tiện ích > Cài đặt
+// dự án > tick "Hiển thị tệp kê khai appsscript.json..." để sửa được file
+// này). KHÔNG cần tạo/tải/dán bất kỳ file khoá bí mật nào nữa — không có gì
+// để lộ ra ngoài, không có bước thủ công nào cho người dùng.
+// FCM_PROJECT_ID phải khớp đúng Project ID trong Firebase Console (Project
+// settings > General) của project ĐANG DÙNG THẬT — đổi project thì sửa hằng
+// số này.
+var FCM_PROJECT_ID = 'hiconique-internal-hub-f77f2';
+
 function getFcmAccessToken_() {
-  var cache = CacheService.getScriptCache();
-  var cached = cache.get('fcm_access_token');
-  if (cached) return cached;
-
-  var json = PropertiesService.getScriptProperties().getProperty('FCM_SERVICE_ACCOUNT_JSON');
-  if (!json) return null;
-  var sa;
-  try { sa = JSON.parse(json); } catch (e) { Logger.log('getFcmAccessToken_: FCM_SERVICE_ACCOUNT_JSON không phải JSON hợp lệ.'); return null; }
-
-  function b64url(bytes) {
-    return Utilities.base64EncodeWebSafe(bytes).replace(/=+$/, '');
+  try {
+    return ScriptApp.getOAuthToken();
+  } catch (e) {
+    Logger.log('getFcmAccessToken_ exception: ' + e);
+    return null;
   }
-  var header = { alg: 'RS256', typ: 'JWT' };
-  var now = Math.floor(Date.now() / 1000);
-  var claim = {
-    iss: sa.client_email,
-    scope: 'https://www.googleapis.com/auth/firebase.messaging',
-    aud: 'https://oauth2.googleapis.com/token',
-    iat: now,
-    exp: now + 3600
-  };
-  var signingInput = b64url(Utilities.newBlob(JSON.stringify(header)).getBytes()) + '.' + b64url(Utilities.newBlob(JSON.stringify(claim)).getBytes());
-  var signatureBytes = Utilities.computeRsaSha256Signature(signingInput, sa.private_key);
-  var jwt = signingInput + '.' + b64url(signatureBytes);
-
-  var resp = UrlFetchApp.fetch('https://oauth2.googleapis.com/token', {
-    method: 'post',
-    contentType: 'application/x-www-form-urlencoded',
-    payload: { grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: jwt },
-    muteHttpExceptions: true
-  });
-  var body;
-  try { body = JSON.parse(resp.getContentText()); } catch (e) { Logger.log('getFcmAccessToken_: phản hồi lạ - ' + resp.getContentText()); return null; }
-  if (!body.access_token) { Logger.log('getFcmAccessToken_: lỗi lấy token - ' + resp.getContentText()); return null; }
-  cache.put('fcm_access_token', body.access_token, Math.min((body.expires_in || 3600) - 60, 1800));
-  return body.access_token;
 }
 
 // Gửi push tới TẤT CẢ thiết bị đang hoạt động (active=true) của 1 nhân viên.
@@ -2843,9 +2816,6 @@ function getFcmAccessToken_() {
 // máy đó sẽ tự đăng ký token mới đè lên qua registerPushDevice upsert).
 function sendPushToMember_(ss, memberId, title, body, extra) {
   try {
-    var json = PropertiesService.getScriptProperties().getProperty('FCM_SERVICE_ACCOUNT_JSON');
-    if (!json) return;
-    var sa = JSON.parse(json);
     var token = getFcmAccessToken_();
     if (!token) return;
 
@@ -2861,7 +2831,7 @@ function sendPushToMember_(ss, memberId, title, body, extra) {
         webpush: { notification: { icon: '/apple-touch-icon.png' } }
       };
       if (extra && extra.link) message.webpush.fcm_options = { link: extra.link };
-      var resp = UrlFetchApp.fetch('https://fcm.googleapis.com/v1/projects/' + sa.project_id + '/messages:send', {
+      var resp = UrlFetchApp.fetch('https://fcm.googleapis.com/v1/projects/' + FCM_PROJECT_ID + '/messages:send', {
         method: 'post',
         contentType: 'application/json',
         headers: { Authorization: 'Bearer ' + token },
