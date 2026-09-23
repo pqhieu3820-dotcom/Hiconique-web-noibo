@@ -31,7 +31,16 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
 ## ⏳ VIỆC CÒN TỒN ĐỌNG (đọc mục này đầu tiên — cập nhật 2026-09-23)
 
-**Phiên 2026-09-23 — Thông báo đẩy (Web Push qua Firebase) — KHÔNG còn bước thủ công nào, xem mục ngay dưới.** Apps Script đã redeploy **phiên bản 79** (bản cuối, dùng `ScriptApp.getOAuthToken()` — bỏ hẳn service-account JSON của v78).
+**Phiên 2026-09-23 — Đã chạy XONG `sortAllLogSheetsNewestFirst()` 1 lần — dữ liệu cũ trên Sheet đã sắp lại đúng thứ tự mới nhất lên trên.** Apps Script đang chạy **phiên bản 80** (thêm hàm 1 lần này — bản push thông báo v79 vẫn y nguyên, không đổi gì thêm).
+
+### Phiên 2026-09-23 (c) — Sắp xếp lại TOÀN BỘ dữ liệu CŨ trong Sheet cho đúng quy tắc "mới lên trên" (chạy 1 lần)
+
+- **Vấn đề**: `addData()`/`addDataBatch()` đổi sang chèn bản ghi MỚI ở đầu Sheet từ 2026-09-22, nhưng dữ liệu TẠO TRƯỚC ngày đó vẫn nằm nguyên theo thứ tự cũ (nối đuôi dần) — trộn lẫn với vài dòng mới chèn đầu, thứ tự bị lộn xộn. Người dùng phát hiện ở `TLCC-Chấm công` (dòng 21/09 và 23/09 xen kẽ lộn xộn), yêu cầu rà + sửa toàn bộ sheet.
+- **Cách làm**: hàm `sortAllLogSheetsNewestFirst()` mới trong `gsheets-api-v2.js` (cuối file) — chạy 1 LẦN từ Apps Script editor, lặp qua mọi sheet trong `SHEETS` map, dùng **`Range.sort()`** (thao tác sort GỐC của Google Sheets, tự di chuyển đúng công thức/định dạng/data-validation theo hàng) — KHÔNG tự đọc-ghi giá trị bằng tay (sẽ biến công thức VLOOKUP "Tên dự án" thành text tĩnh, mất khả năng tự cập nhật). Sort theo cột `Ngày tạo` (hoặc `Ngày` nếu sheet không có `Ngày tạo`, VD Chấm công) giảm dần, cột A (ID có chứa timestamp) làm khoá phụ phá tie.
+- **KHÔNG áp dụng cho sheet danh mục/cấu hình** (`SORT_SKIP_KEYS`): `NS-Thành viên` (ID khác quy ước, thứ tự hiển thị đã do `LEVELS` quyết định ở phía app), `TLCC-Giờ làm việc` (1 dòng cấu hình), `TLCC-Địa điểm chấm công`, `TLCC-Mức hoa hồng`, `TC-Bảng giá dịch vụ`, `BIM-Sản phẩm`/`BIM-Vật liệu`/`BIM-Nhà cung cấp` (danh mục quản lý thủ công, thứ tự không theo thời gian tạo).
+- **Kết quả chạy thật (10:24, 23/9/2026)**: đã sắp lại `DA-Dự án` (3 dòng), `DA-Công việc` (5), `TLCC-Chấm công` (9), `TT-Thông báo` (111), `TT-Bảng tin` (6), `TT-Tài liệu` (17), `TLCC-Hoa hồng dự án` (10), `TC-Đơn hàng` (10), `DA-Phát sinh` (25), `DA-Tiến độ` (180), `DA-Nghiệm thu` (158), `DA-Hồ sơ công trình` (158), `BIM-Issue` (20), `BIM-BOQ` (50) — các sheet còn lại hoặc bị bỏ qua (danh mục) hoặc ≤1 dòng dữ liệu (không cần sắp). `TC-Công nợ khách hàng` báo "không tìm thấy sheet" — sheet này CHƯA từng có dữ liệu ghi vào (bình thường, không phải lỗi).
+- **Đã verify trực tiếp trên Sheet thật**: `TLCC-Chấm công` (23/09→22/09→21/09, header nguyên vẹn) và `TT-Thông báo` (22/09→21/09, header nguyên vẹn) — không phát hiện hỏng dữ liệu/công thức.
+- **Lưu ý cho lần sau**: hàm này chỉ cần chạy LẠI nếu có đợt dữ liệu cũ khác cần sắp (VD import hàng loạt từ nguồn ngoài) — dữ liệu tạo bình thường qua `addData()`/`addDataBatch()` từ nay về sau đã tự đúng thứ tự, không cần chạy định kỳ.
 
 ### Phiên 2026-09-23 (b) — Sắp xếp danh sách thành viên theo cấp bậc + báo cáo chấm công tự cập nhật khi đang mở
 

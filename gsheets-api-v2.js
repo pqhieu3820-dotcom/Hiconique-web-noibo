@@ -2860,3 +2860,53 @@ function pushForNotificationRow_(ss, row) {
   if (!row || !row.scope) return;
   sendPushToMember_(ss, row.scope, row.title || 'Thông báo mới', row.message || '', { link: '/' });
 }
+
+// ================= SẮP XẾP LẠI DỮ LIỆU CŨ — 2026-09-23 (chạy 1 LẦN) =================
+// addData()/addDataBatch() (2026-09-22) đã đổi sang chèn bản ghi MỚI ở đầu
+// Sheet, nhưng dữ liệu tạo TRƯỚC ngày đó vẫn nằm nguyên theo thứ tự cũ (nối
+// cuối dần) — trộn lẫn với vài dòng mới chèn đầu, thứ tự bị lộn xộn (người
+// dùng phát hiện ở TLCC-Chấm công). Hàm này chạy 1 LẦN để sắp lại toàn bộ
+// dữ liệu ĐÃ CÓ SẴN cho đúng quy tắc mới — mới nhất lên TRÊN, cũ nhất xuống
+// DƯỚI — cho MỌI sheet dạng "nhật ký/giao dịch". Dùng Range.sort() (thao tác
+// sort gốc của Sheets, tự di chuyển đúng cả công thức/định dạng/validation
+// theo hàng — KHÔNG tự đọc-ghi giá trị bằng tay vì sẽ biến công thức VLOOKUP
+// "Tên dự án" thành text tĩnh, mất khả năng tự cập nhật).
+//
+// KHÔNG áp dụng cho sheet danh mục/cấu hình (thứ tự ở đó là thứ tự quản lý/
+// tra cứu thủ công, không theo thời gian tạo) — xem SORT_SKIP_KEYS.
+var SORT_SKIP_KEYS = {
+  members: true,             // ID không có timestamp (khác quy ước), thứ tự hiển thị đã do LEVELS quyết định ở phía app (xem task-data.js)
+  workSchedule: true,        // sheet cấu hình 1 dòng duy nhất
+  attendanceLocations: true, // danh sách địa điểm GPS/IP quản lý thủ công
+  commissionRates: true,     // bảng % theo cấp bậc, thứ tự cố định theo LEVELS
+  priceCatalog: true,        // bảng giá dịch vụ — thứ tự trình bày báo giá, không phải theo thời gian tạo
+  bimProducts: true, bimMaterials: true, bimSuppliers: true // danh mục BIM dùng chung toàn tổ chức, thứ tự quản lý thủ công
+};
+function sortAllLogSheetsNewestFirst() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var report = [];
+  Object.keys(SHEETS).forEach(function (key) {
+    var sheetName = SHEETS[key];
+    if (SORT_SKIP_KEYS[key]) { report.push(sheetName + ': bỏ qua (danh mục/cấu hình, không theo thời gian tạo)'); return; }
+    var sheet = findSheet(ss, sheetName);
+    if (!sheet) { report.push(sheetName + ': không tìm thấy sheet, bỏ qua'); return; }
+    var lastRow = sheet.getLastRow();
+    var lastCol = sheet.getLastColumn();
+    if (lastRow < 3) { report.push(sheetName + ': <=1 dòng dữ liệu, không cần sắp xếp'); return; }
+    var headers = getHeaders(sheet);
+    // Ưu tiên cột "Ngày tạo" (createdAt) — sheet nào không có cột này (VD
+    // TLCC-Chấm công dùng "Ngày" làm mốc chính vì đó mới là ngày công thật)
+    // thì rơi về "Ngày", cột đầu tiên (luôn là ID có chứa timestamp — xem
+    // makeId()) làm khoá phụ để phá tie khi nhiều dòng trùng ngày.
+    var dateColIdx = headers.indexOf('Ngày tạo');
+    if (dateColIdx === -1) dateColIdx = headers.indexOf('Ngày');
+    var sortSpecs = [];
+    if (dateColIdx !== -1) sortSpecs.push({ column: dateColIdx + 1, ascending: false });
+    sortSpecs.push({ column: 1, ascending: false }); // cột A luôn là ID (chứa timestamp)
+    sheet.getRange(2, 1, lastRow - 1, lastCol).sort(sortSpecs);
+    report.push(sheetName + ': đã sắp lại ' + (lastRow - 1) + ' dòng theo ' + (dateColIdx !== -1 ? headers[dateColIdx] + ' + ' : '') + 'ID (mới nhất lên trên)');
+  });
+  var msg = report.join('\n');
+  Logger.log(msg);
+  return msg;
+}
