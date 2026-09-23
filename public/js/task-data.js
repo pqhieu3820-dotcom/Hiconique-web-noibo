@@ -1059,8 +1059,30 @@ var TaskManager = (function() {
   }
 
   // Members
+  // 2026-09-23: sắp xếp MỌI danh sách thành viên theo đúng thứ tự cấp bậc đã
+  // thống nhất (Founder → CEO → Giám đốc Bộ phận → Quản lý → Nhân viên, xem
+  // LEVELS ở trên) thay vì để nguyên thứ tự thô của Sheet — từ khi đổi sang
+  // chèn bản ghi mới ở ĐẦU Sheet (xem GHI_CHU_DU_AN.md), thứ tự thô gần như
+  // ngẫu nhiên (mới thêm/sửa gần đây nổi lên đầu), không còn phản ánh đúng sơ
+  // đồ tổ chức nữa — người dùng phản ánh "đầu mục chưa đúng thứ tự đã thống
+  // nhất" ở trang Chấm công/Team. Sắp ngay tại nguồn (getMembers()/
+  // getActiveMembers()) để MỌI nơi dùng 2 hàm này (Team, báo cáo chấm công,
+  // dropdown giao việc, sidebar lọc thành viên...) tự động đúng thứ tự, không
+  // phải sửa từng trang. Cùng cấp bậc thì xếp theo tên (bảng chữ cái tiếng
+  // Việt); thành viên thiếu `level` (dữ liệu cũ) rơi xuống cuối.
+  function sortMembersByLevel_(members) {
+    return members.slice().sort(function (a, b) {
+      var la = a.level && getLevelByCode(a.level);
+      var lb = b.level && getLevelByCode(b.level);
+      var oa = la ? la.order : 99;
+      var ob = lb ? lb.order : 99;
+      if (oa !== ob) return oa - ob;
+      return (a.name || '').localeCompare(b.name || '', 'vi');
+    });
+  }
+
   function getMembers() {
-    return getAll(STORAGE_KEYS.members);
+    return sortMembersByLevel_(getAll(STORAGE_KEYS.members));
   }
 
   // 2026-09-17: danh sách thành viên CÒN LÀM VIỆC — dùng cho MỌI nơi chọn
@@ -1071,7 +1093,7 @@ var TaskManager = (function() {
   // cần lọc, người dùng phát hiện tài khoản "bot" chưa duyệt vẫn chọn được
   // để giao việc là sai (họ còn chưa đăng nhập được).
   function getActiveMembers() {
-    return getAll(STORAGE_KEYS.members).filter(function (m) { return !m.status || m.status === 'active'; });
+    return sortMembersByLevel_(getAll(STORAGE_KEYS.members).filter(function (m) { return !m.status || m.status === 'active'; }));
   }
 
   function getMember(id) {

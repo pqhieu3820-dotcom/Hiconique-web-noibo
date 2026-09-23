@@ -2731,6 +2731,10 @@
     // lại đúng số cả công ty đã lưu sẵn, không cần tính lại.
     var reportStatsByMember = {};
     var reportCompanyStats = { workDays: 0, totalHours: 0, overtimeHours: 0, forgotCount: 0 };
+    // 2026-09-23: id người đang xem chi tiết (null = đang ở danh sách) — để
+    // sự kiện 'hiconique:data-refreshed' (chạy ngầm mỗi 5s) biết vẽ lại ĐÚNG
+    // màn đang mở thay vì luôn bật về danh sách, xem chỗ dùng bên dưới.
+    var reportCurrentMemberId = null;
 
     function renderReportStatGrid(stats) {
       var statGrid = document.getElementById('tsReportStatGrid');
@@ -2887,6 +2891,7 @@
       var listBox = document.getElementById('tsReportByMember');
       var detailBox = document.getElementById('tsReportMemberDetail');
       if (!listBox || !detailBox) return;
+      reportCurrentMemberId = memberId;
       listBox.hidden = true;
       detailBox.hidden = false;
       var member = reportMembersById[memberId];
@@ -3041,6 +3046,7 @@
       bindWheelMonthNav(document.querySelector('.ts-report-month-nav'), document.getElementById('tsReportPrevMonthEdge'), document.getElementById('tsReportNextMonthEdge'));
 
       document.getElementById('tsReportMemberBackBtn').addEventListener('click', function () {
+        reportCurrentMemberId = null;
         document.getElementById('tsReportMemberDetail').hidden = true;
         document.getElementById('tsReportByMember').hidden = false;
         renderReportStatGrid(reportCompanyStats);
@@ -3686,6 +3692,19 @@
       // checkGeoStatus()/checkIpStatus() ở đây — 2 hàm đó tự xin lại vị trí
       // GPS thật mỗi lần gọi, không nên tự lặp lại mỗi 20s vô ích/tốn pin).
       renderVerifyRow('tsVerifyDeviceDot', 'tsVerifyDeviceState', checkDeviceStatus());
+
+      // 2026-09-23: modal "Báo cáo chấm công" (CEO) trước đây chỉ tính 1 lần
+      // lúc mở — dữ liệu mới ghi lên Sheet SAU đó (VD tự động đóng ca sáng
+      // quên check-out chạy trên Apps Script, hoặc nhân viên chấm công ở máy
+      // khác) không hiện ra trong báo cáo cho tới khi đóng/mở lại modal.
+      // Vẽ lại NGAY nếu modal đang mở, giữ đúng màn đang xem (danh sách hay
+      // chi tiết 1 người) thay vì bật ngược về danh sách.
+      var reportModalEl = document.getElementById('tsReportModal');
+      if (reportModalEl && reportModalEl.classList.contains('active')) {
+        var keepMemberId = reportCurrentMemberId;
+        renderAttendanceReportModal();
+        if (keepMemberId) openReportMemberDetail(keepMemberId);
+      }
     });
 
     if (typeof Auth !== 'undefined' && Auth.getCurrentUser && !Auth.getCurrentUser()) {
