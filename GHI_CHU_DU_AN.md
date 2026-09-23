@@ -31,7 +31,7 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
 ## ⏳ VIỆC CÒN TỒN ĐỌNG (đọc mục này đầu tiên — cập nhật 2026-09-23)
 
-**Phiên 2026-09-23 (d) — CÒN 1 DÒNG TRÙNG CHƯA XOÁ THỦ CÔNG**: sheet `TLCC-Chấm công`, dòng của `NV_VK_210593` ngày 23/09 (ID `timesheet_260923_1790123459507`) — có 2 dòng trùng y hệt ID, 1 dòng `completed`/có checkout 11:32 (dòng cần GIỮ) và 1 dòng `working`/không checkout (dòng CẦN XOÁ). Đã thử tự xoá qua automation nhiều lần nhưng bị chặn/click không ăn — người dùng cần tự vào Sheet, chọn dòng "working" (không có giờ checkout) của NV_VK_210593 ngày 23/09, chuột phải → Xoá hàng. Không gấp — bug hiển thị đã được vá ở phía app (xem mục (d) dưới) nên không ảnh hưởng người dùng, dòng thừa này chỉ để dọn cho sạch.
+**Phiên 2026-09-23 (d) — Dòng trùng của Khánh đã được xoá thủ công qua Claude in Chrome** (chọn đúng dòng bằng điều hướng bàn phím + `Shift+F10` mở menu ngữ cảnh đúng dòng đang chọn — click chuột theo toạ độ bị lệch hàng liên tục nên đổi sang cách này). Sheet `TLCC-Chấm công` từ 10 dòng còn 9 dòng, không còn ID trùng.
 
 **Phiên 2026-09-23 — Đã chạy XONG `sortAllLogSheetsNewestFirst()` 1 lần — dữ liệu cũ trên Sheet đã sắp lại đúng thứ tự mới nhất lên trên.** Apps Script đang chạy **phiên bản 81** (v81: vá `addData()` chặn ghi trùng dòng theo ID + thêm hàm dọn 1 lần `dedupeTimesheetSheet()`; v80: thêm hàm sort 1 lần này — bản push thông báo v79 vẫn y nguyên, không đổi gì thêm).
 
