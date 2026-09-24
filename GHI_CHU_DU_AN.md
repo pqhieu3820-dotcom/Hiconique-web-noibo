@@ -29,9 +29,15 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
   - Chỉ áp dụng cho SỐ TIỀN thật (VNĐ) — KHÔNG áp dụng cho số lượng, phần trăm, giờ công hay các trường số khác không phải tiền.
 - **Bản ghi MỚI (task, dự án, đề xuất, đơn hàng, thông báo... — MỌI sheet) luôn chèn vào DÒNG ĐẦU TIÊN ngay dưới header, đẩy dữ liệu cũ xuống dưới — KHÔNG appendRow() nối cuối như trước** (chốt 2026-09-22 theo yêu cầu người dùng, áp dụng ngay cho toàn Web kể cả tính năng chưa xây). Sửa 1 chỗ duy nhất ở `gsheets-api-v2.js`: `addData()` dùng `sheet.insertRowBefore(2)` rồi ghi vào dòng 2 (thay `appendRow()`+`getLastRow()`), `addDataBatch()` dùng `sheet.insertRowsBefore(2, n)` rồi ghi khối vào dòng 2 (thay ghi nối vào `getLastRow()+1`) — MỌI luồng tạo mới trong app đều đi qua 2 hàm này nên không cần sửa gì ở client. `fillComputedHelperFormulas()` (tự copy công thức VLOOKUP cột "Tên dự án" xuống dòng mới) cũng phải đổi chiều copy — giờ lấy công thức từ dòng NGAY DƯỚI khối vừa chèn (dữ liệu cũ bị đẩy xuống) thay vì dòng phía TRÊN (giờ là header, không có công thức). Nếu sau này thêm 1 luồng ghi mới KHÔNG đi qua `addData()`/`addDataBatch()` (VD `appendRow()` gọi thẳng ở đâu đó) — PHẢI áp dụng lại đúng quy tắc chèn-ở-đầu này, không được nối cuối.
 
-## ⏳ VIỆC CÒN TỒN ĐỌNG (đọc mục này đầu tiên — cập nhật 2026-09-23)
+## ⏳ VIỆC CÒN TỒN ĐỌNG (đọc mục này đầu tiên — cập nhật 2026-09-24)
 
-**Phiên 2026-09-23 (d) — Dòng trùng của Khánh đã được xoá thủ công qua Claude in Chrome** (chọn đúng dòng bằng điều hướng bàn phím + `Shift+F10` mở menu ngữ cảnh đúng dòng đang chọn — click chuột theo toạ độ bị lệch hàng liên tục nên đổi sang cách này). Sheet `TLCC-Chấm công` từ 10 dòng còn 9 dòng, không còn ID trùng.
+### Phiên 2026-09-24 — Fix "Tổng" tiến độ task tính sai (trung bình cộng thay vì mốc cao nhất)
+
+- **Triệu chứng**: task 2 người (Khánh, Sáng) đã cập nhật 22/9=50%, 23/9=100% ("Xong") nhưng "Tổng" vẫn hiện 75%, nút "Hoàn thành — nộp duyệt" không sáng dù đã báo xong việc.
+- **Nguyên nhân**: `addDailyProgress()` (task-data.js) tính `task.progress` = TRUNG BÌNH CỘNG mọi lần cập nhật hàng ngày (`(50+100)/2=75`) thay vì MỐC CAO NHẤT đã đạt — sai với đúng quy tắc "tiến độ chỉ tăng, không giảm" mà UI slider đã khoá (`progressFloor`). `submitTaskForReview()` yêu cầu `progress>=95` nên bị chặn nhầm.
+- **Đã sửa**: `addDailyProgress()` đổi sang lấy `max(progress hiện tại, mọi ngày trong dailyTasks)`. Đồng thời sửa luôn hiển thị "Tiến độ hôm nay" ở `task-manager-app.js`/`projects.js` dùng đúng giá trị đang hiện trên slider (`todayStartPct`) thay vì đọc thẳng field rỗng (0%) khi chưa lưu gì hôm nay — tránh nhãn chữ và thanh progress lệch nhau ("nhảy loạn xạ").
+- **Task cũ đã bị lệch "Tổng" trước bản vá này sẽ TỰ SỬA ĐÚNG ngay lần lưu tiến độ kế tiếp** (kể cả bấm lưu lại đúng giá trị đang có) — không cần migrate dữ liệu cũ hàng loạt.
+- Nút "Hoàn thành — nộp duyệt" vẫn cần người được giao TỰ BẤM (không tự động chuyển trạng thái khi đạt 100%, đây là thiết kế có chủ đích).
 
 **Phiên 2026-09-23 — Đã chạy XONG `sortAllLogSheetsNewestFirst()` 1 lần — dữ liệu cũ trên Sheet đã sắp lại đúng thứ tự mới nhất lên trên.** Apps Script đang chạy **phiên bản 81** (v81: vá `addData()` chặn ghi trùng dòng theo ID + thêm hàm dọn 1 lần `dedupeTimesheetSheet()`; v80: thêm hàm sort 1 lần này — bản push thông báo v79 vẫn y nguyên, không đổi gì thêm).
 
