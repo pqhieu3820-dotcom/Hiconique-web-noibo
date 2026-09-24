@@ -1115,6 +1115,26 @@ var TaskManager = (function() {
     return Math.max(0, 100 - otherDaysTotal);
   }
 
+  // 2026-09-24: nút "Xác nhận & đồng bộ lại" trên thông báo dạng `resync`
+  // (Founder gửi riêng cho 1-2 người bị mất dữ liệu do bug ghi Sheet trước
+  // đây) — thay vì bắt người dùng tự mở lại TỪNG task rồi bấm "Lưu tiến độ
+  // hôm nay" 1 lần, hàm này tự tìm mọi task họ được giao và ghi lại đúng
+  // `dailyTasks`/`progress` hiện có trên máy họ lên Sheet trong 1 lần bấm.
+  // Dữ liệu local không đổi gì — chỉ đẩy lại đúng nguyên trạng để
+  // callGSheetsAPI() (đã có timeout+retry, xem 2026-09-24 (b)) có cơ hội ghi
+  // thành công lần nữa.
+  function forceResyncMyTasks(userId) {
+    var myTasks = getAll(STORAGE_KEYS.tasks).filter(function (t) {
+      return taskAssigneeIdsOf(t).indexOf(userId) !== -1;
+    });
+    myTasks.forEach(function (t) {
+      var dailyTasks = t.dailyTasks || [];
+      var totalProgress = sumDailyProgress_(dailyTasks);
+      updateTask(t.id, { dailyTasks: dailyTasks, progress: totalProgress });
+    });
+    return myTasks.length;
+  }
+
   // Generate daily tasks from deadline
   function generateDailyTasks(taskId) {
     var task = getTask(taskId);
@@ -2609,6 +2629,7 @@ var TaskManager = (function() {
     addDailyProgress: addDailyProgress,
     getTodayProgress: getTodayProgress,
     getTodayProgressCap: getTodayProgressCap,
+    forceResyncMyTasks: forceResyncMyTasks,
     generateDailyTasks: generateDailyTasks,
     confirmTaskAssignment: confirmTaskAssignment,
     submitTaskForReview: submitTaskForReview,

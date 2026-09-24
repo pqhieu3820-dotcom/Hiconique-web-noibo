@@ -1087,7 +1087,7 @@
   }
 
   // ----- Notifications bell (site-wide: reuses the bell on index.html, injects one elsewhere) -----
-  var NOTIF_TYPE_LABELS = { task: 'Việc', project: 'Dự án', violation: 'Vi phạm', checkin: 'Chấm công', payroll: 'Lương', system: 'Hệ thống', custom: 'Thông báo' };
+  var NOTIF_TYPE_LABELS = { task: 'Việc', project: 'Dự án', violation: 'Vi phạm', checkin: 'Chấm công', payroll: 'Lương', system: 'Hệ thống', custom: 'Thông báo', resync: 'Đồng bộ lại' };
 
   // 2026-09-19: bấm vào 1 thông báo giờ tự nhảy sang đúng trang liên quan
   // thay vì chỉ đánh dấu đã đọc rồi nằm im — suy trang đích từ `type` của
@@ -1194,6 +1194,11 @@
       if (!panel.hidden) render();
     });
 
+    // 2026-09-24: thông báo dạng 'resync' — Founder gửi riêng cho người bị
+    // mất dữ liệu tiến độ do bug ghi Sheet trước đây (xem
+    // TaskManager.forceResyncMyTasks()) — có thêm nút "Xác nhận & đồng bộ
+    // lại" ngay trong thông báo, bấm là tự đẩy lại toàn bộ task của họ lên
+    // Sheet, không cần tự mở lại từng task.
     function itemRow(n) {
       var unread = !TaskManager.isNotificationRead(n.id);
       return '<div class="notif-item' + (unread ? ' unread' : '') + '" data-id="' + escapeHtml(n.id) + '">' +
@@ -1202,6 +1207,7 @@
           '<div class="notif-title">' + escapeHtml(n.title || '') + '</div>' +
           (n.message ? '<div class="notif-message">' + escapeHtml(n.message) + '</div>' : '') +
           '<div class="notif-meta">' + (NOTIF_TYPE_LABELS[n.type] || 'Thông báo') + ' · ' + relTime(n.createdAt) + (n.recurring ? ' · định kỳ' : '') + '</div>' +
+          (n.type === 'resync' ? '<button type="button" class="btn btn-primary notif-resync-btn" data-resync-id="' + escapeHtml(n.id) + '" style="margin-top:8px; padding:6px 12px; font-size:0.75rem;">Xác nhận &amp; đồng bộ lại</button>' : '') +
         '</div></div>';
     }
 
@@ -1226,13 +1232,26 @@
       panel.innerHTML = html;
 
       panel.querySelectorAll('.notif-item').forEach(function (row) {
-        row.addEventListener('click', function () {
+        row.addEventListener('click', function (e) {
+          if (e.target.closest('.notif-resync-btn')) return; // xử lý riêng bên dưới, không đánh dấu đã đọc + điều hướng
           TaskManager.markNotificationRead(row.dataset.id);
           row.classList.remove('unread');
           updateBadge();
           var n = items.filter(function (x) { return x.id === row.dataset.id; })[0];
           var target = n && notifTarget(n);
           if (target) window.location.href = target;
+        });
+      });
+
+      panel.querySelectorAll('.notif-resync-btn').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          if (typeof TaskManager === 'undefined' || !TaskManager.forceResyncMyTasks) return;
+          var count = TaskManager.forceResyncMyTasks(user.id);
+          TaskManager.markNotificationRead(btn.dataset.resyncId);
+          showToast(count > 0 ? ('Đã gửi lại ' + count + ' việc lên Google Sheet.') : 'Bạn chưa được giao việc nào để đồng bộ lại.', true);
+          updateBadge();
+          render();
         });
       });
 
