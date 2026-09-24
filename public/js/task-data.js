@@ -8,13 +8,31 @@ function isUsingGSheets() {
   return typeof GSHEETS_CONFIG !== 'undefined' && GSHEETS_CONFIG.USE_GSHEETS === true;
 }
 
-// Google Sheets API functions (synchronous wrapper)
-function callGSheetsAPI(action, data, id) {
+// 2026-09-24: phát hiện thực tế — nhiều lượt cập nhật tiến độ/chấm công ghi
+// ĐÚNG vào localStorage (người dùng thấy trên máy mình) nhưng KHÔNG BAO GIỜ
+// tới được Google Sheet (Founder kiểm tra Sheet không thấy). Nguyên nhân:
+// callGSheetsAPI() cũ không có timeout (fetch() có thể treo vô thời hạn trên
+// mạng di động chập chờn/Apps Script cold-start — y hệt lý do fetchFromAPI()
+// đã thêm timeout+retry cho luồng ĐỌC từ 2026-09-19), KHÔNG retry, và lỗi chỉ
+// console.error() — người dùng không hề biết lần lưu đó đã mất, tưởng đã
+// xong vì UI local vẫn hiện đúng dữ liệu vừa nhập.
+function callGSheetsAPI(action, data, id, isRetry) {
   if (!isUsingGSheets() || !GSHEETS_CONFIG.API_URL) return;
   // Bẫy phòng hờ: bản thân add()/update()/remove() đã chặn từ trước khi gọi
   // tới đây, nhưng vài hàm ghi đặc biệt gọi callGSheetsAPI() trực tiếp — chặn
   // luôn ở đây để không bao giờ có request ghi nào lọt ra ngoài lúc mất mạng.
   if (typeof Offline !== 'undefined' && !Offline.isOnline()) return;
+
+  function fail(reason) {
+    console.error('GSheets API error (' + action + '):', reason);
+    if (isRetry) {
+      // Đã thử lại 1 lần vẫn lỗi — báo cho UI biết để không im lặng mất dữ
+      // liệu nữa (xem listener 'hiconique:sync-failed' trong portal.js).
+      window.dispatchEvent(new CustomEvent('hiconique:sync-failed', { detail: { action: action, id: id } }));
+      return;
+    }
+    setTimeout(function () { callGSheetsAPI(action, data, id, true); }, 1500);
+  }
 
   try {
     var params = '?action=' + encodeURIComponent(action);
@@ -23,20 +41,24 @@ function callGSheetsAPI(action, data, id) {
       params += '&data=' + encodeURIComponent(JSON.stringify(data));
     }
 
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, 8000);
+
     fetch(GSHEETS_CONFIG.API_URL + params, {
       method: 'GET',
-      redirect: 'follow'
+      redirect: 'follow',
+      signal: controller.signal
     }).then(function(response) {
+      clearTimeout(timer);
       return response.json();
     }).then(function(result) {
-      if (result.error) {
-        console.error('GSheets API error:', result.error);
-      }
+      if (result && result.error) fail(result.error);
     }).catch(function(e) {
-      console.error('GSheets API call failed:', e);
+      clearTimeout(timer);
+      fail(e);
     });
   } catch (e) {
-    console.error('GSheets API error:', e);
+    fail(e);
   }
 }
 

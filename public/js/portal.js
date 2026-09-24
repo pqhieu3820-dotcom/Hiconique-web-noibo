@@ -382,6 +382,15 @@
     setTimeout(function () { el.remove(); }, 4000);
   }
 
+  // 2026-09-24: callGSheetsAPI() (task-data.js) bắn sự kiện này khi 1 lần ghi
+  // (chấm công, tiến độ, task...) đã thử lại 1 lần vẫn lỗi — trước đây lỗi
+  // này chỉ nằm im trong console, người dùng tưởng đã lưu xong vì dữ liệu
+  // local vẫn hiện đúng. Gắn ở đây (portal.js load trên MỌI trang) để báo
+  // toàn Web, không phải sửa riêng từng trang.
+  window.addEventListener('hiconique:sync-failed', function () {
+    showToast('Lưu vào máy rồi nhưng CHƯA đồng bộ được lên Google Sheet (mạng chập chờn) — thử lại khi có mạng ổn định.', false);
+  });
+
   function showConfirmDialog(title, onConfirm, confirmLabel) {
     var overlay = document.createElement('div');
     overlay.className = 'ts-confirm-overlay';
