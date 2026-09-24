@@ -31,6 +31,8 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
 ## ⏳ VIỆC CÒN TỒN ĐỌNG (đọc mục này đầu tiên — cập nhật 2026-09-24)
 
+**Link production chính đã đổi sang Cloudflare Workers**: `https://hiconique-web-noibo.pqhieu3820.workers.dev` (link Netlify cũ `noibo.hiconique.com` bị lỗi DNS NXDOMAIN ngày 24/9, không liên quan code — người dùng đã chuyển hẳn sang dùng link Workers, vẫn giữ link cũ nhưng không phải link chính nữa). **Luôn dùng link Workers khi cần mở/test web live, không hỏi lại người dùng về việc này nữa.**
+
 ### Phiên 2026-09-24 — Fix "Tổng" tiến độ task tính sai (trung bình cộng thay vì mốc cao nhất)
 
 - **Triệu chứng**: task 2 người (Khánh, Sáng) đã cập nhật 22/9=50%, 23/9=100% ("Xong") nhưng "Tổng" vẫn hiện 75%, nút "Hoàn thành — nộp duyệt" không sáng dù đã báo xong việc.
@@ -1199,7 +1201,8 @@ của Member đang đăng nhập, kiểm tra phía client (không có bảo mậ
 | **Apps Script Web App — URL đang chạy thật** (client gọi `API_URL` này để ghi dữ liệu) | **https://script.google.com/macros/s/AKfycbzgg0dfNgDTFgcTGlNvF2IHLUusK6YuBk1pot9SrbYi5B9al-H2nmmMlKLz5CpDlLY/exec** |
 | **Google Drive — thư mục file thiết kế/hồ sơ kỹ thuật** | **https://drive.google.com/drive/folders/1Abs32vARD3f486LWBfgIWXjKIUV-LK6L** |
 | **Database đơn giá chi phí xây dựng nhà 34 tỉnh T9/2026** (tham khảo ngoài — 34 tỉnh × 432 vật tư × 219 công tác, mốc giá 01/09/2026; có cả bản PDF `DEMO_Cam_nang_don_gia_T9_2026.pdf` cùng nội dung, thêm ma trận NCC + checklist hỏi giá) | **https://docs.google.com/spreadsheets/d/1INkLZfjbfS7G9otbV4uGgQKhog0ADh8L2fnS3GTT2dM/edit?usp=drivesdk** |
-| Netlify — hosting production | Chưa có URL cố định ghi trong repo (auto-deploy mỗi lần push `master`, xem Netlify dashboard của tài khoản để lấy link site + biến `SITE_PASSWORD` cho cổng đăng nhập chung (cookie-auth) — chi tiết ở [README.md](README.md)) |
+| **Production — link chính đang dùng (2026-09-24)** | **https://hiconique-web-noibo.pqhieu3820.workers.dev** (Cloudflare Workers) |
+| Netlify — `noibo.hiconique.com` (link cũ, vẫn giữ nhưng KHÔNG còn là link chính) | Bị lỗi DNS (NXDOMAIN) ngày 2026-09-24, không liên quan gì tới code/Apps Script — xem chi tiết ở mục "VIỆC CÒN TỒN ĐỌNG" phía trên. Chưa rõ nguyên nhân/khi nào khắc phục, không phải việc của Web repo này. |
 
 **Lưu ý khi thay đổi các link trên:** nếu redeploy Apps Script ra **deployment mới** (không phải
 "Phiên bản mới" trên deployment cũ) thì "Apps Script Web App — URL đang chạy thật" ở trên SẼ ĐỔI
