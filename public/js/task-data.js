@@ -1018,14 +1018,16 @@ var TaskManager = (function() {
       });
     }
 
-    // Calculate overall progress from daily tasks
-    if (dailyTasks.length > 0) {
-      var total = dailyTasks.reduce(function(sum, d) { return sum + (d.progress || 0); }, 0);
-      var avgProgress = Math.round(total / dailyTasks.length);
-      updateTask(taskId, { dailyTasks: dailyTasks, progress: avgProgress });
-    } else {
-      updateTask(taskId, { dailyTasks: dailyTasks });
-    }
+    // 2026-09-24: "Tổng" (task.progress) PHẢI là mốc tiến độ CAO NHẤT đã đạt
+    // (khớp đúng quy tắc "chỉ tăng, không giảm" mà UI slider đã khoá —
+    // progressFloor ở openTaskDetail()/openTaskDetailModal()), KHÔNG PHẢI
+    // trung bình cộng của mọi lần cập nhật hàng ngày như code cũ
+    // (`avgProgress = tổng / số ngày`) — bug thực tế: cập nhật 22/9=50%,
+    // 23/9=100% (đã "Xong") nhưng "Tổng" vẫn hiện 75% = (50+100)/2, khiến
+    // nút "Hoàn thành — nộp duyệt" (yêu cầu progress>=95, xem
+    // submitTaskForReview()) không bao giờ sáng dù đã báo 100% xong việc.
+    var maxProgress = dailyTasks.reduce(function(max, d) { return Math.max(max, d.progress || 0); }, Number(task.progress) || 0);
+    updateTask(taskId, { dailyTasks: dailyTasks, progress: maxProgress });
 
     return task;
   }

@@ -1575,8 +1575,8 @@
       +     '<span class="dps-date">' + new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' }) + '</span>'
       +   '</div>'
       +   '<div class="dps-bar-wrap">'
-      +     '<div class="dps-bar-row"><span>Tiến độ hôm nay: <strong style="color:var(--color-bronze)">' + todayProgress.progress + '%</strong></span><span>Tổng: <strong>' + (task.progress || 0) + '%</strong></span></div>'
-      +     '<div class="dps-bar"><span style="width:' + todayProgress.progress + '%"></span></div>'
+      +     '<div class="dps-bar-row"><span>Tiến độ hôm nay: <strong style="color:var(--color-bronze)">' + todayStartPct + '%</strong></span><span>Tổng: <strong>' + (task.progress || 0) + '%</strong></span></div>'
+      +     '<div class="dps-bar"><span style="width:' + todayStartPct + '%"></span></div>'
       +   '</div>'
       +   '<div class="dps-slider-row" style="display:flex; align-items:center; gap:0;">'
       +     (progressFloor > 0 ? '<div class="dps-slider-lock" style="width:' + progressFloor + '%; flex-shrink:0; height:6px; background:var(--color-border-strong); border-radius:3px 0 0 3px;" title="Đã đạt ' + progressFloor + '% — không thể kéo lùi xuống dưới mốc này"></div>' : '')

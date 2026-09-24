@@ -799,11 +799,11 @@
 
         <div style="margin-bottom: 12px;">
           <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-            <span style="font-size: 0.75rem; color: var(--color-text-muted);">Tiến độ hôm nay: <strong style="color: var(--color-bronze);">${todayProgress.progress}%</strong></span>
+            <span style="font-size: 0.75rem; color: var(--color-text-muted);">Tiến độ hôm nay: <strong style="color: var(--color-bronze);">${todayStartPct}%</strong></span>
             <span style="font-size: 0.75rem; color: var(--color-text-muted);">Tổng: <strong>${task.progress || 0}%</strong></span>
           </div>
           <div style="height: 8px; background: var(--color-border); border-radius: 4px; overflow: hidden;">
-            <div style="width: ${todayProgress.progress}%; height: 100%; background: var(--color-bronze); transition: width 0.3s;"></div>
+            <div style="width: ${todayStartPct}%; height: 100%; background: var(--color-bronze); transition: width 0.3s;"></div>
           </div>
         </div>
 
