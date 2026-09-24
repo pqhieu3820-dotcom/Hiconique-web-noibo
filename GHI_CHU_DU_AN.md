@@ -33,6 +33,12 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
 **Link production chính đã đổi sang Cloudflare Workers**: `https://hiconique-web-noibo.pqhieu3820.workers.dev` (link Netlify cũ `noibo.hiconique.com` bị lỗi DNS NXDOMAIN ngày 24/9, không liên quan code — người dùng đã chuyển hẳn sang dùng link Workers, vẫn giữ link cũ nhưng không phải link chính nữa). **Luôn dùng link Workers khi cần mở/test web live, không hỏi lại người dùng về việc này nữa.**
 
+### Phiên 2026-09-24 (c) — Khoá LockService chống mất dữ liệu khi 2 request ghi cùng lúc
+
+- Phần còn thiếu của fix (b) bên dưới: `mergeDailyTasks_()` chỉ vá phía CLIENT (khi đọc lại), nhưng phía SERVER (Apps Script) vẫn có thể bị 2 request ghi CÙNG 1 dòng gần như đồng thời làm mất dữ liệu thật trên Sheet (request sau đọc snapshot đã cũ rồi ghi đè).
+- **Đã sửa**: thêm `withScriptLock_()` dùng `LockService.getScriptLock()` (tryLock 10s, luôn chạy tiếp nếu không lấy được khoá để tránh treo hẳn request người dùng) — bọc quanh `addData()`/`updateData()`/`addDataBatch()`/`deleteData()`, đổi tên logic gốc thành `*_impl` (VD `updateData_impl`), hàm công khai giờ chỉ là wrapper qua khoá. **Không cần sửa chỗ gọi nào khác** — tên hàm giữ nguyên.
+- Apps Script đã redeploy **phiên bản 82**. Đã verify: Sheet `DA-Công việc` vẫn nguyên vẹn dữ liệu sau redeploy (task "Giao việc" vẫn còn đủ lịch sử tiến độ + Tổng 75, chờ lần lưu tiếp theo để tự cập nhật đúng thành 100 theo fix (a) bên dưới).
+
 ### Phiên 2026-09-24 (b) — Ghi lên Google Sheet bị mất lặng lẽ khi mạng chập chờn (chấm công + tiến độ task)
 
 - **Bằng chứng thực tế trên Sheet**: soi trực tiếp `DA-Công việc`, 2 task giao riêng cho 1 người (NV_HS_140486) có cột "Update tiến độ việc hàng ngày"/"Tiến độ" TRẮNG HOÀN TOÀN dù nhân viên khẳng định đã lưu tiến độ trên máy mình (dữ liệu vẫn hiện đúng ở local/UI của họ) — xác nhận việc ghi lên Sheet đã bị rớt, không phải hiểu lầm/cache.
