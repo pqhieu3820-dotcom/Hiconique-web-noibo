@@ -1126,7 +1126,9 @@ function toRealDateIfDateField(val, enKey) {
 // đọc/ghi cùng sheet dễ đua nhau đọc sai "dòng cuối" và ghi đè lên nhau, rớt
 // mất dữ liệu — đã xảy ra thật khi test seed Tiến độ (18 dòng gửi song song,
 // chỉ còn lại 6-7 dòng).
-function addDataBatch(ss, sheetName, dataList) {
+function addDataBatch(ss, sheetName, dataList) { return withScriptLock_(function () { return addDataBatch_impl(ss, sheetName, dataList); }); }
+
+function addDataBatch_impl(ss, sheetName, dataList) {
   const sheet = getOrCreateSheet(ss, sheetName);
   let headers = getHeaders(sheet);
   if (headers.length === 0) {
@@ -1222,7 +1224,36 @@ function ensureSchemaColumns(sheet, sheetName, headers, dataObj) {
   return headers.concat(missing);
 }
 
-function addData(ss, sheetName, data) {
+// 2026-09-24: chống mất dữ liệu khi 2 request ghi CÙNG 1 dòng gần như đồng
+// thời (VD 2 người cùng được giao 1 task, cùng lưu tiến độ hàng ngày trong
+// vài trăm mili-giây) — mỗi request đọc snapshot dòng RỒI MỚI ghi đè, nếu
+// không khoá thì request sau có thể ghi đè mất hẳn thay đổi của request
+// trước dựa trên dữ liệu đã cũ. Khoá bằng LockService quanh addData()/
+// updateData()/addDataBatch()/updateDataBatch()/deleteData() — các hàm ghi
+// gốc dùng chung cho MỌI action ghi lên Sheet. tryLock(10s) — nếu vẫn
+// không lấy được khoá (kẹt bất thường) thì VẪN CHẠY TIẾP (không chặn hẳn
+// request của người dùng), chỉ log lại để biết mà xem sau.
+function withScriptLock_(fn) {
+  var lock = LockService.getScriptLock();
+  var acquired = false;
+  try {
+    acquired = lock.tryLock(10000);
+  } catch (e) {
+    Logger.log('withScriptLock_: tryLock loi — ' + e);
+  }
+  if (!acquired) Logger.log('withScriptLock_: khong lay duoc khoa sau 10s, van chay tiep de tranh treo request nguoi dung.');
+  try {
+    return fn();
+  } finally {
+    if (acquired) { try { lock.releaseLock(); } catch (e) { /* đã hết hạn/không giữ nữa, bỏ qua */ } }
+  }
+}
+
+function addData(ss, sheetName, data) { return withScriptLock_(function () { return addData_impl(ss, sheetName, data); }); }
+function updateData(ss, sheetName, id, updates) { return withScriptLock_(function () { return updateData_impl(ss, sheetName, id, updates); }); }
+function deleteData(ss, sheetName, id) { return withScriptLock_(function () { return deleteData_impl(ss, sheetName, id); }); }
+
+function addData_impl(ss, sheetName, data) {
   const sheet = getOrCreateSheet(ss, sheetName);
   let headers = getHeaders(sheet);
   // Brand-new empty sheet with no header row yet: seed it (in Vietnamese) from FIELD_MAP.
@@ -1247,7 +1278,7 @@ function addData(ss, sheetName, data) {
     const idCol = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues();
     for (let i = 0; i < idCol.length; i++) {
       if (idCol[i][0] === data.id) {
-        return updateData(ss, sheetName, data.id, data);
+        return updateData_impl(ss, sheetName, data.id, data);
       }
     }
   }
@@ -1282,7 +1313,7 @@ function addData(ss, sheetName, data) {
   return data;
 }
 
-function updateData(ss, sheetName, id, updates) {
+function updateData_impl(ss, sheetName, id, updates) {
   const sheet = getOrCreateSheet(ss, sheetName);
   const headers = ensureSchemaColumns(sheet, sheetName, getHeaders(sheet), updates);
   const data = getAllData(ss, sheetName);
@@ -1348,7 +1379,7 @@ function updateDataBatch(ss, sheetName, updatesList) {
   return results;
 }
 
-function deleteData(ss, sheetName, id) {
+function deleteData_impl(ss, sheetName, id) {
   const sheet = findSheet(ss, sheetName);
   if (!sheet) return { error: 'Sheet not found: ' + sheetName };
   const data = getAllData(ss, sheetName);
