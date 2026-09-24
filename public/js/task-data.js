@@ -352,6 +352,34 @@ var TaskManager = (function() {
   // (mới tạo/mới xoá mềm, server chưa kịp phản ánh). Chỉ áp dụng cho
   // tasks/projects (nơi người dùng phản ánh bug, sửa đổi nhiều nhất).
   var MERGE_GRACE_MS = 5 * 60 * 1000; // 5 phút — đủ qua khỏi 1 lần cold-start Apps Script chậm nhất
+
+  // 2026-09-24: mergeServerData() gốc chọn NGUYÊN 1 BÊN (local hoặc server)
+  // theo updatedAt mới hơn — với task NHIỀU NGƯỜI được giao (VD Khánh+Sáng
+  // cùng 1 việc), nếu 2 người cùng lưu tiến độ hàng ngày của MÌNH gần nhau
+  // (vài giây/phút), bên "thắng" có thể là bản KHÔNG có dòng dailyTasks của
+  // người kia — mất trắng 1 lượt cập nhật dù không ai thao tác sai. Gộp
+  // riêng `dailyTasks` theo NGÀY (giữ dòng của CẢ 2 bên, ngày nào trùng thì
+  // lấy dòng có `progress` >= — coi như "ghi sau trong cùng ngày thắng")
+  // trước khi tính lại "Tổng", thay vì để nguyên bên thua mất hẳn dữ liệu.
+  function mergeDailyTasks_(winner, loser) {
+    if (!loser || !Array.isArray(loser.dailyTasks) || !loser.dailyTasks.length) return winner;
+    var byDate = {};
+    (winner.dailyTasks || []).forEach(function (d) { byDate[d.date] = d; });
+    var changed = false;
+    loser.dailyTasks.forEach(function (d) {
+      var existing = byDate[d.date];
+      if (!existing || (Number(d.progress) || 0) > (Number(existing.progress) || 0)) {
+        byDate[d.date] = d;
+        changed = true;
+      }
+    });
+    if (!changed) return winner;
+    var mergedDaily = Object.keys(byDate).map(function (k) { return byDate[k]; })
+      .sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+    var totalProgress = Math.min(100, mergedDaily.reduce(function (s, d) { return s + (Number(d.progress) || 0); }, 0));
+    return Object.assign({}, winner, { dailyTasks: mergedDaily, progress: totalProgress });
+  }
+
   function mergeServerData(storageKey, serverArr) {
     var localArr = [];
     try { localArr = JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch (e) {}
@@ -365,7 +393,9 @@ var TaskManager = (function() {
       if (!localItem) return serverItem;
       var localTime = localItem.updatedAt ? new Date(localItem.updatedAt).getTime() : 0;
       var serverTime = serverItem.updatedAt ? new Date(serverItem.updatedAt).getTime() : 0;
-      return localTime > serverTime ? localItem : serverItem;
+      var winner = localTime > serverTime ? localItem : serverItem;
+      var loser = winner === localItem ? serverItem : localItem;
+      return storageKey === STORAGE_KEYS.tasks ? mergeDailyTasks_(winner, loser) : winner;
     });
     // Bản ghi CHỈ có ở local (mới tạo, hoặc mới xoá mềm nên visible vừa đổi)
     // và còn trong "grace period" — giữ lại, server sẽ tự phản ánh ở lần sau.
