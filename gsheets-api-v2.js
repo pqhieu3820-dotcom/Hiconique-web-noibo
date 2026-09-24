@@ -3009,3 +3009,31 @@ function dedupeTimesheetSheet() {
   Logger.log(msg);
   return msg;
 }
+
+// 2026-09-24: chạy 1 lần từ Apps Script editor — gửi thông báo loại 'resync'
+// tới Lê Văn Khánh (NV_VK_210593) và Nguyễn Huy Sáng (NV_HS_140486), 2 người
+// có task bị mất dữ liệu tiến độ do bug ghi Sheet (xem GHI_CHU_DU_AN.md,
+// mục 2026-09-24 (b)) — người dùng bấm "Xác nhận & đồng bộ lại" ngay trong
+// thông báo (xem portal.js) để tự đẩy lại đúng dữ liệu đang có trên máy họ.
+function sendResyncNotificationToKhanhAndSang() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var targets = ['NV_VK_210593', 'NV_HS_140486'];
+  var title = 'Đồng bộ lại tiến độ công việc';
+  var message = 'Hệ thống vừa sửa xong lỗi khiến một số lượt cập nhật tiến độ trước đây chưa lưu được lên Google Sheet. Bấm "Xác nhận & đồng bộ lại" bên dưới để tự động gửi lại đúng dữ liệu đang có trên máy bạn — không cần mở lại từng việc.';
+  var created = [];
+  targets.forEach(function (memberId) {
+    var row = addData(ss, SHEETS.notifications, {
+      title: title,
+      message: message,
+      type: 'resync',
+      scope: memberId,
+      recurring: false,
+      active: true,
+      createdBy: 'CEO_QH_030800'
+    });
+    created.push(memberId + ' -> ' + (row && row.id));
+  });
+  var msg = 'Đã gửi thông báo resync:\n' + created.join('\n');
+  Logger.log(msg);
+  return msg;
+}
