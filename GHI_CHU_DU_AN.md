@@ -33,6 +33,13 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
 **Link production chính đã đổi sang Cloudflare Workers**: `https://hiconique-web-noibo.pqhieu3820.workers.dev` (link Netlify cũ `noibo.hiconique.com` bị lỗi DNS NXDOMAIN ngày 24/9, không liên quan code — người dùng đã chuyển hẳn sang dùng link Workers, vẫn giữ link cũ nhưng không phải link chính nữa). **Luôn dùng link Workers khi cần mở/test web live, không hỏi lại người dùng về việc này nữa.**
 
+### Phiên 2026-09-24 (b) — Ghi lên Google Sheet bị mất lặng lẽ khi mạng chập chờn (chấm công + tiến độ task)
+
+- **Bằng chứng thực tế trên Sheet**: soi trực tiếp `DA-Công việc`, 2 task giao riêng cho 1 người (NV_HS_140486) có cột "Update tiến độ việc hàng ngày"/"Tiến độ" TRẮNG HOÀN TOÀN dù nhân viên khẳng định đã lưu tiến độ trên máy mình (dữ liệu vẫn hiện đúng ở local/UI của họ) — xác nhận việc ghi lên Sheet đã bị rớt, không phải hiểu lầm/cache.
+- **Nguyên nhân**: `callGSheetsAPI()` (task-data.js, dùng chung cho MỌI lượt ghi lên Sheet toàn Web — chấm công, tiến độ task, dự án...) không có timeout, không retry, lỗi chỉ `console.error()` — y hệt lỗi đã từng vá cho luồng ĐỌC (`fetchFromAPI()`, 2026-09-19: mạng di động chập chờn/Apps Script cold-start có thể treo/lỗi 1 lần) nhưng luồng GHI vẫn chưa có phòng hờ này. Người dùng không hề biết lần lưu đó đã mất vì local vẫn hiện đúng dữ liệu.
+- **Đã sửa**: `callGSheetsAPI()` thêm timeout 8s (AbortController) + retry 1 lần (giống hệt pattern đọc), thất bại cả 2 lần thì bắn sự kiện `hiconique:sync-failed` — `portal.js` (load trên MỌI trang) lắng nghe và hiện toast cảnh báo rõ ràng thay vì im lặng.
+- **2 task bị mất dữ liệu tiến độ trước bản vá này KHÔNG tự khôi phục được** (không có hàng đợi lưu lại thao tác cũ) — nhân viên liên quan cần mở lại đúng task đó, bấm "Lưu tiến độ hôm nay" lại 1 lần (dữ liệu local vẫn còn nguyên, chỉ cần lưu lại là lên Sheet).
+
 ### Phiên 2026-09-24 — Fix "Tổng" tiến độ task tính sai (trung bình cộng thay vì mốc cao nhất)
 
 - **Triệu chứng**: task 2 người (Khánh, Sáng) đã cập nhật 22/9=50%, 23/9=100% ("Xong") nhưng "Tổng" vẫn hiện 75%, nút "Hoàn thành — nộp duyệt" không sáng dù đã báo xong việc.
