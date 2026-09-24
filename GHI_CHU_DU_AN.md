@@ -1347,6 +1347,39 @@ thêm):
   `public/js/projects.js` (`.member-multi`, dùng ở `projects.html`) và
   `public/js/task-manager-app.js` (`tasks-manager.html`).
 
+## 6.7. LỖI NGHIÊM TRỌNG: PowerShell làm hỏng chữ tiếng Việt khi paste vào Apps Script (2026-09-24)
+
+**Nguyên nhân gốc**: PowerShell 5.1 `Get-Content -Raw` (KHÔNG kèm `-Encoding UTF8`)
+đọc file `.js` không có BOM (bình thường với file UTF-8 do git quản lý) bằng
+codepage ANSI hệ thống thay vì UTF-8, làm hỏng mọi ký tự tiếng Việt trước khi
+đưa vào clipboard để paste vào Apps Script editor. Hậu quả: mọi chuỗi tiếng
+Việt VIẾT SẴN TRONG CODE (title/message thông báo, v.v.) bị lỗi
+mojibake/double-encode (VD "Đồng bộ lại" → "Ä‖á»"ng bá»™ láº¡i") ở các bản
+deploy v81–v82, gây lỗi hiển thị thật trên máy người dùng (Lê Văn Khánh,
+Nguyễn Huy Sáng).
+
+**QUY TẮC BẮT BUỘC từ nay, không có ngoại lệ**: mọi lệnh copy file chứa tiếng
+Việt vào clipboard để paste vào Apps Script editor PHẢI dùng:
+```powershell
+Get-Content -Raw -Encoding UTF8 <path> | Set-Clipboard
+```
+KHÔNG bao giờ dùng `Get-Content -Raw` (thiếu `-Encoding UTF8`) cho việc này.
+
+**Cách dọn 2 dòng thông báo `TT-Thông báo` bị hỏng do bug trên** (ID
+`notification_260924_1790217040135_739920`,
+`notification_260924_1790217038428_673107`): ban đầu thử xoá theo số thứ tự
+dòng tính trước (`fixCorruptedResyncNotifications`, rồi
+`deleteAllMojibakeNotifications` quét regex mojibake) — CẢ HAI ĐỀU KHÔNG xoá
+được đúng dòng, nghi do Sheet có dòng mới liên tục chèn ở đầu (nhân viên
+đang chấm công sống) làm lệch số dòng đã tính trước, dù đã bọc
+`withScriptLock_()`. Cách cuối cùng hiệu quả: bỏ hẳn việc tính số dòng
+trước, gọi thẳng `deleteData(ss, sheetName, id)` có sẵn theo ID đã biết —
+hàm này tự đọc lại vị trí dòng NGAY LÚC xoá (không có khoảng hở thời gian
+giữa lúc tính và lúc xoá) nên không bao giờ bị lệch số dòng. Xem hàm
+`deleteKnownMojibakeNotifications()` cuối `gsheets-api-v2.js` — mẫu tham
+khảo cho lần sau nếu cần xoá theo ID đã biết chắc chắn thay vì quét toàn
+sheet.
+
 ## 7. Tài liệu khác trong repo
 
 - [README.md](README.md) — tổng quan kiến trúc, cấu trúc thư mục, cách chạy local/deploy.

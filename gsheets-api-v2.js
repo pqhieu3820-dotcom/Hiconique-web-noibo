@@ -3037,3 +3037,26 @@ function sendResyncNotificationToKhanhAndSang() {
   Logger.log(msg);
   return msg;
 }
+
+// 2026-09-24 (2): 2 lần dọn "quét toàn sheet theo regex + xoá theo số thứ tự
+// dòng tính trước" ở trên đều KHÔNG xoá được 2 dòng lỗi thật (739920,
+// 673107) dù log báo "đã xoá N dòng" — nghi do dòng mới liên tục chèn ở đầu
+// (nhân viên thật đang chấm công sống) làm lệch số dòng đã tính, dù đã bọc
+// khoá. Bỏ hẳn cách tính-số-dòng-trước, xoá thẳng theo ID đã biết chắc chắn
+// bằng deleteData() có sẵn — hàm này tự đọc lại vị trí dòng NGAY LÚC xoá
+// (findSheet + getAllData + tìm theo id) trong cùng 1 lock, không có khoảng
+// hở thời gian giữa lúc tính dòng và lúc xoá nên không bị lệch số dòng.
+function deleteKnownMojibakeNotifications() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var ids = [
+    'notification_260924_1790217040135_739920',
+    'notification_260924_1790217038428_673107'
+  ];
+  var results = ids.map(function (id) {
+    var r = deleteData(ss, SHEETS.notifications, id);
+    return id + ' -> ' + JSON.stringify(r);
+  });
+  var msg = results.join('\n');
+  Logger.log(msg);
+  return msg;
+}
