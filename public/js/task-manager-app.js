@@ -709,12 +709,18 @@
     const statusLabel = taskStatusLabel(task.status);
 
     // Get today's progress
-    const todayProgress = TaskManager.getTodayProgress(taskId) || { progress: task.progress || 0, note: '', done: false };
+    // 2026-09-24: CHỐT LẠI đúng tư duy — mỗi ngày nhập % LÀM THÊM ĐƯỢC
+    // TRONG NGÀY ĐÓ (số gia tăng riêng), "Tổng" = cộng dồn tất cả các ngày
+    // (chặn trần 100%), KHÔNG PHẢI 1 mốc tuyệt đối kéo dần lên 100 như bản
+    // cũ (đã hiểu sai, xem addDailyProgress()/getTodayProgressCap() trong
+    // task-data.js — cùng logic, đồng bộ 2 nơi với openTaskDetail() trong
+    // projects.js). Slider hôm nay bị giới hạn TRẦN = phần % còn lại chưa
+    // dùng ở các ngày khác (không cho tổng vượt 100%), không khoá SÀN theo
+    // mốc cũ nữa vì mỗi ngày là 1 con số độc lập, không phải kéo lùi tổng.
+    const todayProgress = TaskManager.getTodayProgress(taskId) || { progress: 0, note: '', done: false };
     const dailyTasks = task.dailyTasks || [];
-    // 2026-09-22: tiến độ chỉ được TĂNG, không kéo lùi được — xem chú thích
-    // đầy đủ ở openTaskDetail() trong projects.js (cùng logic, đồng bộ 2 nơi).
-    const progressFloor = dailyTasks.length ? Math.max.apply(null, dailyTasks.map(function (d) { return Number(d.progress) || 0; })) : 0;
-    const todayStartPct = Math.max(todayProgress.progress, progressFloor);
+    const todayCap = TaskManager.getTodayProgressCap ? TaskManager.getTodayProgressCap(taskId) : 100;
+    const todayStartPct = Math.min(todayProgress.progress, todayCap);
 
     // 2026-09-21: quy trình duyệt việc — xem hàm nào hiện nút gì:
     // pending -> người được giao tự "Xác nhận nhận việc" (confirmTaskAssignment).
@@ -808,17 +814,17 @@
         </div>
 
         <div style="margin-bottom: 12px;">
-          <label style="font-size: 0.75rem; color: var(--color-text-muted); display: block; margin-bottom: 4px;">Tiến độ (%)</label>
+          <label style="font-size: 0.75rem; color: var(--color-text-muted); display: block; margin-bottom: 4px;">Hôm nay làm thêm được bao nhiêu % (của cả việc)?</label>
           <div style="display:flex; align-items:center; gap:0;">
-            ${progressFloor > 0 ? `<div style="width:${progressFloor}%; flex-shrink:0; height:6px; background:var(--color-border-strong); border-radius:3px 0 0 3px;" title="Đã đạt ${progressFloor}% — không thể kéo lùi xuống dưới mốc này"></div>` : ''}
-            <input type="range" id="dailyProgressInput" min="${progressFloor}" max="100" value="${todayStartPct}" style="flex:1; min-width:0;">
+            <input type="range" id="dailyProgressInput" min="0" max="${todayCap}" value="${todayStartPct}" style="flex:1; min-width:0;">
+            ${todayCap < 100 ? `<div style="width:${100 - todayCap}%; flex-shrink:0; height:6px; background:var(--color-border-strong); border-radius:0 3px 3px 0;" title="Các ngày khác đã cộng ${100 - todayCap}% — hôm nay chỉ còn tối đa ${todayCap}%"></div>` : ''}
           </div>
           <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--color-text-muted);">
-            <span>${progressFloor}%</span>
+            <span>0%</span>
             <span id="dailyProgressValue" style="font-weight: 600; color: var(--color-bronze);">${todayStartPct}%</span>
-            <span>100%</span>
+            <span>${todayCap}%</span>
           </div>
-          ${progressFloor > 0 ? `<p style="font-size:0.6875rem; color:var(--color-text-muted); margin:4px 0 0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px;flex-shrink:0;vertical-align:-1px;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Đã khoá tới ${progressFloor}% — tiến độ chỉ tăng, không giảm được.</p>` : ''}
+          ${todayCap < 100 ? `<p style="font-size:0.6875rem; color:var(--color-text-muted); margin:4px 0 0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px;flex-shrink:0;vertical-align:-1px;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Các ngày khác đã cộng ${100 - todayCap}% — hôm nay tối đa nhập thêm ${todayCap}%.</p>` : ''}
         </div>
 
         <div style="margin-bottom: 12px;">

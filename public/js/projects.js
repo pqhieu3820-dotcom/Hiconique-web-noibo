@@ -1494,17 +1494,19 @@
 
     var project = getProjectById(task.projectId);
     var assignees = getAssigneesForTask(task);
+    // 2026-09-24: CHỐT LẠI đúng tư duy — mỗi ngày nhập % LÀM THÊM ĐƯỢC
+    // TRONG NGÀY ĐÓ (số gia tăng riêng của ngày), "Tổng" = cộng dồn tất cả
+    // các ngày (chặn trần 100%), KHÔNG PHẢI kéo dần 1 mốc tuyệt đối lên 100
+    // như bản 2026-09-22 (hiểu sai) — xem addDailyProgress()/
+    // getTodayProgressCap() trong task-data.js (cùng logic, đồng bộ 2 nơi
+    // với openTaskDetailModal() trong task-manager-app.js). Trần (max) của
+    // thanh trượt hôm nay = 100% - tổng % các ngày KHÁC, không cho tổng
+    // vượt 100% dù kéo hết cỡ — không còn khoá SÀN theo mốc cũ nữa.
     var todayProgress = (typeof TaskManager !== 'undefined' && TaskManager.getTodayProgress) ? TaskManager.getTodayProgress(taskId) : null;
-    if (!todayProgress) todayProgress = { progress: task.progress || 0, note: '', done: false };
+    if (!todayProgress) todayProgress = { progress: 0, note: '', done: false };
     var dailyTasks = task.dailyTasks || [];
-    // 2026-09-22: tiến độ chỉ được phép TĂNG, không cho kéo lùi lại — mốc
-    // % cao nhất đã từng lưu (mọi ngày, kể cả hôm nay nếu đã lưu 1 lần) trở
-    // thành "sàn" (min) của thanh trượt ngày hôm nay, đúng ý người dùng
-    // "nếu đang để 50% thì mai chỉ có thể kéo lên từ 50% trở lên". Ép cứng
-    // qua thuộc tính min của input range (trình duyệt tự chặn kéo xuống
-    // dưới), KHÔNG chỉ chặn ở JS (kéo bằng bàn phím/chạm vẫn bị chặn).
-    var progressFloor = dailyTasks.length ? Math.max.apply(null, dailyTasks.map(function (d) { return Number(d.progress) || 0; })) : 0;
-    var todayStartPct = Math.max(todayProgress.progress, progressFloor);
+    var todayCap = (typeof TaskManager !== 'undefined' && TaskManager.getTodayProgressCap) ? TaskManager.getTodayProgressCap(taskId) : 100;
+    var todayStartPct = Math.min(todayProgress.progress, todayCap);
 
     document.getElementById('detailTitle').textContent = task.title;
 
@@ -1579,11 +1581,11 @@
       +     '<div class="dps-bar"><span style="width:' + todayStartPct + '%"></span></div>'
       +   '</div>'
       +   '<div class="dps-slider-row" style="display:flex; align-items:center; gap:0;">'
-      +     (progressFloor > 0 ? '<div class="dps-slider-lock" style="width:' + progressFloor + '%; flex-shrink:0; height:6px; background:var(--color-border-strong); border-radius:3px 0 0 3px;" title="Đã đạt ' + progressFloor + '% — không thể kéo lùi xuống dưới mốc này"></div>' : '')
-      +     '<input type="range" id="dpSlider" min="' + progressFloor + '" max="100" value="' + todayStartPct + '" style="flex:1; min-width:0;" />'
+      +     '<input type="range" id="dpSlider" min="0" max="' + todayCap + '" value="' + todayStartPct + '" style="flex:1; min-width:0;" />'
+      +     (todayCap < 100 ? '<div class="dps-slider-lock" style="width:' + (100 - todayCap) + '%; flex-shrink:0; height:6px; background:var(--color-border-strong); border-radius:0 3px 3px 0;" title="Các ngày khác đã cộng ' + (100 - todayCap) + '% — hôm nay chỉ còn tối đa ' + todayCap + '%"></div>' : '')
       +     '<span id="dpValue">' + todayStartPct + '%</span>'
       +   '</div>'
-      +   (progressFloor > 0 ? '<p style="font-size:0.6875rem; color:var(--color-text-muted); margin:4px 0 0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px;flex-shrink:0;vertical-align:-1px;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Đã khoá tới ' + progressFloor + '% — tiến độ chỉ tăng, không giảm được.</p>' : '')
+      +   (todayCap < 100 ? '<p style="font-size:0.6875rem; color:var(--color-text-muted); margin:4px 0 0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px;flex-shrink:0;vertical-align:-1px;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Các ngày khác đã cộng ' + (100 - todayCap) + '% — hôm nay tối đa nhập thêm ' + todayCap + '%.</p>' : '')
       +   '<div class="dps-note">'
       +     '<label><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;vertical-align:-2px;"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg> Đã làm gì hôm nay?</label>'
       +     '<textarea id="dpNote" placeholder="Mô tả công việc đã làm hôm nay...">' + escapeHtml(todayProgress.note || '') + '</textarea>'

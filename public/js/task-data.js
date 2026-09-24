@@ -1017,44 +1017,52 @@ var TaskManager = (function() {
     return null;
   }
 
-  // Add daily progress to task
+  // 2026-09-24 (2): CHỐT ĐÚNG tư duy tính "Tổng" theo đúng yêu cầu — mỗi
+  // dòng "tiến độ hôm nay" là % CÔNG VIỆC LÀM THÊM ĐƯỢC TRONG NGÀY ĐÓ (số
+  // gia tăng riêng của ngày, không phải mốc tuyệt đối đã đạt tới đâu), và
+  // "Tổng" = TỔNG CỘNG các ngày (không phải trung bình cộng, cũng không
+  // phải lấy mốc cao nhất 1 ngày) — VD ngày 1 làm 20%, ngày 2 làm thêm 30%
+  // => Tổng = 50%. Nếu 1 ngày báo hẳn 100% (coi như xong trong ngày đó) thì
+  // Tổng = 100% (cộng dồn rồi chặn trần ở 100, không vượt quá). Sửa lần 1
+  // (2026-09-24, lấy max của các ngày) SAI vì hiểu nhầm — ghi đè bằng bản
+  // sửa lần 2 (cộng dồn, chặn trần) này, khớp đúng ví dụ người dùng đưa ra.
+  function sumDailyProgress_(dailyTasks) {
+    var total = dailyTasks.reduce(function (sum, d) { return sum + (Number(d.progress) || 0); }, 0);
+    return Math.min(100, total);
+  }
+
+  // Add daily progress to task — `progress` truyền vào là % LÀM THÊM ĐƯỢC
+  // HÔM NAY (không phải mốc tuyệt đối), ghi ĐÈ đúng dòng của hôm nay (sửa
+  // lại trong ngày thì thay số cũ, không cộng dồn thêm 1 lần nữa) rồi tính
+  // lại "Tổng" = tổng cộng mọi ngày (xem sumDailyProgress_()).
   function addDailyProgress(taskId, progress, note) {
     var task = getTask(taskId);
     if (!task) return null;
 
     var today = todayStr();
     var dailyTasks = task.dailyTasks || [];
+    var todayProgress = parseInt(progress) || 0;
 
     var todayEntry = dailyTasks.find(function(d) { return d.date === today; });
-
     if (todayEntry) {
-      todayEntry.progress = parseInt(progress) || 0;
+      todayEntry.progress = todayProgress;
       todayEntry.note = note || '';
-      todayEntry.done = todayEntry.progress >= 100;
     } else {
-      dailyTasks.push({
-        date: today,
-        progress: parseInt(progress) || 0,
-        note: note || '',
-        done: (parseInt(progress) || 0) >= 100
-      });
+      todayEntry = { date: today, progress: todayProgress, note: note || '', done: false };
+      dailyTasks.push(todayEntry);
     }
 
-    // 2026-09-24: "Tổng" (task.progress) PHẢI là mốc tiến độ CAO NHẤT đã đạt
-    // (khớp đúng quy tắc "chỉ tăng, không giảm" mà UI slider đã khoá —
-    // progressFloor ở openTaskDetail()/openTaskDetailModal()), KHÔNG PHẢI
-    // trung bình cộng của mọi lần cập nhật hàng ngày như code cũ
-    // (`avgProgress = tổng / số ngày`) — bug thực tế: cập nhật 22/9=50%,
-    // 23/9=100% (đã "Xong") nhưng "Tổng" vẫn hiện 75% = (50+100)/2, khiến
-    // nút "Hoàn thành — nộp duyệt" (yêu cầu progress>=95, xem
-    // submitTaskForReview()) không bao giờ sáng dù đã báo 100% xong việc.
-    var maxProgress = dailyTasks.reduce(function(max, d) { return Math.max(max, d.progress || 0); }, Number(task.progress) || 0);
-    updateTask(taskId, { dailyTasks: dailyTasks, progress: maxProgress });
+    var totalProgress = sumDailyProgress_(dailyTasks);
+    todayEntry.done = totalProgress >= 100;
+
+    updateTask(taskId, { dailyTasks: dailyTasks, progress: totalProgress });
 
     return task;
   }
 
-  // Get today's progress for a task
+  // Get today's progress for a task — `progress` ở đây LUÔN là % làm thêm
+  // RIÊNG của hôm nay (đã lưu hoặc mặc định 0 nếu chưa lưu gì), không phải
+  // "Tổng" của cả task — xem getRemainingBudgetToday()/addDailyProgress().
   function getTodayProgress(taskId) {
     var task = getTask(taskId);
     if (!task) return null;
@@ -1062,6 +1070,19 @@ var TaskManager = (function() {
     var today = todayStr();
     var dailyTasks = task.dailyTasks || [];
     return dailyTasks.find(function(d) { return d.date === today; }) || { progress: 0, note: '', done: false };
+  }
+
+  // Trần cho phép nhập hôm nay = 100% - tổng % các ngày KHÁC (không tính
+  // hôm nay, vì sửa lại hôm nay là THAY THẾ chứ không cộng thêm) — chặn
+  // không cho tổng vượt quá 100% dù người dùng kéo slider hết cỡ.
+  function getTodayProgressCap(taskId) {
+    var task = getTask(taskId);
+    if (!task) return 100;
+    var today = todayStr();
+    var otherDaysTotal = (task.dailyTasks || [])
+      .filter(function (d) { return d.date !== today; })
+      .reduce(function (sum, d) { return sum + (Number(d.progress) || 0); }, 0);
+    return Math.max(0, 100 - otherDaysTotal);
   }
 
   // Generate daily tasks from deadline
@@ -2557,6 +2578,7 @@ var TaskManager = (function() {
     toggleTaskStatus: toggleTaskStatus,
     addDailyProgress: addDailyProgress,
     getTodayProgress: getTodayProgress,
+    getTodayProgressCap: getTodayProgressCap,
     generateDailyTasks: generateDailyTasks,
     confirmTaskAssignment: confirmTaskAssignment,
     submitTaskForReview: submitTaskForReview,
