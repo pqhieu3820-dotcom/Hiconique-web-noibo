@@ -919,6 +919,7 @@ var TaskManager = (function() {
     }
     var newTask = add(STORAGE_KEYS.tasks, task);
     syncToGSheets('tasks', 'add', newTask);
+    syncProjectProgress_(newTask.projectId);
     // Giao việc hẳn cho người khác (không tự tạo cho mình) -> báo ngay cho
     // TỪNG người được giao, trừ chính người tạo (nếu lỡ có tên trong đó thì
     // task đã tự vào 'in-progress' ở trên rồi, không cần báo "chờ xử lý" nữa).
@@ -1018,10 +1019,45 @@ var TaskManager = (function() {
         updates.completedAt = '';
       }
     }
+    var before = getTask(id);
     var updated = update(STORAGE_KEYS.tasks, id, updates);
     // Sync to Google Sheets
-    if (updated) syncToGSheets('tasks', 'update', updates, id);
+    if (updated) {
+      syncToGSheets('tasks', 'update', updates, id);
+      // Tiến độ / ẩn-hiện / đổi dự án của task đổi -> "Tiến độ" của dự án liên
+      // quan (cột riêng trên Sheet Dự án) phải theo kịp, nếu không Sheet cứ 0%
+      // dù task đã làm được 80% (đo thực tế 2026-09-26: 3/3 dự án lệch).
+      var touchesProgress = updates && (updates.progress !== undefined || updates.visible !== undefined || updates.projectId !== undefined);
+      if (touchesProgress) {
+        syncProjectProgress_(updated.projectId);
+        if (before && before.projectId && before.projectId !== updated.projectId) syncProjectProgress_(before.projectId);
+      }
+    }
     return updated;
+  }
+
+  // Tiến độ dự án = trung bình tiến độ các task ĐANG HIỆN của dự án đó. Là dữ
+  // liệu SUY RA từ task (không ai nhập tay) nên ghi thẳng, không đòi quyền
+  // quản lý như updateProject() — người thường cập nhật tiến độ task của mình
+  // vẫn phải làm dự án cập nhật theo. Dự án chưa có task nào giữ nguyên giá
+  // trị nhập tay cũ. Chỉ ghi khi giá trị thật sự đổi.
+  function syncProjectProgress_(projectId) {
+    if (!projectId) return null;
+    var project = getProject(projectId);
+    if (!project) return null;
+    var pt = getAll(STORAGE_KEYS.tasks).filter(function (t) { return t.projectId === projectId && t.visible !== false; });
+    if (!pt.length) return null;
+    var avg = Math.round(pt.reduce(function (sum, t) { return sum + (Number(t.progress) || 0); }, 0) / pt.length);
+    if (Number(project.progress) === avg) return null;
+    var updated = update(STORAGE_KEYS.projects, projectId, { progress: avg });
+    if (updated) syncToGSheets('projects', 'update', { progress: avg }, projectId);
+    return updated;
+  }
+
+  // Gọi 1 lần (có chủ đích, do người dùng bấm/gọi tay) để đồng bộ lại tiến độ
+  // MỌI dự án theo task hiện có — dùng để vá dữ liệu cũ đã lệch.
+  function syncAllProjectProgress() {
+    return getAll(STORAGE_KEYS.projects).map(function (p) { return syncProjectProgress_(p.id) ? p.id : null; }).filter(Boolean);
   }
 
   // 2026-09-22: "Xoá" giờ chỉ ẨN (cột "Hiển thị" -> FALSE), KHÔNG xoá dòng
@@ -2640,6 +2676,7 @@ var TaskManager = (function() {
     getTodayProgress: getTodayProgress,
     getTodayProgressCap: getTodayProgressCap,
     forceResyncMyTasks: forceResyncMyTasks,
+    syncAllProjectProgress: syncAllProjectProgress,
     generateDailyTasks: generateDailyTasks,
     confirmTaskAssignment: confirmTaskAssignment,
     submitTaskForReview: submitTaskForReview,
