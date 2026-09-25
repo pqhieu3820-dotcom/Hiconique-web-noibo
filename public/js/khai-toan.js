@@ -52,8 +52,11 @@
         },
         { id: 'wcReno', type: 'toggle', label: 'Cải tạo WC', desc: 'Đục phá, chống thấm, ốp lát lại', price: function (c) { return c.bathrooms * 9000000; } },
         { id: 'stairReno', type: 'toggle', label: 'Cải tạo cầu thang', desc: 'Xây bê tông, ốp lát, xử lý chi tiết', price: function () { return 15000000; } },
-        { id: 'ceiling', type: 'toggle', label: 'Trần thạch cao mới', desc: 'Khung xương, tấm chống ẩm, giật cấp khe rèm âm', price: function (c) { return c.area * 380000; } },
-        { id: 'wallPaint', type: 'toggle', label: 'Sơn bả tường trần', desc: 'Bả matit 2 lớp, sơn lót kháng kiềm + phủ cao cấp', price: function (c) { return c.area * 210000; } }
+        // ceiling/wallPaint là 2 hạng mục DUY NHẤT không có tier chất lượng riêng
+        // (chỉ có/không) — nên đây là 2 hạng mục style-multiplier áp dụng, xem
+        // ghi chú styleScaled ở computeLineItems().
+        { id: 'ceiling', type: 'toggle', styleScaled: true, label: 'Trần thạch cao mới', desc: 'Khung xương, tấm chống ẩm, giật cấp khe rèm âm', price: function (c) { return c.area * 380000; } },
+        { id: 'wallPaint', type: 'toggle', styleScaled: true, label: 'Sơn bả tường trần', desc: 'Bả matit 2 lớp, sơn lót kháng kiềm + phủ cao cấp', price: function (c) { return c.area * 210000; } }
       ]
     },
     {
@@ -125,10 +128,11 @@
       items: [
         {
           id: 'stone', type: 'tier', label: 'Đá bàn bếp / lavabo',
+          desc: 'Tính theo số bếp (1) + số WC — không theo diện tích căn hộ',
           tiers: [
             { value: 'none', label: 'Không', price: function () { return 0; } },
-            { value: 'quartz', label: 'Thạch anh (Vicostone/Vasta)', price: function (c) { return c.area * 650000; } },
-            { value: 'sintered', label: 'Đá nung kết (Neolith/Dekton)', price: function (c) { return c.area * 1050000; } }
+            { value: 'quartz', label: 'Thạch anh (Vicostone/Vasta)', price: function (c) { return 18000000 + c.bathrooms * 3000000; } },
+            { value: 'sintered', label: 'Đá nung kết (Neolith/Dekton)', price: function (c) { return 30000000 + c.bathrooms * 5000000; } }
           ], default: 'none'
         }
       ]
@@ -159,10 +163,11 @@
       items: [
         {
           id: 'curtain', type: 'tier', label: 'Rèm cửa',
+          desc: 'Tính theo số phòng có cửa sổ (PN + phòng khách) — không theo diện tích',
           tiers: [
             { value: 'none', label: 'Không', price: function () { return 0; } },
-            { value: 'std', label: 'Rèm thường', price: function (c) { return c.area * 130000; } },
-            { value: 'smart', label: 'Rèm điện thông minh', price: function (c) { return c.area * 260000; } }
+            { value: 'std', label: 'Rèm thường', price: function (c) { return (c.bedrooms + 1) * 5000000; } },
+            { value: 'smart', label: 'Rèm điện thông minh', price: function (c) { return (c.bedrooms + 1) * 10000000; } }
           ], default: 'none'
         }
       ]
@@ -282,20 +287,29 @@
     return null;
   }
 
+  // styleMult (Hiện đại / Luxury) CHỈ áp cho hạng mục "styleScaled: true" — tức
+  // hạng mục không có tier chất lượng riêng để phân biệt (chỉ có/không, VD sơn
+  // bả, trần thạch cao). Mọi hạng mục dạng "tier" (sàn, đèn, đồ gỗ, đá, rèm...)
+  // đã tự phân cấp giá qua lựa chọn tiêu chuẩn/cao cấp của người dùng rồi — áp
+  // thêm styleMult lên đó sẽ CỘNG DỒN 2 LẦN mức tăng giá cho cùng 1 lý do
+  // "chất lượng cao hơn", làm tổng bị đội lên sai. Tương tự các gói thiết bị cố
+  // định (Smart Home, thiết bị bếp/WC...) vốn không phụ thuộc phong cách kiến
+  // trúc nên cũng không áp styleMult.
   function computeLineItems(ctx, state, styleMult) {
     var lines = [];
     OPTION_GROUPS.forEach(function (g) {
       g.items.forEach(function (it) {
         if (it.type === 'toggle') {
           if (state[it.id]) {
-            var amt = it.price(ctx) * styleMult;
+            var mult = it.styleScaled ? styleMult : 1;
+            var amt = it.price(ctx) * mult;
             if (amt > 0) lines.push({ label: it.label, desc: it.desc || '', amount: amt });
           }
         } else {
           var val = state[it.id];
           var tier = it.tiers.find(function (t) { return t.value === val; });
           if (tier && tier.value !== it.default) {
-            var amount = tier.price(ctx) * styleMult;
+            var amount = tier.price(ctx);
             if (amount > 0) lines.push({ label: it.label + ' — ' + tier.label, desc: tier.desc || it.desc || '', amount: amount });
           }
         }
@@ -322,32 +336,59 @@
     { key: 'handover', name: 'Kê đồ rời, lắp rèm, vệ sinh & bàn giao', phase: 'finish', needs: function () { return true; }, days: function () { return 4; } }
   ];
 
+  // Lịch được dựng 1 LẦN DUY NHẤT bằng cách xếp tuần tự từng giai đoạn theo
+  // đúng thứ tự trong STAGE_TEMPLATE (rough trước, finish sau, gối đầu vào
+  // cuối rough) — số "ngày thi công" hiển thị ở khối tổng quan được TÍNH LẠI
+  // từ chính lịch này (ngày kết thúc cuối cùng trừ ngày khởi công), không
+  // dùng công thức cộng ngày riêng, để tránh 2 con số lệch nhau.
   function computeTimeline(ctx, state, startDateStr) {
     var startDate = startDateStr ? new Date(startDateStr) : new Date();
     if (isNaN(startDate.getTime())) startDate = new Date();
-    var activeStages = STAGE_TEMPLATE.filter(function (s) { return s.needs(state); });
-    if (!activeStages.length) activeStages = [STAGE_TEMPLATE[STAGE_TEMPLATE.length - 1]];
 
-    var roughDays = activeStages.filter(function (s) { return s.phase === 'rough'; }).reduce(function (sum, s) { return sum + s.days(ctx); }, 0);
-    var finishDays = activeStages.filter(function (s) { return s.phase === 'finish'; }).reduce(function (sum, s) { return sum + s.days(ctx); }, 0);
-    // Gỗ gia công song song với giai đoạn thô cuối — chỉ cộng phần dôi ra thay vì cộng dồn toàn bộ.
-    var overlap = Math.min(roughDays * 0.4, finishDays * 0.5);
-    var totalDays = Math.round(roughDays + finishDays - overlap);
-    if (totalDays < 10) totalDays = 10;
-    var calendarDays = Math.round(totalDays * 1.4); // đệm ngày nghỉ/chờ vật tư
+    var roughStages = STAGE_TEMPLATE.filter(function (s) { return s.phase === 'rough' && s.needs(state); });
+    var finishStages = STAGE_TEMPLATE.filter(function (s) { return s.phase === 'finish' && s.needs(state); });
+    if (!roughStages.length && !finishStages.length) finishStages = [STAGE_TEMPLATE[STAGE_TEMPLATE.length - 1]];
 
+    var roughDays = roughStages.reduce(function (sum, s) { return sum + s.days(ctx); }, 0);
+    var finishDays = finishStages.reduce(function (sum, s) { return sum + s.days(ctx); }, 0);
+
+    // Xếp lịch giai đoạn Thô — tuần tự, nối tiếp nhau từ ngày khởi công.
     var cursor = new Date(startDate);
-    var stageRows = activeStages.map(function (s, idx) {
+    var roughRows = roughStages.map(function (s, idx) {
       var dur = s.days(ctx);
       var rowStart = new Date(cursor);
       var rowEnd = addDays(rowStart, Math.max(1, dur - 1));
-      // Giai đoạn "finish" bắt đầu gối đầu sớm khi giai đoạn "rough" đã đi được quá nửa.
-      if (s.phase === 'rough' || idx === 0) cursor = addDays(rowStart, dur);
+      cursor = addDays(rowStart, dur);
       return { num: idx + 1, name: s.name, phase: s.phase, start: rowStart, end: rowEnd };
     });
+    var roughEndDate = cursor; // ngày kế tiếp sau khi Thô xong
 
+    // Giai đoạn Gỗ & Hoàn thiện gối đầu vào đoạn cuối của Thô (gia công đồ gỗ
+    // thường bắt đầu trước khi Thô xong hẳn) — nhưng KHÔNG được bắt đầu trước
+    // ngày khởi công, và các hạng mục trong CHÍNH giai đoạn này vẫn xếp tuần
+    // tự với nhau (không còn bug trùng ngày như bản cũ).
+    var overlapDays = Math.round(Math.min(roughDays * 0.4, finishDays * 0.5));
+    var finishStart = addDays(roughEndDate, -overlapDays);
+    if (finishStart < startDate) finishStart = new Date(startDate);
+    cursor = new Date(finishStart);
+    var finishRows = finishStages.map(function (s, idx) {
+      var dur = s.days(ctx);
+      var rowStart = new Date(cursor);
+      var rowEnd = addDays(rowStart, Math.max(1, dur - 1));
+      cursor = addDays(rowStart, dur);
+      return { num: roughRows.length + idx + 1, name: s.name, phase: s.phase, start: rowStart, end: rowEnd };
+    });
+
+    var stageRows = roughRows.concat(finishRows);
+    var lastEnd = stageRows.length ? stageRows[stageRows.length - 1].end : startDate;
+    // Có thể giai đoạn Thô kết thúc muộn hơn cả Gỗ & Hoàn thiện (VD không chọn
+    // hạng mục hoàn thiện nào) — lấy mốc kết thúc MUỘN NHẤT trong toàn bộ lịch.
+    stageRows.forEach(function (s) { if (s.end > lastEnd) lastEnd = s.end; });
+
+    var totalDays = Math.max(1, Math.round((lastEnd - startDate) / 86400000) + 1);
+    var calendarDays = Math.round(totalDays * 1.4); // đệm ngày nghỉ/chờ vật tư
     var endDate = addDays(startDate, calendarDays);
-    var roughPct = roughDays + finishDays > 0 ? Math.round((roughDays / (roughDays + finishDays)) * 100) : 0;
+    var roughPct = (roughDays + finishDays) > 0 ? Math.round((roughDays / (roughDays + finishDays)) * 100) : 0;
 
     return { totalDays: totalDays, calendarDays: calendarDays, startDate: startDate, endDate: endDate, roughDays: roughDays, finishDays: finishDays, roughPct: roughPct, stages: stageRows };
   }
