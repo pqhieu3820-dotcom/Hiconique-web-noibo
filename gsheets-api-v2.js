@@ -3060,3 +3060,61 @@ function deleteKnownMojibakeNotifications() {
   Logger.log(msg);
   return msg;
 }
+
+// 2026-09-25: hàm CHỈ ĐỌC (không ghi gì) — kiểm tra xem Lê Văn Khánh
+// (NV_VK_210593) và Nguyễn Huy Sáng (NV_HS_140486) đã bấm "Xác nhận & đồng
+// bộ lại" ở thông báo resync (gửi 24/09) hay chưa, và dữ liệu chấm công của
+// 2 người đã link đúng vào Phiếu lương tháng hiện tại chưa. Chạy 1 lần từ
+// Apps Script editor để xem log, không phải chức năng dùng lại nhiều lần.
+function checkKhanhSangSyncStatus() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var targets = ['NV_VK_210593', 'NV_HS_140486'];
+  var names = { NV_VK_210593: 'Lê Văn Khánh', NV_HS_140486: 'Nguyễn Huy Sáng' };
+  var tasks = getAllData(ss, SHEETS.tasks);
+  var timesheet = getAllData(ss, SHEETS.timesheet);
+  var payslips = getAllData(ss, SHEETS.payslips);
+  var now = new Date();
+  var curMonth = Utilities.formatDate(now, 'GMT+7', 'yyyy-MM');
+  var lines = [];
+
+  targets.forEach(function (id) {
+    lines.push('=== ' + names[id] + ' (' + id + ') ===');
+
+    // 1) Tiến độ task — xem có dòng nào cập nhật SAU thời điểm gửi thông báo
+    // resync (24/09/2026) hay không, và dailyTasks có dữ liệu hợp lệ không.
+    var myTasks = tasks.filter(function (t) {
+      return String(t.assigneeIds || '').indexOf(id) !== -1 && t.visible !== false;
+    });
+    var resyncCutoff = new Date('2026-09-24T00:00:00+07:00');
+    var updatedAfter = myTasks.filter(function (t) {
+      var u = t.updatedAt ? new Date(t.updatedAt) : null;
+      return u && u > resyncCutoff;
+    });
+    lines.push('  Task đang phụ trách: ' + myTasks.length + ' việc, trong đó ' + updatedAfter.length + ' việc có "Ngày cập nhật" SAU 24/09 (dấu hiệu đã resync).');
+    updatedAfter.forEach(function (t) {
+      var dailyCount = 0;
+      try { dailyCount = JSON.parse(t.dailyTasks || '[]').length; } catch (e) {}
+      lines.push('    - [' + t.id + '] ' + t.title + ' | Tiến độ: ' + t.progress + '% | Số lượt cập nhật ngày: ' + dailyCount + ' | Cập nhật lúc: ' + t.updatedAt);
+    });
+
+    // 2) Chấm công tháng hiện tại — tổng công/giờ dùng để tính lương.
+    var myTimesheet = timesheet.filter(function (r) { return r.memberId === id && String(r.date || '').indexOf(curMonth) === 0; });
+    var totalHoursThisMonth = myTimesheet.reduce(function (s, r) { return s + (Number(r.totalHours) || 0); }, 0);
+    lines.push('  Chấm công tháng ' + curMonth + ': ' + myTimesheet.length + ' ngày công, tổng ' + totalHoursThisMonth.toFixed(1) + ' giờ.');
+
+    // 3) Phiếu lương tháng hiện tại — đã tạo chưa, số liệu Ngày công/Tổng giờ
+    // có khớp với Chấm công vừa đếm ở trên không (khớp = đã link đúng).
+    var myPayslip = payslips.filter(function (p) { return p.memberId === id && p.month === curMonth; })[0];
+    if (myPayslip) {
+      var match = (Number(myPayslip.workDays) === myTimesheet.length) ? 'KHỚP' : 'LỆCH';
+      lines.push('  Phiếu lương ' + curMonth + ': ĐÃ TẠO (trạng thái: ' + myPayslip.status + ') — Ngày công trên phiếu: ' + myPayslip.workDays + ' / đếm được từ Chấm công: ' + myTimesheet.length + ' => ' + match + '.');
+    } else {
+      lines.push('  Phiếu lương ' + curMonth + ': CHƯA TẠO.');
+    }
+    lines.push('');
+  });
+
+  var msg = lines.join('\n');
+  Logger.log(msg);
+  return msg;
+}
