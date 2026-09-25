@@ -1811,7 +1811,7 @@ var TaskManager = (function() {
     // Late check-in — self always, team view for CEO/manager
     var LATE_THRESHOLD = '08:30';
     var canSeeTeam = canManageNotifications(user);
-    getAll(STORAGE_KEYS.timesheet).filter(function(e) {
+    getAll(STORAGE_KEYS.timesheet).map(deriveShiftFields_).filter(function(e) {
       return e.date === today && e.checkinTime && e.checkinTime > LATE_THRESHOLD;
     }).forEach(function(e) {
       if (e.memberId !== user.id && !canSeeTeam) return;
@@ -1965,7 +1965,7 @@ var TaskManager = (function() {
       var key = e.memberId + '|' + e.date;
       if (!byKey[key]) { byKey[key] = e; order.push(key); return; }
       var merged = byKey[key];
-      if (e.checkoutTime && !merged.checkoutTime) merged = Object.assign({}, e);
+      if ((e.afternoonCheckout || e.morningCheckout) && !(merged.afternoonCheckout || merged.morningCheckout)) merged = Object.assign({}, e);
       Object.keys(e).forEach(function (k) {
         var val = e[k];
         if (val !== '' && val !== null && val !== undefined && (merged[k] === '' || merged[k] === null || merged[k] === undefined)) {
@@ -1977,9 +1977,40 @@ var TaskManager = (function() {
     return order.map(function (k) { return byKey[k]; });
   }
 
+  // 2026-09-26: 4 cột ca (morningCheckin/Checkout, afternoonCheckin/Checkout —
+  // cột P/Q/R/S trên Sheet "Chấm công") là NGUỒN DUY NHẤT của giờ vào/ra. 2 cột
+  // cũ checkinTime/checkoutTime đã bỏ khỏi Sheet nên mọi chỗ còn đọc chúng
+  // (lịch, báo cáo tháng, tính công/lương, cảnh báo đi muộn) được cấp bằng
+  // cách SUY RA từ 4 cột ca ở đây — không lưu trùng, không thể lệch nhau.
+  // totalHours/overtimeHours cũng tính lại từ đúng các cặp vào/ra đã đủ.
+  function timeToMin_(t) {
+    var m = /^(\d{1,2})[:.](\d{2})/.exec(String(t == null ? '' : t));
+    return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : null;
+  }
+  function shiftPairHours_(inT, outT) {
+    var a = timeToMin_(inT), b = timeToMin_(outT);
+    if (a == null || b == null) return 0;
+    return Math.max(0, (b - a) / 60);
+  }
+  function calcTimesheetHours_(e) {
+    var total = shiftPairHours_(e.morningCheckin, e.morningCheckout) + shiftPairHours_(e.afternoonCheckin, e.afternoonCheckout);
+    total = parseFloat(total.toFixed(1));
+    var ot = (e.date && isOtDay(e.date)) ? total : parseFloat(Math.max(0, total - 8).toFixed(1));
+    return { totalHours: total, overtimeHours: ot };
+  }
+  function deriveShiftFields_(e) {
+    var d = Object.assign({}, e);
+    d.checkinTime = e.morningCheckin || e.afternoonCheckin || '';
+    d.checkoutTime = e.afternoonCheckout || e.morningCheckout || '';
+    var h = calcTimesheetHours_(e);
+    d.totalHours = h.totalHours;
+    d.overtimeHours = h.overtimeHours;
+    return d;
+  }
+
   function getTimesheetEntries(filters) {
     filters = filters || {};
-    var entries = dedupeTimesheetEntries_(getAll(STORAGE_KEYS.timesheet));
+    var entries = dedupeTimesheetEntries_(getAll(STORAGE_KEYS.timesheet)).map(deriveShiftFields_);
     if (filters.memberId) {
       entries = entries.filter(function(e) { return e.memberId === filters.memberId; });
     }
@@ -2131,12 +2162,6 @@ var TaskManager = (function() {
     var record = entries.filter(function (e) { return e.memberId === memberId && e.date === today; })[0];
     var patch = {};
     patch[shift + 'Checkin'] = fields.time;
-    // "checkinTime" (field cũ, lịch/báo cáo tháng vẫn đọc) = giờ CHECK-IN ĐẦU
-    // TIÊN trong ngày, bất kể thuộc ca nào — trước đây hardcode chỉ ca sáng
-    // mới ghi, nên ngày nào nút (tự chọn ca theo giờ hiện tại) quyết định bắt
-    // đầu thẳng từ ca chiều (VD quên chấm sáng, hoặc chỉ làm nửa ngày chiều)
-    // sẽ bị thiếu hẳn giờ check-in hiển thị trên lịch.
-    if (!record || !record.checkinTime) patch.checkinTime = fields.time;
     patch.status = 'working'; // check-in lại (VD sau khi đã check-out ca trước) thì ngày chưa xong nữa
     if (fields.isLate) { patch.isLate = true; patch.lateEarlyNote = fields.lateEarlyNote || ''; }
     Object.keys(fields.verify || {}).forEach(function (k) { patch[k] = fields.verify[k]; });
@@ -2147,7 +2172,7 @@ var TaskManager = (function() {
     } else {
       var entry = Object.assign({
         id: 'TS_' + Date.now(), memberId: memberId, date: today,
-        checkoutTime: '', totalHours: 0, overtimeHours: 0, status: 'working', note: ''
+        totalHours: 0, overtimeHours: 0, status: 'working', note: ''
       }, patch);
       result = addTimesheetEntry(entry);
     }
@@ -2169,32 +2194,17 @@ var TaskManager = (function() {
     if (!record) return null;
     var patch = {};
     patch[shift + 'Checkout'] = fields.time;
-    // "checkoutTime"/"status" (field cũ) luôn phản ánh lần CHECK-OUT GẦN NHẤT
-    // trong ngày (trước đây hardcode chỉ ca chiều mới ghi, nên ngày chỉ làm
-    // ca sáng — không có ca chiều — sẽ không bao giờ hiện "Đã chấm đủ"). Nếu
-    // sau đó check-in lại ca khác, shiftCheckIn() ở trên tự đặt lại status
-    // về 'working' — tự sửa đúng, không cần thêm điều kiện gì ở đây.
-    patch.checkoutTime = fields.time;
+    // status = 'completed' sau mỗi lần check-out; check-in lại ca khác thì
+    // shiftCheckIn() tự đặt về 'working'. Giờ vào/ra chỉ sống ở 4 cột ca.
     patch.status = 'completed';
     if (fields.isEarly) { patch.isEarly = true; patch.lateEarlyNote = fields.lateEarlyNote || record.lateEarlyNote || ''; }
 
     // Tính lại tổng giờ = tổng thời lượng các cặp check-in/out ĐÃ CÓ (sáng +
     // chiều), cặp nào chưa đủ (thiếu checkin hoặc checkout) thì bỏ qua —
     // không giả định phải làm đủ cả 2 ca mới tính được giờ.
-    var merged = Object.assign({}, record, patch);
-    function pairHours(inTime, outTime) {
-      if (!inTime || !outTime) return 0;
-      var inMs = new Date(today + 'T' + String(inTime).replace(/\./g, ':')).getTime();
-      var outMs = new Date(today + 'T' + String(outTime).replace(/\./g, ':')).getTime();
-      return Math.max(0, (outMs - inMs) / 3600000);
-    }
-    var totalHours = pairHours(merged.morningCheckin, merged.morningCheckout) + pairHours(merged.afternoonCheckin, merged.afternoonCheckout);
-    patch.totalHours = parseFloat(totalHours.toFixed(1));
-    // Thứ Bảy/Chủ nhật/ngày lễ: TOÀN BỘ giờ làm hôm đó tính là OT (x1.5
-    // lương) — không chỉ phần vượt 8h/ngày như ngày thường.
-    patch.overtimeHours = isOtDay(today)
-      ? parseFloat(totalHours.toFixed(1))
-      : parseFloat(Math.max(0, totalHours - 8).toFixed(1));
+    var h = calcTimesheetHours_(Object.assign({}, record, patch));
+    patch.totalHours = h.totalHours;
+    patch.overtimeHours = h.overtimeHours;
 
     var result = updateTimesheetEntry(record.id, patch);
     if (fields.isEarly) {

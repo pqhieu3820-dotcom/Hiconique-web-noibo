@@ -168,8 +168,8 @@ const FIELD_MAP = {
     ['Số tiền', 'amount'], ['Ngày tạo', 'createdAt'], ['Ngày duyệt', 'reviewedAt']
   ],
   timesheet: [
-    ['Mã CC', 'id'], ['Mã thành viên', 'memberId'], ['Ngày', 'date'], ['Giờ checkin', 'checkinTime'],
-    ['Giờ checkout', 'checkoutTime'], ['Tổng số giờ làm việc', 'totalHours'], ['Số giờ tăng ca', 'overtimeHours'],
+    ['Mã CC', 'id'], ['Mã thành viên', 'memberId'], ['Ngày', 'date'],
+    ['Tổng số giờ làm việc', 'totalHours'], ['Số giờ tăng ca', 'overtimeHours'],
     ['Trạng thái', 'status'], ['Ghi chú', 'note'], ['Vĩ độ checkin', 'checkinLat'], ['Kinh độ checkin', 'checkinLng'],
     ['Khoảng cách checkin', 'checkinDistance'], ['IP Checkin', 'checkinIp'], ['Trạng thái đạt vị trí', 'geoPass'],
     ['Trạng thái đạt IP', 'ipPass'], ['Số điều kiện đạt', 'verifyPassCount'], ['Trạng thái xác thực', 'verifyStatus'],
@@ -178,9 +178,9 @@ const FIELD_MAP = {
     // khi ghi xuống Sheet (chỉ tồn tại tạm trong cache trình duyệt) — vá nốt.
     ['Mã thiết bị checkin', 'checkinDeviceId'], ['Trạng thái đạt thiết bị', 'devicePass'],
     // 2026-09-19: chấm công theo ca sáng/chiều (Setup thời gian làm việc) —
-    // xem shiftCheckIn()/shiftCheckOut() trong task-data.js. checkinTime/
-    // checkoutTime cũ vẫn được mirror từ morningCheckin/afternoonCheckout để
-    // lịch + báo cáo tháng hiện có không cần sửa gì thêm.
+    // xem shiftCheckIn()/shiftCheckOut() trong task-data.js. 2026-09-26: 4 cột
+    // này là NGUỒN DUY NHẤT của giờ vào/ra — 2 cột cũ Giờ checkin/checkout đã
+    // bỏ; client tự suy ra checkinTime/checkoutTime từ đây (deriveShiftFields_).
     ['Giờ vào ca sáng', 'morningCheckin'], ['Giờ ra ca sáng', 'morningCheckout'],
     ['Giờ vào ca chiều', 'afternoonCheckin'], ['Giờ ra ca chiều', 'afternoonCheckout'],
     ['Đi muộn', 'isLate'], ['Về sớm', 'isEarly'], ['Lý do muộn/sớm', 'lateEarlyNote']
@@ -1890,6 +1890,24 @@ function addCompletedAtColumns() {
 // luôn kèm ghi chú cảnh báo rõ ràng + gửi thông báo nội bộ (sheet "Thông
 // báo" có sẵn cơ chế hiển thị trên web) cho CHÍNH người quên VÀ mọi
 // CEO/Manager để biết mà xác nhận lại thủ công.
+// Giờ làm việc = tổng các cặp vào/ra ĐÃ ĐỦ của 2 ca (cùng công thức với
+// calcTimesheetHours_ trong task-data.js — 2 nơi PHẢI khớp nhau).
+function shiftMinutes_(t) {
+  var m = /^(\d{1,2})[:.](\d{2})/.exec(String(t == null ? '' : t));
+  return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : null;
+}
+function shiftPairHours_(a, b) {
+  var x = shiftMinutes_(a), y = shiftMinutes_(b);
+  return (x == null || y == null) ? 0 : Math.max(0, (y - x) / 60);
+}
+function calcShiftHours_(e) {
+  return parseFloat((shiftPairHours_(e.morningCheckin, e.morningCheckout) + shiftPairHours_(e.afternoonCheckin, e.afternoonCheckout)).toFixed(1));
+}
+function isOtDateKey_(dateKey) {
+  var d = new Date(dateKey + 'T00:00:00+07:00');
+  var dow = Number(Utilities.formatDate(d, 'Asia/Ho_Chi_Minh', 'u')); // 1=T2 ... 6=T7, 7=CN
+  return dow >= 6;
+}
 var AUTO_CHECKOUT_NOTE_TAG = '[TỰ ĐỘNG ĐÓNG CA — QUÊN CHECK-OUT]'; // PHẢI khớp TS_AUTO_CHECKOUT_TAG trong timesheet.html
 function autoCheckoutForgottenEntries() {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -1900,26 +1918,34 @@ function autoCheckoutForgottenEntries() {
   members.forEach(function (m) { memberById[m.id] = m; });
   const managers = members.filter(function (m) { return m.roleLevel === 'admin' || m.roleLevel === 'manager'; });
 
+  // 2026-09-26: chuyển sang 4 cột ca (P/Q/R/S) — 2 cột cũ checkinTime/
+  // checkoutTime đã bỏ khỏi Sheet nên bản cũ (đọc checkinTime) không bao giờ
+  // chạy được nữa. Mỗi cặp vào/ra còn MỞ (có giờ vào, chưa có giờ ra) của
+  // ngày đã qua được đóng bằng đúng giờ vào của chính cặp đó (0 giờ công cặp
+  // đó, không đoán giờ tan làm), rồi tính lại tổng giờ từ các cặp đã đủ.
   const fixed = [];
   entries.forEach(function (e) {
-    if (e.status !== 'working') return;
     if (!e.date || e.date >= todayKey) return; // chỉ đóng ca của ngày ĐÃ QUA — hôm nay vẫn tự check-out bình thường
-    if (!e.checkinTime) return; // dữ liệu hỏng (không có giờ check-in) — bỏ qua, không đoán bừa
-    const note = (e.note ? e.note + ' | ' : '') + AUTO_CHECKOUT_NOTE_TAG + ' lúc ' + e.checkinTime + ' — vui lòng xác nhận lại giờ làm thực tế.';
-    updateData(ss, SHEETS.timesheet, e.id, {
-      checkoutTime: e.checkinTime,
-      totalHours: 0,
-      overtimeHours: 0,
-      status: 'completed',
-      note: note
-    });
+    const patch = {};
+    const closedAt = [];
+    if (e.morningCheckin && !e.morningCheckout) { patch.morningCheckout = e.morningCheckin; closedAt.push('ca sáng ' + e.morningCheckin); }
+    if (e.afternoonCheckin && !e.afternoonCheckout) { patch.afternoonCheckout = e.afternoonCheckin; closedAt.push('ca chiều ' + e.afternoonCheckin); }
+    if (!closedAt.length) return;
+    const merged = Object.assign({}, e, patch);
+    const h = calcShiftHours_(merged);
+    patch.totalHours = h;
+    patch.overtimeHours = isOtDateKey_(e.date) ? h : Math.max(0, parseFloat((h - 8).toFixed(1)));
+    patch.status = 'completed';
+    patch.note = (e.note ? e.note + ' | ' : '') + AUTO_CHECKOUT_NOTE_TAG + ' ' + closedAt.join(', ') + ' — vui lòng xác nhận lại giờ làm thực tế.';
+    updateData(ss, SHEETS.timesheet, e.id, patch);
+    e.__closedAt = closedAt.join(', ');
     fixed.push(e);
   });
 
   fixed.forEach(function (e) {
     const member = memberById[e.memberId];
     const name = member ? member.name : e.memberId;
-    const msg = name + ' quên check-out ngày ' + e.date + ' (check-in lúc ' + e.checkinTime + ') — hệ thống đã tự động đóng ca (0 giờ công), vui lòng kiểm tra và điều chỉnh lại nếu cần.';
+    const msg = name + ' quên check-out ngày ' + e.date + ' (' + e.__closedAt + ') — hệ thống đã tự động đóng ca (0 giờ công cặp chưa check-out), vui lòng kiểm tra và điều chỉnh lại nếu cần.';
     addData(ss, SHEETS.notifications, {
       title: 'Quên check-out ngày ' + e.date,
       message: msg,
@@ -2985,7 +3011,7 @@ function dedupeTimesheetSheet() {
   Object.keys(groups).forEach(function (key) {
     var items = groups[key];
     if (items.length < 2) return;
-    var keepItem = items.filter(function (it) { return it.entry.checkoutTime; })[0] || items[0];
+    var keepItem = items.filter(function (it) { return it.entry.afternoonCheckout || it.entry.morningCheckout; })[0] || items[0];
     var patch = {};
     items.forEach(function (it) {
       if (it === keepItem) return;
@@ -3115,6 +3141,66 @@ function checkKhanhSangSyncStatus() {
   });
 
   var msg = lines.join('\n');
+  Logger.log(msg);
+  return msg;
+}
+
+// 2026-09-26: chạy 1 lần — chuẩn hoá dữ liệu sheet TLCC-Chấm công theo 4 cột
+// ca (P/Q/R/S = Giờ vào/ra ca sáng, Giờ vào/ra ca chiều) làm NGUỒN DUY NHẤT:
+//  1) gộp dòng TRÙNG cùng memberId+ngày (do request check-in bị gọi 2 lần),
+//     giữ dòng đã có giờ ra, xoá dòng thừa THEO ID (không theo số dòng — Sheet
+//     có dòng mới chèn ở đầu bất cứ lúc nào, xem deleteKnownMojibakeNotifications);
+//  2) ngày ĐÃ QUA còn cặp vào/ra chưa đóng -> đóng bằng chính giờ vào (0 giờ
+//     cặp đó, đúng quy tắc autoCheckoutForgottenEntries);
+//  3) tính lại Tổng giờ / Giờ tăng ca / Trạng thái từ các cặp vào/ra đã đủ.
+// Idempotent — chạy lại không đổi gì thêm. Trả về log từng dòng đã sửa.
+function repairTimesheetShiftData() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var todayKey = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd');
+  var log = [];
+
+  var all = getAllData(ss, SHEETS.timesheet);
+  var groups = {};
+  all.forEach(function (e) { (groups[e.memberId + '|' + e.date] = groups[e.memberId + '|' + e.date] || []).push(e); });
+  Object.keys(groups).forEach(function (key) {
+    var items = groups[key];
+    if (items.length < 2) return;
+    var keep = items.filter(function (e) { return e.afternoonCheckout || e.morningCheckout; })[0] || items[0];
+    var patch = {};
+    items.forEach(function (e) {
+      if (e === keep) return;
+      Object.keys(e).forEach(function (k) {
+        if (e[k] !== '' && e[k] != null && (keep[k] === '' || keep[k] == null)) { patch[k] = e[k]; keep[k] = e[k]; }
+      });
+    });
+    if (Object.keys(patch).length) updateData(ss, SHEETS.timesheet, keep.id, patch);
+    items.forEach(function (e) {
+      if (e === keep) return;
+      log.push('XOÁ dòng trùng ' + e.id + ' (' + key + ') — giữ ' + keep.id + ': ' + JSON.stringify(deleteData(ss, SHEETS.timesheet, e.id)));
+    });
+  });
+
+  getAllData(ss, SHEETS.timesheet).forEach(function (e) {
+    var m = { mi: e.morningCheckin, mo: e.morningCheckout, ai: e.afternoonCheckin, ao: e.afternoonCheckout };
+    var patch = {};
+    if (e.date && e.date < todayKey) {
+      if (m.mi && !m.mo) { patch.morningCheckout = m.mi; m.mo = m.mi; }
+      if (m.ai && !m.ao) { patch.afternoonCheckout = m.ai; m.ao = m.ai; }
+    }
+    var total = parseFloat((shiftPairHours_(m.mi, m.mo) + shiftPairHours_(m.ai, m.ao)).toFixed(1));
+    var ot = isOtDateKey_(e.date) ? total : parseFloat(Math.max(0, total - 8).toFixed(1));
+    var open = (m.mi && !m.mo) || (m.ai && !m.ao);
+    var status = open ? 'working' : 'completed';
+    if (Number(e.totalHours) !== total) patch.totalHours = total;
+    if (Number(e.overtimeHours || 0) !== ot) patch.overtimeHours = ot;
+    if (e.status !== status) patch.status = status;
+    if (Object.keys(patch).length) {
+      updateData(ss, SHEETS.timesheet, e.id, patch);
+      log.push('SỬA ' + e.id + ' (' + e.memberId + ' ' + e.date + '): ' + JSON.stringify(patch));
+    }
+  });
+
+  var msg = log.length ? log.join('\n') : 'Không có gì cần sửa — dữ liệu đã đồng nhất.';
   Logger.log(msg);
   return msg;
 }
