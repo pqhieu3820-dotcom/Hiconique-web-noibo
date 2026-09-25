@@ -1380,6 +1380,64 @@ giữa lúc tính và lúc xoá) nên không bao giờ bị lệch số dòng. X
 khảo cho lần sau nếu cần xoá theo ID đã biết chắc chắn thay vì quét toàn
 sheet.
 
+## 6.8. Khái toán nhanh — đối chiếu công thức với bản gốc tham khảo (2026-09-25)
+
+Trang [khai-toan.html](public/pages/khai-toan.html) (`public/js/khai-toan.js`) lấy
+cảm hứng bố cục từ công cụ tham khảo mnmldesign.site nhưng số liệu ban đầu là
+tự ước lượng — sau đó đối chiếu ngược bằng cách NHẬP SỐ THẬT trên trang gốc
+(đổi diện tích/số PN/số WC/phong cách từng biến một, giữ nguyên các biến
+khác) rồi so % thay đổi từng dòng để suy ra đúng công thức, KHÔNG đọc mã
+nguồn của họ.
+
+**Phát hiện quan trọng nhất**: phong cách "Luxury" ở bản gốc KHÔNG cộng %
+đồng loạt lên mọi hạng mục như bản đầu tiên của HICONIQUE từng làm — nó chỉ
+tác động lên: trần thạch cao (×1.2), đèn (×1.3), đồ rời (×1.2), đồ gỗ liền
+tường (+ area×650.000, cộng chứ không nhân), đá (+25.000.000 flat). Mọi hạng
+mục khác (sơn bả, sàn, điện, thiết bị bếp/WC, rèm, smart home...) giữ
+nguyên giá dù đổi style.
+
+**Phát hiện khác**: đá hoàn thiện, rèm cửa, đồ gỗ liền tường, đồ rời — cả 4
+hạng mục này phụ thuộc ĐỒNG THỜI diện tích VÀ số phòng ngủ/WC (không phải
+chỉ 1 trong 2 như suy đoán ban đầu). Công thức dạng
+`hằng_số + diện_tích×đơn_giá + max(0, số_phòng - 2)×phụ_phí`, với mốc tham
+chiếu là 2 PN/2 WC (đúng bằng cấu hình mặc định của bản gốc).
+
+Danh sách đơn giá đã ĐO ĐƯỢC CHÍNH XÁC (test tại nhiều tổ hợp diện
+tích/PN/WC, khớp 100% với bản gốc — xem lịch sử làm việc nếu cần chi tiết
+từng phép đo):
+- Phá dỡ: 20%→400.000/m², 50%→540.000/m², 100%→700.000/m² (KHÔNG phải công
+  thức tỷ lệ tuyến tính theo %, là 3 mức giá rời rạc).
+- Cải tạo WC: 28.000.000/WC. Cải tạo cầu thang: 45tr (cơ bản) / 70tr (cao cấp), flat.
+- Trần thạch cao: 600.000/m². Sơn bả: 400.000/m².
+- Sàn tầm trung: 520.000/m². Đèn cao cấp: 500.000/m². Điện đi mới toàn bộ: 400.000/m².
+- Smart Home: 29,75tr (tiêu chuẩn) / 85tr (cao cấp), flat.
+- Đồ gỗ liền tường tiêu chuẩn: area×3.600.000 + max(0,PN-2)×61.200.000 + max(0,WC-2)×15.300.000.
+- Đồ rời tiêu chuẩn: 56.250.000 + area×250.000 + max(0,PN-2)×17.437.500.
+- Đá thạch anh: 39.200.000 + area×240.000 + max(0,WC-2)×7.450.000.
+- Rèm thường: 22.500.000 + area×100.000 + max(0,PN-2)×10.075.000.
+- Thiết bị bếp Garis: 45.000.000 flat. Thiết bị WC: 15tr/WC (tiêu chuẩn), 30tr/WC (cao cấp).
+- Điều hoà: treo tường 219.400/m², âm trần 341.250/m². Thông gió khí tươi: 158.450/m².
+
+Các mức tier CÒN LẠI (sàn cao cấp, đèn tiêu chuẩn, điện cải tạo nhẹ, đồ gỗ
+tiết kiệm/cao cấp, đồ rời cao cấp, đá cao cấp, thiết bị bếp cao cấp, rèm
+điện) KHÔNG bật sẵn trong cấu hình mặc định của bản gốc nên chưa đo trực
+tiếp được — quy đổi theo tỷ lệ cao cấp/tiêu chuẩn quan sát được ở các hạng
+mục đã đo (~1.8 lần). Nếu sau này có nhu cầu chính xác hơn, lặp lại cách đo
+tương tự (đổi 1 biến, giữ nguyên các biến khác, so sánh % thay đổi).
+
+**Tiến độ thi công**: số ngày/hạng mục trong `STAGE_TEMPLATE` đã hiệu chỉnh
+theo lịch 14 bước mặc định của bản gốc (đo tại 85m²) — khớp chính xác 2
+bước (lát sàn 7 ngày, lắp đá/thiết bị 4 ngày), các bước còn lại hiệu chỉnh
+gần đúng vì HICONIQUE gộp 14 bước gốc còn 10 bước cho gọn. Thuật toán TÍNH
+TỔNG SỐ NGÀY của bản gốc (55 ngày thực tế / 77 ngày lịch cho cấu hình mặc
+định) không suy ngược được chính xác 100% dù đã thử nhiều giả thuyết — số
+"ngày bàn giao" hiển thị trên bản gốc KHỚP với ngày kết thúc thực tế của
+bước cuối trong lịch chi tiết (24/09→09/12 = đúng 77 ngày), nên HICONIQUE
+giữ nguyên cách tính ĐÃ SỬA trước đó (suy tổng số ngày trực tiếp từ lịch
+xếp tuần tự từng giai đoạn, xem mục sửa lỗi 2026-09-24 phía trên) — đây là
+nguyên tắc ĐÚNG đã được xác nhận khớp với bản gốc, chỉ khác ở độ chi tiết
+số bước.
+
 ## 7. Tài liệu khác trong repo
 
 - [README.md](README.md) — tổng quan kiến trúc, cấu trúc thư mục, cách chạy local/deploy.
