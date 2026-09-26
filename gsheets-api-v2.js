@@ -3562,7 +3562,7 @@ function resolveMapLink_(rawUrl) {
         continue;
       }
       var body = resp.getContentText() || '';
-      var pt2 = mapCoordsFromText_(body.substring(0, 300000));
+      var pt2 = mapCoordsFromBody_(body.substring(0, 300000));
       if (pt2) return { ok: true, lat: pt2.lat, lng: pt2.lng, url: url };
       return { ok: false, error: 'Không đọc được toạ độ từ link này (link chỉ có tên địa điểm?). Hãy chuột phải vào điểm trên Google Maps để sao chép toạ độ.' };
     }
@@ -3570,6 +3570,18 @@ function resolveMapLink_(rawUrl) {
   } catch (err) {
     return { ok: false, error: 'Không mở được link: ' + String(err && err.message || err) };
   }
+}
+
+// Toạ độ trong NỘI DUNG trang: CHỈ lấy từ thẻ og:image/twitter:image (ảnh bản đồ tĩnh của đúng điểm
+// đó) — KHÔNG quét cả trang vì script mặc định của Google Maps chứa toạ độ tâm bản đồ Mỹ
+// (37.0625,-95.677068) sẽ bị nhận nhầm (đã gặp với link chỉ có tên nơi). Loại luôn toạ độ mặc định đó.
+function mapCoordsFromBody_(html) {
+  var metas = String(html || '').match(/<meta[^>]+(?:og:image|twitter:image)[^>]*>/gi) || [];
+  for (var i = 0; i < metas.length; i++) {
+    var pt = mapCoordsFromText_(metas[i].replace(/&amp;/g, '&'));
+    if (pt && !(Math.abs(pt.lat - 37.0625) < 0.001 && Math.abs(pt.lng + 95.677068) < 0.001)) return pt;
+  }
+  return null;
 }
 
 function mapCoordsFromText_(text) {
