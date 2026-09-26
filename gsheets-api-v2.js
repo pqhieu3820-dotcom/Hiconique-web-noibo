@@ -3427,3 +3427,44 @@ function setupLightingSheets_impl() {
   Logger.log(msg);
   return msg;
 }
+
+// 2026-09-26: dọn bản ghi còn tham chiếu ID thành viên CŨ (đã bị thay bằng ID
+// mới, VD QL_NH_200592, CEO_ADMIN_010100, NV_GP_250395, QL_TM_100888) — user
+// đã cho phép rõ ràng xoá "8 đề xuất + 66 thông báo cũ". Xoá theo ĐIỀU KIỆN
+// (Người đề xuất/phê duyệt hoặc Người tạo là 1 ID dạng mã thành viên nhưng
+// KHÔNG còn trong Thành viên hiện tại), 1 lần đọc + xoá từ dòng dưới lên trong
+// 1 lock. Có chốt chặn: nếu số dòng khớp vượt mức đã báo (8 / 66) thì HUỶ, không
+// xoá gì. Chạy tay 1 lần trong Apps Script editor; chạy lại an toàn (lần 2 = 0 dòng).
+function deleteLegacyIdRecords() { return withScriptLock_(deleteLegacyIdRecords_impl); }
+function deleteLegacyIdRecords_impl() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var valid = {};
+  getAllData(ss, SHEETS.members).forEach(function (m) { if (m.id) valid[String(m.id)] = true; });
+  if (Object.keys(valid).length < 3) return 'HUỶ: đọc được quá ít thành viên hiện tại (' + Object.keys(valid).length + ')';
+  var looksLikeMemberId = function (v) { return /^[A-Z]{2,}(_[A-Z0-9]+)*_\d{6}$/.test(String(v || '')); };
+  var isLegacy = function (v) { return v !== '' && v != null && looksLikeMemberId(v) && !valid[String(v)]; };
+  var plan = [
+    { key: 'proposals', cols: ['requesterId', 'reviewerId'], cap: 8 },
+    { key: 'notifications', cols: ['createdBy'], cap: 66 }
+  ];
+  var found = plan.map(function (p) {
+    var sheet = findSheet(ss, SHEETS[p.key]);
+    var rows = [];
+    if (sheet && sheet.getLastRow() >= 2) {
+      var headers = getHeaders(sheet);
+      var idx = p.cols.map(function (c) { return headers.indexOf(enToViHeader(SHEETS[p.key], c)); }).filter(function (i) { return i >= 0; });
+      var vals = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
+      vals.forEach(function (r, i) { if (idx.some(function (c) { return isLegacy(r[c]); })) rows.push(i + 2); });
+    }
+    return { p: p, sheet: sheet, rows: rows };
+  });
+  var over = found.filter(function (f) { return f.rows.length > f.p.cap; });
+  if (over.length) return 'HUỶ, không xoá gì: ' + over.map(function (f) { return f.p.key + ' khớp ' + f.rows.length + ' > ' + f.p.cap; }).join('; ');
+  var out = found.map(function (f) {
+    f.rows.slice().sort(function (a, b) { return b - a; }).forEach(function (r) { f.sheet.deleteRow(r); });
+    return f.p.key + ': đã xoá ' + f.rows.length + ' dòng';
+  });
+  var msg = out.join('\n');
+  Logger.log(msg);
+  return msg;
+}
