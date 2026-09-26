@@ -358,6 +358,15 @@
 
     /* Modal "Setup thời gian làm việc" — chỉ Founder/CEO sửa được, người
        khác mở lên chỉ xem (input readonly). */
+    /* Chọn vị trí trên bản đồ (modal Địa điểm GPS & IP) */
+    .ts-map-tools { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+    .ts-map-tools .form-input { flex: 1 1 220px; min-width: 0; }
+    .ts-map-tools .btn { text-decoration: none; white-space: nowrap; }
+    .ts-map-box { position: relative; height: 280px; border: 1px solid var(--ts-border); border-radius: 10px; overflow: hidden; margin-bottom: 8px; background: var(--ts-surface); z-index: 0; }
+    .ts-map-loading { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; text-align: center; font-size: 0.8125rem; color: var(--ts-muted); }
+    .ts-map-hint { font-size: 0.75rem; color: var(--ts-muted); margin: 6px 0 0; line-height: 1.5; }
+    .ts-map-hint.ok { color: var(--color-success, #4F6F52); }
+    .ts-map-hint.bad { color: var(--color-destructive, #A04848); }
     #tsWorkScheduleModal .form-input[readonly] { background: var(--color-bg); color: var(--ts-muted); cursor: default; }
 
     /* Calendar Card */
@@ -929,6 +938,18 @@
                 <option value="office">Văn phòng — chấm công cần đủ 3 điều kiện (GPS + Wifi + Thiết bị)</option>
                 <option value="site">Công trình — chỉ cần GPS + Thiết bị (bỏ Wifi vì thường không có mạng nội bộ)</option>
               </select>
+            </div>
+            <div class="form-group ts-map-picker">
+              <label class="form-label">Chọn vị trí trên bản đồ (tự điền vĩ độ &amp; kinh độ)</label>
+              <div class="ts-map-tools">
+                <input type="text" class="form-input" id="tsMapSearch" placeholder="Tìm địa chỉ / tên nơi — VD: 12 Lê Lợi, Hải Phòng">
+                <button type="button" class="btn btn-secondary" id="tsMapSearchBtn">Tìm</button>
+                <button type="button" class="btn btn-secondary" id="tsMapMyBtn" title="Dùng vị trí GPS hiện tại của thiết bị này">Vị trí của tôi</button>
+                <a class="btn btn-secondary" id="tsMapGoogleBtn" href="https://www.google.com/maps" target="_blank" rel="noopener" title="Mở Google Maps ở tab mới">Mở Google Maps</a>
+              </div>
+              <div id="tsMapBox" class="ts-map-box"><div class="ts-map-loading">Đang tải bản đồ…</div></div>
+              <input type="text" class="form-input" id="tsMapPaste" placeholder="Hoặc dán link Google Maps / toạ độ (VD: 20.926738, 106.301584) rồi nhấn Enter">
+              <p class="ts-map-hint" id="tsMapHint">Bấm vào bản đồ để chấm điểm, kéo ghim để chỉnh. Trên Google Maps: bấm chuột phải vào điểm → bấm dòng toạ độ để sao chép, rồi dán vào ô trên.</p>
             </div>
             <div class="form-row">
               <div class="form-group">
@@ -3220,6 +3241,7 @@
       document.getElementById('tsLocSubmitBtn').textContent = 'Lưu thay đổi';
       document.getElementById('tsLocCancelEdit').hidden = false;
       document.getElementById('tsLocName').focus();
+      syncMapFromInputs(true); // đưa ghim tới điểm đang sửa
     }
 
     function resetLocationForm() {
@@ -3229,6 +3251,159 @@
       document.getElementById('tsLocActive').checked = true;
       document.getElementById('tsLocSubmitBtn').textContent = 'Thêm thông tin';
       document.getElementById('tsLocCancelEdit').hidden = true;
+      clearMapPoint();
+    }
+
+
+    // ───── Chọn vị trí trên bản đồ (Leaflet + OpenStreetMap, không cần API key) ─────
+    // Google Maps nhúng chọn điểm bắt buộc có API key trả phí nên dùng OSM/Esri; vẫn có
+    // nút mở Google Maps và ô DÁN link/toạ độ Google Maps để lấy đúng điểm đã chấm bên đó.
+    var tsMap = null, tsMarker = null, tsCircle = null, tsLeafletLoading = null, tsMapBound = false;
+
+    function loadLeaflet(cb) {
+      if (window.L) { cb(); return; }
+      if (tsLeafletLoading) { tsLeafletLoading.push(cb); return; }
+      tsLeafletLoading = [cb];
+      var css = document.createElement('link');
+      css.rel = 'stylesheet'; css.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+      document.head.appendChild(css);
+      var sc = document.createElement('script');
+      sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+      sc.onload = function () { var q = tsLeafletLoading; tsLeafletLoading = null; q.forEach(function (f) { f(); }); };
+      sc.onerror = function () {
+        tsLeafletLoading = null;
+        var box = document.getElementById('tsMapBox');
+        if (box) box.innerHTML = '<div class="ts-map-loading">Không tải được bản đồ (kiểm tra mạng). Vẫn có thể dán toạ độ vào ô bên dưới.</div>';
+      };
+      document.head.appendChild(sc);
+    }
+
+    var MAP_HINT_DEFAULT = 'Bấm vào bản đồ để chấm điểm, kéo ghim để chỉnh. Trên Google Maps: bấm chuột phải vào điểm → bấm dòng toạ độ để sao chép, rồi dán vào ô trên.';
+    function mapHint(msg, cls) {
+      var h = document.getElementById('tsMapHint');
+      if (!h) return;
+      h.textContent = msg; h.className = 'ts-map-hint' + (cls ? ' ' + cls : '');
+    }
+
+    function validLatLng(lat, lng) {
+      return isFinite(lat) && isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && !(lat === 0 && lng === 0);
+    }
+
+    // Lấy (lat,lng) từ link Google Maps ("!3dlat!4dlng", "@lat,lng", "?q=lat,lng", "ll=") hoặc chữ "lat, lng"
+    function parseLatLng(text) {
+      var t = String(text || '').trim();
+      try { t = decodeURIComponent(t); } catch (e) {}
+      var num = '(-?\\d+(?:\\.\\d+)?)';
+      var m = new RegExp('!3d' + num + '!4d' + num).exec(t)
+        || new RegExp('@' + num + ',\\s*' + num).exec(t)
+        || new RegExp('[?&](?:q|ll|query|destination)=' + num + ',\\s*' + num).exec(t)
+        || new RegExp('^\\s*' + num + '\\s*[,;\\s]\\s*' + num + '\\s*$').exec(t);
+      if (!m) return null;
+      var lat = parseFloat(m[1]), lng = parseFloat(m[2]);
+      return validLatLng(lat, lng) ? { lat: lat, lng: lng } : null;
+    }
+
+    function currentRadiusM() {
+      var r = parseFloat(String(document.getElementById('tsLocRadius').value).replace(',', '.'));
+      return isFinite(r) && r > 0 ? r : 50;
+    }
+
+    function setMapPoint(lat, lng, opts) {
+      opts = opts || {};
+      document.getElementById('tsLocLat').value = lat.toFixed(6);
+      document.getElementById('tsLocLng').value = lng.toFixed(6);
+      if (!tsMap) return;
+      var ll = [lat, lng];
+      if (!tsMarker) {
+        tsMarker = L.marker(ll, { draggable: true }).addTo(tsMap);
+        tsMarker.on('dragend', function () { var p = tsMarker.getLatLng(); setMapPoint(p.lat, p.lng, { keepView: true }); });
+      } else { tsMarker.setLatLng(ll); }
+      if (!tsCircle) tsCircle = L.circle(ll, { radius: currentRadiusM(), color: '#B08D57', weight: 2, fillOpacity: 0.12 }).addTo(tsMap);
+      else { tsCircle.setLatLng(ll); tsCircle.setRadius(currentRadiusM()); }
+      if (!opts.keepView) tsMap.setView(ll, Math.max(tsMap.getZoom(), opts.zoom || 17));
+      mapHint('Đã chọn: ' + lat.toFixed(6) + ', ' + lng.toFixed(6) + ' — bán kính ' + currentRadiusM() + 'm (vòng tròn trên bản đồ).', 'ok');
+    }
+
+    function clearMapPoint() {
+      if (tsMarker && tsMap) { tsMap.removeLayer(tsMarker); tsMarker = null; }
+      if (tsCircle && tsMap) { tsMap.removeLayer(tsCircle); tsCircle = null; }
+      mapHint(MAP_HINT_DEFAULT);
+    }
+
+    // Đồng bộ ghim theo ô vĩ độ/kinh độ đang có (khi mở sửa 1 điểm cũ hoặc người dùng gõ tay)
+    function syncMapFromInputs(zoomIn) {
+      if (!tsMap) return;
+      var lat = parseFloat(String(document.getElementById('tsLocLat').value).replace(',', '.'));
+      var lng = parseFloat(String(document.getElementById('tsLocLng').value).replace(',', '.'));
+      if (validLatLng(lat, lng)) setMapPoint(lat, lng, { zoom: zoomIn ? 17 : undefined });
+      else clearMapPoint();
+    }
+
+    function initMapPicker() {
+      var box = document.getElementById('tsMapBox');
+      if (!box) return;
+      loadLeaflet(function () {
+        if (!tsMap) {
+          box.innerHTML = '';
+          tsMap = L.map(box, { zoomControl: true }).setView([16.05, 107.8], 5);
+          var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' });
+          var sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Esri' });
+          osm.addTo(tsMap);
+          L.control.layers({ 'Bản đồ': osm, 'Vệ tinh': sat }, null, { position: 'topright' }).addTo(tsMap);
+          tsMap.on('click', function (e) { setMapPoint(e.latlng.lat, e.latlng.lng, { keepView: true }); });
+        }
+        setTimeout(function () { tsMap.invalidateSize(); syncMapFromInputs(true); }, 150);
+      });
+      if (tsMapBound) return;
+      tsMapBound = true;
+
+      function doSearch() {
+        var q = document.getElementById('tsMapSearch').value.trim();
+        if (!q) return;
+        var direct = parseLatLng(q);
+        if (direct) { setMapPoint(direct.lat, direct.lng); return; }
+        mapHint('Đang tìm…');
+        fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=vi&countrycodes=vn&q=' + encodeURIComponent(q))
+          .then(function (r) { return r.json(); })
+          .then(function (arr) {
+            if (!arr || !arr.length) { mapHint('Không tìm thấy "' + q + '" — thử ghi cụ thể hơn, hoặc bấm thẳng lên bản đồ.', 'bad'); return; }
+            setMapPoint(parseFloat(arr[0].lat), parseFloat(arr[0].lon), { zoom: 17 });
+            mapHint('Tìm thấy: ' + arr[0].display_name + ' — kiểm tra ghim rồi kéo/bấm để chỉnh cho đúng điểm.', 'ok');
+          })
+          .catch(function () { mapHint('Không tìm được lúc này (mạng/giới hạn tra cứu). Hãy bấm thẳng lên bản đồ hoặc dán toạ độ.', 'bad'); });
+      }
+      document.getElementById('tsMapSearchBtn').addEventListener('click', doSearch);
+      document.getElementById('tsMapSearch').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); doSearch(); } });
+
+      document.getElementById('tsMapMyBtn').addEventListener('click', function () {
+        if (!navigator.geolocation) { mapHint('Thiết bị không hỗ trợ định vị.', 'bad'); return; }
+        mapHint('Đang lấy vị trí…');
+        navigator.geolocation.getCurrentPosition(function (pos) {
+          setMapPoint(pos.coords.latitude, pos.coords.longitude, { zoom: 18 });
+        }, function () { mapHint('Không lấy được vị trí (chưa cho phép định vị?).', 'bad'); }, { enableHighAccuracy: true, timeout: 15000 });
+      });
+
+      // Nút mở Google Maps: theo ô tìm kiếm, hoặc toạ độ đang chọn, hoặc trang chủ
+      document.getElementById('tsMapGoogleBtn').addEventListener('click', function () {
+        var q = document.getElementById('tsMapSearch').value.trim();
+        var lat = document.getElementById('tsLocLat').value.trim(), lng = document.getElementById('tsLocLng').value.trim();
+        this.href = q ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q)
+          : (lat && lng ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(lat + ',' + lng) : 'https://www.google.com/maps');
+      });
+
+      function applyPaste() {
+        var el = document.getElementById('tsMapPaste');
+        var v = el.value.trim();
+        if (!v) return;
+        var pt = parseLatLng(v);
+        if (pt) { setMapPoint(pt.lat, pt.lng, { zoom: 18 }); el.value = ''; return; }
+        if (/goo\.gl|maps\.app/i.test(v)) mapHint('Link rút gọn (maps.app.goo.gl) không đọc được toạ độ. Mở link, rồi sao chép link dài trên thanh địa chỉ — hoặc chuột phải vào điểm trên Google Maps để sao chép toạ độ.', 'bad');
+        else mapHint('Không đọc được toạ độ. Dán link Google Maps dạng .../@20.92,106.30,17z hoặc chữ "20.926738, 106.301584".', 'bad');
+      }
+      document.getElementById('tsMapPaste').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); applyPaste(); } });
+      document.getElementById('tsMapPaste').addEventListener('paste', function () { setTimeout(applyPaste, 0); });
+      ['tsLocLat', 'tsLocLng'].forEach(function (id) { document.getElementById(id).addEventListener('change', function () { syncMapFromInputs(true); }); });
+      document.getElementById('tsLocRadius').addEventListener('input', function () { if (tsCircle) tsCircle.setRadius(currentRadiusM()); });
     }
 
     function bindLocationManagerBtn() {
@@ -3239,7 +3414,7 @@
       if (!user || user.roleLevel !== 'admin') return; // giữ hidden — chỉ CEO thấy nút này
       btn.hidden = false;
 
-      function openModal() { modal.classList.add('active'); renderLocationList(); }
+      function openModal() { modal.classList.add('active'); renderLocationList(); initMapPicker(); }
       function closeModal() { modal.classList.remove('active'); resetLocationForm(); }
 
       btn.addEventListener('click', openModal);
