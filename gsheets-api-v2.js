@@ -3591,3 +3591,12 @@ function mapCoordsFromText_(text) {
   }
   return null;
 }
+
+// 2026-09-27: chạy TAY 1 LẦN từ trình chỉnh sửa Apps Script (Chạy > chọn authorizeExternalRequest) để
+// bật hộp thoại CẤP QUYỀN "kết nối tới dịch vụ bên ngoài" (UrlFetchApp) — cần cho
+// resolveMapLink_() đọc link chia sẻ Google Maps. Sau khi bấm Cho phép, Triển khai > Phiên bản mới.
+function authorizeExternalRequest() {
+  const r = UrlFetchApp.fetch('https://www.google.com/generate_204', { muteHttpExceptions: true });
+  Logger.log('Đã có quyền gọi ra ngoài (HTTP ' + r.getResponseCode() + ').');
+  return r.getResponseCode();
+}
