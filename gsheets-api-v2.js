@@ -641,6 +641,13 @@ function handleRequest(e) {
       return ContentService.createTextOutput(JSON.stringify({ ok: true, ts: Date.now() })).setMimeType(ContentService.MimeType.JSON);
     }
 
+    // 2026-09-27: đổi link chia sẻ Google Maps (maps.app.goo.gl/...) ra toạ độ cho ô "dán link"
+    // ở modal Địa điểm GPS (timesheet.html). Trình duyệt không tự mở link rút gọn được (CORS)
+    // nên phải để server đi theo chuyển hướng. Cũng KHÔNG cần mở Spreadsheet nên đặt trước.
+    if (action === 'resolveMapLink') {
+      return ContentService.createTextOutput(JSON.stringify(resolveMapLink_(params.url))).setMimeType(ContentService.MimeType.JSON);
+    }
+
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     let result;
 
@@ -3467,4 +3474,63 @@ function deleteLegacyIdRecords_impl() {
   var msg = out.join('\n');
   Logger.log(msg);
   return msg;
+}
+
+// 2026-09-27: đi theo chuyển hướng của link Google Maps (tối đa 6 bước) để lấy toạ độ. CHỈ
+// đi tới các máy chủ Google Maps trong danh sách cho phép (chặn dùng làm proxy tới địa chỉ
+// tuỳ ý / mạng nội bộ). Toạ độ lấy từ URL từng bước, nếu chưa có thì tìm trong nội dung trang
+// cuối (thẻ meta/ảnh bản đồ nhúng). Trả { ok, lat, lng, url } hoặc { ok:false, error }.
+function resolveMapLink_(rawUrl) {
+  try {
+    var url = String(rawUrl || '').trim();
+    var m = url.match(/https?:\/\/[^\s"'<>]+/);
+    if (!m) return { ok: false, error: 'Không thấy đường link trong nội dung đã dán.' };
+    url = m[0];
+    var allowed = /^https:\/\/(maps\.app\.goo\.gl|goo\.gl|g\.co|(www\.|maps\.|consent\.)?google\.(?:com(?:\.[a-z]{2})?|[a-z]{2,3}))(\/|$|\?)/i;
+    var seen = [];
+    for (var hop = 0; hop < 6; hop++) {
+      if (!allowed.test(url)) return { ok: false, error: 'Link không thuộc Google Maps.' };
+      var pt = mapCoordsFromText_(url);
+      if (pt) return { ok: true, lat: pt.lat, lng: pt.lng, url: url };
+      seen.push(url);
+      var resp = UrlFetchApp.fetch(url, { followRedirects: false, muteHttpExceptions: true, headers: { 'Accept-Language': 'vi,en;q=0.8' } });
+      var code = resp.getResponseCode();
+      if (code >= 300 && code < 400) {
+        var loc = resp.getHeaders()['Location'] || resp.getHeaders()['location'];
+        if (!loc) return { ok: false, error: 'Link chuyển hướng không hợp lệ.' };
+        if (loc.indexOf('/') === 0) loc = url.replace(/^(https:\/\/[^\/]+).*$/, '$1') + loc;
+        // trang đồng ý cookie của Google gói link đích trong tham số continue=
+        var cont = loc.match(/[?&]continue=([^&]+)/);
+        url = cont ? decodeURIComponent(cont[1]) : loc;
+        continue;
+      }
+      var body = resp.getContentText() || '';
+      var pt2 = mapCoordsFromText_(body.substring(0, 300000));
+      if (pt2) return { ok: true, lat: pt2.lat, lng: pt2.lng, url: url };
+      return { ok: false, error: 'Không đọc được toạ độ từ link này (link chỉ có tên địa điểm?). Hãy chuột phải vào điểm trên Google Maps để sao chép toạ độ.' };
+    }
+    return { ok: false, error: 'Link chuyển hướng quá nhiều bước.' };
+  } catch (err) {
+    return { ok: false, error: 'Không mở được link: ' + String(err && err.message || err) };
+  }
+}
+
+function mapCoordsFromText_(text) {
+  var t = String(text || '');
+  try { t = decodeURIComponent(t); } catch (e) {}
+  var num = '(-?\\d+(?:\\.\\d+)?)';
+  var pats = [
+    new RegExp('!3d' + num + '!4d' + num),
+    new RegExp('@' + num + ',\\s*' + num),
+    new RegExp('[?&](?:q|ll|query|destination|center)=' + num + ',\\s*' + num),
+    new RegExp('center=' + num + '(?:,|%2C)' + num),
+    new RegExp('"lat(?:itude)?"\\s*:\\s*' + num + '\\s*,\\s*"(?:lng|lon|longitude)"\\s*:\\s*' + num)
+  ];
+  for (var i = 0; i < pats.length; i++) {
+    var m = pats[i].exec(t);
+    if (!m) continue;
+    var lat = parseFloat(m[1]), lng = parseFloat(m[2]);
+    if (isFinite(lat) && isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && !(lat === 0 && lng === 0)) return { lat: lat, lng: lng };
+  }
+  return null;
 }

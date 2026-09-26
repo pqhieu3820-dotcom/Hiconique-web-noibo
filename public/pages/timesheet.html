@@ -948,8 +948,8 @@
                 <a class="btn btn-secondary" id="tsMapGoogleBtn" href="https://www.google.com/maps" target="_blank" rel="noopener" title="Mở Google Maps ở tab mới">Mở Google Maps</a>
               </div>
               <div id="tsMapBox" class="ts-map-box"><div class="ts-map-loading">Đang tải bản đồ…</div></div>
-              <input type="text" class="form-input" id="tsMapPaste" placeholder="Hoặc dán link Google Maps / toạ độ (VD: 20.926738, 106.301584) rồi nhấn Enter">
-              <p class="ts-map-hint" id="tsMapHint">Bấm vào bản đồ để chấm điểm, kéo ghim để chỉnh. Trên Google Maps: bấm chuột phải vào điểm → bấm dòng toạ độ để sao chép, rồi dán vào ô trên.</p>
+              <input type="text" class="form-input" id="tsMapPaste" placeholder="Dán link chia sẻ Google Maps (maps.app.goo.gl/…) hoặc toạ độ, rồi nhấn Enter">
+              <p class="ts-map-hint" id="tsMapHint">Bấm vào bản đồ để chấm điểm, kéo ghim để chỉnh. Trên Google Maps: bấm Chia sẻ → Sao chép đường liên kết, rồi dán vào ô trên (hoặc chuột phải vào điểm để sao chép toạ độ).</p>
             </div>
             <div class="form-row">
               <div class="form-group">
@@ -3278,7 +3278,7 @@
       document.head.appendChild(sc);
     }
 
-    var MAP_HINT_DEFAULT = 'Bấm vào bản đồ để chấm điểm, kéo ghim để chỉnh. Trên Google Maps: bấm chuột phải vào điểm → bấm dòng toạ độ để sao chép, rồi dán vào ô trên.';
+    var MAP_HINT_DEFAULT = 'Bấm vào bản đồ để chấm điểm, kéo ghim để chỉnh. Trên Google Maps: bấm Chia sẻ → Sao chép đường liên kết, rồi dán vào ô trên (hoặc chuột phải vào điểm để sao chép toạ độ).';
     function mapHint(msg, cls) {
       var h = document.getElementById('tsMapHint');
       if (!h) return;
@@ -3339,6 +3339,25 @@
       else clearMapPoint();
     }
 
+    // Link chia sẻ Google Maps (maps.app.goo.gl/...) hoặc link dài không có toạ độ: nhờ Apps Script
+    // đi theo chuyển hướng lấy toạ độ (trình duyệt bị CORS chặn nên không tự mở được).
+    // Trả true nếu text có chứa đường link (đã xử lý / đang xử lý), false nếu không phải link.
+    function resolveGoogleLink(text, onDone) {
+      var m = String(text || '').match(/https?:\/\/[^\s"'<>]+/);
+      if (!m) return false;
+      var api = (typeof GSHEETS_CONFIG !== 'undefined' && GSHEETS_CONFIG.API_URL) ? GSHEETS_CONFIG.API_URL : null;
+      if (!api) { mapHint('Chưa cấu hình kết nối máy chủ để đọc link.', 'bad'); return true; }
+      mapHint('Đang đọc link Google Maps…');
+      fetch(api + '?action=resolveMapLink&url=' + encodeURIComponent(m[0]))
+        .then(function (r) { return r.json(); })
+        .then(function (res) {
+          if (res && res.ok && validLatLng(res.lat, res.lng)) { setMapPoint(res.lat, res.lng, { zoom: 18 }); if (onDone) onDone(true); }
+          else { mapHint((res && res.error) || 'Không đọc được toạ độ từ link này.', 'bad'); if (onDone) onDone(false); }
+        })
+        .catch(function () { mapHint('Không đọc được link lúc này (mạng hoặc máy chủ). Thử lại, hoặc chuột phải vào điểm trên Google Maps để sao chép toạ độ.', 'bad'); if (onDone) onDone(false); });
+      return true;
+    }
+
     function initMapPicker() {
       var box = document.getElementById('tsMapBox');
       if (!box) return;
@@ -3362,6 +3381,7 @@
         if (!q) return;
         var direct = parseLatLng(q);
         if (direct) { setMapPoint(direct.lat, direct.lng); return; }
+        if (resolveGoogleLink(q)) return;
         mapHint('Đang tìm…');
         fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=vi&countrycodes=vn&q=' + encodeURIComponent(q))
           .then(function (r) { return r.json(); })
@@ -3397,8 +3417,9 @@
         if (!v) return;
         var pt = parseLatLng(v);
         if (pt) { setMapPoint(pt.lat, pt.lng, { zoom: 18 }); el.value = ''; return; }
-        if (/goo\.gl|maps\.app/i.test(v)) mapHint('Link rút gọn (maps.app.goo.gl) không đọc được toạ độ. Mở link, rồi sao chép link dài trên thanh địa chỉ — hoặc chuột phải vào điểm trên Google Maps để sao chép toạ độ.', 'bad');
-        else mapHint('Không đọc được toạ độ. Dán link Google Maps dạng .../@20.92,106.30,17z hoặc chữ "20.926738, 106.301584".', 'bad');
+        // Link chia sẻ (maps.app.goo.gl/...) hoặc link chỉ có tên nơi: nhờ máy chủ đọc toạ độ
+        if (resolveGoogleLink(v, function (ok) { if (ok) el.value = ''; })) return;
+        mapHint('Không đọc được toạ độ. Dán link chia sẻ Google Maps hoặc chữ "20.926738, 106.301584".', 'bad');
       }
       document.getElementById('tsMapPaste').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); applyPaste(); } });
       document.getElementById('tsMapPaste').addEventListener('paste', function () { setTimeout(applyPaste, 0); });
