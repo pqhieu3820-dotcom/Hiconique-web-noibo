@@ -783,6 +783,21 @@
       }
       .report-row-meta { white-space: normal; }
     }
+    @media (max-width: 640px) {
+      /* 2026-09-27: "Chi tiết theo người" trong Báo cáo chấm công trên điện thoại — lịch tháng bị
+         chồng nhiều lớp lề (modal + khung + padding riêng của .ts-cal-grid = 16px) nên chỉ còn ~250px,
+         cột CN bị tràn ra ngoài khung. Bỏ lề thừa, ép 7 cột bằng nhau (minmax(0,1fr) để nội dung
+         không chống lưới nở ra), thu nhỏ khoảng cách + cỡ chữ ô ngày cho vừa khít. */
+      /* margin âm bù lại padding 24px của .modal-body để khung "Chi tiết theo người" gần sát mép modal */
+      .report-chart-box-full { margin: 14px -12px 0; padding: 12px 10px 14px; }
+      #tsReportMemberDetail > div:first-child { flex-wrap: wrap; gap: 8px !important; }
+      #tsReportMemberCalGrid { grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 0; gap: 4px; }
+      #tsReportMemberCalGrid .ts-cal-day-header { padding: 4px 0; font-size: 0.625rem; letter-spacing: 0; }
+      #tsReportMemberCalGrid .ts-cal-day { border-radius: 8px; font-size: 0.8125rem; gap: 1px; min-width: 0; }
+      #tsReportMemberCalGrid .ts-cal-day.today .ts-day-num { width: 24px; height: 24px; }
+      #tsReportMemberCalGrid .ts-day-dot { font-size: 0.5rem; line-height: 1; }
+      #tsReportMemberDayDetail { padding: 14px 12px 18px; }
+    }
     @media (max-width: 480px) {
       /* Tiêu đề "Tháng X/YYYY" + mũi tên trước/sau bị ép xuống dòng xấu ở
          màn rất hẹp — thu nhỏ chữ + giảm khoảng cách cho vừa 1 hàng. */
