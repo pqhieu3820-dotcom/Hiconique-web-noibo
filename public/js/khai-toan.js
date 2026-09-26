@@ -603,6 +603,18 @@
       '<p style="font-size:11px;color:#666;margin-top:16px;">* Thông tin khái toán chỉ mang tính chất tham khảo, không thay thế báo giá/hợp đồng chính thức. Dự kiến thi công ' + result.tl.totalDays + ' ngày, bàn giao ' + fmtDateFull(result.tl.endDate) + '.</p>';
   }
 
+  // API cho trang Báo giá dịch vụ (pricing.html): gắn dự án đang chọn ở đầu trang + lấy kết quả để
+  // đưa sang Soạn báo giá.
+  window.HiconiqueKhaiToan = {
+    getResult: function () { return recalc(); },
+    setProject: function (id, name) {
+      var link = document.getElementById('ktProjectLink'), nameEl = document.getElementById('ktProjectName');
+      if (link) { renderProjectOptions(); link.value = id || ''; }
+      if (nameEl && name) nameEl.value = name;
+      recalc();
+    }
+  };
+
   // ---------- Khởi tạo ----------
   document.addEventListener('DOMContentLoaded', function () {
     renderOptions();
@@ -636,6 +648,10 @@
     });
     document.getElementById('ktPrintBtn').addEventListener('click', function () {
       buildPrintDoc();
+      // Cờ để CSS in chỉ ẩn phần còn lại của trang khi in TỪ tab Khái toán (trang Báo giá có cách in riêng)
+      document.body.classList.add('kt-printing');
+      var done = function () { document.body.classList.remove('kt-printing'); window.removeEventListener('afterprint', done); };
+      window.addEventListener('afterprint', done);
       window.print();
     });
 

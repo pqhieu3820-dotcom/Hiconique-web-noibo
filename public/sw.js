@@ -86,7 +86,6 @@ const PRECACHE_URLS = [
   '/pages/finance.html',
   '/pages/hicon-bim-huongdan.html',
   '/pages/hicon-bim.html',
-  '/pages/khai-toan.html',
   '/pages/lighting.html',
   '/pages/my-dashboard.html',
   '/pages/notices.html',

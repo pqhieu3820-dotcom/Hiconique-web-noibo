@@ -72,6 +72,109 @@
     .pr-project-pick { display: flex; align-items: center; gap: 10px; }
     #btnAddProjectHere { height: 35px; padding: 0 18px; font-size: 0.875rem; font-weight: 600; border-radius: 10px; }
     .pr-project-pick .pr-quote-select { height: 35px; }
+    /* ===== Tab "Khái toán nhanh" (gộp từ trang khai-toan.html, 2026-09-27) ===== */
+    [data-tab-panel="quick"] { --kt-bg: var(--color-bg); --kt-surface: var(--color-surface); --kt-border: var(--color-border);
+      --kt-text: var(--color-text); --kt-muted: var(--color-text-muted); --kt-bronze: var(--color-bronze); --kt-green: #4F6F52; --kt-blue: #3B6B8C; }
+
+    .kt-grid { display: grid; grid-template-columns: 290px minmax(0, 1fr) 290px; gap: 18px; align-items: start; }
+    .kt-col { display: flex; flex-direction: column; gap: 20px; }
+
+    .kt-card { background: var(--kt-surface); border: 1px solid var(--kt-border); border-radius: 16px; overflow: hidden; }
+    .kt-card-head { padding: 16px 20px; border-bottom: 1px solid var(--kt-border); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .kt-card-title { font-size: 0.9375rem; font-weight: 700; }
+    .kt-card-body { padding: 18px 20px; }
+
+    .kt-btn { padding: 8px 14px; border-radius: 8px; border: none; font-family: inherit; font-size: 0.75rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+    .kt-btn-primary { background: var(--kt-bronze); color: #0B0D10; }
+    .kt-btn-primary:hover { background: #C7A464; }
+    .kt-btn-ghost { background: transparent; border: 1px solid var(--kt-border); color: var(--kt-text); }
+    .kt-btn-ghost:hover { border-color: var(--kt-bronze); color: var(--kt-bronze); }
+    .kt-btn-danger { background: transparent; border: 1px solid var(--kt-border); color: #A04848; }
+    .kt-btn-danger:hover { border-color: #A04848; }
+    .kt-btn-sm { padding: 5px 10px; font-size: 0.6875rem; border-radius: 6px; }
+
+    .kt-field { margin-bottom: 14px; }
+    .kt-field:last-child { margin-bottom: 0; }
+    .kt-label { display: block; font-size: 0.6875rem; color: var(--kt-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+    .kt-input, .kt-select { width: 100%; padding: 8px 10px; border-radius: 7px; border: 1px solid var(--kt-border); background: var(--kt-bg); color: var(--kt-text); font-family: inherit; font-size: 0.8125rem; }
+    .kt-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    .kt-group { border-top: 1px solid var(--kt-border); padding-top: 14px; margin-top: 14px; }
+    .kt-group:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+    .kt-group-title { font-size: 0.75rem; font-weight: 700; color: var(--kt-bronze); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 10px; }
+
+    .kt-opt { display: flex; align-items: flex-start; gap: 9px; padding: 8px 9px; border-radius: 9px; cursor: pointer; border: 1px solid transparent; }
+    .kt-opt:hover { background: var(--kt-bg); }
+    .kt-opt.active { border-color: var(--kt-bronze); background: color-mix(in srgb, var(--kt-bronze) 8%, transparent); }
+    .kt-opt input { margin-top: 2px; accent-color: var(--kt-bronze); flex-shrink: 0; }
+    .kt-opt-text { flex: 1; }
+    .kt-opt-label { font-size: 0.8125rem; font-weight: 600; }
+    .kt-opt-desc { font-size: 0.6875rem; color: var(--kt-muted); margin-top: 2px; line-height: 1.4; }
+    .kt-opt-price { font-size: 0.6875rem; color: var(--kt-bronze); font-family: 'JetBrains Mono', monospace; margin-top: 3px; }
+    .kt-tier-row { display: flex; gap: 6px; margin-top: 8px; margin-left: 24px; }
+    .kt-tier-btn { flex: 1; padding: 5px 4px; text-align: center; border-radius: 6px; border: 1px solid var(--kt-border); background: var(--kt-bg); color: var(--kt-muted); font-size: 0.6875rem; cursor: pointer; }
+    .kt-tier-btn.active { border-color: var(--kt-bronze); color: var(--kt-bronze); font-weight: 700; }
+
+    .kt-total-card { background: linear-gradient(135deg, color-mix(in srgb, var(--kt-bronze) 16%, var(--kt-surface)), var(--kt-surface)); border: 1px solid var(--kt-bronze); border-radius: 14px; padding: 16px 20px; margin-bottom: 16px; }
+    .kt-total-label { font-size: 0.6875rem; color: var(--kt-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .kt-total-sub { font-size: 0.6875rem; color: var(--kt-muted); margin-top: 2px; }
+    .kt-total-value { font-size: 1.75rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--kt-bronze); margin-top: 4px; }
+
+    .kt-meta { font-size: 0.8125rem; color: var(--kt-muted); margin-bottom: 14px; line-height: 1.6; }
+    .kt-meta b { color: var(--kt-text); }
+
+    .kt-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+    .kt-table th { text-align: left; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--kt-muted); font-weight: 600; padding: 8px 20px; background: var(--kt-bg); border-bottom: 1px solid var(--kt-border); }
+    .kt-table th.num, .kt-table td.num { text-align: right; }
+    .kt-table td { padding: 10px 20px; border-bottom: 1px solid var(--kt-border); vertical-align: top; }
+    .kt-table tr:last-child td { border-bottom: none; }
+    .kt-item-name { font-weight: 600; }
+    .kt-item-desc { font-size: 0.75rem; color: var(--kt-muted); margin-top: 2px; }
+    .kt-amount { font-family: 'JetBrains Mono', monospace; color: var(--kt-bronze); font-weight: 600; white-space: nowrap; }
+    .kt-empty { padding: 30px 20px; text-align: center; color: var(--kt-muted); font-size: 0.8125rem; }
+    .kt-grand-row td { padding: 14px 20px; font-size: 1rem; font-weight: 700; border-top: 1px solid var(--kt-border); }
+
+    .kt-tl-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+    .kt-tl-box { background: var(--kt-bg); border: 1px solid var(--kt-border); border-radius: 10px; padding: 10px 12px; text-align: center; }
+    .kt-tl-num { font-size: 1.125rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--kt-bronze); }
+    .kt-tl-label { font-size: 0.625rem; color: var(--kt-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 2px; }
+    .kt-tl-dates { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--kt-muted); margin-bottom: 8px; }
+    .kt-tl-bar { display: flex; height: 8px; border-radius: 5px; overflow: hidden; margin-bottom: 6px; }
+    .kt-tl-bar span { display: block; height: 100%; }
+    .kt-tl-legend { display: flex; gap: 14px; font-size: 0.6875rem; color: var(--kt-muted); margin-bottom: 16px; }
+    .kt-tl-legend span { display: inline-flex; align-items: center; gap: 5px; }
+    .kt-tl-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .kt-stage { display: flex; gap: 10px; padding: 9px 0; border-top: 1px solid var(--kt-border); }
+    .kt-stage:first-child { border-top: none; }
+    .kt-stage-num { width: 20px; height: 20px; border-radius: 50%; background: var(--kt-bg); border: 1px solid var(--kt-border); display: grid; place-items: center; font-size: 0.625rem; font-weight: 700; color: var(--kt-muted); flex-shrink: 0; }
+    .kt-stage-name { font-size: 0.75rem; font-weight: 600; }
+    .kt-stage-date { font-size: 0.6875rem; color: var(--kt-muted); margin-top: 1px; font-family: 'JetBrains Mono', monospace; }
+
+    .kt-scenario { padding: 10px 12px; border: 1px solid var(--kt-border); border-radius: 10px; margin-bottom: 8px; }
+    .kt-scenario-name { font-size: 0.8125rem; font-weight: 600; }
+    .kt-scenario-meta { font-size: 0.6875rem; color: var(--kt-muted); margin-top: 2px; }
+    .kt-scenario-amount { font-family: 'JetBrains Mono', monospace; color: var(--kt-bronze); font-size: 0.8125rem; font-weight: 700; margin-top: 4px; }
+    .kt-scenario-actions { display: flex; gap: 6px; margin-top: 8px; }
+
+    .kt-print-doc { display: none; }
+    @media print {
+      body.kt-printing * { visibility: hidden; }
+      body.kt-printing .kt-print-doc, body.kt-printing .kt-print-doc * { visibility: visible; }
+      body.kt-printing .kt-print-doc { display: block !important; position: absolute; top: 0; left: 0; width: 100%; padding: 24px; background: #fff; color: #111; }
+      .kt-print-doc table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+      .kt-print-doc th, .kt-print-doc td { border: 1px solid #ccc; padding: 7px 9px; font-size: 12.5px; text-align: left; }
+      .kt-print-doc th.num, .kt-print-doc td.num { text-align: right; }
+      .kt-print-doc h1 { font-size: 19px; margin: 0 0 4px; }
+      .kt-print-doc .kt-print-meta { font-size: 12.5px; color: #444; margin-bottom: 4px; }
+      .kt-print-doc .kt-print-total { margin-top: 12px; text-align: right; font-size: 15px; font-weight: 700; }
+    }
+
+    @media (max-width: 1180px) { .kt-grid { grid-template-columns: 290px minmax(0, 1fr); } .kt-grid > .kt-col:last-child { grid-column: 1 / -1; } }
+    @media (max-width: 820px) { .kt-grid { grid-template-columns: 1fr; } }
+
+    [data-tab-panel="quick"] .kt-card-head { flex-wrap: wrap; }
+    [data-tab-panel="quick"] .kt-card-title { flex: 1 1 100%; }
+    [data-tab-panel="quick"] .kt-card-head > div[style*="display:flex"] { flex-wrap: wrap; }
     .pr-project-hint { font-size: 0.75rem; color: var(--color-text-muted); }
 
     /* task-manager.css và projects.css cùng định nghĩa .modal-overlay nhưng
@@ -391,6 +494,7 @@
       <button class="pr-tab-btn" data-tab="estimate">Dự toán xây dựng</button>
       <button class="pr-tab-btn" data-tab="design">Dự toán thiết kế</button>
       <button class="pr-tab-btn" data-tab="prelim">Khối lượng sơ bộ</button>
+      <button class="pr-tab-btn" data-tab="quick">Khái toán nhanh</button>
       <button class="pr-tab-btn" data-tab="contractors">So sánh nhà thầu</button>
       <button class="pr-tab-btn" data-tab="cashflow">Dòng tiền</button>
       <button class="pr-tab-btn" data-tab="changeorders">Phát sinh</button>
@@ -585,6 +689,127 @@
         <div class="pr-totals-row grand"><span>ĐƠN GIÁ THIẾT KẾ BÌNH QUÂN / m²</span><span class="pr-amount" id="desUnitPrice">0</span></div>
       </div>
     </div>
+    </div>
+
+    <div class="pr-tab-panel" data-tab-panel="quick">
+    <p class="pr-card-desc" style="margin:0 0 16px;">Bóc tách nhanh ngân sách cải tạo/thi công nội thất theo diện tích &amp; hạng mục chọn — dùng để tư vấn khách ngay buổi gặp đầu tiên. Chọn dự án ở đầu trang để tự điền tên, sau đó bấm "Đưa vào Soạn báo giá" khi khách đồng ý.</p>
+    <div class="kt-grid">
+      <!-- CỘT 1: FORM -->
+      <div class="kt-col">
+        <div class="kt-card">
+          <div class="kt-card-head">
+            <div class="kt-card-title">Thông tin công trình</div>
+            <button class="kt-btn kt-btn-ghost kt-btn-sm" id="ktResetBtn">↺ Làm mới</button>
+          </div>
+          <div class="kt-card-body">
+            <div class="kt-field">
+              <label class="kt-label">Chủ căn hộ / Dự án</label>
+              <input type="text" class="kt-input" id="ktProjectName" placeholder="VD: Căn hộ Anh Minh - Vinhomes">
+            </div>
+            <div class="kt-field">
+              <label class="kt-label">Gắn với dự án (tuỳ chọn)</label>
+              <select class="kt-select" id="ktProjectLink"><option value="">— Không gắn dự án —</option></select>
+            </div>
+            <div class="kt-row2">
+              <div class="kt-field">
+                <label class="kt-label">Diện tích TT (m²)</label>
+                <input type="number" class="kt-input" id="ktArea" min="1" step="1" value="80">
+              </div>
+              <div class="kt-field">
+                <label class="kt-label">Ngày bắt đầu</label>
+                <input type="date" class="kt-input" id="ktStartDate">
+              </div>
+            </div>
+            <div class="kt-row2">
+              <div class="kt-field">
+                <label class="kt-label">Số phòng ngủ</label>
+                <select class="kt-select" id="ktBedrooms">
+                  <option value="1">1 PN</option><option value="2" selected>2 PN</option><option value="3">3 PN</option><option value="4">4 PN</option><option value="5">5 PN</option>
+                </select>
+              </div>
+              <div class="kt-field">
+                <label class="kt-label">Số phòng WC</label>
+                <select class="kt-select" id="ktBathrooms">
+                  <option value="1">1 WC</option><option value="2" selected>2 WC</option><option value="3">3 WC</option><option value="4">4 WC</option>
+                </select>
+              </div>
+            </div>
+            <div class="kt-field">
+              <label class="kt-label">Phong cách thiết kế</label>
+              <select class="kt-select" id="ktStyle">
+                <option value="modern">Hiện đại</option>
+                <option value="luxury">Hiện đại Luxury</option>
+              </select>
+              <p class="kt-opt-desc" style="margin-top:6px;">Luxury chỉ đội giá trần thạch cao, đèn, đồ rời, đồ gỗ liền tường &amp; đá — các hạng mục còn lại (sơn bả, sàn, điện, thiết bị, rèm...) giữ nguyên giá dù đổi phong cách.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="kt-card" id="ktOptionsCard">
+          <div class="kt-card-head"><div class="kt-card-title">Hạng mục khái toán</div></div>
+          <div class="kt-card-body" id="ktOptionsBody"></div>
+        </div>
+      </div>
+
+      <!-- CỘT 2: BẢNG KHÁI TOÁN -->
+      <div class="kt-col">
+        <div class="kt-card">
+          <div class="kt-card-head">
+            <div class="kt-card-title">Bảng khái toán mức đầu tư</div>
+            <div style="display:flex; gap:8px;">
+              <button class="kt-btn kt-btn-ghost kt-btn-sm" id="ktToQuoteBtn" title="Đưa từng hạng mục khái toán thành 1 dòng trong tab Soạn báo giá">→ Đưa vào Soạn báo giá</button>
+              <button class="kt-btn kt-btn-ghost kt-btn-sm" id="ktPrintBtn">🖨 Xuất In/PDF</button>
+              <button class="kt-btn kt-btn-primary kt-btn-sm" id="ktSaveScenarioBtn">＋ Lưu phương án</button>
+            </div>
+          </div>
+          <div class="kt-card-body">
+            <p class="kt-meta" id="ktSummaryMeta">—</p>
+            <div class="kt-total-card">
+              <div class="kt-total-label">Tổng mức đầu tư khái toán</div>
+              <div class="kt-total-sub" id="ktTotalSub">Suất đầu tư trung bình: — /m²</div>
+              <div class="kt-total-value" id="ktTotalValue">0 ₫</div>
+            </div>
+            <table class="kt-table">
+              <thead><tr><th>Hạng mục</th><th class="num" style="width:130px;">Thành tiền</th></tr></thead>
+              <tbody id="ktItemRows"><tr><td class="kt-empty" colspan="2">Chọn hạng mục bên trái để bắt đầu khái toán.</td></tr></tbody>
+              <tfoot><tr class="kt-grand-row"><td>Tổng mức đầu tư khái toán</td><td class="num kt-amount" id="ktGrandTotal">0 ₫</td></tr></tfoot>
+            </table>
+            <p class="kt-meta" style="margin-top:12px; margin-bottom:0; font-size:0.75rem;">* Thông tin khái toán chỉ mang tính chất tham khảo ban đầu, không thay thế báo giá/hợp đồng chính thức.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- CỘT 3: TIẾN ĐỘ + PHƯƠNG ÁN -->
+      <div class="kt-col">
+        <div class="kt-card">
+          <div class="kt-card-head"><div class="kt-card-title">Kế hoạch tiến độ dự kiến</div></div>
+          <div class="kt-card-body">
+            <div class="kt-tl-summary">
+              <div class="kt-tl-box"><div class="kt-tl-num" id="ktTlDays">—</div><div class="kt-tl-label">Ngày thi công</div></div>
+              <div class="kt-tl-box"><div class="kt-tl-num" id="ktTlCalendar">—</div><div class="kt-tl-label">Ngày bàn giao dự kiến</div></div>
+            </div>
+            <div class="kt-tl-dates"><span id="ktTlStart">Khởi công: —</span><span id="ktTlEnd">Bàn giao: —</span></div>
+            <div class="kt-tl-bar" id="ktTlBar"></div>
+            <div class="kt-tl-legend">
+              <span><i class="kt-tl-dot" style="background:#C9852F;"></i>Thô</span>
+              <span><i class="kt-tl-dot" style="background:#3B6B8C;"></i>Gỗ &amp; Hoàn thiện</span>
+            </div>
+            <div id="ktStages"></div>
+          </div>
+        </div>
+
+        <div class="kt-card">
+          <div class="kt-card-head">
+            <div class="kt-card-title">Phương án đã lưu (<span id="ktScenarioCount">0</span>)</div>
+            <button class="kt-btn kt-btn-ghost kt-btn-sm" id="ktClearScenariosBtn">Xoá hết</button>
+          </div>
+          <div class="kt-card-body" id="ktScenarioList">
+            <p class="kt-meta" style="margin:0;">Bấm "Lưu phương án" ở bảng khái toán để so sánh nhiều cấu hình cho cùng 1 khách hàng.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="kt-print-doc" id="ktPrintDoc"></div>
     </div>
 
     <div class="pr-tab-panel" data-tab-panel="contractors">
@@ -786,6 +1011,7 @@
   <script src="/js/push-notifications.js" defer></script>
 
   <script src="/js/portal.js" defer></script>
+  <script src="/js/khai-toan.js" defer></script>
   <script>
   (function () {
     'use strict';
@@ -815,6 +1041,7 @@
       var saved = null;
       try { saved = localStorage.getItem(TAB_STORAGE_KEY); } catch (e) { /* ignore */ }
       var valid = saved && document.querySelector('.pr-tab-btn[data-tab="' + saved + '"]');
+      if (location.hash === '#quick') { activateTab('quick'); return; }
       activateTab(valid ? saved : 'province'); // tab đầu tiên trong thanh (Danh mục đơn giá đã chuyển xuống sau Soạn báo giá)
     }
 
@@ -1134,6 +1361,8 @@
       }
       var nameEl = document.getElementById('prProjectName');
       if (nameEl && (force || !nameEl.value)) nameEl.value = proj.name || '';
+      var ktLink = document.getElementById('ktProjectLink'), ktName = document.getElementById('ktProjectName');
+      if (ktLink && window.HiconiqueKhaiToan && (force || !ktName.value)) window.HiconiqueKhaiToan.setProject(proj.id, proj.name);
       var clientEl = document.getElementById('prClientName');
       if (clientEl && proj.client && (force || !clientEl.value)) { clientEl.value = proj.client; notes.push('Khách hàng: ' + proj.client); }
       if (proj.location) notes.push('Địa điểm: ' + proj.location);
@@ -2049,6 +2278,26 @@
     });
     ['prDiscountPercent', 'prVatPercent'].forEach(function (id) {
       document.getElementById(id).addEventListener('input', recalcQuote);
+    });
+
+    // Khái toán nhanh -> Soạn báo giá: mỗi hạng mục khái toán thành 1 dòng (id cố định 'kt-<số thứ tự>'
+    // nên bấm lại chỉ CẬP NHẬT dòng cũ, không nhân đôi); dòng khái toán cũ không còn hạng mục thì bị gỡ.
+    var ktQuoteIds = [];
+    document.getElementById('ktToQuoteBtn').addEventListener('click', function () {
+      if (!window.HiconiqueKhaiToan) return;
+      var res = window.HiconiqueKhaiToan.getResult();
+      if (!res || !res.lines || !res.lines.length) { alert('Chưa chọn hạng mục nào để đưa sang báo giá.'); return; }
+      var nameEl = document.getElementById('prProjectName');
+      if (nameEl && !nameEl.value) nameEl.value = res.projectName || '';
+      var nextIds = [];
+      res.lines.forEach(function (l, i) {
+        var id = 'kt-' + i;
+        nextIds.push(id);
+        addQuoteRow({ name: l.label, unit: 'gói', qty: 1, price: Math.round(l.amount) }, id);
+      });
+      ktQuoteIds.forEach(function (id) { if (nextIds.indexOf(id) === -1) removeQuoteRowById(id); });
+      ktQuoteIds = nextIds;
+      activateTab('quote');
     });
 
     document.getElementById('prAddRowBtn').addEventListener('click', function () { addQuoteRow(); });
