@@ -2790,3 +2790,13 @@
    thu hẹp và canh giữa (như Google Lịch chế độ ngày). Tuần vẫn full rộng. */
 .todo-cal-timegrid-wrap--day { max-width: 560px; margin-left: auto; margin-right: auto; }
 .todo-cal-day-stat { max-width: 560px; margin-left: auto; margin-right: auto; }
+
+/* 2026-09-26: thẻ task trên Board hiện ĐỦ họ tên người tham gia — mỗi người 1
+   dòng (avatar + tên đầy đủ, tên dài tự xuống dòng), thay vì chỉ 1 tên cắt "…"
+   hoặc chỉ hàng avatar khi có từ 2 người. */
+.task-assignee-list { flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; flex: 1 1 auto; }
+.task-assignee-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.task-assignee-row .avatar-xs { flex: none; }
+.task-assignee-list .assignee-name { max-width: none; overflow: visible; text-overflow: clip; white-space: normal; line-height: 1.3; }
+.task-meta:has(.task-assignee-list) { align-items: flex-start; }
+.task-meta:has(.task-assignee-list) .task-date { flex: none; }

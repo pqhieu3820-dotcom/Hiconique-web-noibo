@@ -2524,3 +2524,9 @@
    thu hẹp và canh giữa (như Google Lịch chế độ ngày). Tuần vẫn full rộng. */
 .todo-cal-timegrid-wrap--day { max-width: 560px; margin-left: auto; margin-right: auto; }
 .todo-cal-day-stat { max-width: 560px; margin-left: auto; margin-right: auto; }
+
+/* 2026-09-26: thẻ Kanban hiện đủ họ tên người tham gia (mỗi người 1 dòng, tên
+   dài tự xuống dòng) — đồng bộ với thẻ Board ở trang Dự án (.task-assignee-list). */
+.kanban-card-people { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 4px; }
+.kanban-card-person { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--color-text-muted); line-height: 1.3; min-width: 0; }
+.kanban-card-person .avatar-xs-tm { flex: none; }

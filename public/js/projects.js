@@ -440,7 +440,7 @@
         +   (progress > 0 ? '<div class="task-progress-bar"><div class="progress-track"><span style="width:' + progress + '%"></span></div><span class="progress-percent">' + progress + '%</span></div>' : '')
         +   tagsHtml
         +   '<div class="task-meta">'
-        +     (assignees.length ? '<span class="task-assignee task-assignee-stack">' + assigneeChipsHtml(assignees, 'avatar-xs') + (assignees.length === 1 ? '<span class="assignee-name">' + escapeHtml(assignees[0].name || '') + '</span>' : '') + '</span>' : '')
+        +     (assignees.length ? '<span class="task-assignee task-assignee-list">' + assignees.map(function (a) { return '<span class="task-assignee-row">' + assigneeChipsHtml([a], 'avatar-xs') + '<span class="assignee-name">' + escapeHtml(a.name || '') + '</span></span>'; }).join('') + '</span>' : '')
         +     '<span class="task-date ' + dueClass + '">' + dueText + '</span>'
         +   '</div>'
         + '</div>';
