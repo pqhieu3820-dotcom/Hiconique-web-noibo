@@ -2196,7 +2196,7 @@ var TaskManager = (function() {
   // trong gsheets-api-v2.js (đọc field này mỗi lần chạy, KHÔNG cần cài lại
   // trigger khi đổi giờ — trigger tự chạy mỗi 15 phút, tự so sánh giờ hiện
   // tại với giờ cấu hình ở đây).
-  var DEFAULT_WORK_SCHEDULE = { morningStart: '07:30', morningEnd: '11:30', afternoonStart: '13:30', afternoonEnd: '17:30', lateGraceMinutes: 5, morningAutoCheckoutTime: '12:30' };
+  var DEFAULT_WORK_SCHEDULE = { morningStart: '07:30', morningEnd: '11:30', afternoonStart: '13:30', afternoonEnd: '17:30', lateGraceMinutes: 5, morningAutoCheckoutTime: '12:30', afternoonAutoCheckoutTime: '18:00' };
 
   // Ngày nghỉ lễ chính thức theo lịch nhà nước — KHÔNG có API/thư viện âm
   // lịch nào trong dự án để tự tính, nên liệt kê tay theo từng năm (thêm
@@ -2239,6 +2239,9 @@ var TaskManager = (function() {
       }
       if (!/^([0-1][0-9]|2[0-3]):([0-5][0-9])$/.test(ws.morningAutoCheckoutTime || '')) {
         ws.morningAutoCheckoutTime = DEFAULT_WORK_SCHEDULE.morningAutoCheckoutTime;
+      }
+      if (!/^([0-1][0-9]|2[0-3]):([0-5][0-9])$/.test(ws.afternoonAutoCheckoutTime || '')) {
+        ws.afternoonAutoCheckoutTime = DEFAULT_WORK_SCHEDULE.afternoonAutoCheckoutTime;
       }
       callback(ws);
     });

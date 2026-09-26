@@ -213,6 +213,8 @@ const FIELD_MAP = {
     // trong autoCheckoutForgottenMorningShifts() mỗi lần trigger chạy (mỗi
     // 15 phút), đổi giờ ở web có hiệu lực ngay, không cần cài lại trigger.
     ['Giờ tự động đóng ca sáng nếu quên checkout', 'morningAutoCheckoutTime'],
+    // 2026-09-27: tương tự cho CA CHIỀU (mặc định 18:00) — xem autoCheckoutForgottenAfternoonShifts()
+    ['Giờ tự động đóng ca chiều nếu quên checkout', 'afternoonAutoCheckoutTime'],
     ['Ngày cập nhật', 'updatedAt']
   ],
   notifications: [
@@ -2064,6 +2066,9 @@ function setupAutoCheckoutTrigger() {
 // ĐÃ QUA giờ đó — kiểm tra `!e.morningCheckout` mỗi entry nên không xử lý
 // trùng dù chạy nhiều lần/ngày.
 function autoCheckoutForgottenMorningShifts() {
+  // 2026-09-27: dùng CHUNG trigger 15 phút này để đóng luôn CA CHIỀU quên check-out
+  // (không cài thêm trigger) — bọc try/catch để lỗi ca chiều không cản ca sáng.
+  try { autoCheckoutForgottenAfternoonShifts(); } catch (err) { Logger.log('autoCheckoutForgottenAfternoonShifts lỗi: ' + err); }
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const tz = Session.getScriptTimeZone() || 'Asia/Ho_Chi_Minh';
   const now = new Date();
@@ -2125,6 +2130,58 @@ function autoCheckoutForgottenMorningShifts() {
 
   Logger.log('autoCheckoutForgottenMorningShifts: đã tự đóng ' + fixed.length + ' ca sáng quên check-out.');
   return fixed.length;
+}
+
+
+// ===== Tự động đóng CA CHIỀU "quên check-out" theo giờ CẤU HÌNH (2026-09-27) =====
+// Giống autoCheckoutForgottenMorningShifts() nhưng cho ca chiều: tới giờ CẤU HÌNH
+// (field `afternoonAutoCheckoutTime` sheet "TLCC-Giờ làm việc", sửa ở web qua modal "Setup
+// thời gian làm việc", mặc định 18:00) mà hôm nay đã check-in ca chiều (`afternoonCheckin`)
+// nhưng chưa check-out (`afternoonCheckout`) thì đóng NGAY bằng đúng giờ vào (0 giờ công
+// ca chiều), tính lại tổng giờ/OT/trạng thái của ngày (kể cả ca sáng đã đủ cặp) và báo
+// nhân viên + CEO/Quản lý. Được gọi từ trigger 15 phút của autoCheckoutForgottenMorningShifts()
+// — kiểm tra `!e.afternoonCheckout` mỗi entry nên chạy nhiều lần vẫn không xử lý trùng.
+function autoCheckoutForgottenAfternoonShifts() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const tz = Session.getScriptTimeZone() || 'Asia/Ho_Chi_Minh';
+  const now = new Date();
+  const todayKey = Utilities.formatDate(now, tz, 'yyyy-MM-dd');
+  const nowHM = Utilities.formatDate(now, tz, 'HH:mm');
+
+  const wsRows = getAllData(ss, SHEETS.workSchedule);
+  const thresholdHM = (wsRows[0] && /^([0-1][0-9]|2[0-3]):([0-5][0-9])$/.test(wsRows[0].afternoonAutoCheckoutTime))
+    ? wsRows[0].afternoonAutoCheckoutTime : '18:00';
+  if (nowHM < thresholdHM) return 0;
+
+  const entries = getAllData(ss, SHEETS.timesheet);
+  const todays = entries.filter(function (e) { return e.date === todayKey && e.afternoonCheckin && !e.afternoonCheckout; });
+  if (!todays.length) return 0;
+
+  const members = getAllData(ss, SHEETS.members);
+  const memberById = {};
+  members.forEach(function (m) { memberById[m.id] = m; });
+  const managers = members.filter(function (m) { return m.roleLevel === 'admin' || m.roleLevel === 'manager'; });
+
+  todays.forEach(function (e) {
+    const patch = { afternoonCheckout: e.afternoonCheckin };
+    const h = calcShiftHours_(Object.assign({}, e, patch));
+    patch.totalHours = h;
+    patch.overtimeHours = isOtDateKey_(e.date) ? h : Math.max(0, parseFloat((h - 8).toFixed(1)));
+    patch.status = 'completed';
+    patch.note = (e.note ? e.note + ' | ' : '') + AUTO_CHECKOUT_NOTE_TAG + ' ca chiều lúc ' + e.afternoonCheckin + ' — vui lòng xác nhận lại giờ làm thực tế.';
+    updateData(ss, SHEETS.timesheet, e.id, patch);
+
+    const member = memberById[e.memberId];
+    const name = member ? member.name : e.memberId;
+    const msg = name + ' quên check-out ca chiều hôm nay (check-in lúc ' + e.afternoonCheckin + ') — hệ thống đã tự động đóng ca chiều (0 giờ công ca này) lúc ' + thresholdHM + ', vui lòng kiểm tra và điều chỉnh lại nếu cần.';
+    addData(ss, SHEETS.notifications, { title: 'Quên check-out ca chiều', message: msg, type: 'attendance', scope: e.memberId, recurring: false, active: true, createdBy: 'SYSTEM' });
+    managers.forEach(function (mgr) {
+      if (mgr.id === e.memberId) return;
+      addData(ss, SHEETS.notifications, { title: 'NV quên check-out ca chiều: ' + name, message: msg, type: 'attendance', scope: mgr.id, recurring: false, active: true, createdBy: 'SYSTEM' });
+    });
+  });
+  Logger.log('autoCheckoutForgottenAfternoonShifts: đã tự đóng ' + todays.length + ' ca chiều quên check-out.');
+  return todays.length;
 }
 
 // Cài time-driven trigger chạy autoCheckoutForgottenMorningShifts() MỖI 15

@@ -358,6 +358,14 @@
 
     /* Modal "Setup thời gian làm việc" — chỉ Founder/CEO sửa được, người
        khác mở lên chỉ xem (input readonly). */
+    /* Bộ chọn giờ 24h (2 ô chọn Giờ : Phút) thay ô gõ chữ ở modal Setup thời gian làm việc */
+    .ts-time-picker { display: inline-flex; align-items: center; gap: 6px; }
+    .ts-time-picker select { appearance: none; -webkit-appearance: none; min-width: 72px; padding: 10px 28px 10px 14px; border: 1px solid var(--ts-border); border-radius: 8px; background: var(--color-bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 9px center; color: var(--ts-text); font-family: inherit; font-size: 1rem; font-variant-numeric: tabular-nums; cursor: pointer; }
+    .ts-time-picker select:focus { outline: none; border-color: var(--color-bronze); }
+    .ts-time-picker select:disabled { opacity: 0.7; cursor: default; }
+    .ts-time-picker .ts-time-sep { font-weight: 700; color: var(--ts-muted); }
+    #tsWorkScheduleModal .form-row .ts-time-picker { width: 100%; }
+    #tsWorkScheduleModal .form-row .ts-time-picker select { flex: 1; }
     /* Chọn vị trí trên bản đồ (modal Địa điểm GPS & IP) */
     .ts-map-tools { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
     .ts-map-tools .form-input { flex: 1 1 220px; min-width: 0; }
@@ -901,6 +909,11 @@
               <label class="form-label">Giờ tự động check-out khi quên chấm công (ca sáng)</label>
               <input type="text" class="form-input" id="tsWsMorningAutoCheckout" inputmode="numeric" maxlength="5" placeholder="12:30" style="max-width:120px;">
               <p style="font-size:0.75rem; color:var(--ts-muted); margin:6px 0 0;">Đã check-in ca sáng nhưng chưa check-out — tới đúng giờ này hệ thống tự đóng ca đó (0 giờ công ca sáng), không cần đợi tới nửa đêm mới biết. Đổi giờ ở đây có hiệu lực ngay trong ngày, không cần cài đặt lại gì thêm.</p>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Giờ tự động check-out khi quên chấm công (ca chiều)</label>
+              <input type="text" class="form-input" id="tsWsAfternoonAutoCheckout" inputmode="numeric" maxlength="5" placeholder="18:00" style="max-width:120px;">
+              <p style="font-size:0.75rem; color:var(--ts-muted); margin:6px 0 0;">Đã check-in ca chiều nhưng chưa check-out — tới đúng giờ này hệ thống tự đóng ca đó (0 giờ công ca chiều) và báo cho nhân viên + quản lý. Nên đặt SAU giờ ra ca chiều (VD 18:00). Đổi giờ có hiệu lực ngay trong ngày.</p>
             </div>
             <div class="form-group" style="display:flex; justify-content:flex-end;">
               <button type="submit" class="btn btn-primary" id="tsWorkScheduleSaveBtn">Lưu giờ làm việc</button>
@@ -3473,6 +3486,50 @@
       });
     }
 
+    // Bộ chọn giờ 24h: thay <input type="text"> bằng 2 ô chọn Giờ (00–23) và Phút (00–59) — luôn
+    // 24h, không phụ thuộc định dạng 12h/24h của hệ điều hành như <input type="time">. Input gốc được
+    // GIỮ (ẩn) làm nơi lưu giá trị "HH:MM" để toàn bộ code đọc/ghi .value cũ không phải đổi; ghi đè
+    // .value/.readOnly của nó để mọi lần gán giá trị và khoá chỉ-xem đều đồng bộ sang 2 ô chọn.
+    function makeTimePicker(input) {
+      if (!input || input.dataset.timePicker) return;
+      input.dataset.timePicker = '1';
+      var wrap = document.createElement('div');
+      wrap.className = 'ts-time-picker';
+      function build(max, pad) {
+        var sel = document.createElement('select');
+        for (var i = 0; i < max; i++) { var o = document.createElement('option'); o.value = pad(i); o.textContent = pad(i); sel.appendChild(o); }
+        return sel;
+      }
+      var two = function (n) { return (n < 10 ? '0' : '') + n; };
+      var hh = build(24, two), mm = build(60, two);
+      hh.setAttribute('aria-label', 'Giờ'); mm.setAttribute('aria-label', 'Phút');
+      var sep = document.createElement('span'); sep.className = 'ts-time-sep'; sep.textContent = ':';
+      wrap.appendChild(hh); wrap.appendChild(sep); wrap.appendChild(mm);
+      input.style.display = 'none';
+      input.parentNode.insertBefore(wrap, input.nextSibling);
+
+      var desc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+      function syncFromValue() {
+        var m = /^([0-1][0-9]|2[0-3]):([0-5][0-9])$/.exec(desc.get.call(input));
+        if (m) { hh.value = m[1]; mm.value = m[2]; }
+      }
+      function syncToValue() { desc.set.call(input, hh.value + ':' + mm.value); }
+      Object.defineProperty(input, 'value', {
+        configurable: true,
+        get: function () { return desc.get.call(input); },
+        set: function (v) { desc.set.call(input, v); syncFromValue(); }
+      });
+      var roDesc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'readOnly');
+      Object.defineProperty(input, 'readOnly', {
+        configurable: true,
+        get: function () { return roDesc.get.call(input); },
+        set: function (v) { roDesc.set.call(input, v); hh.disabled = mm.disabled = !!v; }
+      });
+      hh.addEventListener('change', syncToValue);
+      mm.addEventListener('change', syncToValue);
+      syncFromValue();
+    }
+
     // Định dạng giờ tự động khi gõ: chỉ giữ số, tự chèn dấu ":" sau 2 số đầu
     // (VD: "0730" -> "07:30") — đảm bảo luôn nhập/hiển thị 24h, không phụ
     // thuộc <input type="time"> vốn theo định dạng 12h/24h của hệ điều hành.
@@ -3503,11 +3560,13 @@
       // Chỉ Founder/CEO được sửa (không tính Giám đốc Bộ phận dù cùng
       // roleLevel 'admin') — các cấp còn lại mở modal chỉ để XEM.
       var canEdit = user.level === 'founder' || user.level === 'ceo';
+      ['tsWsMorningStart', 'tsWsMorningEnd', 'tsWsAfternoonStart', 'tsWsAfternoonEnd', 'tsWsMorningAutoCheckout', 'tsWsAfternoonAutoCheckout'].forEach(function (id) { makeTimePicker(document.getElementById(id)); });
       var timeInputs = ['tsWsMorningStart', 'tsWsMorningEnd', 'tsWsAfternoonStart', 'tsWsAfternoonEnd'].map(function (id) {
         return document.getElementById(id);
       });
       var graceInput = document.getElementById('tsWsLateGrace');
       var morningAutoCheckoutInput = document.getElementById('tsWsMorningAutoCheckout');
+      var afternoonAutoCheckoutInput = document.getElementById('tsWsAfternoonAutoCheckout');
       var saveBtn = document.getElementById('tsWorkScheduleSaveBtn');
       var viewOnlyNote = document.getElementById('tsWorkScheduleViewOnlyNote');
       timeInputs.forEach(function (input) {
@@ -3517,6 +3576,8 @@
       graceInput.readOnly = !canEdit;
       morningAutoCheckoutInput.readOnly = !canEdit;
       if (canEdit) bindTimeTextMask(morningAutoCheckoutInput);
+      afternoonAutoCheckoutInput.readOnly = !canEdit;
+      if (canEdit) bindTimeTextMask(afternoonAutoCheckoutInput);
       saveBtn.hidden = !canEdit;
       viewOnlyNote.hidden = canEdit;
 
@@ -3527,6 +3588,7 @@
         document.getElementById('tsWsAfternoonEnd').value = ws.afternoonEnd || DEFAULT_WORK_SCHEDULE.afternoonEnd;
         graceInput.value = (ws.lateGraceMinutes === '' || ws.lateGraceMinutes == null) ? DEFAULT_WORK_SCHEDULE.lateGraceMinutes : ws.lateGraceMinutes;
         morningAutoCheckoutInput.value = ws.morningAutoCheckoutTime || DEFAULT_WORK_SCHEDULE.morningAutoCheckoutTime;
+        afternoonAutoCheckoutInput.value = ws.afternoonAutoCheckoutTime || DEFAULT_WORK_SCHEDULE.afternoonAutoCheckoutTime;
       }
 
       function openModal() {
@@ -3550,7 +3612,8 @@
           afternoonStart: document.getElementById('tsWsAfternoonStart').value,
           afternoonEnd: document.getElementById('tsWsAfternoonEnd').value,
           lateGraceMinutes: graceRaw === '' ? 0 : Math.max(0, Math.round(Number(graceRaw))),
-          morningAutoCheckoutTime: morningAutoCheckoutInput.value.trim() || DEFAULT_WORK_SCHEDULE.morningAutoCheckoutTime
+          morningAutoCheckoutTime: morningAutoCheckoutInput.value.trim() || DEFAULT_WORK_SCHEDULE.morningAutoCheckoutTime,
+          afternoonAutoCheckoutTime: afternoonAutoCheckoutInput.value.trim() || DEFAULT_WORK_SCHEDULE.afternoonAutoCheckoutTime
         };
         if (!isValidHM(data.morningStart) || !isValidHM(data.morningEnd) || !isValidHM(data.afternoonStart) || !isValidHM(data.afternoonEnd)) {
           showToast('Giờ không hợp lệ, nhập theo định dạng HH:MM (24h), VD: 07:30.', false);
@@ -3558,6 +3621,10 @@
         }
         if (!isValidHM(data.morningAutoCheckoutTime)) {
           showToast('Giờ tự động check-out ca sáng không hợp lệ, nhập theo định dạng HH:MM (24h), VD: 12:30.', false);
+          return;
+        }
+        if (!isValidHM(data.afternoonAutoCheckoutTime)) {
+          showToast('Giờ tự động check-out ca chiều không hợp lệ, nhập theo định dạng HH:MM (24h), VD: 18:00.', false);
           return;
         }
         if (graceRaw !== '' && (isNaN(Number(graceRaw)) || Number(graceRaw) < 0)) {
