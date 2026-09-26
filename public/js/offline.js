@@ -320,7 +320,14 @@ var Offline = (function () {
     navigator.serviceWorker.addEventListener('controllerchange', function () {
       if (refreshedForSW) return;
       refreshedForSW = true;
-      window.location.reload();
+      // 2026-09-26: KHÔNG reload giữa lúc người dùng đang nhập/mở modal (mất
+      // dữ liệu đang gõ) — chờ tới khi rảnh mới tải lại để nhận code mới.
+      var tryReload = function () {
+        var busy = typeof window.HiconiqueUserBusy === 'function' && window.HiconiqueUserBusy();
+        if (busy) { setTimeout(tryReload, 3000); return; }
+        window.location.reload();
+      };
+      tryReload();
     });
   }
 

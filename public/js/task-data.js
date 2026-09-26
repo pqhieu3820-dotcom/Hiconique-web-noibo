@@ -426,6 +426,65 @@ var TaskManager = (function() {
   // phải do mạng hay do 1 máy cụ thể. Đã gộp lại thành 1 hàm duy nhất (đủ
   // field của cả 2 bản cũ + hỗ trợ callback), `silentRefresh` giờ trỏ chung
   // vào đây luôn (gọi không kèm callback vẫn chạy bình thường).
+  // 2026-09-26: 'hiconique:data-refreshed' bắn mỗi 5s làm nhiều trang VẼ LẠI
+  // TOÀN BỘ giao diện (renderAll/render...) → form/modal đang nhập dở bị xoá
+  // sạch. Sửa ở gốc: (1) chỉ bắn khi dữ liệu THẬT SỰ đổi so với lần bắn trước
+  // (so chữ ký các khoá localStorage) — 5s/lần mà không có gì mới thì im lặng;
+  // (2) nếu người dùng đang thao tác (đang focus ô nhập/chọn, có modal mở, hoặc
+  // vừa gõ trong 30s qua) thì HOÃN, dữ liệu mới vẫn đã ghi vào cache, chỉ chờ
+  // tới khi người dùng xong (đóng modal/rời ô nhập/yên 30s) mới vẽ lại.
+  var lastRefreshSig_ = null, refreshPending_ = false, refreshPoll_ = null, lastUserInputAt_ = 0;
+  function isTextField_(el) {
+    if (!el || !el.tagName) return false;
+    var t = el.tagName;
+    if (t === 'TEXTAREA' || t === 'SELECT') return true;
+    if (t === 'INPUT') return !/^(button|submit|reset|checkbox|radio|range|file|image)$/i.test(el.type || 'text');
+    return !!el.isContentEditable;
+  }
+  try {
+    ['input', 'keydown'].forEach(function (ev) {
+      document.addEventListener(ev, function (e) { if (isTextField_(e.target)) lastUserInputAt_ = Date.now(); }, true);
+    });
+  } catch (e) { /* không có document — bỏ qua */ }
+  function userBusy_() {
+    try {
+      if (isTextField_(document.activeElement)) return true;
+      if (document.querySelector('.modal-overlay.active')) return true;
+    } catch (e) {}
+    return (Date.now() - lastUserInputAt_) < 30000;
+  }
+  window.HiconiqueUserBusy = userBusy_;
+  function dataSignature_() {
+    var h = 5381, len = 0;
+    Object.keys(STORAGE_KEYS).forEach(function (k) {
+      var v = localStorage.getItem(STORAGE_KEYS[k]) || '';
+      len += v.length;
+      for (var i = 0; i < v.length; i += 7) h = ((h << 5) + h + v.charCodeAt(i)) | 0;
+    });
+    return len + ':' + h;
+  }
+  function flushRefresh_() {
+    refreshPending_ = false;
+    lastRefreshSig_ = dataSignature_();
+    try { window.dispatchEvent(new CustomEvent('hiconique:data-refreshed')); } catch (e) {}
+  }
+  function notifyDataRefreshed_() {
+    var sig = dataSignature_();
+    if (sig === lastRefreshSig_) return; // không có gì mới — không vẽ lại
+    if (userBusy_()) {
+      refreshPending_ = true;
+      if (!refreshPoll_) {
+        refreshPoll_ = setInterval(function () {
+          if (userBusy_()) return;
+          clearInterval(refreshPoll_); refreshPoll_ = null;
+          if (refreshPending_) flushRefresh_();
+        }, 1000);
+      }
+      return;
+    }
+    flushRefresh_();
+  }
+
   function refreshFromGSheets(callback) {
     gsCacheTime = {};
     if (!isUsingGSheets()) {
@@ -450,7 +509,7 @@ var TaskManager = (function() {
       if (done >= total) {
         if (success) autoHideExpiredCompleted();
         if (callback) callback(success);
-        try { window.dispatchEvent(new CustomEvent('hiconique:data-refreshed')); } catch (e) {}
+        notifyDataRefreshed_();
       }
     }
 
