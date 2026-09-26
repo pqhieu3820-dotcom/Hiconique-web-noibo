@@ -245,7 +245,11 @@
     }
     if (f.dueToday) tasks = tasks.filter(isDueToday);
     if (f.overdue) tasks = tasks.filter(isOverdue);
-    if (!f.done) tasks = tasks.filter(function (t) { return t.status !== 'completed'; });
+    // 2026-09-26: MẶC ĐỊNH hiện cả task đã hoàn thành (để cột "Hoàn thành" ở Board có
+    // dữ liệu — trước đây bị lọc bỏ hết nên task vừa được duyệt biến mất khỏi Board).
+    // Task hoàn thành từ THÁNG TRƯỚC đã tự ẩn theo TaskManager.isVisibleNow() (reset
+    // theo tháng). Ô "Đã hoàn thành" giờ là bộ lọc thu hẹp: chỉ hiện việc đã hoàn thành.
+    if (f.done) tasks = tasks.filter(function (t) { return t.status === 'completed'; });
     if (state.statusFilter) tasks = tasks.filter(function (t) { return t.status === state.statusFilter; });
 
     tasks.sort(function (a, b) {
