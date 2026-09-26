@@ -381,18 +381,20 @@
     level = normLevel(level === true ? 'luxury' : level);
     var lines = [];
     OPTION_GROUPS.forEach(function (g) {
+      var gnum = parseInt(g.title, 10) || 8; // nhóm "★ Thiết bị điện tử bổ sung" đánh số 8
+      var seq = 0;
       g.items.forEach(function (it) {
         if (it.type === 'toggle') {
           if (state[it.id]) {
             var amt = applyLevel(it, it.price(ctx), level, ctx);
-            if (amt > 0) lines.push({ label: it.label, desc: it.desc || '', amount: amt });
+            if (amt > 0) lines.push({ num: gnum + '.' + (++seq), label: it.label, desc: it.desc || '', amount: amt });
           }
         } else {
           var val = state[it.id];
           var tier = it.tiers.find(function (t) { return t.value === val; });
           if (tier && tier.value !== it.default) {
             var amount = applyLevel(it, tier.price(ctx), level, ctx);
-            if (amount > 0) lines.push({ label: it.label + ' — ' + tier.label, desc: tier.desc || it.desc || '', amount: amount });
+            if (amount > 0) lines.push({ num: gnum + '.' + (++seq), label: it.label + ' — ' + tier.label, desc: tier.desc || it.desc || '', amount: amount });
           }
         }
       });
@@ -412,17 +414,26 @@
   // 4 ngày [khớp chính xác], hoàn thiện bàn giao gộp 3 bước 3 ngày ~9 ngày).
   // HICONIQUE gộp còn 10 bước (thay vì 14) cho gọn — số ngày mỗi bước đã
   // cộng bù phần việc bị gộp.
+  // 2026-09-27: tách từ 10 lên 13 hạng mục cho khớp bảng "Kế hoạch tiến độ thi công" của bản gốc
+  // (mnmldesign.site): thêm Khảo sát đo đạc, Bả matit tách khỏi Đóng trần, và tách "Kê đồ & bàn giao"
+  // thành Sơn dặm vá / Bàn giao kê đồ rời & rèm / Vệ sinh & nghiệm thu. Tổng số ngày mỗi nhóm được
+  // chia sao cho KHÔNG đổi so với bản 10 hạng mục đã hiệu chỉnh (ceiling 9+A/21 = 4+A/42 + 5+A/42;
+  // gia công gỗ 20 = khảo sát 3 + gia công 17; bàn giao 9 = 3+3+3).
   var STAGE_TEMPLATE = [
-    { key: 'demo', name: 'Phá dỡ, đục phá nền & dọn phế thải', phase: 'rough', needs: function (s) { return s.demolition !== '0'; }, days: function (c) { return 7 + Math.round(c.area / 28); } },
-    { key: 'masonry', name: 'Xây tường ngăn, cán nền, chống thấm WC/cầu thang', phase: 'rough', needs: function (s) { return s.demolition !== '0' || s.wcReno || (s.stairReno && s.stairReno !== 'none'); }, days: function (c) { return 8 + Math.round(c.area / 21); } },
-    { key: 'mep', name: 'Đi đường điện nước, hạ tầng kỹ thuật', phase: 'rough', needs: function (s) { return s.electrical !== 'keep' || s.lighting !== 'none' || s.smartHome !== 'none'; }, days: function (c) { return 9 + Math.round(c.area / 28); } },
-    { key: 'ceiling', name: 'Đóng trần thạch cao & sơn bả tường', phase: 'rough', needs: function (s) { return s.ceiling || s.wallPaint; }, days: function (c) { return 9 + Math.round(c.area / 21); } },
+    { key: 'demo', name: 'Phá dỡ tường, đục tẩy nền & dọn phế thải thang hàng', phase: 'rough', needs: function (s) { return s.demolition !== '0'; }, days: function (c) { return 7 + Math.round(c.area / 28); } },
+    { key: 'masonry', name: 'Xây tường ngăn, đổ lanh-tô, trát mác 75 & cán phẳng nền', phase: 'rough', needs: function (s) { return s.demolition !== '0' || s.wcReno || (s.stairReno && s.stairReno !== 'none'); }, days: function (c) { return 8 + Math.round(c.area / 21); } },
+    { key: 'mep', name: 'Đi đường điện âm tường, ống cấp thoát nước & hạ tầng PCCC', phase: 'rough', needs: function (s) { return s.electrical !== 'keep' || s.lighting !== 'none' || s.smartHome !== 'none'; }, days: function (c) { return 9 + Math.round(c.area / 28); } },
+    { key: 'ceiling', name: 'Đóng trần thạch cao chống ẩm giật cấp, gia cố khung xương nẹp Z & khe rèm âm', phase: 'rough', needs: function (s) { return s.ceiling; }, days: function (c) { return 4 + Math.round(c.area / 42); } },
+    { key: 'putty', name: 'Bả matit 2 lớp, xả phẳng bề mặt tường trần & sơn lót kháng kiềm', phase: 'rough', needs: function (s) { return s.wallPaint || s.ceiling; }, days: function (c) { return 5 + Math.round(c.area / 42); } },
     { key: 'floor', name: 'Lát sàn gỗ/gạch & bảo vệ bề mặt', phase: 'rough', needs: function (s) { return s.floor !== 'none'; }, days: function (c) { return 4 + Math.round(c.area / 30); } },
-    { key: 'furnitureShop', name: 'Đo đạc & gia công đồ gỗ tại xưởng', phase: 'finish', needs: function (s) { return s.builtinFurniture !== 'none'; }, days: function () { return 20; } },
-    { key: 'lighting', name: 'Lắp đặt hệ thống đèn & công tắc', phase: 'finish', needs: function (s) { return s.lighting !== 'none'; }, days: function () { return 4; } },
-    { key: 'furnitureInstall', name: 'Vận chuyển & lắp đặt nội thất đồ gỗ', phase: 'finish', needs: function (s) { return s.builtinFurniture !== 'none'; }, days: function (c) { return 9 + Math.round(c.area / 28); } },
-    { key: 'stoneEquip', name: 'Lắp mặt đá bếp, thiết bị bếp/WC', phase: 'finish', needs: function (s) { return s.stone !== 'none' || s.kitchenEquip !== 'none' || s.wcEquip !== 'none'; }, days: function () { return 4; } },
-    { key: 'handover', name: 'Kê đồ rời, lắp rèm, vệ sinh & bàn giao', phase: 'finish', needs: function () { return true; }, days: function () { return 9; } }
+    { key: 'survey', name: 'Khảo sát đo đạc hiện trường chuẩn xác & chốt bản vẽ sản xuất', phase: 'finish', needs: function (s) { return s.builtinFurniture !== 'none'; }, days: function () { return 3; } },
+    { key: 'furnitureShop', name: 'Gia công sản xuất hệ tủ gỗ may đo kịch trần tại xưởng', phase: 'finish', needs: function (s) { return s.builtinFurniture !== 'none'; }, days: function () { return 17; } },
+    { key: 'lighting', name: 'Lắp đặt hệ thống đèn Downlight, Spotlight, led khe nhôm hắt sáng & mặt hạt công tắc', phase: 'finish', needs: function (s) { return s.lighting !== 'none'; }, days: function () { return 4; } },
+    { key: 'furnitureInstall', name: 'Vận chuyển & thi công lắp đặt nội thất đồ gỗ liền tường kịch trần, tủ bếp, vách ốp', phase: 'finish', needs: function (s) { return s.builtinFurniture !== 'none'; }, days: function (c) { return 9 + Math.round(c.area / 28); } },
+    { key: 'stoneEquip', name: 'Gia công lắp đặt mặt đá bàn bếp, chậu rửa nano, bếp từ & phụ kiện kỹ thuật', phase: 'finish', needs: function (s) { return s.stone !== 'none' || s.kitchenEquip !== 'none' || s.wcEquip !== 'none'; }, days: function () { return 4; } },
+    { key: 'touchup', name: 'Sơn dặm vá tường trần nước cuối & căn chỉnh phụ kiện chỉ viền hoàn thiện', phase: 'finish', needs: function () { return true; }, days: function () { return 3; } },
+    { key: 'loose', name: 'Bàn giao kê đồ rời (sofa, bàn ăn, giường) & lắp đặt rèm cửa âm trần', phase: 'finish', needs: function () { return true; }, days: function () { return 3; } },
+    { key: 'clean', name: 'Vệ sinh công nghiệp tinh toàn bộ căn hộ & nghiệm thu bàn giao chìa khóa', phase: 'finish', needs: function () { return true; }, days: function () { return 3; } }
   ];
 
   // Lịch được dựng 1 LẦN DUY NHẤT bằng cách xếp tuần tự từng giai đoạn theo
@@ -436,7 +447,6 @@
 
     var roughStages = STAGE_TEMPLATE.filter(function (s) { return s.phase === 'rough' && s.needs(state); });
     var finishStages = STAGE_TEMPLATE.filter(function (s) { return s.phase === 'finish' && s.needs(state); });
-    if (!roughStages.length && !finishStages.length) finishStages = [STAGE_TEMPLATE[STAGE_TEMPLATE.length - 1]];
 
     var roughDays = roughStages.reduce(function (sum, s) { return sum + s.days(ctx); }, 0);
     var finishDays = finishStages.reduce(function (sum, s) { return sum + s.days(ctx); }, 0);
@@ -448,7 +458,7 @@
       var rowStart = new Date(cursor);
       var rowEnd = addDays(rowStart, Math.max(1, dur - 1));
       cursor = addDays(rowStart, dur);
-      return { num: idx + 1, name: s.name, phase: s.phase, start: rowStart, end: rowEnd };
+      return { num: idx + 1, name: s.name, phase: s.phase, days: dur, start: rowStart, end: rowEnd };
     });
     var roughEndDate = cursor; // ngày kế tiếp sau khi Thô xong
 
@@ -465,7 +475,7 @@
       var rowStart = new Date(cursor);
       var rowEnd = addDays(rowStart, Math.max(1, dur - 1));
       cursor = addDays(rowStart, dur);
-      return { num: roughRows.length + idx + 1, name: s.name, phase: s.phase, start: rowStart, end: rowEnd };
+      return { num: roughRows.length + idx + 1, name: s.name, phase: s.phase, days: dur, start: rowStart, end: rowEnd };
     });
 
     var stageRows = roughRows.concat(finishRows);
@@ -480,6 +490,37 @@
     var roughPct = (roughDays + finishDays) > 0 ? Math.round((roughDays / (roughDays + finishDays)) * 100) : 0;
 
     return { totalDays: totalDays, calendarDays: calendarDays, startDate: startDate, endDate: endDate, roughDays: roughDays, finishDays: finishDays, roughPct: roughPct, stages: stageRows };
+  }
+
+  // ---------- Bảng "Kế hoạch tiến độ thi công" (dùng cho cả màn hình và PDF, đúng bố cục bản gốc) ----------
+  // Mỗi hạng mục: giai đoạn (Thô / Gỗ & Hoàn thiện), thời lượng, thời gian, thanh tiến trình mini đặt theo
+  // vị trí thật trên trục thời gian của cả công trình (cam = Thô, xanh = Gỗ & Hoàn thiện).
+  function scheduleTableHtml(tl) {
+    var t0 = tl.startDate.getTime();
+    var span = 1;
+    tl.stages.forEach(function (s) { span = Math.max(span, (s.end.getTime() - t0) / 86400000 + 1); });
+    var rows = tl.stages.map(function (s) {
+      var left = Math.max(0, (s.start.getTime() - t0) / 86400000) / span * 100;
+      var width = Math.max(1.5, ((s.end.getTime() - s.start.getTime()) / 86400000 + 1) / span * 100);
+      var isRough = s.phase === 'rough';
+      return '<tr>' +
+        '<td class="kt-sch-name">' + s.num + '. ' + escapeHtml(s.name) + '</td>' +
+        '<td><span class="kt-sch-badge">' + (isRough ? 'Thô' : 'Gỗ &amp; Hoàn thiện') + '</span></td>' +
+        '<td class="kt-sch-dur">' + s.days + ' ngày</td>' +
+        '<td class="kt-sch-time">' + fmtDate(s.start) + ' → ' + fmtDate(s.end) + '</td>' +
+        '<td class="kt-sch-track"><div class="kt-sch-bar"><span style="left:' + left.toFixed(2) + '%;width:' + width.toFixed(2) + '%;background:' + (isRough ? '#F97316' : '#3B82F6') + ';"></span></div></td>' +
+      '</tr>';
+    }).join('');
+    return '<table class="kt-sch-table"><thead><tr><th>Hạng mục công việc</th><th>Giai đoạn</th><th>Thời lượng</th><th>Thời gian</th><th>Tiến trình</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  }
+  function scheduleSummaryHtml(tl) {
+    var months = (tl.calendarDays / 30).toFixed(1).replace('.0', '');
+    return '<div class="kt-sch-summary">' +
+      '<div><b>' + tl.totalDays + ' ngày</b><span>THI CÔNG THỰC TẾ</span></div>' +
+      '<div><b>' + tl.calendarDays + ' ngày lịch</b><span>BÀN GIAO (~' + months + ' THÁNG)</span></div>' +
+      '<div><b>' + fmtDate(tl.startDate) + '</b><span>KHỞI CÔNG</span></div>' +
+      '<div class="kt-sch-end"><b>' + fmtDate(tl.endDate) + '</b><span>BÀN GIAO</span></div>' +
+    '</div>';
   }
 
   // ---------- Render kết quả ----------
@@ -520,6 +561,9 @@
     document.getElementById('ktStages').innerHTML = tl.stages.map(function (s) {
       return '<div class="kt-stage"><div class="kt-stage-num">' + s.num + '</div><div><div class="kt-stage-name">' + escapeHtml(s.name) + '</div><div class="kt-stage-date">' + fmtDate(s.start) + ' → ' + fmtDate(s.end) + '</div></div></div>';
     }).join('');
+
+    var schEl = document.getElementById('ktScheduleFull');
+    if (schEl) schEl.innerHTML = scheduleSummaryHtml(tl) + scheduleTableHtml(tl) + '<p class="kt-sch-note">* Toàn bộ thông tin khái toán và kế hoạch tiến độ chỉ mang tính chất tham khảo.</p>';
 
     return { ctx: ctx, state: state, style: style, lines: lines, total: total, perM2: perM2, tl: tl, projectName: projectName, styleLabel: styleLabel };
   }
@@ -604,15 +648,37 @@
   // ---------- In / PDF ----------
   function buildPrintDoc() {
     var result = recalc();
+    var perM2Txt = (result.perM2 / 1e6).toFixed(2);
     var rowsHtml = result.lines.map(function (l) {
-      return '<tr><td>' + escapeHtml(l.label) + (l.desc ? '<br><span style="color:#666;font-size:11px;">' + escapeHtml(l.desc) + '</span>' : '') + '</td><td class="num">' + fmtMoney(l.amount) + '</td></tr>';
+      return '<tr><td class="kt-p-name">' + escapeHtml(l.num + ' ' + l.label) + '</td><td class="kt-p-spec">' + escapeHtml(l.desc || '') + '</td><td class="num kt-p-amt">' + fmtMoney(l.amount) + '</td></tr>';
     }).join('');
-    document.getElementById('ktPrintDoc').innerHTML =
-      '<h1>KHÁI TOÁN NHANH — ' + escapeHtml(result.projectName) + '</h1>' +
-      '<div class="kt-print-meta">' + result.ctx.area + ' m² · ' + result.ctx.bedrooms + ' PN, ' + result.ctx.bathrooms + ' WC · Mức đầu tư: ' + result.styleLabel + ' · Ngày lập: ' + fmtDateFull(new Date()) + '</div>' +
-      '<table><thead><tr><th>Hạng mục</th><th class="num">Thành tiền</th></tr></thead><tbody>' + (rowsHtml || '<tr><td colspan="2">Chưa chọn hạng mục nào</td></tr>') + '</tbody></table>' +
-      '<div class="kt-print-total">TỔNG MỨC ĐẦU TƯ KHÁI TOÁN: ' + fmtMoney(result.total) + '</div>' +
-      '<p style="font-size:11px;color:#666;margin-top:16px;">* Thông tin khái toán chỉ mang tính chất tham khảo, không thay thế báo giá/hợp đồng chính thức. Dự kiến thi công ' + result.tl.totalDays + ' ngày, bàn giao ' + fmtDateFull(result.tl.endDate) + '.</p>';
+    var page1 =
+      '<section class="kt-p-page">' +
+        '<h1>BẢNG KHÁI TOÁN MỨC ĐẦU TƯ</h1>' +
+        '<div class="kt-p-sub">Chủ đầu tư: ' + escapeHtml(result.projectName) + ' | ' + result.ctx.area + ' m² (' + result.ctx.bedrooms + ' PN, ' + result.ctx.bathrooms + ' WC) | Mức đầu tư: ' + result.styleLabel + ' | Suất đầu tư: ' + perM2Txt + ' triệu/m²</div>' +
+        '<div class="kt-p-total"><div><b>TỔNG MỨC ĐẦU TƯ KHÁI TOÁN</b><span>Suất đầu tư trung bình: ' + perM2Txt + ' triệu/m²</span></div><strong>' + fmtMoney(result.total) + '</strong></div>' +
+        '<div class="kt-p-info">' +
+          '<div><b>Chủ đầu tư / Dự án:</b> ' + escapeHtml(result.projectName) + '</div>' +
+          '<div><b>Quy mô diện tích:</b> ' + result.ctx.area + ' m² (' + result.ctx.bedrooms + ' phòng ngủ, ' + result.ctx.bathrooms + ' WC)</div>' +
+          '<div><b>Tổng mức đầu tư:</b> ' + result.styleLabel + '</div>' +
+          '<div><b>Ngày khởi công dự kiến:</b> ' + fmtDateFull(result.tl.startDate) + '</div>' +
+          '<div><b>Đơn giá suất đầu tư nội thất:</b> ' + perM2Txt + ' triệu/m²</div>' +
+          '<div><b>Ngày lập dự toán:</b> ' + fmtDateFull(new Date()) + '</div>' +
+        '</div>' +
+        '<table class="kt-p-table"><thead><tr><th style="width:30%;">HẠNG MỤC</th><th>QUY CÁCH KỸ THUẬT</th><th class="num" style="width:17%;">THÀNH TIỀN</th></tr></thead><tbody>' +
+          (rowsHtml || '<tr><td colspan="3">Chưa chọn hạng mục nào</td></tr>') +
+          '<tr class="kt-p-grand"><td colspan="2">TỔNG MỨC ĐẦU TƯ KHÁI TOÁN TOÀN CÔNG TRÌNH:</td><td class="num">' + fmtMoney(result.total) + '</td></tr>' +
+        '</tbody></table>' +
+        '<p class="kt-p-note">* Thông tin khái toán chỉ mang tính chất tham khảo, không phải quy chuẩn.</p>' +
+      '</section>';
+    var page2 =
+      '<section class="kt-p-page kt-p-break">' +
+        '<h1>KẾ HOẠCH TIẾN ĐỘ THI CÔNG</h1>' +
+        '<div class="kt-p-sub">Quy trình quản lý tiêu chuẩn.</div>' +
+        scheduleSummaryHtml(result.tl) + scheduleTableHtml(result.tl) +
+        '<p class="kt-p-note" style="text-align:center;">* Lưu ý: Toàn bộ thông tin khái toán và kế hoạch tiến độ chỉ mang tính chất tham khảo.</p>' +
+      '</section>';
+    document.getElementById('ktPrintDoc').innerHTML = page1 + page2;
   }
 
   // API cho trang Báo giá dịch vụ (pricing.html): gắn dự án đang chọn ở đầu trang + lấy kết quả để

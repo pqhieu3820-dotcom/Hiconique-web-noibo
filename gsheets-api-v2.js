@@ -891,7 +891,12 @@ function handleRequest(e) {
     } else if (action === 'getScheduleItems') {
       result = getAllData(ss, SHEETS.scheduleItems);
     } else if (action === 'seedScheduleItems') {
-      result = addDataBatch(ss, SHEETS.scheduleItems, JSON.parse(params.data));
+      // 2026-09-27: chỉ nạp mẫu nếu dự án CHƯA có dòng nào (kiểm tra ngay trong lần chạy này) — chặn nạp
+      // trùng khi nhiều trình duyệt/lần thử lại cùng gọi (từng sinh 2×18 dòng cho 1 dự án).
+      var seedItems = JSON.parse(params.data);
+      var seedPid = seedItems && seedItems[0] && seedItems[0].projectId;
+      var seedHas = seedPid && getAllData(ss, SHEETS.scheduleItems).some(function (r) { return r.projectId === seedPid; });
+      result = seedHas ? { skipped: true, reason: 'Dự án đã có đầu việc' } : addDataBatch(ss, SHEETS.scheduleItems, seedItems);
     } else if (action === 'addScheduleItem') {
       result = addData(ss, SHEETS.scheduleItems, JSON.parse(params.data));
     } else if (action === 'updateScheduleItem') {

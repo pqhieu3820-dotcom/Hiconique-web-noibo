@@ -156,17 +156,57 @@
     .kt-scenario-amount { font-family: 'JetBrains Mono', monospace; color: var(--kt-bronze); font-size: 0.8125rem; font-weight: 700; margin-top: 4px; }
     .kt-scenario-actions { display: flex; gap: 6px; margin-top: 8px; }
 
+    /* Bảng "Kế hoạch tiến độ thi công" — dùng chung màn hình + PDF */
+    .kt-sch-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 12px 18px; margin-bottom: 14px; border: 1px solid var(--kt-border); border-radius: 10px; background: var(--kt-bg); }
+    .kt-sch-summary b { display: block; font-size: 1.05rem; color: #B45309; font-weight: 700; }
+    .kt-sch-summary span { display: block; font-size: 0.6875rem; color: var(--kt-muted); text-transform: uppercase; letter-spacing: 0.03em; margin-top: 2px; }
+    .kt-sch-end { text-align: right; }
+    .kt-sch-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+    .kt-sch-table th { text-align: left; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--kt-muted); padding: 8px 10px; background: var(--kt-bg); border-bottom: 1px solid var(--kt-border); }
+    .kt-sch-table td { padding: 9px 10px; border-bottom: 1px solid var(--kt-border); vertical-align: middle; }
+    .kt-sch-name { font-weight: 600; width: 38%; line-height: 1.4; }
+    .kt-sch-badge { display: inline-block; padding: 2px 8px; border: 1px solid var(--kt-border); border-radius: 5px; font-size: 0.6875rem; white-space: nowrap; }
+    .kt-sch-dur, .kt-sch-time { white-space: nowrap; }
+    .kt-sch-track { width: 24%; }
+    .kt-sch-bar { position: relative; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--kt-muted) 22%, transparent); }
+    .kt-sch-bar span { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+    .kt-sch-note { font-size: 0.75rem; color: var(--kt-muted); margin: 12px 0 0; font-style: italic; }
+    @media (max-width: 820px) { .kt-sch-summary { grid-template-columns: repeat(2, 1fr); } .kt-sch-table { display: block; overflow-x: auto; } }
+
+    /* PDF khái toán (2 trang: bảng khái toán + kế hoạch tiến độ) — chỉ hiện khi in từ tab này */
     .kt-print-doc { display: none; }
     @media print {
+      @page { size: A4; margin: 14mm; }
       body.kt-printing * { visibility: hidden; }
       body.kt-printing .kt-print-doc, body.kt-printing .kt-print-doc * { visibility: visible; }
-      body.kt-printing .kt-print-doc { display: block !important; position: absolute; top: 0; left: 0; width: 100%; padding: 24px; background: #fff; color: #111; }
-      .kt-print-doc table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-      .kt-print-doc th, .kt-print-doc td { border: 1px solid #ccc; padding: 7px 9px; font-size: 12.5px; text-align: left; }
-      .kt-print-doc th.num, .kt-print-doc td.num { text-align: right; }
-      .kt-print-doc h1 { font-size: 19px; margin: 0 0 4px; }
-      .kt-print-doc .kt-print-meta { font-size: 12.5px; color: #444; margin-bottom: 4px; }
-      .kt-print-doc .kt-print-total { margin-top: 12px; text-align: right; font-size: 15px; font-weight: 700; }
+      body.kt-printing .kt-print-doc { display: block !important; position: absolute; top: 0; left: 0; width: 100%; background: #fff; color: #111; font-family: 'Inter', Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .kt-print-doc .kt-p-page { padding: 0; }
+      .kt-print-doc .kt-p-break { break-before: page; page-break-before: always; }
+      .kt-print-doc h1 { font-size: 22px; font-weight: 800; letter-spacing: 0.01em; margin: 0 0 6px; color: #111; }
+      .kt-print-doc .kt-p-sub { font-size: 12.5px; color: #333; line-height: 1.5; padding-bottom: 12px; border-bottom: 1px solid #ddd; margin-bottom: 14px; }
+      .kt-print-doc .kt-p-total { display: flex; align-items: center; justify-content: space-between; border: 1.5px solid #E0A82E; border-radius: 12px; padding: 16px 22px; margin-bottom: 14px; }
+      .kt-print-doc .kt-p-total b { display: block; font-size: 15px; letter-spacing: 0.04em; }
+      .kt-print-doc .kt-p-total span { display: block; font-size: 12px; margin-top: 4px; color: #333; }
+      .kt-print-doc .kt-p-total strong { font-size: 30px; font-weight: 900; }
+      .kt-print-doc .kt-p-info { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; padding: 14px 18px; margin-bottom: 14px; border: 1px solid #ddd; border-radius: 10px; background: #F5F7FB; font-size: 12px; }
+      .kt-print-doc .kt-p-table { width: 100%; border-collapse: collapse; }
+      .kt-print-doc .kt-p-table th { text-align: left; font-size: 11.5px; letter-spacing: 0.03em; padding: 9px 10px; background: #EEF1F7; border-bottom: 1px solid #ddd; }
+      .kt-print-doc .kt-p-table td { padding: 10px; border-bottom: 1px solid #e3e3e3; vertical-align: middle; font-size: 12.5px; }
+      .kt-print-doc .kt-p-table tr { break-inside: avoid; }
+      .kt-print-doc .kt-p-name { font-weight: 700; font-size: 12px; }
+      .kt-print-doc .kt-p-spec { font-size: 13px; line-height: 1.45; }
+      .kt-print-doc .kt-p-table th.num, .kt-print-doc .kt-p-table td.num { text-align: right; white-space: nowrap; }
+      .kt-print-doc .kt-p-grand td { background: #FFFBE6; font-weight: 800; font-size: 13.5px; border-top: 1px solid #ddd; }
+      .kt-print-doc .kt-p-note { font-size: 11.5px; color: #333; font-style: italic; margin-top: 8px; }
+      .kt-print-doc .kt-sch-summary { border-color: #cfd6e4; background: #F5F7FB; }
+      .kt-print-doc .kt-sch-summary b { color: #B45309; font-size: 16px; }
+      .kt-print-doc .kt-sch-summary span { color: #444; }
+      .kt-print-doc .kt-sch-table { font-size: 12.5px; }
+      .kt-print-doc .kt-sch-table th { background: #EEF1F7; color: #111; font-size: 11.5px; }
+      .kt-print-doc .kt-sch-table td { border-bottom: 1px solid #e3e3e3; padding: 9px 10px; }
+      .kt-print-doc .kt-sch-table tr { break-inside: avoid; }
+      .kt-print-doc .kt-sch-badge { border-color: #888; color: #111; }
+      .kt-print-doc .kt-sch-bar { background: #E5E8EF; }
     }
 
     @media (max-width: 1180px) { .kt-grid { grid-template-columns: 290px minmax(0, 1fr); } .kt-grid > .kt-col:last-child { grid-column: 1 / -1; } }
@@ -838,6 +878,10 @@
         </div>
       </div>
     </div>
+    <div class="kt-card" style="margin-top:18px;">
+      <div class="kt-card-head"><div class="kt-card-title">Kế hoạch tiến độ thi công</div></div>
+      <div class="kt-card-body" id="ktScheduleFull"></div>
+    </div>
     <div class="kt-print-doc" id="ktPrintDoc"></div>
     </div>
 
@@ -1330,12 +1374,24 @@
     // chỉ dùng trong trang này, không cần đồng bộ real-time với trang khác — gọi
     // trực tiếp fetch() y hệt cách callGSheetsAPI làm, đỡ phải đụng vào task-data.js
     // (file dùng chung rất nhiều trang khác).
-    function gsFetchList(action, callback) {
-      if (!provinceApiReady()) { callback([]); return; }
+    // 2026-09-27: callback(list, ok). ok=false khi KHÔNG tải được (mất mạng, Apps Script bận/quá tải
+    // "quá nhiều tập lệnh chạy đồng thời", trả về không phải mảng...) — TRƯỚC ĐÂY lỗi bị coi là "danh
+    // sách rỗng" nên tab Tiến độ tưởng dự án chưa có đầu việc và nạp mẫu 18 dòng chồng lên dữ liệu thật
+    // (đã gây trùng dòng + dòng trống trên Sheet). Nay tự thử lại tối đa 3 lần rồi mới báo lỗi.
+    function gsFetchList(action, callback, attempt) {
+      attempt = attempt || 0;
+      if (!provinceApiReady()) { callback([], false); return; }
       fetch(GSHEETS_CONFIG.API_URL + '?action=' + encodeURIComponent(action), { redirect: 'follow' })
         .then(function (r) { return r.json(); })
-        .then(function (data) { callback(Array.isArray(data) ? data : []); })
-        .catch(function (e) { console.error(action, e); callback([]); });
+        .then(function (data) {
+          if (!Array.isArray(data)) throw new Error((data && data.error) || 'Phản hồi không hợp lệ');
+          callback(data, true);
+        })
+        .catch(function (e) {
+          if (attempt < 2) { setTimeout(function () { gsFetchList(action, callback, attempt + 1); }, 1500 * (attempt + 1)); return; }
+          console.error(action, e);
+          callback([], false);
+        });
     }
     function gsWrite(action, data, id) {
       if (typeof Offline !== 'undefined' && Offline.guard('lưu thay đổi')) return Promise.resolve({ error: 'offline' });
@@ -1962,22 +2018,38 @@
       { name: 'Vệ sinh, chạy thử, bàn giao', durationDays: 7 }
     ];
     var scheduleList = [];
+    var scheduleSeeding = {};
+    function scheduleMessage(html) {
+      document.getElementById('schRows').innerHTML = '<tr><td colspan="8" class="pr-empty">' + html + '</td></tr>';
+    }
     function loadSchedule() {
       if (!activeToolProjectId) return;
-      gsFetchList('getScheduleItems', function (list) {
-        scheduleList = list.filter(function (r) { return r.projectId === activeToolProjectId; }).sort(function (a, b) { return (Number(a.seq) || 0) - (Number(b.seq) || 0); });
+      var forProject = activeToolProjectId;
+      scheduleMessage('Đang tải tiến độ…');
+      gsFetchList('getScheduleItems', function (list, ok) {
+        if (forProject !== activeToolProjectId) return; // người dùng đã đổi dự án trong lúc chờ
+        if (!ok) {
+          scheduleMessage('Không tải được tiến độ từ Google Sheet (máy chủ đang bận hoặc mất mạng). <button type="button" class="pr-btn pr-btn-ghost pr-btn-sm" id="schRetryBtn">Tải lại</button>');
+          var rb = document.getElementById('schRetryBtn'); if (rb) rb.addEventListener('click', loadSchedule);
+          return; // KHÔNG nạp mẫu khi chưa đọc được dữ liệu thật
+        }
+        scheduleList = list.filter(function (r) { return r.projectId === forProject; }).sort(function (a, b) { return (Number(a.seq) || 0) - (Number(b.seq) || 0); });
         if (!scheduleList.length) { seedSchedule(); return; }
         renderSchedule();
       });
     }
     function seedSchedule() {
+      if (scheduleSeeding[activeToolProjectId]) return; // đang nạp mẫu cho dự án này rồi — tránh nạp chồng
+      scheduleSeeding[activeToolProjectId] = true;
+      scheduleMessage('Đang tạo 18 đầu việc mẫu cho dự án…');
       // Dự án lần đầu mở tab này chưa có đầu việc nào — nạp sẵn 18 đầu việc mẫu.
       // PHẢI ghi bằng 1 lệnh seedScheduleItems (1 lần thực thi Apps Script, ghi
       // nguyên khối) — KHÔNG gọi addScheduleItem 18 lần song song: đã thử và bị
       // đua ghi, rớt mất hơn nửa số dòng do nhiều lần thực thi cùng đọc/ghi "dòng
       // cuối" của sheet đồng thời.
       var items = SCHEDULE_SEED.map(function (s, i) { return { projectId: activeToolProjectId, seq: i + 1, name: s.name, durationDays: s.durationDays, status: 'Chưa bắt đầu' }; });
-      gsWrite('seedScheduleItems', items).then(function () { loadSchedule(); }).catch(function (e) { console.error(e); });
+      var seedFor = activeToolProjectId;
+      gsWrite('seedScheduleItems', items).then(function () { scheduleSeeding[seedFor] = false; loadSchedule(); }).catch(function (e) { scheduleSeeding[seedFor] = false; console.error(e); scheduleMessage('Không tạo được đầu việc mẫu. <button type="button" class="pr-btn pr-btn-ghost pr-btn-sm" id="schRetryBtn">Thử lại</button>'); var rb = document.getElementById('schRetryBtn'); if (rb) rb.addEventListener('click', loadSchedule); });
     }
     function renderSchedule() {
       document.getElementById('schRows').innerHTML = scheduleList.map(function (s) {
