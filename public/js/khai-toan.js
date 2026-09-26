@@ -361,24 +361,37 @@
   // đá +25.000.000 — các hạng mục còn lại kể cả sơn bả, sàn, điện, thiết bị
   // bếp, rèm... giữ NGUYÊN giá dù đổi style). Mỗi item khai báo tối đa 1
   // trong 2 cơ chế: `styleMult` (nhân) hoặc `styleAdd(ctx)` (cộng thêm).
-  function computeLineItems(ctx, state, isLuxury) {
+  // 2026-09-27: "Phong cách" đổi thành TỔNG MỨC ĐẦU TƯ 3 bậc: Tiết kiệm / Tiêu chuẩn / Cao cấp.
+  // Tiêu chuẩn = giá nền; Cao cấp = bộ hệ số Luxury đã đo từ bản gốc (thạch cao ×1.2, đèn ×1.3, đồ rời
+  // ×1.2, đồ gỗ +650k/m², đá +25tr); Tiết kiệm = ƯỚC TÍNH nội bộ, chưa đo từ bản gốc: chỉ hạ 15% các
+  // hạng mục nhạy cảm với mức đầu tư nói trên (chọn vật liệu/thiết bị phổ thông), phần còn lại giữ nguyên.
+  var ECONOMY_FACTOR = 0.85;
+  var LEVEL_LABELS = { economy: 'Tiết kiệm', standard: 'Tiêu chuẩn', luxury: 'Cao cấp' };
+  function normLevel(v) { return v === 'economy' || v === 'luxury' ? v : 'standard'; } // 'modern' (cũ) = Tiêu chuẩn
+  function applyLevel(it, amt, level, ctx) {
+    if (level === 'luxury') {
+      if (it.styleMult) amt *= it.styleMult;
+      if (it.styleAdd) amt += it.styleAdd(ctx);
+    } else if (level === 'economy' && (it.styleMult || it.styleAdd)) {
+      amt *= ECONOMY_FACTOR;
+    }
+    return amt;
+  }
+  function computeLineItems(ctx, state, level) {
+    level = normLevel(level === true ? 'luxury' : level);
     var lines = [];
     OPTION_GROUPS.forEach(function (g) {
       g.items.forEach(function (it) {
         if (it.type === 'toggle') {
           if (state[it.id]) {
-            var amt = it.price(ctx);
-            if (isLuxury && it.styleMult) amt *= it.styleMult;
-            if (isLuxury && it.styleAdd) amt += it.styleAdd(ctx);
+            var amt = applyLevel(it, it.price(ctx), level, ctx);
             if (amt > 0) lines.push({ label: it.label, desc: it.desc || '', amount: amt });
           }
         } else {
           var val = state[it.id];
           var tier = it.tiers.find(function (t) { return t.value === val; });
           if (tier && tier.value !== it.default) {
-            var amount = tier.price(ctx);
-            if (isLuxury && it.styleMult) amount *= it.styleMult;
-            if (isLuxury && it.styleAdd) amount += it.styleAdd(ctx);
+            var amount = applyLevel(it, tier.price(ctx), level, ctx);
             if (amount > 0) lines.push({ label: it.label + ' — ' + tier.label, desc: tier.desc || it.desc || '', amount: amount });
           }
         }
@@ -387,8 +400,8 @@
     return lines;
   }
 
-  function computeTotal(ctx, state, isLuxury) {
-    return computeLineItems(ctx, state, isLuxury).reduce(function (sum, l) { return sum + l.amount; }, 0);
+  function computeTotal(ctx, state, level) {
+    return computeLineItems(ctx, state, level).reduce(function (sum, l) { return sum + l.amount; }, 0);
   }
 
   // ---------- Tiến độ dự kiến ----------
@@ -473,15 +486,14 @@
   function recalc() {
     var ctx = getCtx();
     var state = getState();
-    var style = document.getElementById('ktStyle').value;
-    var isLuxury = style === 'luxury';
-    var lines = computeLineItems(ctx, state, isLuxury);
+    var style = normLevel(document.getElementById('ktStyle').value);
+    var lines = computeLineItems(ctx, state, style);
     var total = lines.reduce(function (s, l) { return s + l.amount; }, 0);
     var perM2 = ctx.area ? total / ctx.area : 0;
 
     var projectName = document.getElementById('ktProjectName').value.trim() || 'Dự án chưa đặt tên';
-    var styleLabel = style === 'luxury' ? 'Hiện đại Luxury' : 'Hiện đại';
-    document.getElementById('ktSummaryMeta').innerHTML = '<b>' + escapeHtml(projectName) + '</b> · ' + ctx.area + ' m² (' + ctx.bedrooms + ' PN, ' + ctx.bathrooms + ' WC) · Phong cách: ' + styleLabel;
+    var styleLabel = LEVEL_LABELS[style];
+    document.getElementById('ktSummaryMeta').innerHTML = '<b>' + escapeHtml(projectName) + '</b> · ' + ctx.area + ' m² (' + ctx.bedrooms + ' PN, ' + ctx.bathrooms + ' WC) · Mức đầu tư: ' + styleLabel;
     document.getElementById('ktTotalSub').textContent = 'Suất đầu tư trung bình: ' + (perM2 / 1e6).toFixed(2).replace('.', ',') + ' triệu/m²';
     document.getElementById('ktTotalValue').textContent = fmtMoney(total);
     document.getElementById('ktGrandTotal').textContent = fmtMoney(total);
@@ -559,7 +571,7 @@
         document.getElementById('ktArea').value = sc.area || 80;
         document.getElementById('ktBedrooms').value = sc.bedrooms || 2;
         document.getElementById('ktBathrooms').value = sc.bathrooms || 2;
-        document.getElementById('ktStyle').value = sc.style || 'modern';
+        document.getElementById('ktStyle').value = normLevel(sc.style);
         if (sc.startDate) document.getElementById('ktStartDate').value = sc.startDate;
         setState(sc.state || {});
       });
@@ -597,7 +609,7 @@
     }).join('');
     document.getElementById('ktPrintDoc').innerHTML =
       '<h1>KHÁI TOÁN NHANH — ' + escapeHtml(result.projectName) + '</h1>' +
-      '<div class="kt-print-meta">' + result.ctx.area + ' m² · ' + result.ctx.bedrooms + ' PN, ' + result.ctx.bathrooms + ' WC · Phong cách: ' + result.styleLabel + ' · Ngày lập: ' + fmtDateFull(new Date()) + '</div>' +
+      '<div class="kt-print-meta">' + result.ctx.area + ' m² · ' + result.ctx.bedrooms + ' PN, ' + result.ctx.bathrooms + ' WC · Mức đầu tư: ' + result.styleLabel + ' · Ngày lập: ' + fmtDateFull(new Date()) + '</div>' +
       '<table><thead><tr><th>Hạng mục</th><th class="num">Thành tiền</th></tr></thead><tbody>' + (rowsHtml || '<tr><td colspan="2">Chưa chọn hạng mục nào</td></tr>') + '</tbody></table>' +
       '<div class="kt-print-total">TỔNG MỨC ĐẦU TƯ KHÁI TOÁN: ' + fmtMoney(result.total) + '</div>' +
       '<p style="font-size:11px;color:#666;margin-top:16px;">* Thông tin khái toán chỉ mang tính chất tham khảo, không thay thế báo giá/hợp đồng chính thức. Dự kiến thi công ' + result.tl.totalDays + ' ngày, bàn giao ' + fmtDateFull(result.tl.endDate) + '.</p>';
@@ -635,7 +647,7 @@
       document.getElementById('ktArea').value = 80;
       document.getElementById('ktBedrooms').value = 2;
       document.getElementById('ktBathrooms').value = 2;
-      document.getElementById('ktStyle').value = 'modern';
+      document.getElementById('ktStyle').value = 'standard';
       document.getElementById('ktStartDate').value = new Date().toISOString().slice(0, 10);
       setState({});
     });

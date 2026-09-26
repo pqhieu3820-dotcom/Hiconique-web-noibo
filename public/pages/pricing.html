@@ -278,8 +278,8 @@
         <div><span class="pr-field-label">Diện tích tum (m²)</span><input type="number" class="pr-input" id="siTum" min="0" step="0.1" placeholder="0"></div>
         <div><span class="pr-field-label">Số phòng ngủ</span><input type="number" class="pr-input" id="siBedrooms" min="0" step="1" placeholder="VD: 3"></div>
         <div><span class="pr-field-label">Số phòng vệ sinh (WC)</span><input type="number" class="pr-input" id="siBathrooms" min="0" step="1" placeholder="VD: 2"></div>
-        <div><span class="pr-field-label">Phong cách thiết kế</span>
-          <select class="pr-quote-select" id="siStyle"><option value="modern">Hiện đại</option><option value="luxury">Hiện đại Luxury</option></select></div>
+        <div><span class="pr-field-label">Tổng mức đầu tư</span>
+          <select class="pr-quote-select" id="siStyle"><option value="economy">Tiết kiệm</option><option value="standard" selected>Tiêu chuẩn</option><option value="luxury">Cao cấp</option></select></div>
         <div><span class="pr-field-label">Ngày khởi công dự kiến</span><input type="date" class="pr-input" id="siStartDate"></div>
         <div class="pr-site-summary" id="siSummary"></div>
       </div>
@@ -763,12 +763,13 @@
               </div>
             </div>
             <div class="kt-field">
-              <label class="kt-label">Phong cách thiết kế</label>
+              <label class="kt-label">Tổng mức đầu tư</label>
               <select class="kt-select" id="ktStyle">
-                <option value="modern">Hiện đại</option>
-                <option value="luxury">Hiện đại Luxury</option>
+                <option value="economy">Tiết kiệm</option>
+                <option value="standard" selected>Tiêu chuẩn</option>
+                <option value="luxury">Cao cấp</option>
               </select>
-              <p class="kt-opt-desc" style="margin-top:6px;">Luxury chỉ đội giá trần thạch cao, đèn, đồ rời, đồ gỗ liền tường &amp; đá — các hạng mục còn lại (sơn bả, sàn, điện, thiết bị, rèm...) giữ nguyên giá dù đổi phong cách.</p>
+              <p class="kt-opt-desc" style="margin-top:6px;">Tiêu chuẩn là giá nền. Cao cấp đội giá trần thạch cao, đèn, đồ rời, đồ gỗ liền tường &amp; đá; Tiết kiệm (ước tính) hạ khoảng 15% cho đúng các hạng mục đó — sơn bả, sàn, điện, thiết bị, rèm... giữ nguyên giá.</p>
             </div>
           </div>
         </div>
@@ -1466,7 +1467,7 @@
       try { saved = JSON.parse(localStorage.getItem(siKey()) || 'null'); } catch (e) {}
       Object.keys(SITE_FIELDS).forEach(function (id) {
         var el = document.getElementById(id);
-        if (saved && saved[id] !== undefined) el.value = saved[id];
+        if (saved && saved[id] !== undefined) el.value = (id === 'siStyle' && saved[id] === 'modern') ? 'standard' : saved[id];
         else if (!saved) {
           // dự án chưa từng lưu: lấy giá trị hiện có ở tab con (mặc định của từng tab) làm điểm bắt đầu
           var src = document.getElementById(SITE_FIELDS[id][0]);
