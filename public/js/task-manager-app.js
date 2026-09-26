@@ -721,6 +721,10 @@
     const dailyTasks = task.dailyTasks || [];
     const todayCap = TaskManager.getTodayProgressCap ? TaskManager.getTodayProgressCap(taskId) : 100;
     const todayStartPct = Math.min(todayProgress.progress, todayCap);
+    // Thanh kéo theo THANG TỔNG 0–100%: núm ở mốc = % các ngày trước + % hôm nay (phần các ngày
+    // trước không kéo lùi được); lưu = mốc núm trừ phần các ngày trước. Đồng bộ với projects.js.
+    const otherDays = 100 - todayCap;
+    const sliderStart = otherDays + todayStartPct;
 
     // 2026-09-21: quy trình duyệt việc — xem hàm nào hiện nút gì:
     // pending -> người được giao tự "Xác nhận nhận việc" (confirmTaskAssignment).
@@ -815,16 +819,13 @@
 
         <div style="margin-bottom: 12px;">
           <label style="font-size: 0.75rem; color: var(--color-text-muted); display: block; margin-bottom: 4px;">Hôm nay làm thêm được bao nhiêu % (của cả việc)?</label>
-          <div style="display:flex; align-items:center; gap:0;">
-            <input type="range" id="dailyProgressInput" min="0" max="${todayCap}" value="${todayStartPct}" style="flex:1; min-width:0;">
-            ${todayCap < 100 ? `<div style="width:${100 - todayCap}%; flex-shrink:0; height:6px; background:var(--color-border-strong); border-radius:0 3px 3px 0;" title="Các ngày khác đã cộng ${100 - todayCap}% — hôm nay chỉ còn tối đa ${todayCap}%"></div>` : ''}
-          </div>
+          <input type="range" id="dailyProgressInput" min="0" max="100" step="1" value="${sliderStart}" data-others="${otherDays}" style="width:100%; height:28px; margin:0; background:transparent; --others:${otherDays}%; --val:${sliderStart}%; --dp-bg:linear-gradient(to right, rgba(120,90,45,.55) 0 var(--others), var(--color-bronze) var(--others) var(--val), var(--color-border) var(--val) 100%);">
           <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--color-text-muted);">
             <span>0%</span>
-            <span id="dailyProgressValue" style="font-weight: 600; color: var(--color-bronze);">${todayStartPct}%</span>
-            <span>${todayCap}%</span>
+            <span><span id="dailyProgressValue" style="font-weight: 600; color: var(--color-bronze);">${sliderStart}%</span> tổng</span>
+            <span>100%</span>
           </div>
-          ${todayCap < 100 ? `<p style="font-size:0.6875rem; color:var(--color-text-muted); margin:4px 0 0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px;flex-shrink:0;vertical-align:-1px;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Các ngày khác đã cộng ${100 - todayCap}% — hôm nay tối đa nhập thêm ${todayCap}%.</p>` : ''}
+          <p style="font-size:0.6875rem; color:var(--color-text-muted); margin:4px 0 0;">${otherDays > 0 ? 'Các ngày trước đã đạt ' + otherDays + '% (không kéo lùi được). ' : ''}Hôm nay làm thêm: <strong id="dailyProgressToday" style="color:var(--color-bronze);">+${todayStartPct}%</strong> (tối đa +${todayCap}%).</p>
         </div>
 
         <div style="margin-bottom: 12px;">
@@ -867,13 +868,19 @@
 
       if (progressInput && progressValue) {
         progressInput.addEventListener('input', function() {
+          var others = Number(this.getAttribute('data-others')) || 0;
+          if (Number(this.value) < others) this.value = others;
           progressValue.textContent = this.value + '%';
+          this.style.setProperty('--val', this.value + '%');
+          var todayEl = document.getElementById('dailyProgressToday');
+          if (todayEl) todayEl.textContent = '+' + (Number(this.value) - others) + '%';
         });
       }
 
       if (saveBtn) {
         saveBtn.addEventListener('click', function() {
-          var progress = document.getElementById('dailyProgressInput').value;
+          var progressEl = document.getElementById('dailyProgressInput');
+          var progress = Math.max(0, Number(progressEl.value) - (Number(progressEl.getAttribute('data-others')) || 0)); // % làm thêm riêng hôm nay
           var note = document.getElementById('dailyNoteInput').value;
           TaskManager.addDailyProgress(taskId, progress, note);
           showToast('Đã lưu tiến độ!', true);

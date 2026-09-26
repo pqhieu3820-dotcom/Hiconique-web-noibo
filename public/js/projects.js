@@ -1530,6 +1530,10 @@
     var dailyTasks = task.dailyTasks || [];
     var todayCap = (typeof TaskManager !== 'undefined' && TaskManager.getTodayProgressCap) ? TaskManager.getTodayProgressCap(taskId) : 100;
     var todayStartPct = Math.min(todayProgress.progress, todayCap);
+    // Thanh kéo theo THANG TỔNG (0–100%): núm nằm ở mốc = % các ngày trước + % hôm nay,
+    // phần các ngày trước (sọc) không kéo lùi được. Lưu = mốc núm trừ phần các ngày trước.
+    var otherDays = 100 - todayCap;
+    var sliderStart = otherDays + todayStartPct;
 
     document.getElementById('detailTitle').textContent = task.title;
 
@@ -1604,13 +1608,13 @@
       +     '<div class="dps-bar"><span style="width:' + todayStartPct + '%"></span></div>'
       +   '</div>'
       +   '<div class="dps-slider-row">'
-      +     '<div class="dps-slider-wrap" id="dpSliderWrap" style="--val:' + todayStartPct + '%;--cap:' + todayCap + '%">'
-      +       '<div class="dps-slider-track"><span class="dps-slider-fill"></span>' + (todayCap < 100 ? '<span class="dps-slider-lock" title="Các ngày khác đã cộng ' + (100 - todayCap) + '% — hôm nay chỉ còn tối đa ' + todayCap + '%"></span>' : '') + '</div>'
-      +       '<input type="range" id="dpSlider" min="0" max="100" step="1" value="' + todayStartPct + '" aria-label="Tiến độ hôm nay" />'
+      +     '<div class="dps-slider-wrap" id="dpSliderWrap" style="--others:' + otherDays + '%;--val:' + sliderStart + '%">'
+      +       '<div class="dps-slider-track">' + (otherDays > 0 ? '<span class="dps-slider-lock" title="Các ngày khác đã cộng ' + otherDays + '%"></span>' : '') + '<span class="dps-slider-fill"></span></div>'
+      +       '<input type="range" id="dpSlider" min="0" max="100" step="1" value="' + sliderStart + '" aria-label="Tổng tiến độ sau hôm nay" />'
       +     '</div>'
-      +     '<span id="dpValue">' + todayStartPct + '%</span>'
+      +     '<span id="dpValue">' + sliderStart + '%</span>'
       +   '</div>'
-      +   (todayCap < 100 ? '<p style="font-size:0.6875rem; color:var(--color-text-muted); margin:4px 0 0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px;flex-shrink:0;vertical-align:-1px;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Các ngày khác đã cộng ' + (100 - todayCap) + '% — hôm nay tối đa nhập thêm ' + todayCap + '%.</p>' : '')
+      +   '<p id="dpHint" class="dps-hint">' + (otherDays > 0 ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px;flex-shrink:0;vertical-align:-1px;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Các ngày trước đã đạt ' + otherDays + '% (phần sọc, không kéo lùi được). ' : '') + 'Hôm nay làm thêm: <strong id="dpToday">+' + todayStartPct + '%</strong> (tối đa +' + todayCap + '%).</p>'
       +   '<div class="dps-note">'
       +     '<label><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;vertical-align:-2px;"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg> Đã làm gì hôm nay?</label>'
       +     '<textarea id="dpNote" placeholder="Mô tả công việc đã làm hôm nay...">' + escapeHtml(todayProgress.note || '') + '</textarea>'
@@ -1632,17 +1636,19 @@
       var valueEl = document.getElementById('dpValue');
       if (slider && valueEl) {
         slider.addEventListener('input', function () {
-          // Vùng bị khoá (các ngày khác đã cộng): kéo quá trần thì kẹp lại đúng trần
-          if (Number(this.value) > todayCap) this.value = todayCap;
+          // Không cho kéo lùi dưới phần các ngày trước đã cộng
+          if (Number(this.value) < otherDays) this.value = otherDays;
           valueEl.textContent = this.value + '%';
           var wrap = document.getElementById('dpSliderWrap');
           if (wrap) wrap.style.setProperty('--val', this.value + '%');
+          var todayEl = document.getElementById('dpToday');
+          if (todayEl) todayEl.textContent = '+' + (Number(this.value) - otherDays) + '%';
         });
       }
       var saveBtn = document.getElementById('dpSaveBtn');
       if (saveBtn) {
         saveBtn.addEventListener('click', function () {
-          var progress = document.getElementById('dpSlider').value;
+          var progress = Math.max(0, Number(document.getElementById('dpSlider').value) - otherDays); // % làm thêm riêng hôm nay
           var note = document.getElementById('dpNote').value;
           if (typeof TaskManager !== 'undefined' && TaskManager.addDailyProgress) {
             TaskManager.addDailyProgress(taskId, progress, note);
