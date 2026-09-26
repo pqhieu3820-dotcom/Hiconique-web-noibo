@@ -1599,9 +1599,11 @@
       +     '<div class="dps-bar-row"><span>Tiến độ hôm nay: <strong style="color:var(--color-bronze)">' + todayStartPct + '%</strong></span><span>Tổng: <strong>' + (task.progress || 0) + '%</strong></span></div>'
       +     '<div class="dps-bar"><span style="width:' + todayStartPct + '%"></span></div>'
       +   '</div>'
-      +   '<div class="dps-slider-row" style="display:flex; align-items:center; gap:0;">'
-      +     '<input type="range" id="dpSlider" min="0" max="' + todayCap + '" value="' + todayStartPct + '" style="flex:1; min-width:0;" />'
-      +     (todayCap < 100 ? '<div class="dps-slider-lock" style="width:' + (100 - todayCap) + '%; flex-shrink:0; height:6px; background:var(--color-border-strong); border-radius:0 3px 3px 0;" title="Các ngày khác đã cộng ' + (100 - todayCap) + '% — hôm nay chỉ còn tối đa ' + todayCap + '%"></div>' : '')
+      +   '<div class="dps-slider-row">'
+      +     '<div class="dps-slider-wrap" id="dpSliderWrap" style="--val:' + todayStartPct + '%;--cap:' + todayCap + '%">'
+      +       '<div class="dps-slider-track"><span class="dps-slider-fill"></span>' + (todayCap < 100 ? '<span class="dps-slider-lock" title="Các ngày khác đã cộng ' + (100 - todayCap) + '% — hôm nay chỉ còn tối đa ' + todayCap + '%"></span>' : '') + '</div>'
+      +       '<input type="range" id="dpSlider" min="0" max="100" step="1" value="' + todayStartPct + '" aria-label="Tiến độ hôm nay" />'
+      +     '</div>'
       +     '<span id="dpValue">' + todayStartPct + '%</span>'
       +   '</div>'
       +   (todayCap < 100 ? '<p style="font-size:0.6875rem; color:var(--color-text-muted); margin:4px 0 0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px;flex-shrink:0;vertical-align:-1px;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Các ngày khác đã cộng ' + (100 - todayCap) + '% — hôm nay tối đa nhập thêm ' + todayCap + '%.</p>' : '')
@@ -1626,7 +1628,11 @@
       var valueEl = document.getElementById('dpValue');
       if (slider && valueEl) {
         slider.addEventListener('input', function () {
+          // Vùng bị khoá (các ngày khác đã cộng): kéo quá trần thì kẹp lại đúng trần
+          if (Number(this.value) > todayCap) this.value = todayCap;
           valueEl.textContent = this.value + '%';
+          var wrap = document.getElementById('dpSliderWrap');
+          if (wrap) wrap.style.setProperty('--val', this.value + '%');
         });
       }
       var saveBtn = document.getElementById('dpSaveBtn');
