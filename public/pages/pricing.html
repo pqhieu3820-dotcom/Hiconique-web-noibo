@@ -67,6 +67,10 @@
     .pr-totals-row input { width: 80px; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--pr-border); background: var(--pr-bg); color: var(--pr-text); font-family: 'JetBrains Mono', monospace; font-size: 0.8125rem; text-align: right; }
 
     .pr-toolbar { display: flex; gap: 10px; flex-wrap: wrap; }
+    /* Hàng "Tạo dự án" + "Chọn dự án" ở đầu trang (áp dụng cho mọi tab) */
+    .pr-project-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+    .pr-project-pick { display: flex; align-items: center; gap: 10px; }
+    .pr-project-hint { font-size: 0.75rem; color: var(--color-text-muted); }
 
     /* task-manager.css và projects.css cùng định nghĩa .modal-overlay nhưng
        theo 2 quy ước khác nhau (task-manager.css cần thêm class .active, còn
@@ -139,8 +143,13 @@
     <h1 class="subpage-title">Báo giá <span class="subpage-title-italic">dịch vụ</span></h1>
     <p class="subpage-lede">Danh mục đơn giá dùng chung + soạn báo giá cho khách — nhập số lượng, đơn giá tự nhảy tổng tiền, xuất Excel hoặc PDF để gửi khách.</p>
 
-    <div style="margin-bottom:20px;">
+    <div class="pr-project-row">
       <button type="button" class="pr-btn pr-btn-primary pr-btn-sm" id="btnAddProjectHere" hidden>+ Tạo dự án</button>
+      <div class="pr-project-pick">
+        <span class="pr-field-label" style="margin:0;white-space:nowrap;">Chọn dự án</span>
+        <select class="pr-quote-select" id="prToolProjectSelect" style="min-width:260px;" title="Chọn dự án — tự điền tỉnh/thành (đơn giá theo tỉnh), tên công trình, khách hàng cho các tab bên dưới"></select>
+      </div>
+      <span class="pr-project-hint" id="prProjectHint"></span>
     </div>
 
     <!-- Modal tạo dự án — ĐÚNG y hệt modal ở trang Dự án (cùng id/class, dùng
@@ -390,11 +399,6 @@
       <button class="pr-tab-btn" data-tab="quote">Soạn báo giá</button>
       <button class="pr-tab-btn" data-tab="guide">Hướng dẫn</button>
       <button class="pr-tab-btn" data-tab="sources">Nguồn</button>
-    </div>
-
-    <div class="pr-toolbar" id="prToolProjectBar" style="display:none;margin-bottom:20px;align-items:center;gap:10px;">
-      <span class="pr-field-label" style="margin:0;white-space:nowrap;">Áp dụng cho dự án</span>
-      <select class="pr-quote-select" id="prToolProjectSelect" style="min-width:260px;"></select>
     </div>
 
     <div class="pr-tab-panel" data-tab-panel="catalog">
@@ -1094,11 +1098,45 @@
       if (projects.length && !activeToolProjectId) activeToolProjectId = projects[0].id;
       sel.value = activeToolProjectId;
       document.getElementById('btnAddProjectHere').hidden = !isManager(getUser());
+      if (typeof applyProjectInfo === 'function') applyProjectInfo(false);
     }
     document.getElementById('prToolProjectSelect').addEventListener('change', function () {
       activeToolProjectId = this.value;
+      applyProjectInfo(true);
       reloadActiveTool();
     });
+    // Chọn dự án => tự điền thông tin của dự án đó vào các tab: tỉnh/thành (đơn giá theo tỉnh và
+    // các tab dự toán dùng chung ô này), tên công trình + khách hàng ở tab Soạn báo giá.
+    // force = true khi người dùng CHỦ ĐỘNG đổi dự án (ghi đè); false khi chỉ mở trang/đổi tab
+    // (không đè lựa chọn tay đang có).
+    function applyProjectInfo(force) {
+      var projects = (typeof TaskManager !== 'undefined' && TaskManager.getProjects) ? TaskManager.getProjects() : [];
+      var proj = projects.find(function (p) { return p.id === activeToolProjectId; });
+      var hint = document.getElementById('prProjectHint');
+      if (!proj) { if (hint) hint.textContent = ''; return; }
+      var notes = [];
+      var provinceSel = document.getElementById('prProvinceSelect');
+      if (provinceSel && proj.province) {
+        var hasOption = Array.prototype.some.call(provinceSel.options, function (o) { return o.value === proj.province; });
+        if (hasOption) {
+          if (force || !provinceSel.value) {
+            if (provinceSel.value !== proj.province) {
+              provinceSel.value = proj.province;
+              provinceSel.dispatchEvent(new Event('change'));
+            }
+          }
+          notes.push('Tỉnh/thành: ' + proj.province);
+        }
+      } else if (provinceSel && force && !proj.province) {
+        notes.push('Dự án chưa chọn tỉnh/thành — vào Chỉnh sửa dự án để chọn, hoặc chọn tay ở tab Đơn giá theo tỉnh');
+      }
+      var nameEl = document.getElementById('prProjectName');
+      if (nameEl && (force || !nameEl.value)) nameEl.value = proj.name || '';
+      var clientEl = document.getElementById('prClientName');
+      if (clientEl && proj.client && (force || !clientEl.value)) { clientEl.value = proj.client; notes.push('Khách hàng: ' + proj.client); }
+      if (proj.location) notes.push('Địa điểm: ' + proj.location);
+      if (hint) hint.textContent = notes.join(' · ');
+    }
     function reloadActiveTool() {
       var active = document.querySelector('.pr-tab-btn.active');
       var tab = active ? active.getAttribute('data-tab') : '';
@@ -1260,6 +1298,7 @@
         populateToolProjectSelect();
         activeToolProjectId = saved.id;
         document.getElementById('prToolProjectSelect').value = saved.id;
+        applyProjectInfo(true);
         reloadActiveTool();
       });
     })();
@@ -1268,10 +1307,8 @@
     var baseActivateTab = activateTab;
     activateTab = function (tab) {
       baseActivateTab(tab);
-      var showProjectBar = TOOL_TABS.indexOf(tab) !== -1;
-      document.getElementById('prToolProjectBar').style.display = showProjectBar ? 'flex' : 'none';
-      if (showProjectBar) reloadActiveTool();
-      if (tab === 'province') autoApplyProjectProvince();
+      if (TOOL_TABS.indexOf(tab) !== -1) reloadActiveTool();
+      applyProjectInfo(false);
     };
     // Tự chọn sẵn tỉnh/thành ở tab "Đơn giá theo tỉnh" theo tỉnh đã lưu của dự án
     // đang chọn (nếu có) — đỡ phải tự chọn lại tỉnh mỗi lần vào tab này. Chỉ áp
