@@ -458,8 +458,12 @@ var TaskManager = (function() {
     var h = 5381, len = 0;
     Object.keys(STORAGE_KEYS).forEach(function (k) {
       var v = localStorage.getItem(STORAGE_KEYS[k]) || '';
+      // lastActiveAt = ping "đang hoạt động" của MỖI người mỗi ~60s (portal.js) →
+      // với 5 người là cứ ~12s dữ liệu Thành viên lại "đổi" và cả UI bị vẽ lại
+      // (giật). Field chỉ phục vụ chấm xanh online, không đáng làm vẽ lại trang.
+      if (k === 'members') v = v.replace(/"lastActiveAt":"[^"]*",?/g, '');
       len += v.length;
-      for (var i = 0; i < v.length; i += 7) h = ((h << 5) + h + v.charCodeAt(i)) | 0;
+      for (var i = 0; i < v.length; i++) h = ((h << 5) + h + v.charCodeAt(i)) | 0;
     });
     return len + ':' + h;
   }

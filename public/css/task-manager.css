@@ -2519,3 +2519,8 @@
   .todo-cal-timegrid-headcell-num { font-size: 0.8125rem; }
   .todo-cal-event-title { font-size: 0.625rem; }
 }
+
+/* 2026-09-26: chế độ NGÀY chỉ có 1 cột nên kéo ngang hết khung nhìn rất thô —
+   thu hẹp và canh giữa (như Google Lịch chế độ ngày). Tuần vẫn full rộng. */
+.todo-cal-timegrid-wrap--day { max-width: 560px; margin-left: auto; margin-right: auto; }
+.todo-cal-day-stat { max-width: 560px; margin-left: auto; margin-right: auto; }

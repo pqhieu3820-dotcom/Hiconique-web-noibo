@@ -764,7 +764,7 @@
         return '<div class="todo-cal-timegrid-headcell' + (isToday ? ' today' : '') + '" data-date="' + ds + '"><span class="todo-cal-timegrid-headcell-dow">' + dayHeaders[(dObj.getDay() + 6) % 7] + '</span><span class="todo-cal-timegrid-headcell-num">' + pad2(dObj.getDate()) + '</span></div>';
       }).join('');
       var daysHtml = dateStrs.map(buildTimeGridDayCol).join('');
-      return '<div class="todo-cal-timegrid-wrap">' +
+      return '<div class="todo-cal-timegrid-wrap' + (dateStrs.length === 1 ? ' todo-cal-timegrid-wrap--day' : '') + '">' +
         '<div class="todo-cal-timegrid-headrow"><div class="todo-cal-timegrid-gutter"></div><div class="todo-cal-timegrid-headcells" style="grid-template-columns:repeat(' + dateStrs.length + ',1fr)">' + headerHtml + '</div></div>' +
         '<div class="todo-cal-timegrid-scroll">' +
           '<div class="todo-cal-timegrid-hours">' + hourLabelsHtml + '</div>' +
@@ -997,6 +997,25 @@
     var nextQ = document.getElementById('pCalNextQ'); if (nextQ) nextQ.addEventListener('click', function () { var total = state.calYear * 12 + (state.calMonth - 1) + 3; state.calYear = Math.floor(total / 12); state.calMonth = (total % 12) + 1; renderCalendarView(); });
     var prevY = document.getElementById('pCalPrevY'); if (prevY) prevY.addEventListener('click', function () { state.calYear -= 1; renderCalendarView(); });
     var nextY = document.getElementById('pCalNextY'); if (nextY) nextY.addEventListener('click', function () { state.calYear += 1; renderCalendarView(); });
+
+    // Lăn chuột trên cụm điều hướng (mũi tên + nhãn ngày/tuần/quý/năm) để đổi
+    // kỳ nhanh — cùng kiểu với các cụm điều hướng tháng khác trong Web.
+    // Chế độ Tháng không có mũi tên: lăn = đổi tháng.
+    var calCtl = root.querySelector('.todo-cal-controls');
+    if (calCtl) calCtl.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      var dir = e.deltaY > 0 ? 1 : -1;
+      var mode = state.calViewMode;
+      var suffix = { week: 'W', day: 'D', quarter: 'Q', year: 'Y' }[mode];
+      if (suffix) {
+        var btn = document.getElementById(dir > 0 ? 'pCalNext' + suffix : 'pCalPrev' + suffix);
+        if (btn) btn.click();
+      } else {
+        var total = state.calYear * 12 + (state.calMonth - 1) + dir;
+        state.calYear = Math.floor(total / 12); state.calMonth = (total % 12) + 1;
+        renderCalendarView();
+      }
+    }, { passive: false });
 
     root.querySelectorAll('.todo-cal-mode-btn').forEach(function (btn) {
       btn.addEventListener('click', function () {
