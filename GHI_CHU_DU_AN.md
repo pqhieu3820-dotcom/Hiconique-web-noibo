@@ -1463,6 +1463,13 @@ idempotent: sheet đã có dữ liệu thì giữ nguyên, không ghi đè chỉ
 - Trang tải Sheet lúc mở (`TaskManager.loadLightingData`); Sheet trống/offline → dùng bản nhúng. Danh mục
   Excel nhập trên máy vẫn ưu tiên hơn Sheet tới khi bấm "Về danh mục gốc".
 
+**2026-09-27 — Khái toán nhanh gộp vào Báo giá dịch vụ**: trang `khai-toan.html` nay chỉ còn là trang chuyển hướng
+sang tab **"Khái toán nhanh"** của `pricing.html` (`#quick`); toàn bộ công thức/đơn giá vẫn ở `public/js/khai-toan.js`
+(nạp thêm ở pricing.html, prefix `kt-`/`kt*` không đụng lớp `pr-`). Ô "Chọn dự án" ở đầu trang Báo giá tự điền tên/gắn dự án
+cho tab này (`window.HiconiqueKhaiToan.setProject`) và nút "→ Đưa vào Soạn báo giá" biến từng hạng mục khái toán thành
+1 dòng báo giá (id dòng cố định `kt-<i>` nên bấm lại chỉ cập nhật). In/PDF của khái toán dùng cờ `body.kt-printing` để
+không phá cách in của Soạn báo giá. Thẻ công cụ ở trang chủ trỏ tới `/pages/pricing.html#quick`.
+
 ## 7. Tài liệu khác trong repo
 
 - [README.md](README.md) — tổng quan kiến trúc, cấu trúc thư mục, cách chạy local/deploy.
