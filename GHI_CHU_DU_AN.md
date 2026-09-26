@@ -1438,6 +1438,20 @@ xếp tuần tự từng giai đoạn, xem mục sửa lỗi 2026-09-24 phía tr
 nguyên tắc ĐÚNG đã được xác nhận khớp với bản gốc, chỉ khác ở độ chi tiết
 số bước.
 
+## 6.9. Trang Tính toán chiếu sáng (`lighting.html`, 2026-09-26)
+
+Port từ app desktop `Light.py` (PyQt6) lên web: `public/pages/lighting.html` + `public/js/lighting.js`
+(thẻ công cụ trên trang chủ). Tính số đèn theo phương pháp quang thông (Ri → U nội suy → hiệu chỉnh
+góc chiếu → K), click mặt bằng 2D để thêm/xoá đèn (bắt lưới 0,5 m), xem độ rọi 2D + 3D (kéo xoay).
+Danh mục TCVN + đèn nhúng sẵn trong `lighting.js` (TCVN_DATA/LAMP_CATALOG); xuất/nhập Excel 2 sheet
+`TCVN_Standards`/`Product_Catalog`, danh mục nhập vào lưu localStorage (`hiconique_lighting_catalog_v1`).
+
+Khác bản Python (đã tối ưu theo các điểm lưu ý): bản đồ LUX tính tại mặt làm việc và CHUẨN HOÁ để
+trung bình = N·Φ·U·K/S (nhãn LUX là số ước tính thật); chùm sáng cos^n thay hàm bậc thang; lưới ban
+đầu đặt ĐÚNG N bóng; số bóng dùng ceil (round có thể thiếu ~1 lux → báo "chưa đạt" ngay); báo lỗi theo
+từng ô; nhập Excel kiểm tra từng dòng, KHÔNG ép ô trống thành 0; link ảnh chỉ nhận http(s); không quét
+lại stylesheet mỗi lần vẽ, theo theme sáng/tối chung của Web.
+
 ## 7. Tài liệu khác trong repo
 
 - [README.md](README.md) — tổng quan kiến trúc, cấu trúc thư mục, cách chạy local/deploy.

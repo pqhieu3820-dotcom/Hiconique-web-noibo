@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tính toán chiếu sáng · HICONIQUE</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/reset.css">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/portal.css">
+  <link rel="stylesheet" href="/css/subpage.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="apple-touch-icon" sizes="167x167" href="/apple-touch-icon-167.png" />
+  <link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon-152.png" />
+  <meta name="apple-mobile-web-app-title" content="HICONIQUE" />
+  <link rel="manifest" href="/manifest.json" />
+  <script src="/js/offline.js"></script>
+  <script src="/js/gsheets-config.js"></script>
+  <script src="/js/task-data.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js" defer></script>
+  <style>
+    :root {
+      --lt-bg: var(--color-bg); --lt-surface: var(--color-surface); --lt-border: var(--color-border);
+      --lt-text: var(--color-text); --lt-muted: var(--color-text-muted); --lt-bronze: var(--color-bronze);
+      --lt-ok: #4F6F52; --lt-bad: #A04848;
+    }
+    body { background: var(--lt-bg); color: var(--lt-text); font-family: 'Inter', -apple-system, sans-serif; min-height: 100vh; }
+    .lt-container { max-width: 1400px; }
+    .lt-grid { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
+    .lt-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+    .lt-card { background: var(--lt-surface); border: 1px solid var(--lt-border); border-radius: 16px; overflow: hidden; }
+    .lt-card-head { padding: 14px 18px; border-bottom: 1px solid var(--lt-border); display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .lt-card-title { font-size: 0.875rem; font-weight: 700; }
+    .lt-card-body { padding: 16px 18px; }
+    .lt-btn { padding: 8px 14px; border-radius: 8px; border: none; font-family: inherit; font-size: 0.75rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+    .lt-btn-primary { background: var(--lt-bronze); color: #0B0D10; }
+    .lt-btn-primary:hover { background: #C7A464; }
+    .lt-btn-block { width: 100%; padding: 12px; font-size: 0.875rem; }
+    .lt-btn-ghost { background: transparent; border: 1px solid var(--lt-border); color: var(--lt-text); }
+    .lt-btn-ghost:hover { border-color: var(--lt-bronze); color: var(--lt-bronze); }
+    .lt-field { margin-bottom: 12px; }
+    .lt-field:last-child { margin-bottom: 0; }
+    .lt-label { display: flex; align-items: center; gap: 5px; font-size: 0.6875rem; color: var(--lt-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px; }
+    .lt-info { display: inline-grid; place-items: center; width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--lt-bronze); color: var(--lt-bronze); font-size: 0.5625rem; font-weight: 700; cursor: help; text-transform: none; position: relative; }
+    .lt-info:hover::after, .lt-info:focus::after { content: attr(data-tip); position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); width: 220px; padding: 8px 10px; background: var(--lt-surface); border: 1px solid var(--lt-bronze); border-radius: 8px; color: var(--lt-text); font-size: 0.6875rem; font-weight: 500; letter-spacing: 0; line-height: 1.45; z-index: 20; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+    .lt-input, .lt-select { width: 100%; padding: 8px 10px; border-radius: 7px; border: 1px solid var(--lt-border); background: var(--lt-bg); color: var(--lt-text); font-family: inherit; font-size: 0.8125rem; }
+    .lt-input.invalid { border-color: var(--lt-bad); }
+    .lt-err { color: var(--lt-bad); font-size: 0.6875rem; margin-top: 3px; }
+    .lt-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .lt-row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .lt-hint { font-size: 0.6875rem; color: var(--lt-muted); line-height: 1.5; }
+    .lt-hint b { color: var(--lt-bronze); }
+
+    .lt-right { display: grid; grid-template-columns: 280px 1fr; gap: 16px; align-items: start; }
+    .lt-result-name { font-size: 1rem; font-weight: 700; color: var(--lt-bronze); text-align: center; margin: 2px 0 10px; }
+    .lt-brand { font-size: 0.625rem; letter-spacing: 0.1em; color: var(--lt-muted); text-align: center; text-transform: uppercase; min-height: 12px; }
+    .lt-img { width: 150px; height: 150px; border-radius: 50%; margin: 0 auto 14px; border: 2px dashed var(--lt-border); display: grid; place-items: center; overflow: hidden; color: var(--lt-muted); font-size: 0.6875rem; font-style: italic; text-align: center; padding: 8px; }
+    .lt-img img { width: 100%; height: 100%; object-fit: contain; }
+    .lt-kv { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--lt-border); font-size: 0.75rem; }
+    .lt-kv:last-of-type { border-bottom: none; }
+    .lt-kv span:first-child { color: var(--lt-muted); }
+    .lt-kv span:last-child { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--lt-bronze); text-align: right; }
+    .lt-kv.strong span:last-child { font-size: 1rem; }
+    .lt-status { margin-top: 12px; padding: 10px 12px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; text-align: center; border: 1px solid var(--lt-border); }
+    .lt-status.ok { color: var(--lt-ok); border-color: var(--lt-ok); background: color-mix(in srgb, var(--lt-ok) 10%, transparent); }
+    .lt-status.bad { color: var(--lt-bad); border-color: var(--lt-bad); background: color-mix(in srgb, var(--lt-bad) 10%, transparent); }
+    .lt-canvas { width: 100%; display: block; border-radius: 10px; background: var(--lt-bg); touch-action: none; }
+    #ltCanvas2D { cursor: crosshair; }
+    #ltCanvas3D { cursor: grab; }
+    .lt-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 0.75rem; color: var(--lt-muted); }
+    .lt-toolbar input[type=range] { accent-color: var(--lt-bronze); width: 130px; vertical-align: middle; }
+    .lt-legend { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 0.6875rem; color: var(--lt-muted); font-family: 'JetBrains Mono', monospace; }
+    .lt-legend-bar { flex: 1; height: 10px; border-radius: 5px; }
+    .lt-toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 10001; max-width: 460px; padding: 14px 18px; background: var(--lt-surface); border: 1px solid var(--lt-border); border-left: 4px solid var(--lt-bronze); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); font-size: 0.875rem; color: var(--lt-text); }
+    .lt-toast.bad { border-left-color: var(--lt-bad); }
+    @media (max-width: 1100px) { .lt-grid { grid-template-columns: 1fr; } .lt-right { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/" class="brand">
+        <span class="brand-mark"><img class="brand-logo" src="/logo-mark.png" alt="HICONIQUE" /></span>
+        <span class="brand-name"><span class="brand-name-1">HICONIQUE</span></span>
+      </a>
+      <nav class="primary-nav">
+        <a href="/#tools" class="nav-link">Công cụ</a>
+        <a href="/pages/tasks-manager.html" class="nav-link">Tasks</a>
+        <a href="/pages/projects.html" class="nav-link">Dự án</a>
+        <a href="/pages/wiki.html" class="nav-link">Tài liệu</a>
+        <a href="/#ai" class="nav-link">AI</a>
+        <a href="/pages/notices.html" class="nav-link">Thông báo</a>
+        <a href="/pages/team.html" class="nav-link">Team</a>
+      </nav>
+      <div class="header-actions">
+        <button class="theme-toggle" aria-label="Chuyển đổi sáng/tối" data-theme-toggle>
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" stroke-linecap="round" /></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        </button>
+        <span class="clock"><span class="clock-time" data-clock>--:--</span><span class="clock-meta">GMT+7</span></span>
+        <button class="avatar"><span>--</span></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="subpage">
+  <div class="subpage-inner lt-container">
+    <p class="eyebrow">— Tính toán chiếu sáng</p>
+    <h1 class="subpage-title">Bố trí <span class="subpage-title-italic">số lượng đèn</span></h1>
+    <p class="subpage-lede">Nhập kích thước phòng, chọn tiêu chuẩn TCVN và loại đèn — hệ thống tính số bóng cần thiết theo phương pháp quang thông, rồi cho bạn click trực tiếp trên mặt bằng để thử bố trí và xem độ rọi ước tính 2D/3D.</p>
+
+    <div class="lt-grid">
+      <div class="lt-col">
+        <div class="lt-card">
+          <div class="lt-card-head"><div class="lt-card-title">① Thông số không gian</div></div>
+          <div class="lt-card-body">
+            <div class="lt-row2">
+              <div class="lt-field"><label class="lt-label" for="ltL">Dài L (m) <span class="lt-info" tabindex="0" data-tip="Chiều dài căn phòng.">i</span></label><input class="lt-input" id="ltL" inputmode="decimal" placeholder="VD: 6"><div class="lt-err" data-err="ltL"></div></div>
+              <div class="lt-field"><label class="lt-label" for="ltW">Rộng W (m) <span class="lt-info" tabindex="0" data-tip="Chiều rộng căn phòng.">i</span></label><input class="lt-input" id="ltW" inputmode="decimal" placeholder="VD: 4"><div class="lt-err" data-err="ltW"></div></div>
+            </div>
+            <div class="lt-row2">
+              <div class="lt-field"><label class="lt-label" for="ltH">Cao trần H (m) <span class="lt-info" tabindex="0" data-tip="Từ mặt sàn tới điểm lắp đèn.">i</span></label><input class="lt-input" id="ltH" inputmode="decimal" placeholder="VD: 3"><div class="lt-err" data-err="ltH"></div></div>
+              <div class="lt-field"><label class="lt-label" for="ltHw">Mặt làm việc (m) <span class="lt-info" tabindex="0" data-tip="Mặt phẳng cần đủ sáng: bàn làm việc 0,8 m, mặt sàn 0 m.">i</span></label><input class="lt-input" id="ltHw" inputmode="decimal" value="0.8"><div class="lt-err" data-err="ltHw"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="lt-card">
+          <div class="lt-card-head"><div class="lt-card-title">② Phản xạ &amp; môi trường</div></div>
+          <div class="lt-card-body">
+            <div class="lt-field"><label class="lt-label" for="ltReflect">Màu không gian (trần-tường-sàn) <span class="lt-info" tabindex="0" data-tip="Quyết định hệ số sử dụng U. Không gian tối màu triệt tiêu nhiều ánh sáng.">i</span></label>
+              <select class="lt-select" id="ltReflect">
+                <option value="70-50-20">70-50-20 · Trần trắng, tường sáng (rất sáng)</option>
+                <option value="50-30-20">50-30-20 · Trần nhạt, tường xám/gỗ (trung bình)</option>
+                <option value="30-10-20">30-10-20 · Không gian tối, Wabi-sabi (tối)</option>
+              </select></div>
+            <div class="lt-field"><label class="lt-label" for="ltMaint">Môi trường &amp; suy hao <span class="lt-info" tabindex="0" data-tip="Quyết định hệ số bảo trì K. Ẩm/bụi làm giảm quang thông nhanh hơn.">i</span></label>
+              <select class="lt-select" id="ltMaint">
+                <option value="0.8">0,8 · Sạch (phòng ngủ, khách, văn phòng kín)</option>
+                <option value="0.7">0,7 · Bình thường (bếp, vệ sinh, hành lang)</option>
+                <option value="0.6">0,6 · Nhiều bụi (xưởng, kho, gara)</option>
+              </select></div>
+          </div>
+        </div>
+
+        <div class="lt-card">
+          <div class="lt-card-head"><div class="lt-card-title">③ Tiêu chuẩn TCVN</div></div>
+          <div class="lt-card-body">
+            <div class="lt-field"><select class="lt-select" id="ltArea" aria-label="Khu vực"></select></div>
+            <div class="lt-field"><select class="lt-select" id="ltRoom" aria-label="Không gian"></select></div>
+            <div class="lt-row2">
+              <div class="lt-field"><label class="lt-label" for="ltLux">LUX yêu cầu <span class="lt-info" tabindex="0" data-tip="Độ rọi tiêu chuẩn cần đạt trên mặt làm việc.">i</span></label><input class="lt-input" id="ltLux" inputmode="decimal" placeholder="LUX"><div class="lt-err" data-err="ltLux"></div></div>
+              <div class="lt-field"><label class="lt-label" for="ltCri">CRI tối thiểu <span class="lt-info" tabindex="0" data-tip="Chỉ số hoàn màu (Color Rendering Index).">i</span></label><input class="lt-input" id="ltCri" inputmode="decimal" placeholder="CRI"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="lt-card">
+          <div class="lt-card-head"><div class="lt-card-title">④ Thiết bị chiếu sáng</div></div>
+          <div class="lt-card-body">
+            <div class="lt-field"><select class="lt-select" id="ltLampGroup" aria-label="Nhóm đèn"></select></div>
+            <div class="lt-field"><select class="lt-select" id="ltLampType" aria-label="Loại đèn"></select><div class="lt-err" data-err="ltLampType"></div></div>
+            <div class="lt-row2">
+              <div class="lt-field"><label class="lt-label" for="ltWatt">Công suất (W)</label><input class="lt-input" id="ltWatt" inputmode="decimal"><div class="lt-err" data-err="ltWatt"></div></div>
+              <div class="lt-field"><label class="lt-label" for="ltLumen">Quang thông (Lm)</label><input class="lt-input" id="ltLumen" inputmode="decimal"><div class="lt-err" data-err="ltLumen"></div></div>
+            </div>
+            <div class="lt-row3">
+              <div class="lt-field"><label class="lt-label" for="ltCct">Màu (K)</label><input class="lt-input" id="ltCct" placeholder="4000K"></div>
+              <div class="lt-field"><label class="lt-label" for="ltBeam">Góc (°) <span class="lt-info" tabindex="0" data-tip="Góc mở chùm sáng. Hẹp (dưới 45°) tạo điểm nhấn, rộng tỏa đều.">i</span></label><input class="lt-input" id="ltBeam" inputmode="decimal"><div class="lt-err" data-err="ltBeam"></div></div>
+              <div class="lt-field"><label class="lt-label" for="ltIp">IP</label><input class="lt-input" id="ltIp" inputmode="numeric"></div>
+            </div>
+          </div>
+        </div>
+
+        <button class="lt-btn lt-btn-primary lt-btn-block" id="ltCalcBtn">⚡ Tính toán &amp; khởi tạo lưới</button>
+
+        <div class="lt-card">
+          <div class="lt-card-head"><div class="lt-card-title">Dữ liệu Excel</div></div>
+          <div class="lt-card-body">
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="lt-btn lt-btn-ghost" id="ltExportBtn">Xuất Excel</button>
+              <button class="lt-btn lt-btn-ghost" id="ltImportBtn">Nhập Excel</button>
+              <button class="lt-btn lt-btn-ghost" id="ltResetCatalogBtn">Về danh mục gốc</button>
+              <input type="file" id="ltImportFile" accept=".xlsx" hidden>
+            </div>
+            <p class="lt-hint" style="margin-top:10px;">Xuất 2 sheet <b>TCVN_Standards</b> và <b>Product_Catalog</b>; thêm link ảnh ở cột cuối rồi nhập lại. Dòng thiếu/hỏng dữ liệu bị bỏ qua và báo số dòng, không tự điền 0. Danh mục nhập vào được nhớ trên máy này.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="lt-col">
+        <div class="lt-right">
+          <div class="lt-card">
+            <div class="lt-card-body">
+              <div class="lt-brand" id="ltBrand">DÒNG SẢN PHẨM</div>
+              <div class="lt-result-name" id="ltName">—</div>
+              <div class="lt-img" id="ltImg">Ảnh minh họa thiết bị</div>
+              <div class="lt-kv"><span>Số lượng đèn</span><span id="ltQty">—</span></div>
+              <div class="lt-kv"><span>Hoàn màu (CRI)</span><span id="ltCriOut">—</span></div>
+              <div class="lt-kv"><span>Nhiệt độ màu</span><span id="ltCctOut">—</span></div>
+              <div class="lt-kv"><span>Tỷ số M/P</span><span id="ltMp">—</span></div>
+              <div class="lt-kv"><span>Chỉ số R9</span><span id="ltR9">—</span></div>
+              <div class="lt-kv"><span>Tỷ lệ B/Y</span><span id="ltBy">—</span></div>
+              <div class="lt-kv"><span>Tổng quang thông</span><span id="ltTotalLm">—</span></div>
+              <div class="lt-kv"><span>Tổng công suất</span><span id="ltTotalW">—</span></div>
+              <div class="lt-kv"><span>Mật độ công suất</span><span id="ltWm2">—</span></div>
+              <div class="lt-kv strong"><span>LUX trung bình</span><span id="ltAvg">—</span></div>
+              <div class="lt-kv"><span>LUX min / max</span><span id="ltMinMax">—</span></div>
+              <div class="lt-kv"><span>Độ đồng đều (min/TB)</span><span id="ltUni">—</span></div>
+              <div class="lt-status" id="ltStatus">Chưa tính toán</div>
+            </div>
+          </div>
+
+          <div class="lt-card">
+            <div class="lt-card-head">
+              <div class="lt-card-title">Mặt bằng 2D</div>
+              <div class="lt-toolbar">
+                <span>Click để thêm/xoá đèn · bắt lưới <b id="ltSnapLabel">0,5 m</b></span>
+                <label>Độ mờ <input type="range" id="ltOpacity" min="20" max="100" value="85"></label>
+              </div>
+            </div>
+            <div class="lt-card-body">
+              <canvas class="lt-canvas" id="ltCanvas2D" width="800" height="520"></canvas>
+              <div class="lt-legend"><span id="ltLegMin">0</span><div class="lt-legend-bar" id="ltLegBar"></div><span id="ltLegMax">0</span><span>lux</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="lt-card">
+          <div class="lt-card-head"><div class="lt-card-title">Mô hình 3D độ rọi</div><div class="lt-toolbar"><span>Kéo chuột để xoay</span></div></div>
+          <div class="lt-card-body"><canvas class="lt-canvas" id="ltCanvas3D" width="1000" height="420"></canvas></div>
+        </div>
+
+        <p class="lt-hint">Độ rọi trên bản vẽ là <b>ước tính</b>: mô hình chùm sáng cos<sup>n</sup>, tính tại mặt làm việc, rồi chuẩn hoá để trung bình khớp phương pháp quang thông (Φ·U·K/S) — nên số LUX so sánh được với LUX yêu cầu chứ không chỉ là hình minh hoạ tương đối. Kết quả tham khảo, không thay thế phần mềm mô phỏng chuyên dụng (DIALux).</p>
+      </div>
+    </div>
+  </div>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js" defer></script>
+  <script src="/js/push-notifications.js" defer></script>
+  <script src="/js/portal.js" defer></script>
+  <script src="/js/lighting.js" defer></script>
+</body>
+</html>
