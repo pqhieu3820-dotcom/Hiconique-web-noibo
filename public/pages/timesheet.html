@@ -660,11 +660,16 @@
       border-radius: 6px; color: var(--ts-muted); font-family: inherit;
     }
     .ts-report-month-nav button:hover { background: var(--ts-surface); color: var(--ts-text); }
+    /* 2026-09-26: nút vuông đúng 40x40, icon canh chính giữa cả 2 chiều —
+       trước đó nút bị padding mặc định của <button> làm rộng hơn cao và mũi
+       tên lệch khỏi tâm nút. padding:0 + inline-flex + svg display:block. */
     .ts-report-edge-arrow {
-      width: 40px; height: 40px; border-radius: 10px; color: var(--ts-text) !important;
+      box-sizing: border-box; width: 40px; height: 40px; min-width: 40px; padding: 0; margin: 0;
+      display: inline-flex; align-items: center; justify-content: center; line-height: 1;
+      border-radius: 10px; color: var(--ts-text) !important; cursor: pointer;
       background: var(--color-bg) !important; border: 1px solid var(--ts-border) !important;
     }
-    .ts-report-edge-arrow svg { width: 22px; height: 22px; }
+    .ts-report-edge-arrow svg { width: 20px; height: 20px; display: block; flex: none; }
     .ts-report-edge-arrow:hover { background: var(--ts-surface) !important; }
     .ts-report-month-nav button#tsReportTodayMonth {
       width: auto;
@@ -767,7 +772,7 @@
       .ts-report-month-nav { gap: 4px; font-size: 0.9375rem; padding: 10px 8px; }
       .ts-report-month-center { gap: 8px; }
       .ts-report-month-nav button#tsReportTodayMonth { padding: 0 8px; font-size: 0.6875rem; }
-      .ts-report-edge-arrow { width: 32px; height: 32px; }
+      .ts-report-edge-arrow { width: 32px; height: 32px; min-width: 32px; }
       .ts-report-edge-arrow svg { width: 18px; height: 18px; }
 
       /* 2026-09-22: "Báo cáo chấm công" trên điện thoại — .ts-detail-header

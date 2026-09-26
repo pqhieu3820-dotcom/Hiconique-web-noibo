@@ -3431,7 +3431,7 @@ function setupLightingSheets_impl() {
 // 2026-09-26: dọn bản ghi còn tham chiếu ID thành viên CŨ (đã bị thay bằng ID
 // mới, VD QL_NH_200592, CEO_ADMIN_010100, NV_GP_250395, QL_TM_100888) — user
 // đã cho phép rõ ràng xoá "8 đề xuất + 66 thông báo cũ". Xoá theo ĐIỀU KIỆN
-// (Người đề xuất/phê duyệt hoặc Người tạo là 1 ID dạng mã thành viên nhưng
+// (Người đề xuất/phê duyệt, hoặc Phạm vi/Người tạo của thông báo là 1 ID dạng mã thành viên nhưng
 // KHÔNG còn trong Thành viên hiện tại), 1 lần đọc + xoá từ dòng dưới lên trong
 // 1 lock. Có chốt chặn: nếu số dòng khớp vượt mức đã báo (8 / 66) thì HUỶ, không
 // xoá gì. Chạy tay 1 lần trong Apps Script editor; chạy lại an toàn (lần 2 = 0 dòng).
@@ -3445,7 +3445,7 @@ function deleteLegacyIdRecords_impl() {
   var isLegacy = function (v) { return v !== '' && v != null && looksLikeMemberId(v) && !valid[String(v)]; };
   var plan = [
     { key: 'proposals', cols: ['requesterId', 'reviewerId'], cap: 8 },
-    { key: 'notifications', cols: ['createdBy'], cap: 66 }
+    { key: 'notifications', cols: ['scope', 'createdBy'], cap: 66 }
   ];
   var found = plan.map(function (p) {
     var sheet = findSheet(ss, SHEETS[p.key]);
