@@ -2618,7 +2618,10 @@
     bindProjectListModal();
     bindDetailModal();
     bindWorkReportModal();
-    if (typeof HiconiqueGantt !== 'undefined') HiconiqueGantt.bind(document.getElementById('gantt-view'));
+    if (typeof HiconiqueGantt !== 'undefined') {
+      if (HiconiqueGantt.setTaskProvider) HiconiqueGantt.setTaskProvider(getFilteredTasks); // Gantt theo đúng bộ lọc của trang
+      HiconiqueGantt.bind(document.getElementById('gantt-view'));
+    }
 
     if (window.location.hash === '#gantt') {
       setView('gantt');

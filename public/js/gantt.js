@@ -66,9 +66,15 @@ var HiconiqueGantt = (function () {
   }
 
   // ----- Build the (project -> tasks) sections for the current filter -----
+  // 2026-09-27: trang Dự án gắn hàm lọc chung (getFilteredTasks) vào đây để Gantt theo ĐÚNG các bộ
+  // lọc của trang (bấm tên thành viên ở thanh bên, "Việc của tôi", hạng mục, quá hạn...) như
+  // Board/List/Timeline — trước đây Gantt tự đọc TaskManager.getTasks() nên bỏ qua hết bộ lọc đó.
+  var taskProvider = null;
+  function setTaskProvider(fn) { taskProvider = typeof fn === 'function' ? fn : null; }
+
   function buildSections(filter) {
     var projects = (typeof TaskManager !== 'undefined' ? TaskManager.getProjects() : []) || [];
-    var tasks = (typeof TaskManager !== 'undefined' ? TaskManager.getTasks() : []) || [];
+    var tasks = (taskProvider ? taskProvider() : (typeof TaskManager !== 'undefined' ? TaskManager.getTasks() : [])) || [];
 
     var visibleProjects = filter === 'all' ? projects : projects.filter(function (p) { return p.id === filter; });
 
@@ -608,5 +614,5 @@ var HiconiqueGantt = (function () {
     return s;
   }
 
-  return { render: render, bind: bind, exportExcel: exportExcel };
+  return { render: render, bind: bind, exportExcel: exportExcel, setTaskProvider: setTaskProvider };
 })();
