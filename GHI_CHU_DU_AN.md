@@ -1320,6 +1320,7 @@ màu tab quản lý theo trang trong Google Sheets — xem commit đổi tên h�
 | `BIM-` | HICON-BIM | Sản phẩm, Vật liệu, Nhà cung cấp, Issue, BOQ |
 | `TC-` | Tài chính/kế toán | Bảng giá dịch vụ, Tài chính công ty, Công nợ khách hàng, Chỉ số cân đối kế toán, Đơn hàng |
 | `TT-` | Truyền thông nội bộ | Thông báo, Bảng tin, Tài liệu |
+| `TTCS-` | Tính toán chiếu sáng (trang lighting.html) | Tiêu chuẩn TCVN, Danh mục đèn, Hệ số tính toán, Phương án |
 | `DGXD-` | Đơn giá xây dựng (46 sheet tham khảo read-only, 34 tỉnh + công cụ đi kèm) | Mục lục, Tính nhanh, Khối lượng sơ bộ, So sánh nhà thầu, Dòng tiền, Phát sinh, Tiến độ, Nghiệm thu, Hồ sơ công trình, Hướng dẫn, Nguồn, Dữ liệu tính, + tên 34 tỉnh — **KHÔNG có trong `SHEETS` map, code không tham chiếu theo tên nên đổi tên nhóm này luôn an toàn, không cần redeploy** |
 
 **Khi thêm sheet mới cho 1 tính năng thuộc 1 trong 6 nhóm nghiệp vụ thật ở
@@ -1451,6 +1452,16 @@ trung bình = N·Φ·U·K/S (nhãn LUX là số ước tính thật); chùm sán
 đầu đặt ĐÚNG N bóng; số bóng dùng ceil (round có thể thiếu ~1 lux → báo "chưa đạt" ngay); báo lỗi theo
 từng ô; nhập Excel kiểm tra từng dòng, KHÔNG ép ô trống thành 0; link ảnh chỉ nhận http(s); không quét
 lại stylesheet mỗi lần vẽ, theo theme sáng/tối chung của Web.
+
+**Sheet nhóm `TTCS-` (2026-09-26)** — tạo bằng `setupLightingSheets()` (chạy tay 1 lần trong Apps Script,
+idempotent: sheet đã có dữ liệu thì giữ nguyên, không ghi đè chỉnh sửa tay):
+- `TTCS-Tiêu chuẩn TCVN` (40 dòng: Khu vực, Không gian, LUX, CRI) · `TTCS-Danh mục đèn` (46 dòng: nhóm, tên,
+  W, Lm, K, góc chiếu, IP, M/P, R9, B/Y, Link ảnh, Đang dùng) · `TTCS-Hệ số tính toán` (Loại `U` = điểm bảng
+  hệ số sử dụng theo kiểu phản xạ + Ri; Loại `K` = hệ số bảo trì) → 3 sheet này quản lý sửa thẳng trên Sheet.
+- `TTCS-Phương án`: phương án người dùng bấm "Lưu phương án" (kích thước, đèn, vị trí từng bóng dạng JSON,
+  kết quả). Không xoá dòng — "Ẩn" chỉ tắt cột Hiển thị.
+- Trang tải Sheet lúc mở (`TaskManager.loadLightingData`); Sheet trống/offline → dùng bản nhúng. Danh mục
+  Excel nhập trên máy vẫn ưu tiên hơn Sheet tới khi bấm "Về danh mục gốc".
 
 ## 7. Tài liệu khác trong repo
 

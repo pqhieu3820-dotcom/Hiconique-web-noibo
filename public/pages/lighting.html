@@ -177,6 +177,18 @@
         <button class="lt-btn lt-btn-primary lt-btn-block" id="ltCalcBtn">⚡ Tính toán &amp; khởi tạo lưới</button>
 
         <div class="lt-card">
+          <div class="lt-card-head"><div class="lt-card-title">Phương án đã lưu</div><span class="lt-hint" id="ltSyncState"></span></div>
+          <div class="lt-card-body">
+            <div class="lt-field"><input class="lt-input" id="ltPlanName" maxlength="80" placeholder="Tên phương án (VD: Phòng khách - căn A12)" aria-label="Tên phương án"></div>
+            <div class="lt-field"><select class="lt-select" id="ltPlanProject" aria-label="Dự án"><option value="">-- Không gắn dự án --</option></select></div>
+            <div class="lt-field"><input class="lt-input" id="ltPlanNote" maxlength="200" placeholder="Ghi chú (tuỳ chọn)" aria-label="Ghi chú"></div>
+            <button class="lt-btn lt-btn-primary lt-btn-block" id="ltPlanSaveBtn" type="button">Lưu phương án hiện tại</button>
+            <div id="ltPlanList" style="margin-top:12px; display:flex; flex-direction:column; gap:8px;"></div>
+            <p class="lt-hint" style="margin-top:10px;">Lưu vào Google Sheet <b>TTCS-Phương án</b> (kích thước, đèn đã chọn, vị trí từng bóng và kết quả). Bấm <b>Mở</b> để tải lại đúng bố trí đã chỉnh.</p>
+          </div>
+        </div>
+
+        <div class="lt-card">
           <div class="lt-card-head"><div class="lt-card-title">Dữ liệu Excel</div></div>
           <div class="lt-card-body">
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -185,7 +197,7 @@
               <button class="lt-btn lt-btn-ghost" id="ltResetCatalogBtn">Về danh mục gốc</button>
               <input type="file" id="ltImportFile" accept=".xlsx" hidden>
             </div>
-            <p class="lt-hint" style="margin-top:10px;">Xuất 2 sheet <b>TCVN_Standards</b> và <b>Product_Catalog</b>; thêm link ảnh ở cột cuối rồi nhập lại. Dòng thiếu/hỏng dữ liệu bị bỏ qua và báo số dòng, không tự điền 0. Danh mục nhập vào được nhớ trên máy này.</p>
+            <p class="lt-hint" style="margin-top:10px;">Xuất 2 sheet <b>TCVN_Standards</b> và <b>Product_Catalog</b>; thêm link ảnh ở cột cuối rồi nhập lại. Dòng thiếu/hỏng dữ liệu bị bỏ qua và báo số dòng, không tự điền 0. Danh mục nhập vào được nhớ trên máy này và được ưu tiên hơn danh mục trên Sheet TTCS- cho đến khi bấm “Về danh mục gốc”.</p>
           </div>
         </div>
       </div>

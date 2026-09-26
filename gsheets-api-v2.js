@@ -35,6 +35,13 @@ const SHEETS = {
   receivables: 'TC-Công nợ khách hàng',
   bsSnapshots: 'TC-Chỉ số cân đối kế toán',
   orders: 'TC-Đơn hàng',
+  // 2026-09-26: nhóm TTCS- (Tính toán chiếu sáng) cho trang lighting.html — xem
+  // GHI_CHU_DU_AN.md mục 6.9. 3 sheet danh mục/cấu hình (đọc-only từ web, sửa
+  // trực tiếp trên Sheet) + 1 sheet lưu phương án tính toán người dùng đã lưu.
+  lightingStandards: 'TTCS-Tiêu chuẩn TCVN',
+  lightingLamps: 'TTCS-Danh mục đèn',
+  lightingFactors: 'TTCS-Hệ số tính toán',
+  lightingPlans: 'TTCS-Phương án',
   // 6 sheet mới (2026-09-09) — công cụ theo dự án đi kèm database đơn giá 34
   // tỉnh, xem GHI_CHU_DU_AN.md. Nhóm DA- nên không đụng 46 sheet tham khảo
   // (đã đổi tiền tố "DGXD-" — VD "DGXD-Dòng tiền" khác hẳn "DA-Dòng tiền").
@@ -242,6 +249,36 @@ const FIELD_MAP = {
   ],
   commissionRates: [
     ['Mã dòng', 'id'], ['Cấp bậc', 'roleLevel'], ['Phần trăm', 'percent'], ['Ngày cập nhật', 'updatedAt']
+  ],
+  // ===== TTCS- : Tính toán chiếu sáng (2026-09-26) =====
+  lightingStandards: [
+    ['Mã', 'id'], ['Khu vực', 'area'], ['Không gian', 'room'], ['LUX yêu cầu', 'lux'],
+    ['CRI tối thiểu', 'cri'], ['Ghi chú', 'note'], ['Ngày cập nhật', 'updatedAt']
+  ],
+  lightingLamps: [
+    ['Mã', 'id'], ['Nhóm đèn', 'group'], ['Tên đèn', 'name'], ['Công suất (W)', 'watt'],
+    ['Quang thông (Lm)', 'lumen'], ['Nhiệt độ màu (K)', 'cct'], ['Góc chiếu (độ)', 'beam'],
+    ['Chỉ số IP', 'ip'], ['Tỷ số M/P', 'mp'], ['Chỉ số R9', 'r9'], ['Tỷ lệ B/Y', 'by'],
+    ['Link ảnh', 'imageUrl'], ['Đang dùng', 'active'], ['Ghi chú', 'note'], ['Ngày cập nhật', 'updatedAt']
+  ],
+  // Loại 'U' = 1 điểm của bảng Hệ số sử dụng U (Nhóm = kiểu phản xạ trần-tường-sàn,
+  // Ri = chỉ số phòng, Giá trị = U). Loại 'K' = 1 mức Hệ số bảo trì (Nhóm = giá trị K
+  // dạng chữ, Giá trị = K). "Nhãn" là mô tả hiện ở ô chọn trên web.
+  lightingFactors: [
+    ['Mã', 'id'], ['Loại', 'type'], ['Nhóm', 'group'], ['Nhãn', 'label'], ['Ri', 'ri'],
+    ['Giá trị', 'value'], ['Ghi chú', 'note'], ['Ngày cập nhật', 'updatedAt']
+  ],
+  lightingPlans: [
+    ['Mã PA', 'id'], ['Tên phương án', 'name'], ['Mã dự án', 'projectId'], ['Phòng / khu vực', 'roomName'],
+    ['Dài L (m)', 'length'], ['Rộng W (m)', 'width'], ['Cao trần H (m)', 'height'], ['Mặt làm việc (m)', 'workplane'],
+    ['Kiểu phản xạ', 'reflect'], ['Hệ số bảo trì K', 'maintenance'],
+    ['Khu vực TCVN', 'standardArea'], ['Không gian TCVN', 'standardRoom'], ['LUX yêu cầu', 'reqLux'], ['CRI tối thiểu', 'reqCri'],
+    ['Nhóm đèn', 'lampGroup'], ['Tên đèn', 'lampName'], ['Quang thông (Lm)', 'lampLumen'], ['Công suất (W)', 'lampWatt'],
+    ['Nhiệt độ màu', 'lampCct'], ['Góc chiếu (độ)', 'lampBeam'], ['Chỉ số IP', 'lampIp'],
+    ['Số bóng đề xuất', 'suggestCount'], ['Số bóng thực tế', 'lampCount'], ['Vị trí đèn (JSON)', 'lamps'],
+    ['LUX trung bình', 'avgLux'], ['LUX min', 'minLux'], ['LUX max', 'maxLux'], ['Độ đồng đều', 'uniformity'],
+    ['Tổng công suất (W)', 'totalWatt'], ['Mật độ công suất (W/m²)', 'wattPerM2'], ['Kết luận', 'verdict'],
+    ['Ghi chú', 'note'], ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt'], ['Hiển thị', 'visible']
   ],
   priceCatalog: [
     ['Mã BG', 'id'], ['Danh mục', 'category'], ['Tên dịch vụ', 'name'], ['Đơn vị tính', 'unit'],
@@ -760,6 +797,18 @@ function handleRequest(e) {
       result = updateData(ss, SHEETS.commissionRates, params.id, JSON.parse(params.data));
     } else if (action === 'deleteCommissionRate') {
       result = deleteData(ss, SHEETS.commissionRates, params.id);
+    } else if (action === 'getLightingStandards') {
+      result = getAllData(ss, SHEETS.lightingStandards);
+    } else if (action === 'getLightingLamps') {
+      result = getAllData(ss, SHEETS.lightingLamps);
+    } else if (action === 'getLightingFactors') {
+      result = getAllData(ss, SHEETS.lightingFactors);
+    } else if (action === 'getLightingPlans') {
+      result = getAllData(ss, SHEETS.lightingPlans);
+    } else if (action === 'addLightingPlan') {
+      result = addData(ss, SHEETS.lightingPlans, JSON.parse(params.data));
+    } else if (action === 'updateLightingPlan') {
+      result = updateData(ss, SHEETS.lightingPlans, params.id, JSON.parse(params.data));
     } else if (action === 'getPriceCatalog') {
       result = getAllData(ss, SHEETS.priceCatalog);
     } else if (action === 'addPriceCatalog') {
@@ -2949,6 +2998,7 @@ var SORT_SKIP_KEYS = {
   workSchedule: true,        // sheet cấu hình 1 dòng duy nhất
   attendanceLocations: true, // danh sách địa điểm GPS/IP quản lý thủ công
   commissionRates: true,     // bảng % theo cấp bậc, thứ tự cố định theo LEVELS
+  lightingStandards: true, lightingLamps: true, lightingFactors: true, // TTCS- danh mục/cấu hình, thứ tự do người quản lý sắp
   priceCatalog: true,        // bảng giá dịch vụ — thứ tự trình bày báo giá, không phải theo thời gian tạo
   bimProducts: true, bimMaterials: true, bimSuppliers: true // danh mục BIM dùng chung toàn tổ chức, thứ tự quản lý thủ công
 };
@@ -3201,6 +3251,179 @@ function repairTimesheetShiftData() {
   });
 
   var msg = log.length ? log.join('\n') : 'Không có gì cần sửa — dữ liệu đã đồng nhất.';
+  Logger.log(msg);
+  return msg;
+}
+
+// 2026-09-26: tạo sẵn 4 sheet nhóm TTCS- (Tính toán chiếu sáng) và nạp danh mục
+// gốc lấy từ Light.py. Chạy TAY 1 LẦN từ Apps Script editor (Chạy >
+// setupLightingSheets). An toàn chạy lại: sheet nào đã có dữ liệu thì GIỮ
+// NGUYÊN (không ghi đè chỉnh sửa tay của người quản lý), chỉ tạo phần còn
+// thiếu. Ghi 1 lần bằng setValues (giữ đúng thứ tự seed, không chèn từng dòng
+// lên đầu như addData) trong 1 lock.
+function setupLightingSheets() { return withScriptLock_(setupLightingSheets_impl); }
+function setupLightingSheets_impl() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var tz = Session.getScriptTimeZone() || 'Asia/Ho_Chi_Minh';
+  var seeds = {
+    lightingStandards: { prefix: 'lightingstandard', cols: ['area', 'room', 'lux', 'cri'], rows: [
+    ["Nhà ở, căn hộ","Phòng khách",300,80],
+    ["Nhà ở, căn hộ","Phòng ngủ",150,80],
+    ["Nhà ở, căn hộ","Bếp",500,80],
+    ["Nhà ở, căn hộ","Phòng tắm/WC",200,80],
+    ["Nhà ở, căn hộ","Phòng làm việc/Đọc sách",500,80],
+    ["Nhà ở, căn hộ","Hành lang, cầu thang",100,80],
+    ["Nhà ở, căn hộ","Gara để xe",75,80],
+    ["Văn phòng","Khu làm việc chung, đánh máy",500,80],
+    ["Văn phòng","Phòng vẽ kỹ thuật, CAD",750,80],
+    ["Văn phòng","Phòng họp",500,80],
+    ["Văn phòng","Quầy tiếp tân",300,80],
+    ["Văn phòng","Phòng lưu trữ, copy",300,80],
+    ["Nhà hàng khách sạn","Sảnh lễ tân",300,80],
+    ["Nhà hàng khách sạn","Phòng ngủ khách sạn",150,80],
+    ["Nhà hàng khách sạn","Phòng ăn, nhà hàng",200,80],
+    ["Nhà hàng khách sạn","Khu vực bếp",500,80],
+    ["Nhà hàng khách sạn","Hành lang",100,80],
+    ["Nhà xưởng công nghiệp","Kho bãi, logistics",100,40],
+    ["Nhà xưởng công nghiệp","Khu vực lưu trữ hàng hóa",200,60],
+    ["Nhà xưởng công nghiệp","Lắp ráp thô, hàn, tiện",300,80],
+    ["Nhà xưởng công nghiệp","Lắp ráp chi tiết tinh",500,80],
+    ["Nhà xưởng công nghiệp","Kiểm tra chất lượng (KCS)",1000,80],
+    ["Trường học","Phòng học chuẩn",300,80],
+    ["Trường học","Khu vực bảng đen",500,80],
+    ["Trường học","Phòng thực hành, thí nghiệm",500,80],
+    ["Trường học","Phòng máy tính",500,80],
+    ["Trường học","Hội trường, phòng đa năng",200,80],
+    ["Thư viện","Khu vực giá sách",200,80],
+    ["Thư viện","Khu vực đọc sách",500,80],
+    ["Thư viện","Quầy mượn trả",300,80],
+    ["Siêu thị, trung tâm thương mại","Khu vực bán hàng chung",300,80],
+    ["Siêu thị, trung tâm thương mại","Khu vực trưng bày sản phẩm",500,80],
+    ["Siêu thị, trung tâm thương mại","Quầy thu ngân",500,80],
+    ["Nơi vui chơi giải trí","Khu vực sảnh, phòng chờ",200,80],
+    ["Nơi vui chơi giải trí","Phòng thể hình (Gym)",300,80],
+    ["Nơi vui chơi giải trí","Nhà thi đấu thể thao",500,80],
+    ["Nơi vui chơi giải trí","Bể bơi trong nhà",300,80],
+    ["Bệnh viện","Phòng bệnh nhân",100,80],
+    ["Bệnh viện","Phòng khám, điều trị",500,90],
+    ["Bệnh viện","Phòng phẫu thuật",1000,90]
+  ] },
+    lightingLamps: { prefix: 'lightinglamp', cols: ['group', 'name', 'watt', 'lumen', 'cct', 'beam', 'ip', 'mp', 'r9', 'by'], rows: [
+    ["Nhóm Led Downlight","Led Downlight 3W",3,270,"3000K",100,20,0.5,40,0.35],
+    ["Nhóm Led Downlight","Led Downlight 5W",5,450,"4000K",100,20,0.5,40,0.35],
+    ["Nhóm Led Downlight","Led Downlight 7W",7,630,"4000K",100,20,0.6,45,0.38],
+    ["Nhóm Led Downlight","Led Downlight 9W",9,850,"6500K",100,20,0.7,50,0.4],
+    ["Nhóm Led Downlight","Led Downlight 12W",12,1100,"6500K",100,20,0.8,55,0.45],
+    ["Nhóm Led Downlight","Led Downlight 18W",18,1600,"6500K",100,20,0.8,55,0.45],
+    ["Nhóm Led Downlight","Led Downlight 24W",24,2400,"6500K",100,20,0.8,55,0.45],
+    ["Nhóm Led Panel tròn","Led Panel tròn 6W",6,480,"4000K",120,20,0.8,50,0.4],
+    ["Nhóm Led Panel tròn","Led Panel tròn 9W",9,750,"6500K",120,20,0.8,50,0.4],
+    ["Nhóm Led Panel tròn","Led Panel tròn 12W",12,1000,"6500K",120,20,0.8,50,0.4],
+    ["Nhóm Led Panel tròn","Led Panel tròn 18W",18,1500,"6500K",120,20,0.8,50,0.4],
+    ["Nhóm Led Panel tròn","Led Panel tròn 24W",24,2160,"6500K",120,20,0.8,50,0.4],
+    ["Nhóm Led Bulb","Led Bulb 3W",3,270,"3000K",200,20,0.7,40,0.35],
+    ["Nhóm Led Bulb","Led Bulb 5W",5,450,"4000K",200,20,0.7,40,0.35],
+    ["Nhóm Led Bulb","Led Bulb 9W",9,850,"6500K",200,20,0.8,40,0.4],
+    ["Nhóm Led Bulb","Led Bulb 12W",12,1150,"6500K",200,20,0.8,40,0.4],
+    ["Nhóm Led Bulb","Led Bulb 20W",20,1900,"6500K",200,20,0.8,40,0.4],
+    ["Nhóm Led Bulb","Led Bulb 30W",30,2850,"6500K",200,20,0.8,40,0.4],
+    ["Nhóm Led Bulb","Led Bulb 50W",50,4800,"6500K",200,20,0.8,40,0.4],
+    ["Nhóm Led Spotlight âm trần","Spotlight 3W",3,250,"3000K",24,20,0.5,85,0.3],
+    ["Nhóm Led Spotlight âm trần","Spotlight 5W",5,420,"3000K",24,20,0.5,85,0.3],
+    ["Nhóm Led Spotlight âm trần","Spotlight 7W",7,600,"4000K",24,20,0.5,85,0.3],
+    ["Nhóm Led Spotlight âm trần","Spotlight 10W",10,850,"4000K",36,20,0.6,85,0.35],
+    ["Nhóm Led Spotlight âm trần","Spotlight 15W",15,1300,"4000K",36,20,0.6,85,0.35],
+    ["Nhóm Led Spotlight âm trần","Spotlight 20W",20,1800,"4000K",36,20,0.6,85,0.35],
+    ["Nhóm Led mica","Led Mica Bán Nguyệt 0.6m 18W",18,1600,"6500K",120,20,0.9,55,0.45],
+    ["Nhóm Led mica","Led Mica Bán Nguyệt 1.2m 36W",36,3400,"6500K",120,20,0.9,55,0.45],
+    ["Nhóm Led mica","Led Mica Bán Nguyệt 1.2m 40W",40,4000,"6500K",120,20,0.9,55,0.45],
+    ["Nhóm Led Doublewing","Doublewing 36W",36,3200,"6500K",120,20,0.9,50,0.45],
+    ["Nhóm Led Doublewing","Doublewing 45W",45,4000,"6500K",120,20,0.9,50,0.45],
+    ["Nhóm Led tube","Led Tube T8 0.6m 10W",10,950,"6500K",120,20,0.9,50,0.45],
+    ["Nhóm Led tube","Led Tube T8 1.2m 18W",18,1800,"6500K",120,20,0.9,50,0.45],
+    ["Nhóm Led tube","Led Tube T8 1.2m 20W",20,2000,"6500K",120,20,0.9,50,0.45],
+    ["Nhóm Led tube","Led Tube T8 1.2m 24W",24,2400,"6500K",120,20,0.9,50,0.45],
+    ["Nhóm bộ Led tube","Bộ Led Tube T8 1.2m 20W",20,2000,"6500K",120,20,0.9,50,0.45],
+    ["Nhóm bộ Led tube","Bộ Đôi Led Tube T8 1.2m 40W",40,4000,"6500K",120,20,0.9,50,0.45],
+    ["Nhóm Led ốp trần cao cấp","Ốp trần 12W",12,1000,"4000K",120,44,0.8,60,0.4],
+    ["Nhóm Led ốp trần cao cấp","Ốp trần 18W",18,1600,"6500K",120,44,0.8,60,0.4],
+    ["Nhóm Led ốp trần cao cấp","Ốp trần 24W",24,2200,"6500K",120,44,0.8,60,0.4],
+    ["Nhóm Led ốp trần cao cấp","Ốp trần 36W",36,3200,"6500K",120,44,0.8,60,0.4],
+    ["Nhóm Led Panel vuông","Panel 300x300 12W",12,1080,"6500K",120,40,0.9,60,0.45],
+    ["Nhóm Led Panel vuông","Panel 600x600 40W",40,4000,"6500K",120,40,0.9,60,0.45],
+    ["Nhóm Led Panel vuông","Panel 600x600 48W",48,4800,"6500K",120,40,0.9,60,0.45],
+    ["Nhóm Led Panel vuông","Panel 600x600 72W",72,7200,"6500K",120,40,0.9,60,0.45],
+    ["Nhóm Led Panel vuông","Panel 300x1200 40W",40,4000,"6500K",120,40,0.9,60,0.45],
+    ["Nhóm Led Panel vuông","Panel 600x1200 72W",72,7200,"6500K",120,40,0.9,60,0.45]
+  ], extra: { active: true } },
+    lightingFactors: { prefix: 'lightingfactor', cols: ['type', 'group', 'label', 'ri', 'value'], rows: [
+    ["U","70-50-20","Trần trắng, tường sáng màu (rất sáng)",0.6,0.43],
+    ["U","70-50-20","Trần trắng, tường sáng màu (rất sáng)",0.8,0.54],
+    ["U","70-50-20","Trần trắng, tường sáng màu (rất sáng)",1.0,0.63],
+    ["U","70-50-20","Trần trắng, tường sáng màu (rất sáng)",1.25,0.7],
+    ["U","70-50-20","Trần trắng, tường sáng màu (rất sáng)",1.5,0.75],
+    ["U","70-50-20","Trần trắng, tường sáng màu (rất sáng)",2.0,0.83],
+    ["U","70-50-20","Trần trắng, tường sáng màu (rất sáng)",2.5,0.88],
+    ["U","70-50-20","Trần trắng, tường sáng màu (rất sáng)",3.0,0.91],
+    ["U","70-50-20","Trần trắng, tường sáng màu (rất sáng)",4.0,0.96],
+    ["U","70-50-20","Trần trắng, tường sáng màu (rất sáng)",5.0,0.99],
+    ["U","50-30-20","Trần nhạt, tường xám/gỗ (trung bình)",0.6,0.38],
+    ["U","50-30-20","Trần nhạt, tường xám/gỗ (trung bình)",0.8,0.48],
+    ["U","50-30-20","Trần nhạt, tường xám/gỗ (trung bình)",1.0,0.55],
+    ["U","50-30-20","Trần nhạt, tường xám/gỗ (trung bình)",1.25,0.62],
+    ["U","50-30-20","Trần nhạt, tường xám/gỗ (trung bình)",1.5,0.67],
+    ["U","50-30-20","Trần nhạt, tường xám/gỗ (trung bình)",2.0,0.75],
+    ["U","50-30-20","Trần nhạt, tường xám/gỗ (trung bình)",2.5,0.8],
+    ["U","50-30-20","Trần nhạt, tường xám/gỗ (trung bình)",3.0,0.83],
+    ["U","50-30-20","Trần nhạt, tường xám/gỗ (trung bình)",4.0,0.88],
+    ["U","50-30-20","Trần nhạt, tường xám/gỗ (trung bình)",5.0,0.91],
+    ["U","30-10-20","Không gian tối, Wabi-sabi/Soft Brutalism (tối)",0.6,0.33],
+    ["U","30-10-20","Không gian tối, Wabi-sabi/Soft Brutalism (tối)",0.8,0.42],
+    ["U","30-10-20","Không gian tối, Wabi-sabi/Soft Brutalism (tối)",1.0,0.49],
+    ["U","30-10-20","Không gian tối, Wabi-sabi/Soft Brutalism (tối)",1.25,0.55],
+    ["U","30-10-20","Không gian tối, Wabi-sabi/Soft Brutalism (tối)",1.5,0.6],
+    ["U","30-10-20","Không gian tối, Wabi-sabi/Soft Brutalism (tối)",2.0,0.67],
+    ["U","30-10-20","Không gian tối, Wabi-sabi/Soft Brutalism (tối)",2.5,0.72],
+    ["U","30-10-20","Không gian tối, Wabi-sabi/Soft Brutalism (tối)",3.0,0.75],
+    ["U","30-10-20","Không gian tối, Wabi-sabi/Soft Brutalism (tối)",4.0,0.8],
+    ["U","30-10-20","Không gian tối, Wabi-sabi/Soft Brutalism (tối)",5.0,0.83],
+    ["K","0.8","Môi trường sạch (phòng ngủ, khách, văn phòng kín)","",0.8],
+    ["K","0.7","Môi trường bình thường (bếp, vệ sinh, hành lang)","",0.7],
+    ["K","0.6","Môi trường nhiều bụi (xưởng, kho bãi, gara)","",0.6]
+  ] },
+    lightingPlans: { prefix: 'lightingplan', cols: [], rows: [] }
+  };
+  var tabColors = { lightingStandards: '#B08D57', lightingLamps: '#B08D57', lightingFactors: '#B08D57', lightingPlans: '#B08D57' };
+  var report = [];
+  Object.keys(seeds).forEach(function (key) {
+    var sheetName = SHEETS[key];
+    var sheet = getOrCreateSheet(ss, sheetName);
+    var pairs = FIELD_MAP[key];
+    var headers = pairs.map(function (p) { return p[0]; });
+    var existing = getHeaders(sheet);
+    if (existing.length === 0) {
+      sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+      sheet.setFrozenRows(1);
+      try { sheet.setTabColor(tabColors[key]); } catch (e) { /* bỏ qua */ }
+      existing = headers;
+    }
+    var seed = seeds[key];
+    if (sheet.getLastRow() >= 2 || !seed.rows.length) { report.push(sheetName + ': đã có ' + Math.max(0, sheet.getLastRow() - 1) + ' dòng — giữ nguyên'); return; }
+    var stamp = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+    var out = seed.rows.map(function (r) {
+      var obj = { id: makeId(seed.prefix), updatedAt: stamp };
+      seed.cols.forEach(function (c, i) { obj[c] = r[i]; });
+      Object.keys(seed.extra || {}).forEach(function (k) { obj[k] = seed.extra[k]; });
+      return existing.map(function (h) {
+        var v = obj[viToEnHeader(sheetName, h)];
+        return v === undefined || v === null ? '' : v;
+      });
+    });
+    sheet.getRange(2, 1, out.length, existing.length).setValues(out);
+    report.push(sheetName + ': đã nạp ' + out.length + ' dòng');
+  });
+  var msg = report.join('\n');
   Logger.log(msg);
   return msg;
 }

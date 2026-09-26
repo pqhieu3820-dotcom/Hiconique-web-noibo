@@ -76,6 +76,7 @@ function syncToGSheets(type, action, data, id) {
     commissions: { add: 'addCommission', update: 'updateCommission', delete: 'deleteCommission' },
     commissionRates: { add: 'addCommissionRate', update: 'updateCommissionRate', delete: 'deleteCommissionRate' },
     priceCatalog: { add: 'addPriceCatalog', update: 'updatePriceCatalog', delete: 'deletePriceCatalog' },
+    lightingPlans: { add: 'addLightingPlan', update: 'updateLightingPlan' },
     financeEntries: { add: 'addFinanceEntry', update: 'updateFinanceEntry', delete: 'deleteFinanceEntry' },
     receivables: { add: 'addReceivable', update: 'updateReceivable', delete: 'deleteReceivable' },
     bsSnapshots: { add: 'addBsSnapshot', update: 'updateBsSnapshot', delete: 'deleteBsSnapshot' },
@@ -264,6 +265,10 @@ var TaskManager = (function() {
     commissions: 'hiconique_commissions',
     commissionRates: 'hiconique_commission_rates',
     priceCatalog: 'hiconique_price_catalog',
+    lightingStandards: 'hiconique_lighting_standards',
+    lightingLamps: 'hiconique_lighting_lamps',
+    lightingFactors: 'hiconique_lighting_factors',
+    lightingPlans: 'hiconique_lighting_plans',
     financeEntries: 'hiconique_finance_entries',
     receivables: 'hiconique_receivables',
     bsSnapshots: 'hiconique_bs_snapshots',
@@ -568,6 +573,8 @@ var TaskManager = (function() {
       documents: 'getDocuments', payslips: 'getPayslips',
       commissions: 'getCommissions', commissionRates: 'getCommissionRates',
       priceCatalog: 'getPriceCatalog', financeEntries: 'getFinanceEntries',
+      lightingStandards: 'getLightingStandards', lightingLamps: 'getLightingLamps',
+      lightingFactors: 'getLightingFactors', lightingPlans: 'getLightingPlans',
       receivables: 'getReceivables', bsSnapshots: 'getBsSnapshots', orders: 'getOrders',
       attendanceLocations: 'getAttendanceLocations'
     };
@@ -2366,6 +2373,54 @@ var TaskManager = (function() {
     return result;
   }
 
+  // Tính toán chiếu sáng (lighting.html) — nhóm sheet TTCS-. 3 sheet danh mục
+  // (tiêu chuẩn TCVN, danh mục đèn, hệ số U/K) chỉ đọc từ web, quản lý sửa
+  // thẳng trên Sheet; trang lighting.js có bản nhúng sẵn làm dự phòng khi Sheet
+  // trống/offline. Phương án đã lưu (TTCS-Phương án) thì ghi từ web.
+  // Ô 'active'/'visible' trên Sheet có thể về dạng chữ "FALSE"/"false".
+  function lightingOff_(v) { return v === false || String(v).toLowerCase() === 'false'; }
+
+  function loadLightingData(callback) {
+    var keys = ['lightingStandards', 'lightingLamps', 'lightingFactors', 'lightingPlans'];
+    var out = {}, left = keys.length;
+    keys.forEach(function (k) {
+      getFromGSheets(k, function (items) {
+        out[k] = items || [];
+        // Chỉ ghi đè cache khi server có dữ liệu — tránh xoá cache bằng kết quả rỗng do lỗi mạng
+        if (out[k].length) localStorage.setItem(STORAGE_KEYS[k], JSON.stringify(out[k]));
+        if (--left === 0 && callback) callback(out);
+      });
+    });
+  }
+
+  function getLightingStandards() { return getAll(STORAGE_KEYS.lightingStandards); }
+  function getLightingLamps() {
+    return getAll(STORAGE_KEYS.lightingLamps).filter(function (l) { return !lightingOff_(l.active); });
+  }
+  function getLightingFactors() { return getAll(STORAGE_KEYS.lightingFactors); }
+  function getLightingPlans() {
+    return getAll(STORAGE_KEYS.lightingPlans).filter(function (p) { return !lightingOff_(p.visible); })
+      .sort(function (a, b) { return String(b.createdAt || '').localeCompare(String(a.createdAt || '')); });
+  }
+  function saveLightingPlan(data, user) {
+    if (!user) return null;
+    var now = new Date().toISOString();
+    data.visible = true; data.createdBy = user.id; data.createdAt = now; data.updatedAt = now;
+    var created = add(STORAGE_KEYS.lightingPlans, data);
+    syncToGSheets('lightingPlans', 'add', created);
+    return created;
+  }
+  // Ẩn phương án (giữ dòng trên Sheet, chỉ tắt cột Hiển thị) — chỉ người tạo hoặc quản lý
+  function hideLightingPlan(id, user) {
+    if (!user) return null;
+    var cur = getAll(STORAGE_KEYS.lightingPlans).filter(function (p) { return p.id === id; })[0];
+    if (!cur || (cur.createdBy !== user.id && !canManageNotifications(user))) return null;
+    var upd = { visible: false, updatedAt: new Date().toISOString() };
+    var updated = update(STORAGE_KEYS.lightingPlans, id, upd);
+    if (updated) syncToGSheets('lightingPlans', 'update', upd, id);
+    return updated;
+  }
+
   // Sổ tài chính công ty — 1 sổ giao dịch chung cho mọi khoản tiền của công
   // ty (doanh thu/chi phí/vay nợ/trả nợ/thưởng/phạt/tiền ứ đọng/chưa giải
   // ngân...), CEO-only cả đọc và ghi (finance.html tự chặn trước khi gọi
@@ -2778,6 +2833,13 @@ var TaskManager = (function() {
 
     // Bảng giá dịch vụ
     getPriceCatalog: getPriceCatalog,
+    loadLightingData: loadLightingData,
+    getLightingStandards: getLightingStandards,
+    getLightingLamps: getLightingLamps,
+    getLightingFactors: getLightingFactors,
+    getLightingPlans: getLightingPlans,
+    saveLightingPlan: saveLightingPlan,
+    hideLightingPlan: hideLightingPlan,
     createPriceCatalogItem: createPriceCatalogItem,
     updatePriceCatalogItem: updatePriceCatalogItem,
     deletePriceCatalogItem: deletePriceCatalogItem,

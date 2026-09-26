@@ -151,11 +151,12 @@
 
 
   var LS_KEY = 'hiconique_lighting_catalog_v1';
+  var hasLocalOverride = false;
   var tcvn = clone(TCVN_DATA);
   var catalog = clone(LAMP_CATALOG);
   try {
     var saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
-    if (saved && saved.tcvn && saved.catalog) { tcvn = saved.tcvn; catalog = saved.catalog; }
+    if (saved && saved.tcvn && saved.catalog) { tcvn = saved.tcvn; catalog = saved.catalog; hasLocalOverride = true; }
   } catch (e) { /* cache hỏng — dùng danh mục gốc */ }
 
   // Bảng hệ số sử dụng U theo Ri cho 3 kiểu phản xạ trần-tường-sàn (CIE).
@@ -645,6 +646,7 @@
       if (!newT && !newC) { toast('Không có dòng hợp lệ nào để nhập. ' + report.join(' · '), true); return; }
       if (newT) tcvn = newT;
       if (newC) catalog = newC;
+      hasLocalOverride = true;
       try { localStorage.setItem(LS_KEY, JSON.stringify({ tcvn: tcvn, catalog: catalog })); } catch (e) { /* đầy bộ nhớ — vẫn dùng được trong phiên này */ }
       refreshCatalogSelects();
       toast('Đã cập nhật danh mục. ' + report.join(' · '));
@@ -652,12 +654,182 @@
   });
 
   $('ltResetCatalogBtn').addEventListener('click', function () {
-    tcvn = clone(TCVN_DATA); catalog = clone(LAMP_CATALOG);
+    tcvn = clone(TCVN_DATA); catalog = clone(LAMP_CATALOG); hasLocalOverride = false;
     try { localStorage.removeItem(LS_KEY); } catch (e) { /* bỏ qua */ }
+    applySheetCatalogs();
     refreshCatalogSelects();
-    toast('Đã quay về danh mục gốc.');
+    toast('Đã quay về danh mục gốc (theo Sheet TTCS- nếu có).');
   });
 
+  // ---------- Đồng bộ với Google Sheet nhóm TTCS- ----------
+  // Sheet là nguồn danh mục chính (quản lý sửa thẳng trên Sheet). Bản nhúng ở
+  // trên chỉ là dự phòng khi Sheet trống/offline. Ô TRUE/FALSE trên Sheet có
+  // thể về dạng chữ nên phía TaskManager đã xử lý (lightingOff_).
+  function numOr(v, d) { var n = Number(String(v).replace(',', '.')); return v === '' || v == null || !isFinite(n) ? d : n; }
+  var TM = window.TaskManager;
+
+  function applySheetCatalogs() {
+    if (!TM || !TM.getLightingStandards) return;
+    var std = TM.getLightingStandards(), lamps = TM.getLightingLamps(), fac = TM.getLightingFactors();
+    if (!hasLocalOverride) {
+      var t = {};
+      std.forEach(function (r) {
+        if (!r.area || !r.room || !isFinite(Number(r.lux)) || Number(r.lux) <= 0) return;
+        (t[r.area] = t[r.area] || {})[r.room] = { lux: Number(r.lux), cri: numOr(r.cri, 0) };
+      });
+      if (Object.keys(t).length) tcvn = t;
+      var c = {};
+      lamps.forEach(function (r) {
+        var lm = Number(r.lumen);
+        if (!r.group || !r.name || !isFinite(lm) || lm <= 0) return;
+        (c[r.group] = c[r.group] || {})[r.name] = {
+          watt: numOr(r.watt, 0), lumen: lm, beam: numOr(r.beam, 100), ip: numOr(r.ip, 20), cct: String(r.cct == null ? '' : r.cct),
+          m_p: numOr(r.mp, 0), r9: numOr(r.r9, 0), b_y: numOr(r.by, 0), link_anh: /^https?:\/\//i.test(r.imageUrl || '') ? r.imageUrl : ''
+        };
+      });
+      if (Object.keys(c).length) catalog = c;
+    }
+    // Hệ số U (theo kiểu phản xạ) và K (môi trường) — thay bảng nhúng nếu Sheet có đủ điểm
+    var u = {}, labels = {}, ks = [];
+    fac.forEach(function (r) {
+      if (r.type === 'U' && r.group && isFinite(Number(r.ri)) && isFinite(Number(r.value))) {
+        (u[r.group] = u[r.group] || []).push([Number(r.ri), Number(r.value)]); labels[r.group] = r.label || '';
+      } else if (r.type === 'K' && isFinite(Number(r.value)) && Number(r.value) > 0 && Number(r.value) <= 1) {
+        ks.push({ v: Number(r.value), label: r.label || '' });
+      }
+    });
+    var ukeys = Object.keys(u).filter(function (k) { return u[k].length >= 2; });
+    if (ukeys.length) {
+      ukeys.forEach(function (k) { U_TABLE[k] = u[k].sort(function (a, b) { return a[0] - b[0]; }); });
+      var rs = $('ltReflect'), cur = rs.value;
+      rs.innerHTML = '';
+      Object.keys(U_TABLE).forEach(function (k) {
+        var o = document.createElement('option'); o.value = k; o.textContent = k + (labels[k] ? ' · ' + labels[k] : ''); rs.appendChild(o);
+      });
+      if (U_TABLE[cur]) rs.value = cur;
+    }
+    if (ks.length) {
+      var ms = $('ltMaint'), curK = ms.value;
+      ms.innerHTML = '';
+      ks.sort(function (a, b) { return b.v - a.v; }).forEach(function (k) {
+        var o = document.createElement('option'); o.value = String(k.v); o.textContent = fmt(k.v, 2) + (k.label ? ' · ' + k.label : ''); ms.appendChild(o);
+      });
+      if (ks.some(function (k) { return String(k.v) === curK; })) ms.value = curK;
+    }
+  }
+
+  // ---------- Phương án đã lưu (TTCS-Phương án) ----------
+  function me() { try { return window.Auth && Auth.getCurrentUser ? Auth.getCurrentUser() : null; } catch (e) { return null; } }
+  function selVal(id, v) { var el = $(id); el.value = v; el.dispatchEvent(new Event('change')); }
+  function markInvalid(el) { el.classList.add('invalid'); el.addEventListener('input', function f() { el.classList.remove('invalid'); el.removeEventListener('input', f); }); }
+
+  function renderPlans() {
+    var box = $('ltPlanList');
+    var plans = TM && TM.getLightingPlans ? TM.getLightingPlans() : [];
+    var u = me();
+    box.innerHTML = '';
+    if (!plans.length) { box.innerHTML = '<div class="lt-hint">Chưa có phương án nào được lưu.</div>'; return; }
+    plans.slice(0, 30).forEach(function (p) {
+      var row = document.createElement('div');
+      row.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 10px; border:1px solid var(--lt-border); border-radius:8px;';
+      var info = document.createElement('div');
+      info.style.cssText = 'min-width:0; font-size:0.75rem;';
+      var b = document.createElement('div'); b.style.fontWeight = '600'; b.textContent = p.name || '(không tên)';
+      var sub = document.createElement('div'); sub.className = 'lt-hint';
+      sub.textContent = fmt(p.length, 1) + '×' + fmt(p.width, 1) + ' m · ' + (p.lampCount || 0) + ' bóng · TB ' + fmt(p.avgLux, 0) + ' lux' + (p.verdict ? ' · ' + String(p.verdict).split(':')[0] : '');
+      info.appendChild(b); info.appendChild(sub);
+      var acts = document.createElement('div'); acts.style.cssText = 'display:flex; gap:6px; flex:none;';
+      var open = document.createElement('button'); open.type = 'button'; open.className = 'lt-btn lt-btn-ghost'; open.textContent = 'Mở';
+      open.addEventListener('click', function () { loadPlan(p); });
+      acts.appendChild(open);
+      if (u && (p.createdBy === u.id || u.roleLevel === 'admin' || u.roleLevel === 'manager')) {
+        var hide = document.createElement('button'); hide.type = 'button'; hide.className = 'lt-btn lt-btn-ghost'; hide.textContent = 'Ẩn';
+        hide.addEventListener('click', function () {
+          if (!window.confirm('Ẩn phương án "' + (p.name || '') + '"? (Dòng vẫn còn trên Sheet, chỉ tắt cột Hiển thị)')) return;
+          if (TM.hideLightingPlan(p.id, u)) { renderPlans(); toast('Đã ẩn phương án.'); } else toast('Bạn không có quyền ẩn phương án này.', true);
+        });
+        acts.appendChild(hide);
+      }
+      row.appendChild(info); row.appendChild(acts); box.appendChild(row);
+    });
+  }
+
+  function savePlan() {
+    var u = me();
+    if (!u) { toast('Cần đăng nhập để lưu phương án.', true); return; }
+    if (!state.calc) { toast('Hãy bấm "Tính toán" trước khi lưu phương án.', true); return; }
+    var name = $('ltPlanName').value.trim();
+    if (!name) { markInvalid($('ltPlanName')); toast('Nhập tên phương án.', true); return; }
+    var g = state.grid || { avg: 0, min: 0, max: 0 };
+    var n = state.lamps.length, w = state.watt || 0;
+    var pa = {
+      name: name, projectId: $('ltPlanProject').value, note: $('ltPlanNote').value.trim(),
+      length: state.L, width: state.W, height: state.H, workplane: state.Hw,
+      reflect: $('ltReflect').value, maintenance: state.K,
+      standardArea: $('ltArea').value, standardRoom: $('ltRoom').value, reqLux: state.req, reqCri: $('ltCri').value,
+      lampGroup: $('ltLampGroup').value, lampName: $('ltLampType').value, lampLumen: state.lumen, lampWatt: state.watt,
+      lampCct: $('ltCct').value, lampBeam: state.beam, lampIp: $('ltIp').value,
+      suggestCount: state.nSuggest, lampCount: n,
+      lamps: JSON.stringify(state.lamps.map(function (l) { return [Math.round(l.x * 100) / 100, Math.round(l.y * 100) / 100]; })),
+      avgLux: Math.round(g.avg), minLux: Math.round(g.min), maxLux: Math.round(g.max),
+      uniformity: g.avg > 0 ? Math.round(g.min / g.avg * 100) / 100 : 0,
+      totalWatt: Math.round(n * w * 10) / 10, wattPerM2: Math.round(n * w / (state.L * state.W) * 100) / 100,
+      verdict: $('ltStatus').textContent.trim()
+    };
+    if (TM.saveLightingPlan(pa, u)) { $('ltPlanName').value = ''; $('ltPlanNote').value = ''; renderPlans(); toast('Đã lưu phương án "' + name + '".'); }
+    else toast('Không lưu được phương án.', true);
+  }
+
+  function loadPlan(p) {
+    $('ltL').value = p.length; $('ltW').value = p.width; $('ltH').value = p.height; $('ltHw').value = p.workplane;
+    if (U_TABLE[p.reflect]) $('ltReflect').value = p.reflect;
+    $('ltMaint').value = String(p.maintenance);
+    if (p.standardArea && tcvn[p.standardArea]) { selVal('ltArea', p.standardArea); if (tcvn[p.standardArea][p.standardRoom]) selVal('ltRoom', p.standardRoom); }
+    $('ltLux').value = p.reqLux; if (p.reqCri !== '' && p.reqCri != null) $('ltCri').value = p.reqCri;
+    if (p.lampGroup && catalog[p.lampGroup]) { selVal('ltLampGroup', p.lampGroup); if (catalog[p.lampGroup][p.lampName]) selVal('ltLampType', p.lampName); }
+    // Thông số đèn lấy đúng như lúc lưu (danh mục có thể đã đổi từ đó)
+    $('ltLumen').value = p.lampLumen; $('ltWatt').value = p.lampWatt; $('ltBeam').value = p.lampBeam;
+    if (p.lampIp !== '' && p.lampIp != null) $('ltIp').value = p.lampIp;
+    if (p.lampCct !== '' && p.lampCct != null) $('ltCct').value = p.lampCct;
+    calculate();
+    if (!state.calc) return;
+    try {
+      var arr = JSON.parse(p.lamps || '[]');
+      var ok = Array.isArray(arr) && arr.length && arr.every(function (l) { return Array.isArray(l) && isFinite(l[0]) && isFinite(l[1]); });
+      if (ok) { state.lamps = arr.map(function (l) { return { x: clampTo(Number(l[0]), 0, state.L), y: clampTo(Number(l[1]), 0, state.W) }; }); refresh(); }
+    } catch (e) { /* vị trí hỏng — giữ lưới khởi tạo */ }
+    toast('Đã mở phương án "' + (p.name || '') + '".');
+  }
+
+  $('ltPlanSaveBtn').addEventListener('click', savePlan);
+  function fillProjects() {
+    try {
+      var sel = $('ltPlanProject'), cur = sel.value;
+      while (sel.options.length > 1) sel.remove(1);
+      (TM && TM.getProjects ? TM.getProjects() : []).forEach(function (p) {
+        var o = document.createElement('option'); o.value = p.id; o.textContent = p.name || p.id; sel.appendChild(o);
+      });
+      sel.value = cur;
+    } catch (e) { /* không có dự án — bỏ qua */ }
+  }
+
+  applySheetCatalogs();
   refreshCatalogSelects();
+  fillProjects();
+  renderPlans();
   refresh();
+  // Tải danh mục + phương án mới nhất từ Sheet rồi áp dụng (giữ lựa chọn hiện tại nếu còn)
+  if (TM && TM.loadLightingData) {
+    var stEl = $('ltSyncState'); if (stEl) stEl.textContent = 'Đang đồng bộ…';
+    TM.loadLightingData(function (out) {
+      var got = out.lightingStandards.length + out.lightingLamps.length + out.lightingFactors.length;
+      var keep = { a: $('ltArea').value, r: $('ltRoom').value, g: $('ltLampGroup').value, t: $('ltLampType').value };
+      applySheetCatalogs();
+      refreshCatalogSelects();
+      if (keep.a && tcvn[keep.a]) { selVal('ltArea', keep.a); if (tcvn[keep.a][keep.r]) $('ltRoom').value = keep.r; }
+      if (keep.g && catalog[keep.g]) { selVal('ltLampGroup', keep.g); if (catalog[keep.g][keep.t]) $('ltLampType').value = keep.t; }
+      renderPlans();
+      if (stEl) stEl.textContent = got ? 'Đã đồng bộ Sheet' : 'Sheet TTCS- chưa có dữ liệu — dùng danh mục nhúng';
+    });
+  }
 })();
