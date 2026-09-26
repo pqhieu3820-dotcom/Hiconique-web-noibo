@@ -387,7 +387,6 @@
     </div>
 
     <div class="pr-tabs" id="prTabs" role="tablist">
-      <button class="pr-tab-btn" data-tab="catalog">Danh mục đơn giá</button>
       <button class="pr-tab-btn" data-tab="province">Đơn giá theo tỉnh</button>
       <button class="pr-tab-btn" data-tab="estimate">Dự toán xây dựng</button>
       <button class="pr-tab-btn" data-tab="design">Dự toán thiết kế</button>
@@ -399,6 +398,7 @@
       <button class="pr-tab-btn" data-tab="acceptance">Nghiệm thu</button>
       <button class="pr-tab-btn" data-tab="docs">Hồ sơ công trình</button>
       <button class="pr-tab-btn" data-tab="quote">Soạn báo giá</button>
+      <button class="pr-tab-btn" data-tab="catalog">Danh mục đơn giá</button>
       <button class="pr-tab-btn" data-tab="guide">Hướng dẫn</button>
       <button class="pr-tab-btn" data-tab="sources">Nguồn</button>
     </div>
@@ -815,7 +815,7 @@
       var saved = null;
       try { saved = localStorage.getItem(TAB_STORAGE_KEY); } catch (e) { /* ignore */ }
       var valid = saved && document.querySelector('.pr-tab-btn[data-tab="' + saved + '"]');
-      activateTab(valid ? saved : 'catalog');
+      activateTab(valid ? saved : 'province'); // tab đầu tiên trong thanh (Danh mục đơn giá đã chuyển xuống sau Soạn báo giá)
     }
 
     function fmt(n) { return Math.round(Number(n) || 0).toLocaleString('vi-VN'); }
