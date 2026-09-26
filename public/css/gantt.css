@@ -332,9 +332,9 @@
 }
 
 .gantt-progress-cell { text-align: center; padding: 0 14px 0 0; }
-.gantt-progress-ring { width: 40px; height: 40px; margin: 0 auto; position: relative; }
+.gantt-progress-ring { width: 54px; height: 54px; margin: 0 auto; position: relative; }
 .gantt-progress-ring svg { width: 100%; height: 100%; }
-.gantt-progress-ring circle { fill: none; stroke-width: 3.5; }
+.gantt-progress-ring circle { fill: none; stroke-width: 4; }
 .gantt-progress-bg { stroke: var(--color-border); }
 .gantt-progress-fill { stroke: var(--gantt-purple); stroke-linecap: round; transition: stroke-dashoffset 0.5s; }
 
@@ -423,7 +423,8 @@
   .gantt-task-sub { padding-left: 26px; }
   .gantt-task-deadline { font-size: 0.625rem; }
   .gantt-task-deadline svg { width: 10px; height: 10px; }
-  .gantt-progress-ring { width: 32px; height: 32px; }
+  .gantt-progress-ring { width: 44px; height: 44px; }
+  .gantt-progress-ring > div { font-size: 0.625rem !important; }
   .gantt-section-row td:first-child { font-size: 0.6875rem; padding: 9px 6px; }
 
   /* The "Hôm nay" label floats 20px above its own line (::before,

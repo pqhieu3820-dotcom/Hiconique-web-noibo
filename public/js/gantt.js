@@ -170,7 +170,7 @@ var HiconiqueGantt = (function () {
         var left = pct(axis, range.start);
         var right = pct(axis, range.end);
         var width = Math.max(1.5, right - left);
-        var circ = 2 * Math.PI * 16;
+        var circ = 2 * Math.PI * 23; // vòng r=23 trong viewBox 54 (chữ 100% nằm gọn bên trong)
         var dash = (progress / 100) * circ;
 
         html += '<tr class="gantt-task-row">' +
@@ -203,11 +203,11 @@ var HiconiqueGantt = (function () {
             '</div></div>' +
           '</td>' +
           '<td class="gantt-progress-cell"><div class="gantt-progress-ring">' +
-            '<svg width="40" height="40" viewBox="0 0 40 40" style="transform:rotate(-90deg)">' +
-              '<circle class="gantt-progress-bg" cx="20" cy="20" r="16"/>' +
-              '<circle class="gantt-progress-fill" cx="20" cy="20" r="16" stroke="' + color + '" stroke-dasharray="' + circ + '" stroke-dashoffset="' + (circ - dash) + '"/>' +
+            '<svg width="54" height="54" viewBox="0 0 54 54" style="transform:rotate(-90deg)">' +
+              '<circle class="gantt-progress-bg" cx="27" cy="27" r="23"/>' +
+              '<circle class="gantt-progress-fill" cx="27" cy="27" r="23" stroke="' + color + '" stroke-dasharray="' + circ + '" stroke-dashoffset="' + (circ - dash) + '"/>' +
             '</svg>' +
-            '<div style="position:absolute;inset:0;display:grid;place-items:center;font-size:0.6875rem;font-weight:700;color:var(--color-text);">' + progress + '%</div>' +
+            '<div style="position:absolute;inset:0;display:grid;place-items:center;font-size:0.75rem;font-weight:700;color:var(--color-text);letter-spacing:-0.02em;">' + progress + '%</div>' +
           '</div></td>' +
           '<td style="text-align:right;padding-right:20px;"><span class="gantt-status-badge ' + status.cls + '">' + status.label + '</span></td>' +
         '</tr>';
