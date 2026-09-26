@@ -3623,7 +3623,7 @@ function authorizeExternalRequest() {
 // việc, do nạp mẫu 2 lần) — giữ lại 1 dòng/nhóm: ưu tiên dòng đã nhập nhiều thông tin nhất (ngày thực tế,
 // trạng thái, ghi chú), hoà thì giữ dòng nằm thấp nhất (cũ nhất). Xoá từ dưới lên trong 1 lock; chốt chặn:
 // nếu số dòng cần xoá vượt 80 thì HUỶ, không xoá gì. Chạy tay 1 lần từ editor; chạy lại an toàn.
-function cleanScheduleSheet() { return withScriptLock_(cleanScheduleSheet_impl); }
+function cleanScheduleSheet() { var m = withScriptLock_(cleanScheduleSheet_impl); Logger.log('cleanScheduleSheet: ' + m); return m; }
 function cleanScheduleSheet_impl() {
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   var sheet = findSheet(ss, SHEETS.scheduleItems);
@@ -3632,12 +3632,13 @@ function cleanScheduleSheet_impl() {
   var col = function (en) { return headers.indexOf(enToViHeader(SHEETS.scheduleItems, en)); };
   var cId = col('id'), cPid = col('projectId'), cSeq = col('seq'), cName = col('name');
   var cInfo = ['plannedStart', 'plannedEnd', 'actualStart', 'actualEnd', 'status', 'note'].map(col).filter(function (i) { return i >= 0; });
-  if (cId < 0 || cPid < 0 || cSeq < 0 || cName < 0) return 'HUỶ: không tìm thấy các cột chính.';
+  if (cId < 0 || cPid < 0 || cSeq < 0 || cName < 0) return 'HUỶ: không tìm thấy các cột chính. Tiêu đề hiện có: ' + headers.join(' | ');
   var vals = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
   var blank = [], groups = {};
   var empty = function (v) { return v === '' || v == null; };
   vals.forEach(function (r, i) {
     var rowNo = i + 2;
+    if (empty(r[cId]) && empty(r[cPid]) && empty(r[cSeq]) && empty(r[cName])) return; // dòng lưới hoàn toàn trống (không phải dữ liệu) — bỏ qua
     if (empty(r[cPid]) && empty(r[cSeq]) && empty(r[cName])) { blank.push(rowNo); return; }
     var key = r[cPid] + '|' + r[cSeq] + '|' + r[cName];
     (groups[key] = groups[key] || []).push({ rowNo: rowNo, info: cInfo.filter(function (c) { return !empty(r[c]) && r[c] !== 'Chưa bắt đầu'; }).length });
