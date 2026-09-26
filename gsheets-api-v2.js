@@ -3617,3 +3617,42 @@ function authorizeExternalRequest() {
   Logger.log('Đã có quyền gọi ra ngoài (HTTP ' + r.getResponseCode() + ').');
   return r.getResponseCode();
 }
+
+// 2026-09-27: dọn sheet "DA-Tiến độ" — user đã cho phép ("bạn tự làm đi"): (1) xoá các dòng TRỐNG (chỉ có mã,
+// không có Mã dự án/Công việc/STT — sinh ra do nạp mẫu lỗi), (2) xoá dòng TRÙNG (cùng Mã dự án + STT + Công
+// việc, do nạp mẫu 2 lần) — giữ lại 1 dòng/nhóm: ưu tiên dòng đã nhập nhiều thông tin nhất (ngày thực tế,
+// trạng thái, ghi chú), hoà thì giữ dòng nằm thấp nhất (cũ nhất). Xoá từ dưới lên trong 1 lock; chốt chặn:
+// nếu số dòng cần xoá vượt 80 thì HUỶ, không xoá gì. Chạy tay 1 lần từ editor; chạy lại an toàn.
+function cleanScheduleSheet() { return withScriptLock_(cleanScheduleSheet_impl); }
+function cleanScheduleSheet_impl() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = findSheet(ss, SHEETS.scheduleItems);
+  if (!sheet || sheet.getLastRow() < 2) return 'Sheet trống — không có gì để dọn.';
+  var headers = getHeaders(sheet);
+  var col = function (en) { return headers.indexOf(enToViHeader(SHEETS.scheduleItems, en)); };
+  var cId = col('id'), cPid = col('projectId'), cSeq = col('seq'), cName = col('name');
+  var cInfo = ['plannedStart', 'plannedEnd', 'actualStart', 'actualEnd', 'status', 'note'].map(col).filter(function (i) { return i >= 0; });
+  if (cId < 0 || cPid < 0 || cSeq < 0 || cName < 0) return 'HUỶ: không tìm thấy các cột chính.';
+  var vals = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
+  var blank = [], groups = {};
+  var empty = function (v) { return v === '' || v == null; };
+  vals.forEach(function (r, i) {
+    var rowNo = i + 2;
+    if (empty(r[cPid]) && empty(r[cSeq]) && empty(r[cName])) { blank.push(rowNo); return; }
+    var key = r[cPid] + '|' + r[cSeq] + '|' + r[cName];
+    (groups[key] = groups[key] || []).push({ rowNo: rowNo, info: cInfo.filter(function (c) { return !empty(r[c]) && r[c] !== 'Chưa bắt đầu'; }).length });
+  });
+  var dups = [];
+  Object.keys(groups).forEach(function (k) {
+    var g = groups[k];
+    if (g.length < 2) return;
+    g.sort(function (a, b) { return b.info - a.info || b.rowNo - a.rowNo; }); // nhiều thông tin nhất, rồi dòng thấp nhất
+    g.slice(1).forEach(function (x) { dups.push(x.rowNo); });
+  });
+  var all = blank.concat(dups);
+  if (all.length > 80) return 'HUỶ, không xoá gì: cần xoá ' + all.length + ' dòng (> 80).';
+  all.sort(function (a, b) { return b - a; }).forEach(function (r) { sheet.deleteRow(r); });
+  var msg = 'Đã xoá ' + blank.length + ' dòng trống + ' + dups.length + ' dòng trùng. Còn lại ' + (vals.length - all.length) + ' dòng.';
+  Logger.log(msg);
+  return msg;
+}
