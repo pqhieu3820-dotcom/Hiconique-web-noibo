@@ -21,12 +21,17 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.normpath(os.path.join(HERE, '..', '..', 'public', 'agent'))
 SITE = 'https://hiconique-web-noibo.pqhieu3820.workers.dev/'
+ICON = os.path.join(HERE, 'icon.ico')  # tạo bằng make_icon.py — icon riêng cho exe và cho shortcut Desktop
 
 src = open(os.path.join(HERE, 'agent.py'), encoding='utf-8').read()
 version = re.search(r"^VERSION = '([^']+)'", src, re.M).group(1)
 
+if not os.path.exists(ICON):
+    subprocess.check_call([sys.executable, os.path.join(HERE, 'make_icon.py')])
+
+icon_args = ['--icon', ICON] if os.path.exists(ICON) else []
 subprocess.check_call([sys.executable, '-m', 'PyInstaller', '--noconfirm', '--clean', '--onefile', '--noconsole',
-                       '--name', 'HiconiqueAgent', '--distpath', os.path.join(HERE, 'dist'),
+                       '--name', 'HiconiqueAgent'] + icon_args + ['--distpath', os.path.join(HERE, 'dist'),
                        '--workpath', os.path.join(HERE, 'build'), '--specpath', os.path.join(HERE, 'build'),
                        os.path.join(HERE, 'agent.py')])
 

@@ -1,5 +1,10 @@
 [
   {
+    "version": "1.0.2",
+    "date": "2026-09-27",
+    "notes": "Icon riêng cho ứng dụng; tự tạo icon 'HICONIQUE Agent' trên Desktop khi cài, bấm vào mở cửa sổ trạng thái (đang chạy hay không, dữ liệu hôm nay, kiểm tra cập nhật, gỡ cài đặt) — dùng như một ứng dụng bình thường."
+  },
+  {
     "version": "1.0.1",
     "date": "2026-09-27",
     "notes": "Báo cấu hình phần cứng máy (CPU, mainboard, RAM từng thanh, ổ cứng + sức khỏe, card đồ họa, màn hình, pin, Secure Boot, card mạng, diệt virus) lên trang Thiết bị; cảnh báo ổ lỗi/đầy, pin chai, Windows chưa kích hoạt. Có thể tắt bằng config (reportHardware, sendSerials)."

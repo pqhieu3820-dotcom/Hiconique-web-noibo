@@ -7,11 +7,12 @@ Ghi gì: tên ứng dụng + tiêu đề cửa sổ đang mở phía trước, c
 KHÔNG ghi: chụp màn hình, phím gõ, nội dung file/tin nhắn, clipboard, camera, micro.
 
 Chế độ (cùng 1 file exe):
-  HiconiqueAgent.exe               chưa cài -> mở trình cài đặt | đã cài -> chạy nền
+  HiconiqueAgent.exe               chưa cài -> mở trình cài đặt | đã cài -> mở cửa sổ trạng thái (icon Desktop)
   HiconiqueAgent.exe --run         chạy nền (Windows tự gọi khi đăng nhập)
   HiconiqueAgent.exe --uninstall   gỡ cài đặt (mục "Apps & features" của Windows cũng gọi lệnh này)
   python agent.py --once           (khi phát triển) ghi 1 lần và in ra màn hình
 """
+import base64
 import ctypes
 import hashlib
 import json
@@ -29,7 +30,7 @@ import urllib.request
 from ctypes import wintypes
 from datetime import datetime
 
-VERSION = '1.0.1'
+VERSION = '1.0.2'
 APP_NAME = 'HiconiqueAgent'
 FROZEN = getattr(sys, 'frozen', False)
 BASE = os.path.dirname(os.path.abspath(sys.executable if FROZEN else __file__))
@@ -403,6 +404,104 @@ def run_agent(after_update=False):
         time.sleep(step)
 
 
+# ---------------- Icon Desktop (shortcut .lnk) ----------------
+def desktop_shortcut_path():
+    return os.path.join(os.path.join(os.environ.get('USERPROFILE', os.path.expanduser('~')), 'Desktop'), 'HICONIQUE Agent.lnk')
+
+
+def create_desktop_shortcut():
+    """Tạo icon HICONIQUE Agent trên Desktop, trỏ tới bản đã cài — bấm vào mở cửa sổ trạng thái như ứng dụng bình thường."""
+    try:
+        lnk = desktop_shortcut_path()
+        ps_lines = [
+            "$s = New-Object -ComObject WScript.Shell",
+            "$lnk = $s.CreateShortcut('%s')" % lnk,
+            "$lnk.TargetPath = '%s'" % INSTALL_EXE,
+            "$lnk.IconLocation = '%s,0'" % INSTALL_EXE,
+            "$lnk.WorkingDirectory = '%s'" % INSTALL_DIR,
+            "$lnk.Description = 'HICONIQUE Agent - xem trang thai ghi nhan hoat dong'",
+            "$lnk.Save()",
+        ]
+        enc = base64.b64encode('\n'.join(ps_lines).encode('utf-16-le')).decode('ascii')
+        subprocess.run(['powershell', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', enc],
+                       capture_output=True, timeout=30, creationflags=0x08000000)
+    except Exception as e:
+        log('Tạo icon Desktop lỗi:', e)
+
+
+def remove_desktop_shortcut():
+    try:
+        p = desktop_shortcut_path()
+        if os.path.exists(p):
+            os.remove(p)
+    except Exception:
+        pass
+
+
+def status_window():
+    """Cửa sổ mở khi bấm icon Desktop: xem nhanh trạng thái, mở dữ liệu, kiểm tra cập nhật, gỡ cài đặt."""
+    import tkinter as tk
+    cfg = load_config()
+    probe = single_instance(wait=0)  # thử giữ mutex: None = đã có bản chạy nền giữ (đang chạy)
+    running = probe is None
+    if probe:
+        kernel32.CloseHandle(probe)  # không giữ mutex ở cửa sổ trạng thái — chỉ dùng để kiểm tra
+    txt_path = os.path.join(DATA_DIR, 'hoat-dong-hom-nay.txt')
+    summary = 'Chưa có dữ liệu hôm nay.'
+    if os.path.exists(txt_path):
+        try:
+            lines = open(txt_path, encoding='utf-8').read().splitlines()
+            summary = '\n'.join(lines[:8]) or summary
+        except Exception:
+            pass
+
+    root = tk.Tk()
+    root.title('HICONIQUE Agent %s' % VERSION)
+    root.geometry('440x420')
+    root.resizable(False, False)
+    pad = {'padx': 18, 'anchor': 'w'}
+    tk.Label(root, text='HICONIQUE Agent', font=('Segoe UI', 15, 'bold')).pack(pady=(16, 2), **pad)
+    tk.Label(root, text=('● Đang chạy nền' if running else '○ Chưa chạy — mở lại sau khi đăng nhập Windows'),
+             fg=('#2E7D32' if running else '#B00020'), font=('Segoe UI', 10, 'bold')).pack(pady=(0, 8), **pad)
+    tk.Label(root, text='Phiên bản %s · Người dùng: %s' % (VERSION, cfg.get('memberId') or '(chưa cấu hình)'),
+             font=('Segoe UI', 9), fg='#666').pack(**pad)
+    tk.Label(root, text='Ghi nhận trong Hub: tên ứng dụng, tiêu đề cửa sổ (trong giờ làm việc) và cấu hình phần cứng máy.\nKhông ghi màn hình, phím gõ, nội dung tệp/tin nhắn.',
+             font=('Segoe UI', 8), fg='#666', justify='left', wraplength=400).pack(pady=(4, 10), **pad)
+    box = tk.Text(root, height=8, width=48, font=('Consolas', 9), bg='#F4F1EA', relief='flat')
+    box.insert('1.0', summary)
+    box.config(state='disabled')
+    box.pack(padx=18, pady=(0, 10))
+
+    def open_data():
+        try:
+            os.startfile(txt_path if os.path.exists(txt_path) else DATA_DIR)
+        except Exception as e:
+            msgbox('HICONIQUE Agent', 'Không mở được: %s' % e, 0x10)
+
+    def check_now():
+        btn_check.config(state='disabled', text='Đang kiểm tra…')
+        root.update()
+
+        def work():
+            check_update(cfg)
+            root.after(0, lambda: (btn_check.config(state='normal', text='Kiểm tra cập nhật'),
+                       msgbox('HICONIQUE Agent', 'Đang dùng bản mới nhất (%s) hoặc đã cập nhật xong — nếu vừa cập nhật, ứng dụng sẽ tự khởi động lại.' % VERSION)))
+        threading.Thread(target=work, daemon=True).start()
+
+    def do_uninstall():
+        root.destroy()
+        uninstall()
+
+    row = tk.Frame(root)
+    row.pack(pady=6, padx=18, anchor='w')
+    tk.Button(row, text='Mở dữ liệu của tôi', command=open_data).pack(side='left', padx=(0, 8))
+    btn_check = tk.Button(row, text='Kiểm tra cập nhật', command=check_now)
+    btn_check.pack(side='left', padx=(0, 8))
+    tk.Button(root, text='Gỡ cài đặt…', fg='#B00020', command=do_uninstall).pack(pady=(6, 4), **pad)
+    tk.Button(root, text='Đóng', command=root.destroy).pack(pady=(0, 14), **pad)
+    root.mainloop()
+
+
 # ---------------- Cài đặt / gỡ cài đặt ----------------
 def register_windows():
     import winreg
@@ -507,9 +606,11 @@ def install_ui():
             c['memberId'] = member
             save_config(c)
             register_windows()
+            create_desktop_shortcut()
             spawn_detached([INSTALL_EXE, '--run'])
             msgbox('HICONIQUE Agent', 'Cài đặt xong. HICONIQUE Agent đang chạy nền và sẽ tự khởi động cùng Windows, tự cập nhật.\n\n'
-                   'Gỡ cài đặt: Cài đặt Windows > Ứng dụng > HICONIQUE Agent.')
+                   'Đã tạo icon "HICONIQUE Agent" trên Desktop — bấm vào để xem trạng thái.\n'
+                   'Gỡ cài đặt: Cài đặt Windows > Ứng dụng > HICONIQUE Agent (hoặc nút Gỡ cài đặt trong cửa sổ trạng thái).')
             root.destroy()
         except Exception as e:
             log('Cài đặt lỗi:', e)
@@ -525,6 +626,7 @@ def uninstall():
     if msgbox('Gỡ HICONIQUE Agent', 'Gỡ HICONIQUE Agent khỏi máy này và xóa dữ liệu ghi nhận trên máy?', 0x24) != 6:
         return
     unregister_windows()
+    remove_desktop_shortcut()
     subprocess.run(['taskkill', '/F', '/FI', 'IMAGENAME eq HiconiqueAgent.exe', '/FI', 'PID ne %d' % os.getpid(), '/FI', 'PID ne %d' % os.getppid()],
                    capture_output=True, creationflags=0x08000000)
     bat = os.path.join(tempfile.gettempdir(), 'hiconique_uninstall.bat')
@@ -541,7 +643,7 @@ def main():
     elif '--run' in args or '--once' in args:
         run_agent(after_update='--after-update' in args)
     elif FROZEN and os.path.abspath(sys.executable).lower() == INSTALL_EXE.lower():
-        run_agent()
+        status_window()  # bấm icon Desktop -> xem trạng thái (bản chạy nền do Windows tự khởi động riêng với --run)
     elif FROZEN:
         install_ui()
     else:

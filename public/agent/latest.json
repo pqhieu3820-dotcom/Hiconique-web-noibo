@@ -1,11 +1,16 @@
 {
-  "version": "1.0.1",
+  "version": "1.0.2",
   "url": "https://hiconique-web-noibo.pqhieu3820.workers.dev/agent/HiconiqueAgentSetup.exe",
-  "sha256": "687d41990a037418c611dd905815511178ebfe62c0cb623c273ffa36f14aa98d",
-  "size": 12607526,
-  "releasedAt": "2026-09-27T04:01:33Z",
-  "notes": "Báo cấu hình phần cứng máy (CPU, mainboard, RAM từng thanh, ổ cứng + sức khỏe, card đồ họa, màn hình, pin, Secure Boot, card mạng, diệt virus) lên trang Thiết bị; cảnh báo ổ lỗi/đầy, pin chai, Windows chưa kích hoạt. Có thể tắt bằng config (reportHardware, sendSerials).",
+  "sha256": "a42c27dbce80599da3b99c9549fa0817eb2303355569fc9e2495365b016e964b",
+  "size": 12560837,
+  "releasedAt": "2026-09-27T16:56:35Z",
+  "notes": "Icon riêng cho ứng dụng; tự tạo icon 'HICONIQUE Agent' trên Desktop khi cài, bấm vào mở cửa sổ trạng thái (đang chạy hay không, dữ liệu hôm nay, kiểm tra cập nhật, gỡ cài đặt) — dùng như một ứng dụng bình thường.",
   "history": [
+    {
+      "version": "1.0.2",
+      "date": "2026-09-27",
+      "notes": "Icon riêng cho ứng dụng; tự tạo icon 'HICONIQUE Agent' trên Desktop khi cài, bấm vào mở cửa sổ trạng thái (đang chạy hay không, dữ liệu hôm nay, kiểm tra cập nhật, gỡ cài đặt) — dùng như một ứng dụng bình thường."
+    },
     {
       "version": "1.0.1",
       "date": "2026-09-27",
