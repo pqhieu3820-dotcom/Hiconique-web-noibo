@@ -1,33 +1,84 @@
 """
-Đóng gói HICONIQUE Agent (app.py, PyQt5, 5 tab) thành 1 file .exe và chuẩn bị bản phát hành để các máy tự cập nhật.
+Đóng gói HICONIQUE Agent (app.py, PyQt5, 5 tab) thành 1 file .exe, phát hành lên GitHub Releases
+(file .exe > 25MB nên không host được qua Cloudflare Pages — giới hạn 25MB/file) và cập nhật
+public/agent/latest.json (nhỏ, vẫn ở Cloudflare) để các máy đã cài tự phát hiện bản mới.
 
 Quy trình phát hành bản mới:
   1. Sửa app.py, tăng VERSION (ví dụ 2.0.1), thêm mục mới (đầu danh sách) vào CHANGELOG.json.
-  2. python build.py    (cần: pip install pyinstaller PyQt5 pandas openpyxl pillow)
-  3. git add -A && git commit && git push   -> Hub (Cloudflare) phục vụ public/agent/*, các máy tự tải bản mới trong ~6 giờ.
+  2. python build.py    (cần: pip install pyinstaller PyQt5 pandas openpyxl pillow, và đã `git push`
+     thành công ít nhất 1 lần trước đó để Git Credential Manager có sẵn token GitHub dùng lại)
+  3. git add -A && git commit && git push   -> đẩy latest.json mới lên Cloudflare; các máy đã cài
+     kiểm tra latest.json mỗi 6 giờ, tải bản mới TỪ GITHUB RELEASES (không phải từ Cloudflare),
+     kiểm SHA-256, thay file rồi tự khởi động lại.
 
 Kết quả:
-  public/agent/HiconiqueAgentSetup.exe   file gửi cho nhân viên cài lần đầu (bấm 2 lần là cài)
-  public/agent/latest.json               {"version","url","sha256"} — agent đã cài đọc file này để tự cập nhật
+  public/agent/latest.json                              {"version","url","sha256"} — url trỏ sang
+                                                          GitHub Releases (link "latest" ổn định,
+                                                          không đổi qua mỗi bản)
+  GitHub Release "agent-v<version>"                      chứa file HiconiqueAgentSetup.exe thật
 
-Lưu ý: từ bản 2.0.0 dùng PyQt5 + pandas + openpyxl (công cụ Lấy màu cần Excel), file .exe nặng hơn nhiều
-(khoảng 150–250MB so với ~12MB bản Tkinter cũ) và build lâu hơn (vài phút). --add-data đính kèm icon.ico
-vào bên trong .exe để cửa sổ ứng dụng (không chỉ file/shortcut) cũng dùng đúng icon.
+Lưu ý: từ bản 2.0.0 dùng PyQt5 + pandas + openpyxl (công cụ Lấy màu cần Excel), file .exe nặng hơn
+nhiều (~67MB) và build lâu hơn (vài phút). Token GitHub lấy tạm thời từ Git Credential Manager lúc
+build (không lưu vào bất kỳ file nào trong repo).
 """
 import hashlib
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
+import urllib.error
+import urllib.request
 from datetime import datetime, timezone
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.normpath(os.path.join(HERE, '..', '..', 'public', 'agent'))
 SITE = 'https://hiconique-web-noibo.pqhieu3820.workers.dev/'
+REPO = 'pqhieu3820-dotcom/Hiconique-web-noibo'
 ICON = os.path.join(HERE, 'icon.ico')  # tạo bằng make_icon.py — icon riêng cho exe, cửa sổ và shortcut Desktop
 ENTRY = os.path.join(HERE, 'app.py')
+ASSET_NAME = 'HiconiqueAgentSetup.exe'
+
+
+def github_token():
+    """Lấy token GitHub đã lưu trong Git Credential Manager (không ghi ra file nào)."""
+    out = subprocess.run(['git', 'credential', 'fill'], input='protocol=https\nhost=github.com\n\n',
+                         capture_output=True, text=True, cwd=HERE).stdout
+    for line in out.splitlines():
+        if line.startswith('password='):
+            return line[len('password='):]
+    raise RuntimeError('Không lấy được token GitHub từ Git Credential Manager — hãy `git push` (bất kỳ thay đổi nhỏ nào) 1 lần trước để đăng nhập.')
+
+
+def gh_api(method, url, token, data=None, content_type='application/json'):
+    body = data if isinstance(data, (bytes, type(None))) else json.dumps(data).encode('utf-8')
+    req = urllib.request.Request(url, data=body, method=method, headers={
+        'Authorization': 'token %s' % token, 'Accept': 'application/vnd.github+json', 'Content-Type': content_type,
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            return json.loads(r.read().decode('utf-8')) if r.length != 0 else {}
+    except urllib.error.HTTPError as e:
+        raise RuntimeError('GitHub API %s %s -> %s: %s' % (method, url, e.code, e.read().decode('utf-8', 'ignore')))
+
+
+def publish_release(version, exe_path, notes):
+    token = github_token()
+    tag = 'agent-v%s' % version
+    api = 'https://api.github.com/repos/%s' % REPO
+    try:
+        rel = gh_api('GET', '%s/releases/tags/%s' % (api, tag), token)
+    except RuntimeError:
+        rel = gh_api('POST', '%s/releases' % api, token,
+                     {'tag_name': tag, 'name': 'HICONIQUE Agent v%s' % version, 'body': notes, 'draft': False, 'prerelease': False})
+    for a in rel.get('assets', []):
+        if a['name'] == ASSET_NAME:
+            gh_api('DELETE', a['url'], token)  # ghi đè: xóa asset cũ (build lại cùng version) trước khi tải bản mới
+    upload_url = rel['upload_url'].split('{')[0] + '?name=%s' % ASSET_NAME
+    with open(exe_path, 'rb') as f:
+        asset = gh_api('POST', upload_url, token, f.read(), content_type='application/octet-stream')
+    return asset['browser_download_url'].rsplit('/download/', 1)[0].rsplit('/', 1)[0] + '/latest/download/' + ASSET_NAME
+
 
 src = open(ENTRY, encoding='utf-8').read()
 version = re.search(r"^VERSION = '([^']+)'", src, re.M).group(1)
@@ -49,13 +100,18 @@ subprocess.check_call([
 ])
 
 exe = os.path.join(HERE, 'dist', 'HiconiqueAgent.exe')
-os.makedirs(OUT, exist_ok=True)
-shutil.copy2(exe, os.path.join(OUT, 'HiconiqueAgentSetup.exe'))  # cùng nội dung: tên "Setup" cho lần cài đầu
 sha = hashlib.sha256(open(exe, 'rb').read()).hexdigest()
+size = os.path.getsize(exe)
 history = json.load(open(os.path.join(HERE, 'CHANGELOG.json'), encoding='utf-8'))  # [{version,date,notes}] mới nhất ở đầu
 assert history[0]['version'] == version, 'CHANGELOG.json chưa có mục cho phiên bản %s' % version
-json.dump({'version': version, 'url': SITE + 'agent/HiconiqueAgentSetup.exe', 'sha256': sha,
-           'size': os.path.getsize(exe), 'releasedAt': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+
+print('Đang tải lên GitHub Releases (%s, ~%d MB)...' % (ASSET_NAME, size // 1024 // 1024))
+stable_url = publish_release(version, exe, history[0]['notes'])
+print('OK ->', stable_url)
+
+os.makedirs(OUT, exist_ok=True)
+json.dump({'version': version, 'url': stable_url, 'sha256': sha,
+           'size': size, 'releasedAt': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
            'notes': history[0]['notes'], 'history': history[:10]},
           open(os.path.join(OUT, 'latest.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
-print('OK', version, sha, os.path.getsize(exe) // 1024 // 1024, 'MB')
+print('OK', version, sha, size // 1024 // 1024, 'MB — public/agent/latest.json đã cập nhật, giờ git add/commit/push.')

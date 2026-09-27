@@ -1,10 +1,10 @@
 {
   "version": "2.0.0",
-  "url": "https://hiconique-web-noibo.pqhieu3820.workers.dev/agent/HiconiqueAgentSetup.exe",
+  "url": "https://github.com/pqhieu3820-dotcom/Hiconique-web-noibo/releases/latest/download/HiconiqueAgentSetup.exe",
   "sha256": "66af4d634ecb03da63c62658ff5e19dda5ff653338b3a781c8daabb21d47e464",
   "size": 70325138,
-  "releasedAt": "2026-09-27T17:44:52Z",
-  "notes": "Viết lại toàn bộ bằng PyQt5, gộp thành 1 ứng dụng có 5 tab: Kiểm soát dữ liệu thao tác, Thông số linh kiện máy tính (quét + nút Cập nhật lên web), Convert Ảnh ↔ SketchUp Material, Lấy màu (Pick Color), Hẹn giờ tắt máy. Đóng cửa sổ (X) chỉ ẩn xuống khay hệ thống, app vẫn chạy nền — chuột phải icon khay > Thoát mới tắt hẳn. Icon riêng cho cửa sổ/taskbar (trước đây dùng icon mặc định). File cài đặt lớn hơn nhiều (~150-250MB) do đóng gói PyQt5/pandas/openpyxl.",
+  "releasedAt": "2026-09-27T17:58:20Z",
+  "notes": "Viết lại toàn bộ bằng PyQt5, gộp thành 1 ứng dụng có 5 tab: Kiểm soát dữ liệu thao tác, Thông số linh kiện máy tính (quét + nút Cập nhật lên web), Convert Ảnh ↔ SketchUp Material, Lấy màu (Pick Color), Hẹn giờ tắt máy. Đóng cửa sổ (X) chỉ ẩn xuống khay hệ thống, app vẫn chạy nền — chuột phải icon khay > Thoát mới tắt hẳn. Icon riêng cho cửa sổ/taskbar (trước đây dùng icon mặc định). File cài đặt lớn hơn nhiều (~67MB) do đóng gói PyQt5/pandas/openpyxl — tải qua GitHub Releases thay vì Cloudflare (giới hạn 25MB/file).",
   "history": [
     {
       "version": "2.0.0",

@@ -49,6 +49,10 @@ IPC_SERVER_NAME = 'HiconiqueAgentIPC'
 os.makedirs(DATA_DIR, exist_ok=True)
 
 SITE = 'https://hiconique-web-noibo.pqhieu3820.workers.dev/'
+GITHUB_RELEASES_PREFIX = 'https://github.com/pqhieu3820-dotcom/Hiconique-web-noibo/releases/'
+# File .exe (>25MB) không thể host qua Cloudflare (giới hạn 25MB/file) nên tải từ GitHub Releases;
+# latest.json (nhỏ) vẫn ở Cloudflare — chỉ 2 nguồn này được coi là hợp lệ để tự cập nhật.
+ALLOWED_UPDATE_HOSTS = (SITE, GITHUB_RELEASES_PREFIX)
 DEFAULTS = {
     'apiUrl': 'https://script.google.com/macros/s/AKfycbzgg0dfNgDTFgcTGlNvF2IHLUusK6YuBk1pot9SrbYi5B9al-H2nmmMlKLz5CpDlLY/exec',
     'memberId': '',              # mã thành viên trên Hub của người dùng máy này (trình cài đặt điền sẵn)
@@ -262,7 +266,7 @@ def check_update(cfg):
         if vtuple(info['version']) <= vtuple(VERSION):
             return False
         url = info['url']
-        if not url.startswith(SITE):
+        if not url.startswith(ALLOWED_UPDATE_HOSTS):
             log('Bỏ qua bản cập nhật: URL lạ', url)
             return False
         tmp = os.path.join(DATA_DIR, 'update.exe')

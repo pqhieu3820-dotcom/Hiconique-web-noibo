@@ -25,15 +25,17 @@ Công cụ Pick Color vốn viết bằng PyQt5 với canvas kéo-thả/snap ph�
 Cửa sổ ẩn danh/riêng tư bị che tiêu đề. Nhân viên tích đồng ý khi cài, đọc được dữ liệu của mình ở `%LOCALAPPDATA%\HiconiqueAgent\hoat-dong-hom-nay.txt`, và tự tạm dừng ghi nhận bất cứ lúc nào ở tab 1.
 
 ## Cài cho nhân viên
-Tải ở trang **Theo dõi hiệu suất** của Hub, hoặc `https://hiconique-web-noibo.pqhieu3820.workers.dev/agent/HiconiqueAgentSetup.exe`. Bấm 2 lần → chọn tên → tích đồng ý → **Cài đặt**. Ứng dụng mở ngay sau khi cài, tạo icon **"HICONIQUE Agent"** trên Desktop, tự khởi động cùng Windows (ẩn xuống khay) từ lần sau.
+Tải ở trang **Theo dõi hiệu suất** của Hub, hoặc trực tiếp `https://github.com/pqhieu3820-dotcom/Hiconique-web-noibo/releases/latest/download/HiconiqueAgentSetup.exe`. Bấm 2 lần → chọn tên → tích đồng ý → **Cài đặt**. Ứng dụng mở ngay sau khi cài, tạo icon **"HICONIQUE Agent"** trên Desktop, tự khởi động cùng Windows (ẩn xuống khay) từ lần sau.
+
+**Vì sao tải từ GitHub Releases chứ không phải từ web Hub trực tiếp:** Cloudflare Pages (chỗ host web Hub) giới hạn **25MB mỗi file tĩnh**. File cài đặt PyQt5 (~67MB) vượt giới hạn này, nên chỉ `latest.json` (vài KB) ở Cloudflare — bản thân file `.exe` được đăng lên **GitHub Releases** (giới hạn tới 2GB/file, miễn phí). Link `releases/latest/download/...` luôn tự trỏ tới bản mới nhất, không cần đổi link mỗi lần phát hành.
 - Windows SmartScreen có thể cảnh báo "unknown publisher" (chưa ký số) → *More info > Run anyway*.
 - Diệt virus (Kaspersky…) có thể báo nhầm "PDM:Trojan.Win32.Generic" — đây là **false positive theo hành vi** của exe PyInstaller chưa ký số, không phải virus thật (mã nguồn nằm trong `app.py`/`hardware.py`). Xử lý: thêm ngoại lệ, gửi xác minh tại https://opentip.kaspersky.com, hoặc mua chữ ký số (code signing) để hết cả hai loại cảnh báo.
 - Gỡ: chuột phải icon khay hoặc Cài đặt Windows > Ứng dụng > **HICONIQUE Agent** > Gỡ cài đặt.
 
 ## Phát hành bản cập nhật
 1. Sửa `app.py`, tăng `VERSION`, thêm mục mới (đầu danh sách) vào `CHANGELOG.json`.
-2. `pip install pyinstaller PyQt5 pandas openpyxl pillow` rồi `python build.py` → tạo `public/agent/HiconiqueAgentSetup.exe` + `latest.json` (SHA-256). Build mất vài phút do PyQt5/pandas.
-3. Commit + push. Các máy đã cài kiểm tra `latest.json` mỗi 6 giờ, tải bản mới, kiểm SHA-256, thay file rồi tự khởi động lại. Chỉ tải từ `hiconique-web-noibo.pqhieu3820.workers.dev` (https).
+2. `pip install -r requirements.txt` (lần đầu) rồi `python build.py` → build .exe, **tự đăng lên GitHub Release** `agent-v<version>` (dùng token GitHub đã đăng nhập sẵn qua Git Credential Manager — cần đã `git push` ít nhất 1 lần trước đó), rồi ghi `public/agent/latest.json` (chỉ vài KB). Build + tải lên mất vài phút.
+3. `git add -A && git commit && git push` (chỉ đẩy `latest.json`, không đẩy file .exe lên Cloudflare). Các máy đã cài kiểm tra `latest.json` mỗi 6 giờ, tải bản mới từ GitHub Releases, kiểm SHA-256, thay file rồi tự khởi động lại. Chỉ nhận URL từ `hiconique-web-noibo.pqhieu3820.workers.dev` hoặc `github.com/pqhieu3820-dotcom/Hiconique-web-noibo/releases/` (xem `ALLOWED_UPDATE_HOSTS` trong `app.py`).
 
 ## Icon
 `icon.ico` (chữ H trên nền đồng, tạo bằng `make_icon.py`, cần `pip install pillow`) dùng cho file exe, cửa sổ ứng dụng (taskbar/title bar — trước đây v1.x quên gán nên hiện icon mặc định), icon khay hệ thống, và shortcut Desktop.
