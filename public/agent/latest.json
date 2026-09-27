@@ -1,11 +1,16 @@
 {
-  "version": "1.0.2",
+  "version": "2.0.0",
   "url": "https://hiconique-web-noibo.pqhieu3820.workers.dev/agent/HiconiqueAgentSetup.exe",
-  "sha256": "a42c27dbce80599da3b99c9549fa0817eb2303355569fc9e2495365b016e964b",
-  "size": 12560837,
-  "releasedAt": "2026-09-27T16:56:35Z",
-  "notes": "Icon riêng cho ứng dụng; tự tạo icon 'HICONIQUE Agent' trên Desktop khi cài, bấm vào mở cửa sổ trạng thái (đang chạy hay không, dữ liệu hôm nay, kiểm tra cập nhật, gỡ cài đặt) — dùng như một ứng dụng bình thường.",
+  "sha256": "66af4d634ecb03da63c62658ff5e19dda5ff653338b3a781c8daabb21d47e464",
+  "size": 70325138,
+  "releasedAt": "2026-09-27T17:44:52Z",
+  "notes": "Viết lại toàn bộ bằng PyQt5, gộp thành 1 ứng dụng có 5 tab: Kiểm soát dữ liệu thao tác, Thông số linh kiện máy tính (quét + nút Cập nhật lên web), Convert Ảnh ↔ SketchUp Material, Lấy màu (Pick Color), Hẹn giờ tắt máy. Đóng cửa sổ (X) chỉ ẩn xuống khay hệ thống, app vẫn chạy nền — chuột phải icon khay > Thoát mới tắt hẳn. Icon riêng cho cửa sổ/taskbar (trước đây dùng icon mặc định). File cài đặt lớn hơn nhiều (~150-250MB) do đóng gói PyQt5/pandas/openpyxl.",
   "history": [
+    {
+      "version": "2.0.0",
+      "date": "2026-09-28",
+      "notes": "Viết lại toàn bộ bằng PyQt5, gộp thành 1 ứng dụng có 5 tab: Kiểm soát dữ liệu thao tác, Thông số linh kiện máy tính (quét + nút Cập nhật lên web), Convert Ảnh ↔ SketchUp Material, Lấy màu (Pick Color), Hẹn giờ tắt máy. Đóng cửa sổ (X) chỉ ẩn xuống khay hệ thống, app vẫn chạy nền — chuột phải icon khay > Thoát mới tắt hẳn. Icon riêng cho cửa sổ/taskbar (trước đây dùng icon mặc định). File cài đặt lớn hơn nhiều (~150-250MB) do đóng gói PyQt5/pandas/openpyxl."
+    },
     {
       "version": "1.0.2",
       "date": "2026-09-27",

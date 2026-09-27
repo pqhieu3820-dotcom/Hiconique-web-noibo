@@ -1,0 +1,7 @@
+# Cài để chạy `python app.py` (phát triển) hoặc `python build.py` (đóng gói .exe):
+#   pip install -r requirements.txt
+PyQt5>=5.15
+pandas>=2.0
+openpyxl>=3.1
+pillow>=10.0
+pyinstaller>=6.0

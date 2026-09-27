@@ -1,4 +1,7 @@
 """
+!!! ĐÃ NGƯNG DÙNG từ 2026-09-28 — thay bằng app.py (PyQt5, 5 tab, khay hệ thống). build.py giờ build app.py.
+    Giữ file này lại chỉ để tham khảo lịch sử (bản Tkinter v1.0.2). Xem README.md.
+
 HICONIQUE Agent — ứng dụng Windows (1 file .exe): tự cài, chạy nền, tự cập nhật, gỡ như ứng dụng bình thường.
 Công khai với nhân viên: hiện thông báo khi cài/khởi động, dữ liệu của chính mình đọc được ở
 %LOCALAPPDATA%\\HiconiqueAgent\\hoat-dong-hom-nay.txt. Chỉ cài trên máy công ty, có sự đồng ý của người dùng.
