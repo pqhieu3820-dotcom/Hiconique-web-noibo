@@ -1470,6 +1470,17 @@ cho tab này (`window.HiconiqueKhaiToan.setProject`) và nút "→ Đưa vào So
 1 dòng báo giá (id dòng cố định `kt-<i>` nên bấm lại chỉ cập nhật). In/PDF của khái toán dùng cờ `body.kt-printing` để
 không phá cách in của Soạn báo giá. Thẻ công cụ ở trang chủ trỏ tới `/pages/pricing.html#quick`.
 
+**2026-09-27 — CRM khách hàng + Theo dõi hiệu suất nhân viên** (nhóm Sheet mới `KH-`, thêm `NS-Hoạt động`; đã được người dùng duyệt tiền tố):
+- `crm.html`/`crm.js`: Kanban 6 giai đoạn (Tiềm năng→Đã liên hệ→Báo giá→Đàm phán→Đã ký/Từ chối) + danh sách, KPI, lịch chăm sóc,
+  lịch sử trao đổi. Sheet `KH-Khách hàng` (cột Hiển thị = ẩn mềm) và `KH-Chăm sóc`. Ai đăng nhập cũng xem/thêm; sửa/ẩn: người phụ trách,
+  người tạo, CEO/quản lý (`TaskManager.canEditCustomer`).
+- `staff-monitor.html`/`staff-monitor.js`: CEO/quản lý xem mọi người, nhân viên chỉ xem của chính mình. So giờ chấm công với thời gian hoạt
+  động TRONG Hub + việc quá hạn + cập nhật tiến độ, kèm cảnh báo. Dữ liệu hoạt động: `TaskManager` tự đo mỗi 30 giây (hoạt động = tab hiện + có
+  thao tác trong 2 phút; không thao tác; rời tab) và ghi `NS-Hoạt động` mỗi ~5 phút, 1 dòng/(người, ngày, thiết bị) qua action
+  `upsertStaffActivity`. **Phạm vi cố ý giới hạn**: KHÔNG ghi lịch sử duyệt web, nội dung màn hình, phím gõ hay ứng dụng ngoài Hub (vi phạm
+  riêng tư, có thể trái luật lao động/dữ liệu cá nhân); có thông báo 1 lần cho mỗi người (portal.js). Hoạt động ngoài Hub (CAD, SketchUp…)
+  không thấy được nên số liệu chỉ là dấu hiệu để trao đổi, không phải kết luận lơ là.
+
 ## 7. Tài liệu khác trong repo
 
 - [README.md](README.md) — tổng quan kiến trúc, cấu trúc thư mục, cách chạy local/deploy.

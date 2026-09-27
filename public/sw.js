@@ -68,7 +68,7 @@ self.addEventListener('notificationclick', function (event) {
   );
 });
 
-const CACHE_VERSION = 'hiconique-shell-v6';
+const CACHE_VERSION = 'hiconique-shell-v7';
 
 const PRECACHE_URLS = [
   '/',
@@ -87,6 +87,8 @@ const PRECACHE_URLS = [
   '/pages/hicon-bim-huongdan.html',
   '/pages/hicon-bim.html',
   '/pages/lighting.html',
+  '/pages/crm.html',
+  '/pages/staff-monitor.html',
   '/pages/my-dashboard.html',
   '/pages/notices.html',
   '/pages/orders.html',
@@ -113,6 +115,8 @@ const PRECACHE_URLS = [
   '/js/gsheets-config.js',
   '/js/khai-toan.js',
   '/js/lighting.js',
+  '/js/crm.js',
+  '/js/staff-monitor.js',
   '/js/offline.js',
   '/js/portal.js',
   '/js/push-notifications.js',

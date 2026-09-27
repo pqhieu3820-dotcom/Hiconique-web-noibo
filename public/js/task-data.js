@@ -2512,7 +2512,7 @@ var TaskManager = (function() {
     return d;
   }
   function actUser() { try { return (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null; } catch (e) { return null; } }
-  function actTodayKey() { return new Date().toISOString().slice(0, 10); }
+  function actTodayKey() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); } // giờ địa phương
   function actStorageKey(uid, date) { return 'hiconique_act_' + uid + '_' + date; }
   function actFlush(force) {
     var u = actUser();

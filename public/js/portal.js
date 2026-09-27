@@ -136,6 +136,24 @@
   }
   setInterval(refreshHeroStat, 45000);
 
+  // ----- Thông báo minh bạch về thời gian hoạt động trên Hub (hiện 1 lần cho mỗi người dùng) -----
+  // Hub ghi nhận phút "hoạt động / không thao tác / rời tab" TRONG CHÍNH HUB (xem TaskManager.startActivityTracker),
+  // không ghi duyệt web/màn hình/ứng dụng khác. Nhân viên phải được biết điều này ngay khi dùng.
+  (function showActivityNotice() {
+    try {
+      var u = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
+      if (!u) return;
+      var key = 'hiconique_activity_notice_v1_' + u.id;
+      if (localStorage.getItem(key)) return;
+      var box = document.createElement('div');
+      box.setAttribute('role', 'dialog');
+      box.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:9800;max-width:560px;width:calc(100% - 32px);background:var(--color-surface,#1A1D21);color:var(--color-text,#eee);border:1px solid var(--color-bronze,#B08D57);border-radius:14px;padding:16px 18px;font-size:0.8125rem;line-height:1.6;box-shadow:0 10px 40px rgba(0,0,0,.35);';
+      box.innerHTML = '<b style="color:var(--color-bronze,#B08D57)">Thông báo về dữ liệu làm việc</b><br>Để hỗ trợ tính hiệu suất, Hub ghi nhận <b>thời gian bạn hoạt động trong chính Hub</b> (tab đang mở có thao tác, không thao tác, hoặc đã rời tab). Hub <b>không</b> ghi lịch sử duyệt web, nội dung màn hình, phím gõ hay ứng dụng khác. Bạn xem được số liệu của mình ở trang <a href="/pages/staff-monitor.html" style="color:var(--color-bronze,#B08D57)">Theo dõi hiệu suất</a>.<div style="text-align:right;margin-top:10px;"><button type="button" style="padding:7px 16px;border-radius:8px;border:none;background:var(--color-bronze,#B08D57);color:#0B0D10;font-weight:600;cursor:pointer;">Đã hiểu</button></div>';
+      box.querySelector('button').addEventListener('click', function () { try { localStorage.setItem(key, '1'); } catch (e) {} box.remove(); });
+      document.body.appendChild(box);
+    } catch (e) { /* bỏ qua */ }
+  })();
+
   // ----- Presence heartbeat -----
   // Ping timestamp lên Sheet (field `lastActiveAt` của Thành viên) mỗi ~60s
   // trong lúc tab đang mở & hiển thị (tạm dừng khi chuyển sang tab khác/thu

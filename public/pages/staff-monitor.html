@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Theo dõi hiệu suất nhân viên · HICONIQUE</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/reset.css">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/portal.css">
+  <link rel="stylesheet" href="/css/subpage.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-title" content="HICONIQUE" />
+  <link rel="manifest" href="/manifest.json" />
+  <script src="/js/offline.js"></script>
+  <script src="/js/gsheets-config.js"></script>
+  <script src="/js/task-data.js"></script>
+  <script src="/js/auth.js"></script>
+  <style>
+    :root {
+      --sm-bg: var(--color-bg); --sm-surface: var(--color-surface); --sm-border: var(--color-border);
+      --sm-text: var(--color-text); --sm-muted: var(--color-text-muted); --sm-bronze: var(--color-bronze);
+      --sm-ok: #4F6F52; --sm-warn: #C77A40; --sm-bad: #A04848;
+    }
+    body { background: var(--sm-bg); color: var(--sm-text); font-family: 'Inter', -apple-system, sans-serif; min-height: 100vh; }
+    .sm-container { max-width: 1400px; }
+    .sm-notice { display: flex; gap: 12px; align-items: flex-start; background: color-mix(in srgb, var(--sm-bronze) 9%, var(--sm-surface)); border: 1px solid color-mix(in srgb, var(--sm-bronze) 40%, var(--sm-border)); border-radius: 14px; padding: 14px 18px; margin: 8px 0 18px; font-size: 0.8125rem; line-height: 1.6; }
+    .sm-notice b { color: var(--sm-bronze); }
+    .sm-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+    .sm-kpi { background: var(--sm-surface); border: 1px solid var(--sm-border); border-radius: 14px; padding: 14px 16px; }
+    .sm-kpi-label { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--sm-muted); }
+    .sm-kpi-value { font-size: 1.5rem; font-weight: 700; margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
+    .sm-kpi-value.warn { color: var(--sm-warn); }
+    .sm-kpi-sub { font-size: 0.6875rem; color: var(--sm-muted); margin-top: 2px; }
+    .sm-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+    .sm-seg { display: inline-flex; border: 1px solid var(--sm-border); border-radius: 9px; overflow: hidden; }
+    .sm-seg button { padding: 8px 14px; background: transparent; border: none; color: var(--sm-muted); font-family: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; }
+    .sm-seg button.active { background: color-mix(in srgb, var(--sm-bronze) 16%, transparent); color: var(--sm-bronze); }
+    .sm-input { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--sm-border); background: var(--sm-bg); color: var(--sm-text); font-family: inherit; font-size: 0.8125rem; }
+    .sm-btn { padding: 8px 14px; border-radius: 9px; border: 1px solid var(--sm-border); background: transparent; color: var(--sm-text); font-family: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; }
+    .sm-btn:hover { border-color: var(--sm-bronze); color: var(--sm-bronze); }
+    .sm-spacer { flex: 1 1 auto; }
+    .sm-wrap { background: var(--sm-surface); border: 1px solid var(--sm-border); border-radius: 14px; overflow-x: auto; }
+    .sm-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; min-width: 980px; }
+    .sm-table th { text-align: left; padding: 10px 12px; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--sm-muted); background: var(--sm-bg); border-bottom: 1px solid var(--sm-border); white-space: nowrap; }
+    .sm-table td { padding: 11px 12px; border-bottom: 1px solid var(--sm-border); vertical-align: middle; }
+    .sm-table td.num, .sm-table th.num { text-align: right; font-family: 'JetBrains Mono', monospace; }
+    .sm-table tr.sm-row { cursor: pointer; }
+    .sm-table tr.sm-row:hover td { background: color-mix(in srgb, var(--sm-bronze) 6%, transparent); }
+    .sm-who { display: flex; align-items: center; gap: 9px; font-weight: 600; }
+    .sm-av { width: 28px; height: 28px; border-radius: 28%; display: grid; place-items: center; font-size: 0.625rem; font-weight: 700; color: #0B0D10; flex: none; }
+    .sm-dot { width: 8px; height: 8px; border-radius: 50%; background: #6B7280; display: inline-block; }
+    .sm-dot.on { background: #4CAF50; box-shadow: 0 0 0 3px rgba(76,175,80,.2); }
+    .sm-bar { height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--sm-muted) 22%, transparent); overflow: hidden; min-width: 70px; }
+    .sm-bar span { display: block; height: 100%; background: var(--sm-ok); }
+    .sm-bar span.warn { background: var(--sm-warn); }
+    .sm-bar span.bad { background: var(--sm-bad); }
+    .sm-flag { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 0.6875rem; margin: 2px 4px 2px 0; border: 1px solid; white-space: nowrap; }
+    .sm-flag.warn { color: var(--sm-warn); border-color: color-mix(in srgb, var(--sm-warn) 50%, transparent); }
+    .sm-flag.bad { color: var(--sm-bad); border-color: color-mix(in srgb, var(--sm-bad) 50%, transparent); }
+    .sm-flag.ok { color: var(--sm-ok); border-color: color-mix(in srgb, var(--sm-ok) 50%, transparent); }
+    .sm-muted { color: var(--sm-muted); }
+    .sm-empty { padding: 30px; text-align: center; color: var(--sm-muted); font-size: 0.8125rem; }
+    .sm-overlay { position: fixed; inset: 0; z-index: 9000; background: rgba(0,0,0,0.55); display: none; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; }
+    .sm-overlay.active { display: flex; }
+    .sm-modal { background: var(--sm-surface); border: 1px solid var(--sm-border); border-radius: 18px; width: 100%; max-width: 860px; overflow: hidden; }
+    .sm-modal-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 22px; border-bottom: 1px solid var(--sm-border); }
+    .sm-modal-title { font-size: 1.0625rem; font-weight: 700; }
+    .sm-x { background: none; border: none; color: var(--sm-muted); font-size: 1.4rem; cursor: pointer; line-height: 1; }
+    .sm-modal-body { padding: 16px 22px 22px; }
+    .sm-foot { font-size: 0.75rem; color: var(--sm-muted); line-height: 1.6; margin-top: 14px; }
+    @media (max-width: 900px) { .sm-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/" class="brand">
+        <span class="brand-mark"><img class="brand-logo" src="/logo-mark.png" alt="HICONIQUE" /></span>
+        <span class="brand-name"><span class="brand-name-1">HICONIQUE</span></span>
+      </a>
+      <nav class="primary-nav">
+        <a href="/#tools" class="nav-link">Công cụ</a>
+        <a href="/pages/tasks-manager.html" class="nav-link">Tasks</a>
+        <a href="/pages/projects.html" class="nav-link">Dự án</a>
+        <a href="/pages/wiki.html" class="nav-link">Tài liệu</a>
+        <a href="/#ai" class="nav-link">AI</a>
+        <a href="/pages/notices.html" class="nav-link">Thông báo</a>
+        <a href="/pages/team.html" class="nav-link">Team</a>
+      </nav>
+      <div class="header-actions">
+        <button class="theme-toggle" aria-label="Chuyển đổi sáng/tối" data-theme-toggle>
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" stroke-linecap="round" /></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        </button>
+        <span class="clock"><span class="clock-time" data-clock>--:--</span><span class="clock-meta">GMT+7</span></span>
+        <button class="avatar"><span>--</span></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="subpage">
+  <div class="subpage-inner sm-container">
+    <p class="eyebrow">— Nhân sự</p>
+    <h1 class="subpage-title">Theo dõi <span class="subpage-title-italic">hiệu suất làm việc</span></h1>
+    <p class="subpage-lede" id="smLede">So sánh giờ chấm công với mức hoạt động thực tế trên Hub, tiến độ công việc và các dấu hiệu cần trao đổi — để quản lý hỗ trợ đúng người, đúng lúc.</p>
+
+    <div class="sm-notice" role="note">
+      <div style="font-size:1.2rem;">🔎</div>
+      <div><b>Minh bạch với nhân viên.</b> Hub chỉ ghi nhận thời gian <b>trong chính Hub</b>: tab đang mở và có thao tác (hoạt động), tab mở nhưng không thao tác (không thao tác), hoặc tab bị ẩn/chuyển ứng dụng (rời tab). Hub <b>không</b> ghi lịch sử duyệt web, nội dung màn hình, gõ phím hay ứng dụng khác. Làm việc bằng AutoCAD, SketchUp, gọi điện, ra công trình… hệ thống <b>không thấy</b>, nên hoạt động thấp <b>chưa chắc là lơ là</b> — chỉ là dấu hiệu để hỏi thăm. Mỗi nhân viên xem được số liệu của chính mình ở trang này.</div>
+    </div>
+
+    <div class="sm-kpis" id="smKpis"></div>
+
+    <div class="sm-toolbar">
+      <div class="sm-seg" id="smRange"><button data-r="today" class="active">Hôm nay</button><button data-r="7d">7 ngày</button><button data-r="month">Tháng này</button></div>
+      <input class="sm-input" type="date" id="smDate" title="Xem một ngày cụ thể">
+      <span class="sm-spacer"></span>
+      <button class="sm-btn" id="smReload" type="button">↻ Tải lại dữ liệu</button>
+    </div>
+
+    <div class="sm-wrap" id="smTable"></div>
+    <p class="sm-foot" id="smFoot"></p>
+  </div>
+  </main>
+
+  <div class="sm-overlay" id="smModal" role="dialog" aria-modal="true">
+    <div class="sm-modal">
+      <div class="sm-modal-head"><div class="sm-modal-title" id="smModalTitle"></div><button class="sm-x" id="smModalClose" type="button" aria-label="Đóng">×</button></div>
+      <div class="sm-modal-body" id="smModalBody"></div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js" defer></script>
+  <script src="/js/push-notifications.js" defer></script>
+  <script src="/js/portal.js" defer></script>
+  <script src="/js/staff-monitor.js" defer></script>
+</body>
+</html>
