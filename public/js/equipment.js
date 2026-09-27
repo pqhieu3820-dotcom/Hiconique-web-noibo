@@ -27,6 +27,8 @@
       tpl: [['Loại', 'Điện thoại / Điều hòa / Camera / Máy hủy giấy…', ''], ['Công suất', '', ''], ['Kích thước', '', '']] }
   ];
   var STATUSES = ['Đang dùng', 'Dự phòng', 'Đang sửa', 'Hỏng', 'Thanh lý'];
+  // Icon cảnh báo dùng chung toàn app (giống overdue task ở projects.js) — không dùng emoji
+  var WARN_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;vertical-align:-2px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
   var STATUS_CLS = { 'Đang dùng': 'ok', 'Dự phòng': 'mute', 'Đang sửa': 'warn', 'Hỏng': 'bad', 'Thanh lý': 'mute' };
   var WARN_DAYS = 60;
   var state = { view: 'groups', q: '', cat: '', status: '', editingId: null, specs: [], pcId: '' };
@@ -129,7 +131,7 @@
       '<td><div class="eq-name">' + esc(e.name) + '</div><div class="eq-sub">' + esc([e.brand, e.model].filter(Boolean).join(' ') || '') + (e.serial ? ' · SN ' + esc(e.serial) : '') + '</div></td>' +
       '<td>' + (who ? esc(who) : '<span class="eq-sub">—</span>') + '</td>' +
       '<td>' + summaryHtml(e) + '</td>' +
-      '<td><span class="eq-badge ' + (STATUS_CLS[st] || 'mute') + '">' + esc(st) + '</span>' + (pcAlerts(e).length ? '<div class="eq-alert" title="' + esc(pcAlerts(e).join('; ')) + '">⚠ ' + pcAlerts(e).length + ' cảnh báo</div>' : '') + (pcDiff(e) ? '<div class="eq-diff">Cấu hình máy đã đổi</div>' : '') + '</td>' +
+      '<td><span class="eq-badge ' + (STATUS_CLS[st] || 'mute') + '">' + esc(st) + '</span>' + (pcAlerts(e).length ? '<div class="eq-alert" title="' + esc(pcAlerts(e).join('; ')) + '">' + WARN_ICON + ' ' + pcAlerts(e).length + ' cảnh báo</div>' : '') + (pcDiff(e) ? '<div class="eq-diff">Cấu hình máy đã đổi</div>' : '') + '</td>' +
       '<td>' + (e.warrantyUntil ? '<span class="eq-badge ' + (w === 'expired' ? 'bad' : w === 'soon' ? 'warn' : 'ok') + '">' + (w === 'expired' ? 'Hết ' : '') + esc(fmtDate(e.warrantyUntil)) + '</span>' : '<span class="eq-sub">—</span>') + '</td>' +
       '<td class="eq-sub" style="white-space:nowrap;">' + esc(money(e.price)) + '</td></tr>';
   }
@@ -224,7 +226,7 @@
       var changed = specKey(parseSpecs(cur), types) !== specKey(rSpecs(r), types);
       info = '<div class="eq-sub" style="margin-top:6px;">Đang gắn với máy <b>' + esc(r.hostname) + '</b> · Agent v' + esc(r.agentVersion || '?') + ' · báo lúc ' + esc(fmtAt(r.reportedAt)) + '</div>' +
         (changed ? '<div class="eq-diff">Cấu hình trong sổ khác với máy thực tế — bấm “Nhập / đồng bộ cấu hình” để cập nhật.</div>' : '<div class="eq-sub" style="color:#7FA783;">Cấu hình khớp với máy thực tế.</div>') +
-        (jparse(r.alerts).length ? '<div class="eq-alert">⚠ ' + jparse(r.alerts).map(esc).join('<br>⚠ ') + '</div>' : '') +
+        (jparse(r.alerts).length ? '<div class="eq-alert">' + WARN_ICON + ' ' + jparse(r.alerts).map(esc).join('<br>' + WARN_ICON + ' ') + '</div>' : '') +
         (jparse(r.live).length ? '<div class="eq-live">' + jparse(r.live).map(esc).join(' · ') + '</div>' : '');
     }
     $('eqPcInfo').innerHTML = info;

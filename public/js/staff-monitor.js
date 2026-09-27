@@ -138,33 +138,51 @@
     return '<div class="sm-kpi"><div class="sm-kpi-label">' + esc(label) + '</div><div class="sm-kpi-value ' + (cls || '') + '">' + esc(value) + '</div><div class="sm-kpi-sub">' + esc(sub) + '</div></div>';
   }
 
+  // Ngày nào trong khoảng đang xem có dữ liệu (chấm công hoặc hoạt động Hub hoặc ứng dụng) — ưu tiên chọn mặc định
+  function daysWithData(r) {
+    return r.dates.filter(function (d) { var b = r.byDay[d]; return b.checked || b.hasAct || appsFor(r.member.id, [d]).length; });
+  }
+
   function openDetail(i) {
     var r = tracked.rows && tracked.rows[i]; if (!r) return;
+    tracked.detail = r;
     $('smModalTitle').textContent = r.member.name || r.member.id;
+    var withData = daysWithData(r);
+    tracked.selDate = withData.length ? withData[withData.length - 1] : r.dates[r.dates.length - 1];
     var dayRows = r.dates.slice().reverse().map(function (d) {
       var b = r.byDay[d];
       var pct = b.checked > 0 && b.hasAct ? Math.round(Math.min(1, b.active / b.checked) * 100) + '%' : '—';
-      return '<tr><td>' + fmtDay(d) + '</td><td class="num">' + (b.checked ? fmtDur(b.checked) : '—') + '</td><td class="num">' + (b.hasAct ? fmtDur(b.active) : '—') + '</td><td class="num">' + (b.hasAct ? fmtDur(b.idle) : '—') + '</td><td class="num">' + (b.hasAct ? fmtDur(b.away) : '—') + '</td><td class="num">' + pct + '</td><td class="num">' + b.updates + '</td></tr>';
+      return '<tr class="sm-row" data-date="' + esc(d) + '"><td>' + fmtDay(d) + '</td><td class="num">' + (b.checked ? fmtDur(b.checked) : '—') + '</td><td class="num">' + (b.hasAct ? fmtDur(b.active) : '—') + '</td><td class="num">' + (b.hasAct ? fmtDur(b.idle) : '—') + '</td><td class="num">' + (b.hasAct ? fmtDur(b.away) : '—') + '</td><td class="num">' + pct + '</td><td class="num">' + b.updates + '</td></tr>';
     }).join('');
     $('smModalBody').innerHTML =
       '<div style="margin-bottom:12px;">' + r.flags.map(function (f) { return '<span class="sm-flag ' + f.c + '">' + esc(f.t) + '</span>'; }).join('') + '</div>' +
-      '<div class="sm-wrap"><table class="sm-table" style="min-width:0"><thead><tr><th>Ngày</th><th class="num">Chấm công</th><th class="num">Hoạt động</th><th class="num">Không thao tác</th><th class="num">Rời tab</th><th class="num">Tỉ lệ</th><th class="num">Cập nhật tiến độ</th></tr></thead><tbody>' + dayRows + '</tbody></table></div>' +
+      '<div class="sm-wrap"><table class="sm-table" style="min-width:0"><thead><tr><th>Ngày</th><th class="num">Chấm công</th><th class="num">Hoạt động</th><th class="num">Không thao tác</th><th class="num">Rời tab</th><th class="num">Tỉ lệ</th><th class="num">Cập nhật tiến độ</th></tr></thead><tbody id="smDayRows">' + dayRows + '</tbody></table></div>' +
+      '<p class="sm-day-hint">Bấm vào một ngày để xem chi tiết ứng dụng đã dùng trong ngày đó.</p>' +
+      '<div id="smAppBox"></div>' +
       '<p class="sm-foot">Việc đang mở: ' + r.open + ' · quá hạn: ' + r.overdue + '. Hoạt động lần cuối trên Hub: ' + (r.lastActive ? new Date(r.lastActive).toLocaleString('vi-VN') : 'chưa có') + '.</p>';
-    var apps = appsFor(r.member.id, r.dates);
-    if (apps.length) {
-      var total = apps.reduce(function (s, a) { return s + a.min; }, 0);
-      $('smModalBody').innerHTML += '<h4 style="margin:18px 0 8px;font-size:0.875rem;">Ứng dụng đang dùng (máy công ty, ' + fmtDur(total) + ')</h4>' +
-        '<div class="sm-wrap"><table class="sm-table" style="min-width:0"><thead><tr><th>Ứng dụng</th><th class="num">Thời gian</th><th class="num">Tỉ trọng</th><th>Cửa sổ nhiều nhất</th></tr></thead><tbody>' +
-        apps.slice(0, 15).map(function (a) {
-          return '<tr><td>' + esc(a.app) + '</td><td class="num">' + fmtDur(a.min) + '</td><td class="num">' + Math.round(a.min / total * 100) + '%</td><td class="sm-muted" style="font-size:0.75rem;max-width:380px;">' + esc(a.titles.slice(0, 3).join(' · ')) + '</td></tr>';
-        }).join('') + '</tbody></table></div>';
-    } else {
-      $('smModalBody').innerHTML += '<p class="sm-foot">Chưa có dữ liệu ứng dụng (máy chưa cài HICONIQUE Agent hoặc chưa gửi dữ liệu).</p>';
-    }
+    renderAppBox();
     $('smModal').classList.add('active');
   }
 
-  // Gộp dữ liệu ứng dụng của 1 người theo tên ứng dụng trong khoảng ngày đang xem
+  function renderAppBox() {
+    var r = tracked.detail; if (!r) return;
+    Array.prototype.forEach.call($('smDayRows').querySelectorAll('tr'), function (tr) { tr.classList.toggle('sel', tr.dataset.date === tracked.selDate); });
+    var apps = appsFor(r.member.id, [tracked.selDate]);
+    var label = 'ngày ' + fmtDay(tracked.selDate);
+    if (!apps.length) {
+      $('smAppBox').innerHTML = '<h4 style="margin:14px 0 8px;font-size:0.875rem;">Ứng dụng đang dùng — ' + label + '</h4>' +
+        '<p class="sm-foot">Chưa có dữ liệu ứng dụng ngày này (máy chưa cài HICONIQUE Agent, ngoài giờ làm việc, hoặc chưa gửi dữ liệu).</p>';
+      return;
+    }
+    var total = apps.reduce(function (s, a) { return s + a.min; }, 0);
+    $('smAppBox').innerHTML = '<h4 style="margin:14px 0 8px;font-size:0.875rem;">Ứng dụng đang dùng — ' + label + ' (' + fmtDur(total) + ')</h4>' +
+      '<div class="sm-wrap"><table class="sm-table" style="min-width:0"><thead><tr><th>Ứng dụng</th><th class="num">Thời gian</th><th class="num">Tỉ trọng</th><th>Cửa sổ nhiều nhất</th></tr></thead><tbody>' +
+      apps.slice(0, 20).map(function (a) {
+        return '<tr><td>' + esc(a.app) + '</td><td class="num">' + fmtDur(a.min) + '</td><td class="num">' + Math.round(a.min / total * 100) + '%</td><td class="sm-muted" style="font-size:0.75rem;max-width:380px;">' + esc(a.titles.slice(0, 3).join(' · ')) + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+
+  // Gộp dữ liệu ứng dụng của 1 người theo tên ứng dụng, trong tập ngày đã cho (thường là 1 ngày cụ thể)
   function appsFor(memberId, dates) {
     var set = {}; dates.forEach(function (d) { set[d] = true; });
     var by = {};
@@ -217,6 +235,10 @@
     });
     $('smReload').addEventListener('click', reload);
     $('smTable').addEventListener('click', function (e) { var r = e.target.closest('.sm-row'); if (r) openDetail(Number(r.dataset.i)); });
+    $('smModalBody').addEventListener('click', function (e) {
+      var r = e.target.closest('#smDayRows tr.sm-row'); if (!r) return;
+      tracked.selDate = r.dataset.date; renderAppBox();
+    });
     $('smModalClose').addEventListener('click', function () { $('smModal').classList.remove('active'); });
     $('smModal').addEventListener('click', function (e) { if (e.target === this) this.classList.remove('active'); });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') $('smModal').classList.remove('active'); });

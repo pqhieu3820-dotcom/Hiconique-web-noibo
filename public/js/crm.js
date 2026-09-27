@@ -9,6 +9,8 @@
   var STAGES = (TM && TM.CRM_STAGES) || ['Tiềm năng', 'Đã liên hệ', 'Báo giá', 'Đàm phán', 'Đã ký', 'Từ chối'];
   var CLOSED = { 'Đã ký': true, 'Từ chối': true };
   var STAGE_COLOR = { 'Tiềm năng': '#8B95A5', 'Đã liên hệ': '#3B6B8C', 'Báo giá': '#B08D57', 'Đàm phán': '#C77A40', 'Đã ký': '#4F6F52', 'Từ chối': '#A04848' };
+  // Icon ngày/hạn dùng chung toàn app (giống deadline chip ở task-manager-app.js) — không dùng emoji
+  var DUE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>';
   var state = { view: 'board', q: '', owner: '', filter: '', editingId: null };
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -64,7 +66,7 @@
       '<div class="cr-card-sub">' + esc([c.company, c.phone].filter(Boolean).join(' · ') || '—') + '</div>' +
       '<div class="cr-card-meta">' +
         (c.budget ? '<span class="cr-chip money">' + esc(moneyShort(String(c.budget).replace(/[^\d]/g, ''))) + '</span>' : '') +
-        (c.nextFollowUp ? '<span class="cr-chip' + (due ? ' bad' : '') + '" title="Chăm sóc tiếp theo">' + (due ? '⏰ ' : '') + esc(fmtDate(c.nextFollowUp)) + '</span>' : '') +
+        (c.nextFollowUp ? '<span class="cr-chip' + (due ? ' bad' : '') + '" title="Chăm sóc tiếp theo">' + (due ? DUE_ICON + ' ' : '') + esc(fmtDate(c.nextFollowUp)) + '</span>' : '') +
         '<span class="cr-chip">' + esc(memberName(c.ownerId)) + '</span>' +
         (next ? '<button type="button" class="cr-chip cr-next" data-next="' + esc(c.id) + '" data-stage="' + esc(next) + '" title="Chuyển sang ' + esc(next) + '" style="cursor:pointer;background:none;">→ ' + esc(next) + '</button>' : '') +
       '</div></div>';

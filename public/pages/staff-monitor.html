@@ -61,6 +61,8 @@
     .sm-table td.num, .sm-table th.num { text-align: right; font-family: 'JetBrains Mono', monospace; }
     .sm-table tr.sm-row { cursor: pointer; }
     .sm-table tr.sm-row:hover td { background: color-mix(in srgb, var(--sm-bronze) 6%, transparent); }
+    .sm-table tr.sm-row.sel td { background: color-mix(in srgb, var(--sm-bronze) 14%, transparent); }
+    .sm-day-hint { font-size: 0.6875rem; color: var(--sm-muted); margin: 8px 0 4px; }
     .sm-who { display: flex; align-items: center; gap: 9px; font-weight: 600; }
     .sm-av { width: 28px; height: 28px; border-radius: 28%; display: grid; place-items: center; font-size: 0.625rem; font-weight: 700; color: #0B0D10; flex: none; }
     .sm-dot { width: 8px; height: 8px; border-radius: 50%; background: #6B7280; display: inline-block; }
@@ -120,7 +122,7 @@
     <p class="subpage-lede" id="smLede">So sánh giờ chấm công với mức hoạt động thực tế trên Hub, tiến độ công việc và các dấu hiệu cần trao đổi — để quản lý hỗ trợ đúng người, đúng lúc.</p>
 
     <div class="sm-notice" role="note">
-      <div style="font-size:1.2rem;">🔎</div>
+      <div style="color:var(--sm-bronze);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></div>
       <div><b>Minh bạch với nhân viên.</b> Hub chỉ ghi nhận thời gian <b>trong chính Hub</b>: tab đang mở và có thao tác (hoạt động), tab mở nhưng không thao tác (không thao tác), hoặc tab bị ẩn/chuyển ứng dụng (rời tab). Riêng <b>máy tính công ty có cài HICONIQUE Agent</b> (đã thông báo cho người dùng), hệ thống còn ghi <b>tên ứng dụng và tiêu đề cửa sổ</b> đang dùng trong giờ làm việc — không chụp màn hình, không ghi phím gõ hay nội dung tin nhắn/tệp. Làm việc ngoài máy (gọi điện, ra công trình, họp…) hệ thống <b>không thấy</b>, nên hoạt động thấp <b>chưa chắc là lơ là</b> — chỉ là dấu hiệu để hỏi thăm. Mỗi nhân viên xem được số liệu của chính mình ở trang này.</div>
     </div>
 
@@ -135,7 +137,7 @@
           <dt>Mã SHA-256</dt><dd id="agSha" style="font-size:0.6875rem">…</dd>
         </dl>
         <div class="sm-agent-actions">
-          <a class="sm-btn" id="agDownload" href="/agent/HiconiqueAgentSetup.exe" download style="background:var(--sm-bronze);border-color:var(--sm-bronze);color:#0B0D10;text-decoration:none;">⬇ Tải HiconiqueAgentSetup.exe</a>
+          <a class="sm-btn" id="agDownload" href="/agent/HiconiqueAgentSetup.exe" download style="background:var(--sm-bronze);border-color:var(--sm-bronze);color:#0B0D10;text-decoration:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;vertical-align:-1px;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Tải HiconiqueAgentSetup.exe</a>
           <button class="sm-btn" id="agCheck" type="button">Kiểm tra bản mới</button>
           <span class="sm-agent-status" id="agStatus"></span>
         </div>

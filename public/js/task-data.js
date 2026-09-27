@@ -1954,7 +1954,7 @@ var TaskManager = (function() {
     members.filter(function (m) { return m.dob; }).forEach(function (m) {
       var dobMD = String(m.dob).slice(5, 10);
       if (dobMD === todayMD) {
-        alerts.push({ id: 'alert_birthday_today_' + m.id + '_' + today, title: '🎂 Sinh nhật hôm nay', message: m.name + ' sinh nhật hôm nay — gửi lời chúc nhé!', type: 'birthday', level: 'info', createdAt: today });
+        alerts.push({ id: 'alert_birthday_today_' + m.id + '_' + today, title: 'Sinh nhật hôm nay', message: m.name + ' sinh nhật hôm nay — gửi lời chúc nhé!', type: 'birthday', level: 'info', createdAt: today });
       } else if (dobMD === tomorrowMD) {
         alerts.push({ id: 'alert_birthday_soon_' + m.id + '_' + today, title: 'Sinh nhật sắp tới', message: m.name + ' sinh nhật vào ngày mai.', type: 'birthday', level: 'info', createdAt: today });
       }
