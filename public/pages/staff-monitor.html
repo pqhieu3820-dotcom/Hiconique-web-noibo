@@ -35,9 +35,9 @@
     .sm-agent-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
     .sm-agent-status { font-size: 0.75rem; color: var(--sm-muted); }
     .sm-agent-status.ok { color: #7FA783; } .sm-agent-status.bad { color: #D07070; }
-    .sm-agent-hist { border-left: 1px solid var(--sm-border); padding-left: 20px; font-size: 0.8125rem; }
-    .sm-agent-hist h4 { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: .05em; color: var(--sm-muted); margin: 0 0 8px; font-weight: 600; }
-    .sm-agent-hist li { list-style: none; margin-bottom: 10px; } .sm-agent-hist ul { padding: 0; margin: 0; }
+    .sm-agent-hist { border-left: 1px solid var(--sm-border); padding-left: 20px; font-size: 0.8125rem; display: flex; flex-direction: column; min-height: 0; }
+    .sm-agent-hist h4 { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: .05em; color: var(--sm-muted); margin: 0 0 8px; font-weight: 600; flex: none; }
+    .sm-agent-hist li { list-style: none; margin-bottom: 10px; } .sm-agent-hist ul { padding: 0 10px 0 0; margin: 0; max-height: 220px; overflow-y: auto; }
     .sm-agent-hist b { color: var(--sm-bronze); }
     @media (max-width: 820px) { .sm-agent { grid-template-columns: 1fr; } .sm-agent-hist { border-left: none; padding-left: 0; border-top: 1px solid var(--sm-border); padding-top: 14px; } }
     .sm-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
