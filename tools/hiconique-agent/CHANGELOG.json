@@ -1,5 +1,10 @@
 [
   {
+    "version": "2.0.1",
+    "date": "2026-09-28",
+    "notes": "Thêm nút 'Kiểm tra cập nhật' và nút đổi nền sáng/tối ngay trên cửa sổ chính (nhớ lựa chọn cho lần sau). Quét phần cứng giờ nhận diện thêm bàn phím và chuột (tên thiết bị theo Windows, có thể chung chung với USB thường)."
+  },
+  {
     "version": "2.0.0",
     "date": "2026-09-28",
     "notes": "Viết lại toàn bộ bằng PyQt5, gộp thành 1 ứng dụng có 5 tab: Kiểm soát dữ liệu thao tác, Thông số linh kiện máy tính (quét + nút Cập nhật lên web), Convert Ảnh ↔ SketchUp Material, Lấy màu (Pick Color), Hẹn giờ tắt máy. Đóng cửa sổ (X) chỉ ẩn xuống khay hệ thống, app vẫn chạy nền — chuột phải icon khay > Thoát mới tắt hẳn. Icon riêng cho cửa sổ/taskbar (trước đây dùng icon mặc định). File cài đặt lớn hơn nhiều (~150-250MB) do đóng gói PyQt5/pandas/openpyxl."

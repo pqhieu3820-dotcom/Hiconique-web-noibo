@@ -39,12 +39,15 @@ if ($null -ne $sbv) { $sb = [bool]$sbv }
 $tpm = [bool](Get-PnpDevice -FriendlyName '*Trusted Platform*' | Select-Object -First 1)
 $net = @(Get-NetAdapter | Where-Object { $_.Status -eq 'Up' -and -not $_.Virtual } | Select-Object InterfaceDescription, LinkSpeed, MacAddress)
 $av = @(Get-CimInstance -Namespace root\SecurityCenter2 AntiVirusProduct | Select-Object displayName)
+$kbd = @(Get-CimInstance Win32_Keyboard | Select-Object Name, Description, Manufacturer)
+$mouse = @(Get-CimInstance Win32_PointingDevice | Select-Object Name, Description, Manufacturer, NumberOfButtons, PointingType)
 [pscustomobject]@{
   Host = $env:COMPUTERNAME; Manu = $cs.Manufacturer; Model = $cs.Model; Serial = $bios.SerialNumber; BiosVer = $bios.SMBIOSBIOSVersion
   BoardManu = $bb.Manufacturer; BoardProduct = $bb.Product; BoardSerial = $bb.SerialNumber
   Cpu = $cpu; Mem = $mem; MemSlots = $arr.MemoryDevices; MemMaxKB = $arr.MaxCapacity; Disks = $pd; Logical = $ld; Gpu = $gpu; Mon = $mon
   OsCaption = $os.Caption; OsBuild = $os.BuildNumber; OsInstall = "$($os.InstallDate)"; OsBoot = "$($os.LastBootUpTime)"; LicStatus = $lic.LicenseStatus
   Battery = $bat; BatDesign = $bs.DesignedCapacity; BatFull = $bf.FullChargedCapacity; SecureBoot = $sb; Tpm = $tpm; Net = $net; Av = $av
+  Kbd = $kbd; Mouse = $mouse
 } | ConvertTo-Json -Depth 5 -Compress
 """
 
@@ -192,6 +195,41 @@ def collect(send_serials=True):
     av = [a.get('displayName') for a in _list(d.get('Av')) if a.get('displayName')]
     if av:
         add('Diệt virus', ', '.join(sorted(set(av))), '')
+
+    # Bàn phím / chuột: Windows chỉ báo tên thiết bị HID (thường chung chung, không phải tên hãng thật) và
+    # HAY liệt kê TRÙNG cùng 1 thiết bị vật lý thành nhiều dòng driver khác nhau (đặc thù driver stack của
+    # Windows) — nên KHÔNG dùng số lần lặp làm số lượng thật (dễ báo sai, ví dụ 1 bàn phím thành "5 cái"),
+    # chỉ liệt kê từng tên riêng biệt đã thấy, số lượng luôn để 1.
+    def _hid_name(dev, generic_prefix):
+        manu = (dev.get('Manufacturer') or '').strip()
+        if manu.lower().startswith('(standard'):
+            manu = ''
+        name = (dev.get('Name') or dev.get('Description') or '').strip()
+        full = ' '.join(x for x in (manu, name) if x)
+        return full if full and 'remote' not in full.lower() and 'terminal' not in full.lower() else ''
+
+    seen_kbd = []
+    for k in _list(d.get('Kbd')):
+        name = _hid_name(k, '')
+        if name and name not in seen_kbd:
+            seen_kbd.append(name)
+    for name in seen_kbd:
+        add('Bàn phím', name, '', 1)
+
+    ptype_names = {2: '', 3: 'Track ball', 4: 'Track point', 5: 'Glide point', 6: 'Touchpad', 7: 'Cảm ứng'}
+    seen_mouse = []
+    for m in _list(d.get('Mouse')):
+        name = _hid_name(m, '')
+        if not name:
+            continue
+        spec = ptype_names.get(m.get('PointingType'), '')
+        if m.get('NumberOfButtons'):
+            spec = (spec + (' · ' if spec else '') + '%s nút' % m['NumberOfButtons'])
+        key = (name, spec)
+        if key not in seen_mouse:
+            seen_mouse.append(key)
+    for name, spec in seen_mouse:
+        add('Chuột', name, spec, 1)
 
     boot = d.get('OsBoot') or ''
     return {

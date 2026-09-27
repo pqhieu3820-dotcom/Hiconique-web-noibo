@@ -1,11 +1,16 @@
 {
-  "version": "2.0.0",
+  "version": "2.0.1",
   "url": "https://github.com/pqhieu3820-dotcom/Hiconique-web-noibo/releases/latest/download/HiconiqueAgentSetup.exe",
-  "sha256": "66af4d634ecb03da63c62658ff5e19dda5ff653338b3a781c8daabb21d47e464",
-  "size": 70325138,
-  "releasedAt": "2026-09-27T17:58:20Z",
-  "notes": "Viết lại toàn bộ bằng PyQt5, gộp thành 1 ứng dụng có 5 tab: Kiểm soát dữ liệu thao tác, Thông số linh kiện máy tính (quét + nút Cập nhật lên web), Convert Ảnh ↔ SketchUp Material, Lấy màu (Pick Color), Hẹn giờ tắt máy. Đóng cửa sổ (X) chỉ ẩn xuống khay hệ thống, app vẫn chạy nền — chuột phải icon khay > Thoát mới tắt hẳn. Icon riêng cho cửa sổ/taskbar (trước đây dùng icon mặc định). File cài đặt lớn hơn nhiều (~67MB) do đóng gói PyQt5/pandas/openpyxl — tải qua GitHub Releases thay vì Cloudflare (giới hạn 25MB/file).",
+  "sha256": "fa310f1fdaae15f85b231586c8cb7ddb4c97689f5baa548850a9aeb604de7841",
+  "size": 70329220,
+  "releasedAt": "2026-09-27T18:32:18Z",
+  "notes": "Thêm nút 'Kiểm tra cập nhật' và nút đổi nền sáng/tối ngay trên cửa sổ chính (nhớ lựa chọn cho lần sau). Quét phần cứng giờ nhận diện thêm bàn phím và chuột (tên thiết bị theo Windows, có thể chung chung với USB thường).",
   "history": [
+    {
+      "version": "2.0.1",
+      "date": "2026-09-28",
+      "notes": "Thêm nút 'Kiểm tra cập nhật' và nút đổi nền sáng/tối ngay trên cửa sổ chính (nhớ lựa chọn cho lần sau). Quét phần cứng giờ nhận diện thêm bàn phím và chuột (tên thiết bị theo Windows, có thể chung chung với USB thường)."
+    },
     {
       "version": "2.0.0",
       "date": "2026-09-28",

@@ -34,7 +34,7 @@ import zipfile
 from ctypes import wintypes
 from datetime import datetime, timezone
 
-VERSION = '2.0.0'
+VERSION = '2.0.1'
 APP_NAME = 'HiconiqueAgent'
 FROZEN = getattr(sys, 'frozen', False)
 BASE = os.path.dirname(os.path.abspath(sys.executable if FROZEN else __file__))
@@ -258,17 +258,20 @@ def vtuple(v):
 
 
 def check_update(cfg):
+    """Trả về 'latest' (đã mới nhất), 'updating' (đang tải, sắp khởi động lại — process sẽ tự thoát),
+    'bad_url'/'bad_sha' (dữ liệu bản cập nhật đáng ngờ, đã hủy), 'error:<msg>' (lỗi mạng/khác), hoặc
+    'not_frozen' (chạy từ mã nguồn, không áp dụng)."""
     if not FROZEN:
-        return False
+        return 'not_frozen'
     try:
         with urllib.request.urlopen(cfg['updateUrl'], timeout=30) as r:
             info = json.loads(r.read().decode('utf-8'))
         if vtuple(info['version']) <= vtuple(VERSION):
-            return False
+            return 'latest'
         url = info['url']
         if not url.startswith(ALLOWED_UPDATE_HOSTS):
             log('Bỏ qua bản cập nhật: URL lạ', url)
-            return False
+            return 'bad_url'
         tmp = os.path.join(DATA_DIR, 'update.exe')
         h = hashlib.sha256()
         with urllib.request.urlopen(url, timeout=600) as r, open(tmp, 'wb') as f:
@@ -281,7 +284,7 @@ def check_update(cfg):
         if h.hexdigest().lower() != str(info['sha256']).lower():
             log('Bản cập nhật sai mã SHA-256, hủy')
             os.remove(tmp)
-            return False
+            return 'bad_sha'
         exe = sys.executable
         old = exe + '.old'
         if os.path.exists(old):
@@ -294,7 +297,7 @@ def check_update(cfg):
         os._exit(0)
     except Exception as e:
         log('Kiểm tra cập nhật lỗi:', e)
-        return False
+        return 'error:%s' % e
 
 
 # ---------------- Báo cấu hình phần cứng (trang Thiết bị) ----------------
@@ -416,7 +419,12 @@ BORDER = '#2C2F36'
 TEXT = '#F4F1EC'
 MUTED = '#9AA0AA'
 
-APP_QSS = """
+# Nền sáng/tối — cùng 1 khung QSS, chỉ đổi bảng màu. Toggle ở góc phải thanh tiêu đề, nhớ lựa chọn qua QSettings.
+THEME_COLORS = {
+    'dark': {'bg': DARK_BG, 'surface': SURFACE, 'border': BORDER, 'text': TEXT, 'muted': MUTED, 'bronze': BRONZE},
+    'light': {'bg': '#F7F4EF', 'surface': '#FFFFFF', 'border': '#E1DACD', 'text': '#20221F', 'muted': '#7A7568', 'bronze': BRONZE},
+}
+QSS_TEMPLATE = """
 QMainWindow, QWidget { background: %(bg)s; color: %(text)s; font-family: 'Segoe UI'; font-size: 13px; }
 QTabWidget::pane { border: 1px solid %(border)s; border-radius: 8px; top: -1px; background: %(surface)s; }
 QTabBar::tab { background: %(bg)s; color: %(muted)s; padding: 9px 18px; margin-right: 2px; border-top-left-radius: 8px; border-top-right-radius: 8px; font-weight: 600; }
@@ -437,7 +445,22 @@ QScrollBar:vertical { background: %(bg)s; width: 10px; }
 QScrollBar::handle:vertical { background: %(border)s; border-radius: 5px; min-height: 24px; }
 QCheckBox, QRadioButton, QLabel { color: %(text)s; }
 QLabel[muted="true"] { color: %(muted)s; }
-""" % {'bg': DARK_BG, 'surface': SURFACE, 'border': BORDER, 'text': TEXT, 'muted': MUTED, 'bronze': BRONZE}
+"""
+
+
+def qss_for(theme):
+    return QSS_TEMPLATE % THEME_COLORS.get(theme, THEME_COLORS['dark'])
+
+
+APP_QSS = qss_for('dark')  # giữ tên cũ để tương thích — mặc định khởi động là nền tối
+
+
+def load_theme():
+    return QSettings('HICONIQUE', 'HiconiqueAgent').value('theme', 'dark')
+
+
+def save_theme(theme):
+    QSettings('HICONIQUE', 'HiconiqueAgent').setValue('theme', theme)
 
 
 def app_icon():
@@ -2727,6 +2750,17 @@ class ColorPickerPanel(QWidget):
 # ==============================================================================
 # Cửa sổ chính — 5 tab, khay hệ thống (đóng = ẩn xuống khay, chỉ "Thoát" mới tắt hẳn)
 # ==============================================================================
+class UpdateCheckThread(QThread):
+    done = pyqtSignal(str)
+
+    def __init__(self, cfg):
+        super().__init__()
+        self.cfg = cfg
+
+    def run(self):
+        self.done.emit(check_update(self.cfg))
+
+
 class MainWindow(QMainWindow):
     def __init__(self, cfg, start_hidden=False):
         super().__init__()
@@ -2751,6 +2785,19 @@ class MainWindow(QMainWindow):
         ver.setProperty('muted', True)
         headLay.addWidget(ver)
         headLay.addStretch(1)
+        self.lblUpdate = QLabel('')
+        self.lblUpdate.setProperty('muted', True)
+        headLay.addWidget(self.lblUpdate)
+        self.btnCheckUpdate = QPushButton('Kiểm tra cập nhật')
+        self.btnCheckUpdate.clicked.connect(self.check_update_now)
+        headLay.addWidget(self.btnCheckUpdate)
+        self.theme = load_theme()
+        self.btnTheme = QPushButton()
+        self.btnTheme.setFixedWidth(36)
+        self.btnTheme.setToolTip('Đổi nền sáng/tối')
+        self.btnTheme.clicked.connect(self.toggle_theme)
+        self._update_theme_button()
+        headLay.addWidget(self.btnTheme)
         lay.addWidget(head)
 
         self.tabs = QTabWidget()
@@ -2827,6 +2874,38 @@ class MainWindow(QMainWindow):
         self.worker.stop()
         self.tray.hide()
         QApplication.quit()
+
+    def _update_theme_button(self):
+        self.btnTheme.setText('☀' if self.theme == 'dark' else '🌙')  # hiện icon của chế độ SẼ chuyển sang
+
+    def toggle_theme(self):
+        self.theme = 'light' if self.theme == 'dark' else 'dark'
+        QApplication.instance().setStyleSheet(qss_for(self.theme))
+        save_theme(self.theme)
+        self._update_theme_button()
+
+    def check_update_now(self):
+        self.btnCheckUpdate.setEnabled(False)
+        self.lblUpdate.setText('Đang kiểm tra…')
+        self.updateThread = UpdateCheckThread(self.shared.cfg)
+        self.updateThread.done.connect(self.on_update_checked)
+        self.updateThread.start()
+
+    def on_update_checked(self, status):
+        self.btnCheckUpdate.setEnabled(True)
+        now = datetime.now().strftime('%H:%M:%S')
+        if status == 'latest':
+            self.lblUpdate.setText('Đã kiểm tra %s — đang dùng bản mới nhất' % now)
+        elif status == 'not_frozen':
+            self.lblUpdate.setText('Chạy từ mã nguồn — không tự cập nhật')
+        elif status.startswith('error:'):
+            self.lblUpdate.setText('Kiểm tra lúc %s — lỗi mạng, thử lại sau' % now)
+            log('Kiểm tra cập nhật (nút thủ công) lỗi:', status[6:])
+        elif status in ('bad_url', 'bad_sha'):
+            self.lblUpdate.setText('Kiểm tra lúc %s — bản trên máy chủ không hợp lệ, đã hủy' % now)
+            QMessageBox.warning(self, 'HICONIQUE Agent', 'Dữ liệu bản cập nhật không hợp lệ (%s) — đã hủy, không cài.' % status)
+        # 'updating': tiến trình tự thoát trong check_update() trước khi kịp phát tín hiệu này, nên
+        # không có nhánh xử lý ở đây — cửa sổ đơn giản biến mất và bản mới tự mở lại.
 
 
 def try_activate_existing_instance():
@@ -2966,7 +3045,7 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName('HiconiqueAgent')
     app.setOrganizationName('HICONIQUE')
-    app.setStyleSheet(APP_QSS)
+    app.setStyleSheet(qss_for(load_theme()))
     sys.excepthook = excepthook
 
     args = sys.argv[1:]

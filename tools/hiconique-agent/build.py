@@ -77,7 +77,8 @@ def publish_release(version, exe_path, notes):
     upload_url = rel['upload_url'].split('{')[0] + '?name=%s' % ASSET_NAME
     with open(exe_path, 'rb') as f:
         asset = gh_api('POST', upload_url, token, f.read(), content_type='application/octet-stream')
-    return asset['browser_download_url'].rsplit('/download/', 1)[0].rsplit('/', 1)[0] + '/latest/download/' + ASSET_NAME
+    # browser_download_url: https://github.com/<repo>/releases/download/<tag>/<asset> -> .../releases/latest/download/<asset>
+    return asset['browser_download_url'].rsplit('/download/', 1)[0] + '/latest/download/' + ASSET_NAME
 
 
 src = open(ENTRY, encoding='utf-8').read()
