@@ -1490,7 +1490,7 @@ không phá cách in của Soạn báo giá. Thẻ công cụ ở trang chủ tr
   — source of truth cho thiết kế (màu, font, spacing...).
 
 ### HICONIQUE Agent (theo dõi ứng dụng trên máy công ty) — 2026-09-27
-- `tools/hiconique-agent/` (Python chỉ dùng thư viện chuẩn, Windows): ghi tên ứng dụng + tiêu đề cửa sổ phía trước mỗi 15s trong giờ làm việc, gửi mỗi 5 phút lên Sheet `NS-Ứng dụng` (action `upsertAppUsage` theo lô, id `app_<memberId>_<date>_<máy>_<app>`). Xem README.md trong thư mục đó.
+- `tools/hiconique-agent/agent.py` đóng gói thành HiconiqueAgentSetup.exe (build.py, PyInstaller): tự cài (Run key + mục Apps & features), tự cập nhật qua public/agent/latest.json (SHA-256), gỡ như ứng dụng thường. Ghi tên ứng dụng + tiêu đề cửa sổ mỗi 15s trong giờ làm việc, gửi mỗi 5 phút lên `NS-Ứng dụng` (`upsertAppUsage`). Xem README trong thư mục đó.
 - Công khai: hiện thông báo khi khởi động, nhân viên đọc được `%LOCALAPPDATA%\HiconiqueAgent\hoat-dong-hom-nay.txt`; không chụp màn hình/phím gõ; cửa sổ ẩn danh bị che tiêu đề. Chỉ cài trên máy công ty có sự đồng ý.
 - Hub: bảng "Ứng dụng đang dùng" trong modal chi tiết nhân viên ở staff-monitor.html; thông báo minh bạch (portal.js + staff-monitor.html) đã cập nhật nhắc tới Agent.
 - Chưa kiểm thử agent trên máy thật; cần redeploy Apps Script (có `upsertAppUsage`) trước khi chạy.
