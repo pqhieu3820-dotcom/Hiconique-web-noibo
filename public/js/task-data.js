@@ -77,6 +77,9 @@ function syncToGSheets(type, action, data, id) {
     commissionRates: { add: 'addCommissionRate', update: 'updateCommissionRate', delete: 'deleteCommissionRate' },
     priceCatalog: { add: 'addPriceCatalog', update: 'updatePriceCatalog', delete: 'deletePriceCatalog' },
     lightingPlans: { add: 'addLightingPlan', update: 'updateLightingPlan' },
+    customers: { add: 'addCustomer', update: 'updateCustomer' },
+    customerLogs: { add: 'addCustomerLog' },
+    staffActivity: { update: 'upsertStaffActivity', add: 'upsertStaffActivity' },
     financeEntries: { add: 'addFinanceEntry', update: 'updateFinanceEntry', delete: 'deleteFinanceEntry' },
     receivables: { add: 'addReceivable', update: 'updateReceivable', delete: 'deleteReceivable' },
     bsSnapshots: { add: 'addBsSnapshot', update: 'updateBsSnapshot', delete: 'deleteBsSnapshot' },
@@ -269,6 +272,9 @@ var TaskManager = (function() {
     lightingLamps: 'hiconique_lighting_lamps',
     lightingFactors: 'hiconique_lighting_factors',
     lightingPlans: 'hiconique_lighting_plans',
+    customers: 'hiconique_customers',
+    customerLogs: 'hiconique_customer_logs',
+    staffActivity: 'hiconique_staff_activity',
     financeEntries: 'hiconique_finance_entries',
     receivables: 'hiconique_receivables',
     bsSnapshots: 'hiconique_bs_snapshots',
@@ -638,6 +644,7 @@ var TaskManager = (function() {
       priceCatalog: 'getPriceCatalog', financeEntries: 'getFinanceEntries',
       lightingStandards: 'getLightingStandards', lightingLamps: 'getLightingLamps',
       lightingFactors: 'getLightingFactors', lightingPlans: 'getLightingPlans',
+      customers: 'getCustomers', customerLogs: 'getCustomerLogs', staffActivity: 'getStaffActivity',
       receivables: 'getReceivables', bsSnapshots: 'getBsSnapshots', orders: 'getOrders',
       attendanceLocations: 'getAttendanceLocations'
     };
@@ -2439,6 +2446,131 @@ var TaskManager = (function() {
     return result;
   }
 
+
+  // ===================== CRM khách hàng (crm.html) — sheet KH-Khách hàng / KH-Chăm sóc =====================
+  var CRM_STAGES = ['Tiềm năng', 'Đã liên hệ', 'Báo giá', 'Đàm phán', 'Đã ký', 'Từ chối'];
+  function isOffFlag_(v) { return v === false || String(v).toLowerCase() === 'false'; }
+
+  function loadCrmData(callback) {
+    var keys = ['customers', 'customerLogs'], left = keys.length;
+    keys.forEach(function (k) {
+      getFromGSheets(k, function (items) {
+        // Chỉ ghi đè cache khi server trả về dữ liệu — tránh xoá cache vì lỗi mạng (xem chú thích lighting)
+        if (items && items.length) localStorage.setItem(STORAGE_KEYS[k], JSON.stringify(items));
+        if (--left === 0 && callback) callback();
+      });
+    });
+  }
+  function getCustomers() {
+    return getAll(STORAGE_KEYS.customers).filter(function (c) { return !isOffFlag_(c.visible); });
+  }
+  function getCustomerLogs(customerId) {
+    return getAll(STORAGE_KEYS.customerLogs).filter(function (l) { return !customerId || l.customerId === customerId; })
+      .sort(function (a, b) { return String(b.date || b.createdAt || '').localeCompare(String(a.date || a.createdAt || '')); });
+  }
+  function canEditCustomer(user, c) {
+    return !!user && (canManageNotifications(user) || (c && (c.ownerId === user.id || c.createdBy === user.id)));
+  }
+  function createCustomer(data, user) {
+    if (!user || !data || !String(data.name || '').trim()) return null;
+    var now = new Date().toISOString();
+    data.stage = data.stage || CRM_STAGES[0];
+    data.ownerId = data.ownerId || user.id;
+    data.visible = true; data.createdBy = user.id; data.createdAt = now; data.updatedAt = now;
+    var created = add(STORAGE_KEYS.customers, data);
+    syncToGSheets('customers', 'add', created);
+    return created;
+  }
+  function updateCustomer(id, updates, user) {
+    var cur = getById(STORAGE_KEYS.customers, id);
+    if (!cur || !canEditCustomer(user, cur)) return null;
+    updates.updatedAt = new Date().toISOString();
+    var updated = update(STORAGE_KEYS.customers, id, updates);
+    if (updated) syncToGSheets('customers', 'update', updates, id);
+    return updated;
+  }
+  function hideCustomer(id, user) { return updateCustomer(id, { visible: false }, user); }
+  function addCustomerLog(customerId, type, content, date, user) {
+    if (!user || !customerId || !String(content || '').trim()) return null;
+    var rec = { customerId: customerId, type: type || 'Ghi chú', content: String(content).trim(), date: date || new Date().toISOString().slice(0, 10), createdBy: user.id, createdAt: new Date().toISOString() };
+    var created = add(STORAGE_KEYS.customerLogs, rec);
+    syncToGSheets('customerLogs', 'add', created);
+    return created;
+  }
+
+  // ===================== Hoạt động trên Hub (staff-monitor.html) — sheet NS-Hoạt động =====================
+  // CHỈ đo trong chính Hub (KHÔNG theo dõi duyệt web/ứng dụng/màn hình khác): mỗi 30 giây tab đang mở được xếp
+  // vào 1 trong 3 loại — "hoạt động" (tab hiện + có thao tác chuột/phím/cuộn/chạm trong 2 phút gần nhất),
+  // "không thao tác" (tab hiện nhưng không có thao tác) hoặc "rời tab" (tab bị ẩn/chuyển sang ứng dụng khác).
+  // Cộng dồn theo ngày cho từng thiết bị, ghi lên Sheet mỗi ~5 phút (id cố định nên chỉ cập nhật 1 dòng/ngày/thiết bị).
+  // Nhân viên được thông báo 1 lần khi mở Hub (xem portal.js) và có thể xem số liệu của chính mình ở trang theo dõi.
+  var ACT_TICK_MS = 30000, ACT_FLUSH_MS = 300000, ACT_INPUT_WINDOW_MS = 120000;
+  var actState = { lastInput: Date.now(), active: 0, idle: 0, away: 0, dirty: false };
+  function actDeviceId() {
+    var d = null;
+    try { d = localStorage.getItem('hiconique_device_short'); if (!d) { d = Math.random().toString(36).slice(2, 6); localStorage.setItem('hiconique_device_short', d); } } catch (e) { d = 'x'; }
+    return d;
+  }
+  function actUser() { try { return (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null; } catch (e) { return null; } }
+  function actTodayKey() { return new Date().toISOString().slice(0, 10); }
+  function actStorageKey(uid, date) { return 'hiconique_act_' + uid + '_' + date; }
+  function actFlush(force) {
+    var u = actUser();
+    if (!u || (!actState.dirty && !force)) return;
+    var date = actTodayKey();
+    var totals = { active: actState.active, idle: actState.idle, away: actState.away };
+    try { localStorage.setItem(actStorageKey(u.id, date), JSON.stringify(totals)); } catch (e) {}
+    if (!isUsingGSheets() || (typeof Offline !== 'undefined' && !Offline.isOnline())) return;
+    var rec = {
+      id: 'act_' + u.id + '_' + date + '_' + actDeviceId(), memberId: u.id, date: date, device: actDeviceId(),
+      activeMin: Math.round(totals.active / 60000), idleMin: Math.round(totals.idle / 60000), awayMin: Math.round(totals.away / 60000),
+      lastSeen: new Date().toISOString(), updatedAt: new Date().toISOString()
+    };
+    try {
+      fetch(GSHEETS_CONFIG.API_URL + '?action=upsertStaffActivity&data=' + encodeURIComponent(JSON.stringify(rec)), { redirect: 'follow', keepalive: true }).catch(function () {});
+    } catch (e) {}
+    actState.dirty = false;
+  }
+  function startActivityTracker() {
+    if (typeof document === 'undefined' || window.__hiconiqueActTracker) return;
+    window.__hiconiqueActTracker = true;
+    var u0 = actUser();
+    if (!u0) return;
+    var date0 = actTodayKey();
+    try { var saved = JSON.parse(localStorage.getItem(actStorageKey(u0.id, date0)) || 'null'); if (saved) { actState.active = saved.active || 0; actState.idle = saved.idle || 0; actState.away = saved.away || 0; } } catch (e) {}
+    ['mousemove', 'keydown', 'scroll', 'touchstart', 'click', 'wheel'].forEach(function (ev) {
+      document.addEventListener(ev, function () { actState.lastInput = Date.now(); }, { passive: true, capture: true });
+    });
+    var lastDate = date0;
+    setInterval(function () {
+      var d = actTodayKey();
+      if (d !== lastDate) { actFlush(true); actState = { lastInput: actState.lastInput, active: 0, idle: 0, away: 0, dirty: false }; lastDate = d; }
+      if (document.visibilityState !== 'visible') actState.away += ACT_TICK_MS;
+      else if (Date.now() - actState.lastInput <= ACT_INPUT_WINDOW_MS) actState.active += ACT_TICK_MS;
+      else actState.idle += ACT_TICK_MS;
+      actState.dirty = true;
+    }, ACT_TICK_MS);
+    setInterval(function () { actFlush(false); }, ACT_FLUSH_MS);
+    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') actFlush(false); });
+    window.addEventListener('pagehide', function () { actFlush(false); });
+  }
+  function loadStaffActivity(callback) {
+    getFromGSheets('staffActivity', function (items) {
+      if (items && items.length) localStorage.setItem(STORAGE_KEYS.staffActivity, JSON.stringify(items));
+      if (callback) callback(getAll(STORAGE_KEYS.staffActivity));
+    });
+  }
+  function getStaffActivity() { return getAll(STORAGE_KEYS.staffActivity); }
+  if (typeof document !== 'undefined') {
+    // đợi Auth sẵn sàng (nạp sau task-data.js) rồi mới bắt đầu đo
+    var actBoot = 0;
+    var actWait = setInterval(function () {
+      actBoot++;
+      if (actUser()) { clearInterval(actWait); startActivityTracker(); }
+      else if (actBoot > 20) clearInterval(actWait);
+    }, 1500);
+  }
+
   // Tính toán chiếu sáng (lighting.html) — nhóm sheet TTCS-. 3 sheet danh mục
   // (tiêu chuẩn TCVN, danh mục đèn, hệ số U/K) chỉ đọc từ web, quản lý sửa
   // thẳng trên Sheet; trang lighting.js có bản nhúng sẵn làm dự phòng khi Sheet
@@ -2904,6 +3036,17 @@ var TaskManager = (function() {
     getLightingLamps: getLightingLamps,
     getLightingFactors: getLightingFactors,
     getLightingPlans: getLightingPlans,
+    CRM_STAGES: CRM_STAGES,
+    loadCrmData: loadCrmData,
+    getCustomers: getCustomers,
+    getCustomerLogs: getCustomerLogs,
+    canEditCustomer: canEditCustomer,
+    createCustomer: createCustomer,
+    updateCustomer: updateCustomer,
+    hideCustomer: hideCustomer,
+    addCustomerLog: addCustomerLog,
+    loadStaffActivity: loadStaffActivity,
+    getStaffActivity: getStaffActivity,
     saveLightingPlan: saveLightingPlan,
     hideLightingPlan: hideLightingPlan,
     createPriceCatalogItem: createPriceCatalogItem,

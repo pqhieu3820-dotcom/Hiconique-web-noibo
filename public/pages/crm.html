@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản lý khách hàng · HICONIQUE</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/reset.css">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/portal.css">
+  <link rel="stylesheet" href="/css/subpage.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-title" content="HICONIQUE" />
+  <link rel="manifest" href="/manifest.json" />
+  <script src="/js/offline.js"></script>
+  <script src="/js/gsheets-config.js"></script>
+  <script src="/js/task-data.js"></script>
+  <script src="/js/auth.js"></script>
+  <style>
+    :root {
+      --cr-bg: var(--color-bg); --cr-surface: var(--color-surface); --cr-border: var(--color-border);
+      --cr-text: var(--color-text); --cr-muted: var(--color-text-muted); --cr-bronze: var(--color-bronze);
+      --cr-ok: #4F6F52; --cr-bad: #A04848; --cr-blue: #3B6B8C;
+    }
+    body { background: var(--cr-bg); color: var(--cr-text); font-family: 'Inter', -apple-system, sans-serif; min-height: 100vh; }
+    .cr-container { max-width: 1400px; }
+
+    .cr-kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; margin: 8px 0 20px; }
+    .cr-kpi { background: var(--cr-surface); border: 1px solid var(--cr-border); border-radius: 14px; padding: 14px 16px; }
+    .cr-kpi-label { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--cr-muted); }
+    .cr-kpi-value { font-size: 1.5rem; font-weight: 700; margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
+    .cr-kpi-value.bad { color: var(--cr-bad); }
+    .cr-kpi-sub { font-size: 0.6875rem; color: var(--cr-muted); margin-top: 2px; }
+
+    .cr-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 16px; }
+    .cr-toolbar .cr-input, .cr-toolbar .cr-select { width: auto; }
+    .cr-search { flex: 1 1 240px; min-width: 200px; }
+    .cr-spacer { flex: 1 1 auto; }
+    .cr-input, .cr-select, .cr-textarea { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--cr-border); background: var(--cr-bg); color: var(--cr-text); font-family: inherit; font-size: 0.8125rem; }
+    .cr-textarea { min-height: 70px; resize: vertical; }
+    .cr-input:focus, .cr-select:focus, .cr-textarea:focus { outline: none; border-color: var(--cr-bronze); }
+    .cr-btn { padding: 9px 16px; border-radius: 9px; border: 1px solid var(--cr-border); background: transparent; color: var(--cr-text); font-family: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+    .cr-btn:hover { border-color: var(--cr-bronze); color: var(--cr-bronze); }
+    .cr-btn-primary { background: var(--cr-bronze); border-color: var(--cr-bronze); color: #0B0D10; }
+    .cr-btn-primary:hover { background: #C7A464; border-color: #C7A464; color: #0B0D10; }
+    .cr-btn-danger { color: var(--cr-bad); }
+    .cr-btn-danger:hover { border-color: var(--cr-bad); color: var(--cr-bad); }
+    .cr-seg { display: inline-flex; border: 1px solid var(--cr-border); border-radius: 9px; overflow: hidden; }
+    .cr-seg button { padding: 8px 14px; background: transparent; border: none; color: var(--cr-muted); font-family: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; }
+    .cr-seg button.active { background: color-mix(in srgb, var(--cr-bronze) 16%, transparent); color: var(--cr-bronze); }
+
+    .cr-board { display: grid; grid-template-columns: repeat(6, minmax(190px, 1fr)); gap: 12px; overflow-x: auto; padding-bottom: 8px; }
+    .cr-col { background: var(--cr-surface); border: 1px solid var(--cr-border); border-radius: 14px; display: flex; flex-direction: column; min-height: 220px; }
+    .cr-col-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--cr-border); font-size: 0.8125rem; font-weight: 700; }
+    .cr-col-count { font-family: 'JetBrains Mono', monospace; font-size: 0.6875rem; color: var(--cr-muted); background: var(--cr-bg); padding: 2px 8px; border-radius: 6px; }
+    .cr-col-sum { font-size: 0.6875rem; color: var(--cr-muted); padding: 6px 14px 0; }
+    .cr-cards { display: flex; flex-direction: column; gap: 8px; padding: 10px; max-height: 620px; overflow-y: auto; }
+    .cr-card { background: var(--cr-bg); border: 1px solid var(--cr-border); border-radius: 11px; padding: 10px 12px; cursor: pointer; }
+    .cr-card:hover { border-color: var(--cr-bronze); }
+    .cr-card-name { font-size: 0.875rem; font-weight: 600; }
+    .cr-card-sub { font-size: 0.75rem; color: var(--cr-muted); margin-top: 2px; }
+    .cr-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; font-size: 0.6875rem; }
+    .cr-chip { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--cr-border); color: var(--cr-muted); white-space: nowrap; }
+    .cr-chip.bad { color: var(--cr-bad); border-color: color-mix(in srgb, var(--cr-bad) 45%, transparent); }
+    .cr-chip.money { color: var(--cr-bronze); font-family: 'JetBrains Mono', monospace; }
+    .cr-next { margin-left: auto; }
+    .cr-empty { padding: 26px 14px; text-align: center; font-size: 0.75rem; color: var(--cr-muted); }
+
+    .cr-table-wrap { background: var(--cr-surface); border: 1px solid var(--cr-border); border-radius: 14px; overflow-x: auto; }
+    .cr-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; min-width: 820px; }
+    .cr-table th { text-align: left; padding: 10px 14px; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--cr-muted); background: var(--cr-bg); border-bottom: 1px solid var(--cr-border); }
+    .cr-table td { padding: 10px 14px; border-bottom: 1px solid var(--cr-border); vertical-align: middle; }
+    .cr-table tr.cr-row { cursor: pointer; }
+    .cr-table tr.cr-row:hover td { background: color-mix(in srgb, var(--cr-bronze) 6%, transparent); }
+
+    .cr-overlay { position: fixed; inset: 0; z-index: 9000; background: rgba(0,0,0,0.55); display: none; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; }
+    .cr-overlay.active { display: flex; }
+    .cr-modal { background: var(--cr-surface); border: 1px solid var(--cr-border); border-radius: 18px; width: 100%; max-width: 960px; overflow: hidden; }
+    .cr-modal-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 22px; border-bottom: 1px solid var(--cr-border); }
+    .cr-modal-title { font-size: 1.0625rem; font-weight: 700; }
+    .cr-x { background: none; border: none; color: var(--cr-muted); font-size: 1.4rem; cursor: pointer; line-height: 1; }
+    .cr-modal-body { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 0; }
+    .cr-modal-body > div { padding: 18px 22px; }
+    .cr-modal-body > div + div { border-left: 1px solid var(--cr-border); background: color-mix(in srgb, var(--cr-bg) 55%, transparent); }
+    .cr-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .cr-field.full { grid-column: 1 / -1; }
+    .cr-label { display: block; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--cr-muted); margin-bottom: 5px; }
+    .cr-actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+    .cr-logs { display: flex; flex-direction: column; gap: 10px; margin: 12px 0 14px; max-height: 300px; overflow-y: auto; }
+    .cr-log { border-left: 2px solid var(--cr-bronze); padding: 2px 0 2px 10px; font-size: 0.8125rem; }
+    .cr-log-meta { font-size: 0.6875rem; color: var(--cr-muted); margin-bottom: 2px; }
+    .cr-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--cr-surface); border: 1px solid var(--cr-border); padding: 10px 18px; border-radius: 10px; font-size: 0.8125rem; z-index: 9500; box-shadow: 0 6px 24px rgba(0,0,0,.25); }
+    .cr-toast.bad { border-color: var(--cr-bad); }
+
+    @media (max-width: 1100px) { .cr-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 820px) { .cr-modal-body { grid-template-columns: 1fr; } .cr-modal-body > div + div { border-left: none; border-top: 1px solid var(--cr-border); } .cr-form-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/" class="brand">
+        <span class="brand-mark"><img class="brand-logo" src="/logo-mark.png" alt="HICONIQUE" /></span>
+        <span class="brand-name"><span class="brand-name-1">HICONIQUE</span></span>
+      </a>
+      <nav class="primary-nav">
+        <a href="/#tools" class="nav-link">Công cụ</a>
+        <a href="/pages/tasks-manager.html" class="nav-link">Tasks</a>
+        <a href="/pages/projects.html" class="nav-link">Dự án</a>
+        <a href="/pages/wiki.html" class="nav-link">Tài liệu</a>
+        <a href="/#ai" class="nav-link">AI</a>
+        <a href="/pages/notices.html" class="nav-link">Thông báo</a>
+        <a href="/pages/team.html" class="nav-link">Team</a>
+      </nav>
+      <div class="header-actions">
+        <button class="theme-toggle" aria-label="Chuyển đổi sáng/tối" data-theme-toggle>
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" stroke-linecap="round" /></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        </button>
+        <span class="clock"><span class="clock-time" data-clock>--:--</span><span class="clock-meta">GMT+7</span></span>
+        <button class="avatar"><span>--</span></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="subpage">
+  <div class="subpage-inner cr-container">
+    <p class="eyebrow">— Khách hàng</p>
+    <h1 class="subpage-title">Quản lý <span class="subpage-title-italic">khách hàng</span></h1>
+    <p class="subpage-lede">Theo dõi khách hàng từ lúc tiếp cận đến khi ký hợp đồng: giai đoạn, người phụ trách, ngân sách dự kiến, lịch chăm sóc tiếp theo và toàn bộ lịch sử trao đổi. Dữ liệu lưu chung trên Google Sheet (KH-Khách hàng, KH-Chăm sóc).</p>
+
+    <div class="cr-kpis" id="crKpis"></div>
+
+    <div class="cr-toolbar">
+      <input class="cr-input cr-search" id="crSearch" type="search" placeholder="Tìm theo tên, số điện thoại, công ty, email…">
+      <select class="cr-select" id="crOwner"><option value="">Mọi người phụ trách</option></select>
+      <select class="cr-select" id="crFilter">
+        <option value="">Tất cả khách hàng</option>
+        <option value="mine">Của tôi</option>
+        <option value="due">Cần chăm sóc (đến hạn / quá hạn)</option>
+      </select>
+      <span class="cr-spacer"></span>
+      <div class="cr-seg" id="crView"><button data-view="board" class="active">Kanban</button><button data-view="list">Danh sách</button></div>
+      <button class="cr-btn cr-btn-primary" id="crAddBtn" type="button">+ Thêm khách hàng</button>
+    </div>
+
+    <div id="crBoard" class="cr-board"></div>
+    <div id="crList" class="cr-table-wrap" hidden></div>
+  </div>
+  </main>
+
+  <div class="cr-overlay" id="crModal" role="dialog" aria-modal="true" aria-labelledby="crModalTitle">
+    <div class="cr-modal">
+      <div class="cr-modal-head"><div class="cr-modal-title" id="crModalTitle">Thêm khách hàng</div><button class="cr-x" id="crModalClose" type="button" aria-label="Đóng">×</button></div>
+      <div class="cr-modal-body">
+        <div>
+          <form id="crForm" autocomplete="off">
+            <div class="cr-form-grid">
+              <div class="cr-field full"><label class="cr-label" for="cfName">Tên khách hàng *</label><input class="cr-input" id="cfName" required maxlength="120"></div>
+              <div class="cr-field"><label class="cr-label" for="cfPhone">Số điện thoại</label><input class="cr-input" id="cfPhone" inputmode="tel" maxlength="20"></div>
+              <div class="cr-field"><label class="cr-label" for="cfEmail">Email</label><input class="cr-input" id="cfEmail" type="email" maxlength="120"></div>
+              <div class="cr-field"><label class="cr-label" for="cfCompany">Công ty</label><input class="cr-input" id="cfCompany" maxlength="120"></div>
+              <div class="cr-field"><label class="cr-label" for="cfSource">Nguồn khách</label>
+                <select class="cr-select" id="cfSource"><option>Facebook</option><option>Zalo</option><option>Website</option><option>Giới thiệu</option><option>Khách cũ</option><option>Sự kiện</option><option>Khác</option></select></div>
+              <div class="cr-field full"><label class="cr-label" for="cfAddress">Địa chỉ / công trình</label><input class="cr-input" id="cfAddress" maxlength="200"></div>
+              <div class="cr-field"><label class="cr-label" for="cfStage">Giai đoạn</label><select class="cr-select" id="cfStage"></select></div>
+              <div class="cr-field"><label class="cr-label" for="cfOwner">Người phụ trách</label><select class="cr-select" id="cfOwner"></select></div>
+              <div class="cr-field"><label class="cr-label" for="cfBudget">Ngân sách dự kiến (₫)</label><input class="cr-input" id="cfBudget" inputmode="numeric" placeholder="VD: 500.000.000"></div>
+              <div class="cr-field"><label class="cr-label" for="cfNext">Chăm sóc tiếp theo</label><input class="cr-input" id="cfNext" type="date"></div>
+              <div class="cr-field full"><label class="cr-label" for="cfProject">Dự án liên quan</label><select class="cr-select" id="cfProject"><option value="">— Chưa có —</option></select></div>
+              <div class="cr-field full"><label class="cr-label" for="cfNote">Nhu cầu / ghi chú</label><textarea class="cr-textarea" id="cfNote" maxlength="1000"></textarea></div>
+            </div>
+            <div class="cr-actions">
+              <button class="cr-btn cr-btn-primary" type="submit" id="crSaveBtn">Lưu</button>
+              <button class="cr-btn cr-btn-danger" type="button" id="crHideBtn" hidden>Ẩn khách hàng</button>
+            </div>
+          </form>
+        </div>
+        <div id="crLogPane">
+          <div class="cr-label" style="margin:0;">Lịch sử chăm sóc</div>
+          <div class="cr-logs" id="crLogs"></div>
+          <div id="crLogForm">
+            <div class="cr-form-grid">
+              <div class="cr-field"><label class="cr-label" for="clType">Hình thức</label><select class="cr-select" id="clType"><option>Gọi điện</option><option>Gặp mặt</option><option>Zalo</option><option>Email</option><option>Báo giá</option><option>Ghi chú</option></select></div>
+              <div class="cr-field"><label class="cr-label" for="clDate">Ngày</label><input class="cr-input" id="clDate" type="date"></div>
+              <div class="cr-field full"><label class="cr-label" for="clContent">Nội dung trao đổi</label><textarea class="cr-textarea" id="clContent" maxlength="1000" placeholder="Khách nói gì, đã hứa gì, bước tiếp theo…"></textarea></div>
+            </div>
+            <div class="cr-actions"><button class="cr-btn" type="button" id="clAddBtn">+ Ghi lịch sử</button></div>
+          </div>
+          <p class="cr-empty" id="crLogHint" hidden>Lưu khách hàng trước rồi mới ghi lịch sử chăm sóc.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js" defer></script>
+  <script src="/js/push-notifications.js" defer></script>
+  <script src="/js/portal.js" defer></script>
+  <script src="/js/crm.js" defer></script>
+</body>
+</html>

@@ -42,6 +42,11 @@ const SHEETS = {
   lightingLamps: 'TTCS-Danh mục đèn',
   lightingFactors: 'TTCS-Hệ số tính toán',
   lightingPlans: 'TTCS-Phương án',
+  // 2026-09-27: nhóm KH- (Khách hàng / CRM) cho crm.html + sheet NS-Hoạt động (thời gian hoạt động trên Hub
+  // của từng người theo ngày — chỉ đo trong chính Hub, có thông báo cho nhân viên) cho staff-monitor.html.
+  customers: 'KH-Khách hàng',
+  customerLogs: 'KH-Chăm sóc',
+  staffActivity: 'NS-Hoạt động',
   // 6 sheet mới (2026-09-09) — công cụ theo dự án đi kèm database đơn giá 34
   // tỉnh, xem GHI_CHU_DU_AN.md. Nhóm DA- nên không đụng 46 sheet tham khảo
   // (đã đổi tiền tố "DGXD-" — VD "DGXD-Dòng tiền" khác hẳn "DA-Dòng tiền").
@@ -281,6 +286,22 @@ const FIELD_MAP = {
     ['LUX trung bình', 'avgLux'], ['LUX min', 'minLux'], ['LUX max', 'maxLux'], ['Độ đồng đều', 'uniformity'],
     ['Tổng công suất (W)', 'totalWatt'], ['Mật độ công suất (W/m²)', 'wattPerM2'], ['Kết luận', 'verdict'],
     ['Ghi chú', 'note'], ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt'], ['Hiển thị', 'visible']
+  ],
+  customers: [
+    ['Mã KH', 'id'], ['Tên khách hàng', 'name'], ['Số điện thoại', 'phone'], ['Email', 'email'], ['Công ty', 'company'],
+    ['Địa chỉ', 'address'], ['Nguồn', 'source'], ['Giai đoạn', 'stage'], ['Người phụ trách', 'ownerId'],
+    ['Dự án liên quan', 'projectId'], ['Ngân sách dự kiến', 'budget'], ['Nhu cầu / ghi chú', 'note'],
+    ['Chăm sóc tiếp theo', 'nextFollowUp'], ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'],
+    ['Ngày cập nhật', 'updatedAt'], ['Hiển thị', 'visible']
+  ],
+  customerLogs: [
+    ['Mã', 'id'], ['Mã KH', 'customerId'], ['Hình thức', 'type'], ['Nội dung', 'content'],
+    ['Ngày', 'date'], ['Người ghi', 'createdBy'], ['Ngày tạo', 'createdAt']
+  ],
+  staffActivity: [
+    ['Mã', 'id'], ['Mã thành viên', 'memberId'], ['Ngày', 'date'], ['Thiết bị', 'device'],
+    ['Phút hoạt động', 'activeMin'], ['Phút không thao tác', 'idleMin'], ['Phút rời tab', 'awayMin'],
+    ['Lần cuối', 'lastSeen'], ['Ngày cập nhật', 'updatedAt']
   ],
   priceCatalog: [
     ['Mã BG', 'id'], ['Danh mục', 'category'], ['Tên dịch vụ', 'name'], ['Đơn vị tính', 'unit'],
@@ -806,6 +827,23 @@ function handleRequest(e) {
       result = updateData(ss, SHEETS.commissionRates, params.id, JSON.parse(params.data));
     } else if (action === 'deleteCommissionRate') {
       result = deleteData(ss, SHEETS.commissionRates, params.id);
+    } else if (action === 'getCustomers') {
+      result = getAllData(ss, SHEETS.customers);
+    } else if (action === 'addCustomer') {
+      result = addData(ss, SHEETS.customers, JSON.parse(params.data));
+    } else if (action === 'updateCustomer') {
+      result = updateData(ss, SHEETS.customers, params.id, JSON.parse(params.data));
+    } else if (action === 'getCustomerLogs') {
+      result = getAllData(ss, SHEETS.customerLogs);
+    } else if (action === 'addCustomerLog') {
+      result = addData(ss, SHEETS.customerLogs, JSON.parse(params.data));
+    } else if (action === 'getStaffActivity') {
+      result = getAllData(ss, SHEETS.staffActivity);
+    } else if (action === 'upsertStaffActivity') {
+      // Mỗi (thành viên, ngày, thiết bị) 1 dòng, id cố định — cập nhật tổng phút thay vì thêm dòng mới liên tục.
+      var actData = JSON.parse(params.data);
+      var actExisting = getAllData(ss, SHEETS.staffActivity).filter(function (r) { return r.id === actData.id; })[0];
+      result = actExisting ? updateData(ss, SHEETS.staffActivity, actData.id, actData) : addData(ss, SHEETS.staffActivity, actData);
     } else if (action === 'getLightingStandards') {
       result = getAllData(ss, SHEETS.lightingStandards);
     } else if (action === 'getLightingLamps') {
@@ -3067,6 +3105,7 @@ var SORT_SKIP_KEYS = {
   workSchedule: true,        // sheet cấu hình 1 dòng duy nhất
   attendanceLocations: true, // danh sách địa điểm GPS/IP quản lý thủ công
   commissionRates: true,     // bảng % theo cấp bậc, thứ tự cố định theo LEVELS
+  staffActivity: true, // theo id cố định, không cần sắp lại
   lightingStandards: true, lightingLamps: true, lightingFactors: true, // TTCS- danh mục/cấu hình, thứ tự do người quản lý sắp
   priceCatalog: true,        // bảng giá dịch vụ — thứ tự trình bày báo giá, không phải theo thời gian tạo
   bimProducts: true, bimMaterials: true, bimSuppliers: true // danh mục BIM dùng chung toàn tổ chức, thứ tự quản lý thủ công
