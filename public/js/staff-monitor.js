@@ -177,8 +177,33 @@
     return Object.keys(by).map(function (k) { return by[k]; }).sort(function (x, y) { return y.min - x.min; });
   }
 
+  // ---- Thông tin bản phát hành HICONIQUE Agent (đọc /agent/latest.json — do build.py tạo mỗi lần phát hành) ----
+  function fmtSize(b) { b = Number(b) || 0; return b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.round(b / 1024) + ' KB'; }
+  function fmtDateTime(iso) { var d = new Date(iso); return isNaN(d) ? '—' : d.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+  function loadAgentInfo(manual) {
+    var st = $('agStatus');
+    if (manual) { st.className = 'sm-agent-status'; st.textContent = 'Đang kiểm tra…'; }
+    fetch('/agent/latest.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (a) {
+      $('agVer').textContent = 'v' + a.version;
+      $('agDate').textContent = a.releasedAt ? fmtDateTime(a.releasedAt) : '—';
+      $('agSize').textContent = a.size ? fmtSize(a.size) : '—';
+      $('agSha').textContent = a.sha256 || '—';
+      if (a.url) $('agDownload').href = a.url;
+      $('agHist').innerHTML = (a.history && a.history.length ? a.history : [{ version: a.version, date: '', notes: a.notes || '' }]).map(function (h) {
+        return '<li><b>v' + esc(h.version) + '</b>' + (h.date ? ' · ' + esc(String(h.date).split('-').reverse().join('/')) : '') + '<br>' + esc(h.notes || '') + '</li>';
+      }).join('');
+      var now = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+      st.className = 'sm-agent-status ok';
+      st.textContent = 'Đã kiểm tra lúc ' + now + ' — bản mới nhất là v' + a.version + '. Máy đã cài tự cập nhật trong tối đa 6 giờ.';
+    }).catch(function () {
+      st.className = 'sm-agent-status bad'; st.textContent = 'Không đọc được thông tin phiên bản (kiểm tra mạng rồi thử lại).';
+      $('agVer').textContent = '—';
+    });
+  }
+
   function init() {
     if (!TM) return;
+    if ($('agCheck')) { $('agCheck').addEventListener('click', function () { loadAgentInfo(true); }); loadAgentInfo(false); }
     $('smRange').addEventListener('click', function (e) {
       var b = e.target.closest('button[data-r]'); if (!b) return;
       state.range = b.dataset.r; state.date = ''; $('smDate').value = '';

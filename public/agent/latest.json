@@ -1,5 +1,15 @@
 {
   "version": "1.0.0",
   "url": "https://hiconique-web-noibo.pqhieu3820.workers.dev/agent/HiconiqueAgentSetup.exe",
-  "sha256": "497b9507501b171901fe40eff69aed8a9ad9a3625fc19dc4494d08accd0376e1"
+  "sha256": "497b9507501b171901fe40eff69aed8a9ad9a3625fc19dc4494d08accd0376e1",
+  "size": 12595179,
+  "releasedAt": "2026-09-27T02:30:00Z",
+  "notes": "Bản đầu tiên: trình cài đặt 1 nút, chạy nền trong giờ làm việc, ghi tên ứng dụng và tiêu đề cửa sổ, tự cập nhật, gỡ trong Cài đặt Windows.",
+  "history": [
+    {
+      "version": "1.0.0",
+      "date": "2026-09-27",
+      "notes": "Bản đầu tiên: trình cài đặt 1 nút, chạy nền trong giờ làm việc, ghi tên ứng dụng và tiêu đề cửa sổ, tự cập nhật, gỡ trong Cài đặt Windows."
+    }
+  ]
 }

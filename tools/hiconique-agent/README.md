@@ -17,7 +17,7 @@ Gửi file `HiconiqueAgentSetup.exe` (tải ở `https://hiconique-web-noibo.pqh
 - Gỡ: Cài đặt Windows > Ứng dụng > **HICONIQUE Agent** > Gỡ cài đặt.
 
 ## Phát hành bản cập nhật
-1. Sửa `agent.py`, tăng `VERSION`.
+1. Sửa `agent.py`, tăng `VERSION`, thêm mục mới (đầu danh sách) vào `CHANGELOG.json` — nội dung hiện ở trang Theo dõi hiệu suất.
 2. `python build.py` (cần `pip install pyinstaller`) → tạo `public/agent/HiconiqueAgentSetup.exe` + `latest.json` (có SHA-256).
 3. Commit + push. Các máy đã cài kiểm tra `latest.json` mỗi 6 giờ (và khi khởi động), tải bản mới, **kiểm SHA-256**, thay file rồi tự chạy lại. Chỉ tải từ `hiconique-web-noibo.pqhieu3820.workers.dev` (https).
 

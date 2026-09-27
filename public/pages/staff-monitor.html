@@ -27,6 +27,19 @@
     .sm-container { max-width: 1400px; }
     .sm-notice { display: flex; gap: 12px; align-items: flex-start; background: color-mix(in srgb, var(--sm-bronze) 9%, var(--sm-surface)); border: 1px solid color-mix(in srgb, var(--sm-bronze) 40%, var(--sm-border)); border-radius: 14px; padding: 14px 18px; margin: 8px 0 18px; font-size: 0.8125rem; line-height: 1.6; }
     .sm-notice b { color: var(--sm-bronze); }
+    .sm-agent { background: var(--sm-surface); border: 1px solid var(--sm-border); border-radius: 14px; padding: 16px 20px; margin: 0 0 18px; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 20px; }
+    .sm-agent h3 { font-size: 0.9375rem; font-weight: 700; margin: 0 0 4px; }
+    .sm-agent p { font-size: 0.8125rem; color: var(--sm-muted); line-height: 1.6; margin: 0 0 10px; }
+    .sm-agent-meta { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 0.8125rem; margin: 10px 0 14px; }
+    .sm-agent-meta dt { color: var(--sm-muted); } .sm-agent-meta dd { margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; word-break: break-all; }
+    .sm-agent-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .sm-agent-status { font-size: 0.75rem; color: var(--sm-muted); }
+    .sm-agent-status.ok { color: #7FA783; } .sm-agent-status.bad { color: #D07070; }
+    .sm-agent-hist { border-left: 1px solid var(--sm-border); padding-left: 20px; font-size: 0.8125rem; }
+    .sm-agent-hist h4 { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: .05em; color: var(--sm-muted); margin: 0 0 8px; font-weight: 600; }
+    .sm-agent-hist li { list-style: none; margin-bottom: 10px; } .sm-agent-hist ul { padding: 0; margin: 0; }
+    .sm-agent-hist b { color: var(--sm-bronze); }
+    @media (max-width: 820px) { .sm-agent { grid-template-columns: 1fr; } .sm-agent-hist { border-left: none; padding-left: 0; border-top: 1px solid var(--sm-border); padding-top: 14px; } }
     .sm-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
     .sm-kpi { background: var(--sm-surface); border: 1px solid var(--sm-border); border-radius: 14px; padding: 14px 16px; }
     .sm-kpi-label { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--sm-muted); }
@@ -110,6 +123,26 @@
       <div style="font-size:1.2rem;">🔎</div>
       <div><b>Minh bạch với nhân viên.</b> Hub chỉ ghi nhận thời gian <b>trong chính Hub</b>: tab đang mở và có thao tác (hoạt động), tab mở nhưng không thao tác (không thao tác), hoặc tab bị ẩn/chuyển ứng dụng (rời tab). Riêng <b>máy tính công ty có cài HICONIQUE Agent</b> (đã thông báo cho người dùng), hệ thống còn ghi <b>tên ứng dụng và tiêu đề cửa sổ</b> đang dùng trong giờ làm việc — không chụp màn hình, không ghi phím gõ hay nội dung tin nhắn/tệp. Làm việc ngoài máy (gọi điện, ra công trình, họp…) hệ thống <b>không thấy</b>, nên hoạt động thấp <b>chưa chắc là lơ là</b> — chỉ là dấu hiệu để hỏi thăm. Mỗi nhân viên xem được số liệu của chính mình ở trang này.</div>
     </div>
+
+    <section class="sm-agent" id="smAgent" aria-label="Ứng dụng HICONIQUE Agent">
+      <div>
+        <h3>Ứng dụng HICONIQUE Agent cho máy tính công ty</h3>
+        <p>Cài 1 lần, chạy nền trong giờ làm việc, ghi tên ứng dụng và tiêu đề cửa sổ đang dùng (không chụp màn hình, không ghi phím gõ). Tự cập nhật online; gỡ tại Cài đặt Windows &gt; Ứng dụng. Ai cũng tải và xem được thông tin này; dữ liệu của mình nằm ở <i>%LOCALAPPDATA%\HiconiqueAgent\hoat-dong-hom-nay.txt</i>.</p>
+        <dl class="sm-agent-meta">
+          <dt>Phiên bản mới nhất</dt><dd id="agVer">…</dd>
+          <dt>Ngày phát hành</dt><dd id="agDate">…</dd>
+          <dt>Dung lượng</dt><dd id="agSize">…</dd>
+          <dt>Mã SHA-256</dt><dd id="agSha" style="font-size:0.6875rem">…</dd>
+        </dl>
+        <div class="sm-agent-actions">
+          <a class="sm-btn" id="agDownload" href="/agent/HiconiqueAgentSetup.exe" download style="background:var(--sm-bronze);border-color:var(--sm-bronze);color:#0B0D10;text-decoration:none;">⬇ Tải HiconiqueAgentSetup.exe</a>
+          <button class="sm-btn" id="agCheck" type="button">Kiểm tra bản mới</button>
+          <span class="sm-agent-status" id="agStatus"></span>
+        </div>
+        <p style="margin:10px 0 0;font-size:0.6875rem;">Windows có thể hiện cảnh báo “unknown publisher” vì file chưa ký số — bấm <i>More info &gt; Run anyway</i>. Có thể đối chiếu mã SHA-256 ở trên với file đã tải.</p>
+      </div>
+      <div class="sm-agent-hist"><h4>Lịch sử phiên bản</h4><ul id="agHist"><li>Đang tải…</li></ul></div>
+    </section>
 
     <div class="sm-kpis" id="smKpis"></div>
 

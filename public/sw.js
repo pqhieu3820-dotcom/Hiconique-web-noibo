@@ -68,7 +68,7 @@ self.addEventListener('notificationclick', function (event) {
   );
 });
 
-const CACHE_VERSION = 'hiconique-shell-v8';
+const CACHE_VERSION = 'hiconique-shell-v9';
 
 const PRECACHE_URLS = [
   '/',
@@ -163,6 +163,8 @@ self.addEventListener('fetch', function (event) {
   // script.google.com (API), fonts.googleapis.com... để trình duyệt tự xử lý
   // bình thường — không cache dữ liệu/API ở lớp Service Worker.
   if (url.origin !== self.location.origin) return;
+  // Bản phát hành HICONIQUE Agent (latest.json + file exe): luôn lấy thật từ mạng, không cache
+  if (url.pathname.indexOf('/agent/') === 0) return;
 
   // Điều hướng trang (gõ URL/bấm link/mở từ icon màn hình chính): network
   // trước cho dữ liệu mới nhất, hết mạng thì rơi về đúng trang đã cache.

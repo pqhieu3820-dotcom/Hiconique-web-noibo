@@ -34,6 +34,11 @@ exe = os.path.join(HERE, 'dist', 'HiconiqueAgent.exe')
 os.makedirs(OUT, exist_ok=True)
 shutil.copy2(exe, os.path.join(OUT, 'HiconiqueAgentSetup.exe'))  # cùng nội dung: tên "Setup" cho lần cài đầu
 sha = hashlib.sha256(open(exe, 'rb').read()).hexdigest()
-json.dump({'version': version, 'url': SITE + 'agent/HiconiqueAgentSetup.exe', 'sha256': sha},
-          open(os.path.join(OUT, 'latest.json'), 'w', encoding='utf-8'), indent=2)
+from datetime import datetime, timezone
+history = json.load(open(os.path.join(HERE, 'CHANGELOG.json'), encoding='utf-8'))  # [{version,date,notes}] mới nhất ở đầu
+assert history[0]['version'] == version, 'CHANGELOG.json chưa có mục cho phiên bản %s' % version
+json.dump({'version': version, 'url': SITE + 'agent/HiconiqueAgentSetup.exe', 'sha256': sha,
+           'size': os.path.getsize(exe), 'releasedAt': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+           'notes': history[0]['notes'], 'history': history[:10]},
+          open(os.path.join(OUT, 'latest.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
 print('OK', version, sha, os.path.getsize(exe) // 1024, 'KB')
