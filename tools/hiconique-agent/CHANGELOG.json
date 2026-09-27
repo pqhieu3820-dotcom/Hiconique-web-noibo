@@ -1,5 +1,10 @@
 [
   {
+    "version": "1.0.1",
+    "date": "2026-09-27",
+    "notes": "Báo cấu hình phần cứng máy (CPU, mainboard, RAM từng thanh, ổ cứng + sức khỏe, card đồ họa, màn hình, pin, Secure Boot, card mạng, diệt virus) lên trang Thiết bị; cảnh báo ổ lỗi/đầy, pin chai, Windows chưa kích hoạt. Có thể tắt bằng config (reportHardware, sendSerials)."
+  },
+  {
     "version": "1.0.0",
     "date": "2026-09-27",
     "notes": "Bản đầu tiên: trình cài đặt 1 nút, chạy nền trong giờ làm việc, ghi tên ứng dụng và tiêu đề cửa sổ, tự cập nhật, gỡ trong Cài đặt Windows."

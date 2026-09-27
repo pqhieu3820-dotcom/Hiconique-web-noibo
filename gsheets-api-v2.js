@@ -46,6 +46,7 @@ const SHEETS = {
   // của từng người theo ngày — chỉ đo trong chính Hub, có thông báo cho nhân viên) cho staff-monitor.html.
   customers: 'KH-Khách hàng',
   equipment: 'TB-Thiết bị',
+  pcReports: 'TB-Máy đã báo',
   customerLogs: 'KH-Chăm sóc',
   staffActivity: 'NS-Hoạt động',
   appUsage: 'NS-Ứng dụng',
@@ -294,8 +295,14 @@ const FIELD_MAP = {
     ['Số serial', 'serial'], ['Vị trí', 'location'], ['Người sử dụng', 'assigneeId'], ['Tình trạng', 'status'],
     ['Ngày mua', 'purchaseDate'], ['Hết bảo hành', 'warrantyUntil'], ['Giá mua', 'price'], ['Nhà cung cấp', 'supplier'],
     ['Số lượng', 'qty'], ['Đơn vị', 'unit'], ['Tồn tối thiểu', 'minQty'],
-    ['Thông số / linh kiện (JSON)', 'specs'], ['Ghi chú', 'note'],
+    ['Thông số / linh kiện (JSON)', 'specs'], ['Ghi chú', 'note'], ['Mã máy Agent', 'pcId'],
     ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt'], ['Hiển thị', 'visible']
+  ],
+  pcReports: [
+    ['Mã', 'id'], ['Mã thành viên', 'memberId'], ['Tên máy', 'hostname'], ['Phiên bản Agent', 'agentVersion'],
+    ['Hãng', 'brand'], ['Model', 'model'], ['Serial', 'serial'], ['Hệ điều hành', 'os'],
+    ['Cấu hình (JSON)', 'specs'], ['Tình trạng hiện tại (JSON)', 'live'], ['Cảnh báo (JSON)', 'alerts'],
+    ['Khởi động lần cuối', 'bootedAt'], ['Báo lần cuối', 'reportedAt']
   ],
   customers: [
     ['Mã KH', 'id'], ['Tên khách hàng', 'name'], ['Số điện thoại', 'phone'], ['Email', 'email'], ['Công ty', 'company'],
@@ -841,6 +848,13 @@ function handleRequest(e) {
       result = updateData(ss, SHEETS.commissionRates, params.id, JSON.parse(params.data));
     } else if (action === 'deleteCommissionRate') {
       result = deleteData(ss, SHEETS.commissionRates, params.id);
+    } else if (action === 'getPcReports') {
+      result = getAllData(ss, SHEETS.pcReports);
+    } else if (action === 'upsertPcReport') {
+      // HICONIQUE Agent báo cấu hình máy (mỗi máy + người dùng 1 dòng, id cố định) — trang Thiết bị dùng để "Nhập từ Agent"
+      var pcData = JSON.parse(params.data);
+      var pcExisting = getAllData(ss, SHEETS.pcReports).filter(function (r) { return r.id === pcData.id; })[0];
+      result = pcExisting ? updateData(ss, SHEETS.pcReports, pcData.id, pcData) : addData(ss, SHEETS.pcReports, pcData);
     } else if (action === 'getEquipment') {
       result = getAllData(ss, SHEETS.equipment);
     } else if (action === 'addEquipment') {
@@ -3143,6 +3157,7 @@ var SORT_SKIP_KEYS = {
   commissionRates: true,     // bảng % theo cấp bậc, thứ tự cố định theo LEVELS
   staffActivity: true, // theo id cố định, không cần sắp lại
   appUsage: true,
+  pcReports: true,
   lightingStandards: true, lightingLamps: true, lightingFactors: true, // TTCS- danh mục/cấu hình, thứ tự do người quản lý sắp
   priceCatalog: true,        // bảng giá dịch vụ — thứ tự trình bày báo giá, không phải theo thời gian tạo
   bimProducts: true, bimMaterials: true, bimSuppliers: true // danh mục BIM dùng chung toàn tổ chức, thứ tự quản lý thủ công

@@ -275,6 +275,7 @@ var TaskManager = (function() {
     lightingPlans: 'hiconique_lighting_plans',
     customers: 'hiconique_customers',
     equipment: 'hiconique_equipment',
+    pcReports: 'hiconique_pc_reports',
     customerLogs: 'hiconique_customer_logs',
     staffActivity: 'hiconique_staff_activity',
     appUsage: 'hiconique_app_usage',
@@ -647,7 +648,7 @@ var TaskManager = (function() {
       priceCatalog: 'getPriceCatalog', financeEntries: 'getFinanceEntries',
       lightingStandards: 'getLightingStandards', lightingLamps: 'getLightingLamps',
       lightingFactors: 'getLightingFactors', lightingPlans: 'getLightingPlans',
-      equipment: 'getEquipment', customers: 'getCustomers', customerLogs: 'getCustomerLogs', staffActivity: 'getStaffActivity', appUsage: 'getAppUsage',
+      equipment: 'getEquipment', pcReports: 'getPcReports', customers: 'getCustomers', customerLogs: 'getCustomerLogs', staffActivity: 'getStaffActivity', appUsage: 'getAppUsage',
       receivables: 'getReceivables', bsSnapshots: 'getBsSnapshots', orders: 'getOrders',
       attendanceLocations: 'getAttendanceLocations'
     };
@@ -2461,6 +2462,14 @@ var TaskManager = (function() {
   function getEquipment() {
     return getAll(STORAGE_KEYS.equipment).filter(function (e) { return !(e.visible === false || String(e.visible).toLowerCase() === 'false'); });
   }
+  // Máy tính đã cài HICONIQUE Agent báo cấu hình phần cứng (chỉ đọc; ghi bởi Agent qua upsertPcReport)
+  function loadPcReports(callback) {
+    getFromGSheets('pcReports', function (items) {
+      if (items && items.length) localStorage.setItem(STORAGE_KEYS.pcReports, JSON.stringify(items));
+      if (callback) callback(getPcReports());
+    });
+  }
+  function getPcReports() { return getAll(STORAGE_KEYS.pcReports); }
   function canManageEquipment(user) { return !!user && canManageNotifications(user); }
   function createEquipment(data, user) {
     if (!canManageEquipment(user) || !data || !String(data.name || '').trim()) return null;
@@ -3077,6 +3086,8 @@ var TaskManager = (function() {
     getLightingFactors: getLightingFactors,
     getLightingPlans: getLightingPlans,
     CRM_STAGES: CRM_STAGES,
+    loadPcReports: loadPcReports,
+    getPcReports: getPcReports,
     loadEquipment: loadEquipment,
     getEquipment: getEquipment,
     canManageEquipment: canManageEquipment,

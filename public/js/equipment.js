@@ -29,7 +29,7 @@
   var STATUSES = ['Đang dùng', 'Dự phòng', 'Đang sửa', 'Hỏng', 'Thanh lý'];
   var STATUS_CLS = { 'Đang dùng': 'ok', 'Dự phòng': 'mute', 'Đang sửa': 'warn', 'Hỏng': 'bad', 'Thanh lý': 'mute' };
   var WARN_DAYS = 60;
-  var state = { view: 'groups', q: '', cat: '', status: '', editingId: null, specs: [] };
+  var state = { view: 'groups', q: '', cat: '', status: '', editingId: null, specs: [], pcId: '' };
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function num(v) { var n = Number(String(v == null ? '' : v).replace(/[^\d.-]/g, '')); return isNaN(n) ? 0 : n; }
@@ -46,6 +46,27 @@
   function warrantyState(e) { var d = daysTo(e.warrantyUntil); if (d == null) return null; return d < 0 ? 'expired' : d <= WARN_DAYS ? 'soon' : 'ok'; }
   function isSupply(e) { return catOf(e.category).supply; }
   function lowStock(e) { return isSupply(e) && String(e.minQty || '') !== '' && num(e.qty) <= num(e.minQty); }
+
+  // ---- Máy tính đã cài HICONIQUE Agent báo cấu hình (sheet TB-Máy đã báo) ----
+  function jparse(v) { try { var a = typeof v === 'string' ? JSON.parse(v || '[]') : (v || []); return Array.isArray(a) ? a : []; } catch (x) { return []; } }
+  function reports() { return TM.getPcReports ? TM.getPcReports() : []; }
+  function reportById(id) { return id ? reports().filter(function (r) { return r.id === id; })[0] || null : null; }
+  function rSpecs(r) { return jparse(r.specs).map(function (s) { return { type: s.type || '', name: s.name || '', spec: s.spec || '', qty: s.qty || '1' }; }); }
+  function specKey(list, types) {
+    return list.filter(function (s) { return types[s.type]; }).map(function (s) { return [s.type, s.name, s.spec, String(s.qty || '1')].join('|').toLowerCase(); }).sort().join('\n');
+  }
+  function reportTypes(r) { var t = {}; rSpecs(r).forEach(function (s) { t[s.type] = true; }); return t; }
+  function pcDiff(e) {
+    var r = reportById(e.pcId); if (!r) return false;
+    var types = reportTypes(r);
+    return specKey(parseSpecs(e), types) !== specKey(rSpecs(r), types);
+  }
+  function pcAlerts(e) { var r = reportById(e.pcId); return r ? jparse(r.alerts) : []; }
+  function unlinkedReports() {
+    var linked = {}; TM.getEquipment().forEach(function (e) { if (e.pcId) linked[e.pcId] = true; });
+    return reports().filter(function (r) { return !linked[r.id]; });
+  }
+  function fmtAt(v) { var m = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})/.exec(String(v || '')); return m ? m[4] + ' ' + m[3] + '/' + m[2] : (v || ''); }
 
   function filtered() {
     var q = state.q.trim().toLowerCase();
@@ -68,11 +89,12 @@
     var broken = devices.filter(function (e) { return e.status === 'Đang sửa' || e.status === 'Hỏng'; }).length;
     var warn = devices.filter(function (e) { var w = warrantyState(e); return w === 'soon'; }).length;
     var low = all.filter(lowStock).length;
+    var pcWarn = devices.filter(function (e) { return pcAlerts(e).length; }).length;
     var total = all.reduce(function (s, e) { return s + num(e.price) * (isSupply(e) ? 1 : 1); }, 0);
     $('eqKpis').innerHTML =
       kpi('Tổng thiết bị', devices.length, all.length - devices.length + ' mục vật tư') +
       kpi('Đang sử dụng', inUse, 'trên tổng ' + devices.length) +
-      kpi('Đang sửa / hỏng', broken, 'cần xử lý', broken ? 'bad' : '') +
+      kpi('Đang sửa / hỏng', broken, 'cần xử lý' + (pcWarn ? ' · ' + pcWarn + ' máy có cảnh báo từ Agent' : ''), broken || pcWarn ? 'bad' : '') +
       kpi('Sắp hết bảo hành', warn, 'trong ' + WARN_DAYS + ' ngày tới' + (low ? ' · ' + low + ' vật tư sắp hết' : ''), warn || low ? 'warn' : '') +
       kpi('Tổng giá trị mua', moneyShort(total), 'cộng giá mua đã nhập');
   }
@@ -107,7 +129,7 @@
       '<td><div class="eq-name">' + esc(e.name) + '</div><div class="eq-sub">' + esc([e.brand, e.model].filter(Boolean).join(' ') || '') + (e.serial ? ' · SN ' + esc(e.serial) : '') + '</div></td>' +
       '<td>' + (who ? esc(who) : '<span class="eq-sub">—</span>') + '</td>' +
       '<td>' + summaryHtml(e) + '</td>' +
-      '<td><span class="eq-badge ' + (STATUS_CLS[st] || 'mute') + '">' + esc(st) + '</span></td>' +
+      '<td><span class="eq-badge ' + (STATUS_CLS[st] || 'mute') + '">' + esc(st) + '</span>' + (pcAlerts(e).length ? '<div class="eq-alert" title="' + esc(pcAlerts(e).join('; ')) + '">⚠ ' + pcAlerts(e).length + ' cảnh báo</div>' : '') + (pcDiff(e) ? '<div class="eq-diff">Cấu hình máy đã đổi</div>' : '') + '</td>' +
       '<td>' + (e.warrantyUntil ? '<span class="eq-badge ' + (w === 'expired' ? 'bad' : w === 'soon' ? 'warn' : 'ok') + '">' + (w === 'expired' ? 'Hết ' : '') + esc(fmtDate(e.warrantyUntil)) + '</span>' : '<span class="eq-sub">—</span>') + '</td>' +
       '<td class="eq-sub" style="white-space:nowrap;">' + esc(money(e.price)) + '</td></tr>';
   }
@@ -160,6 +182,16 @@
     $('eqParts').hidden = state.view !== 'parts';
     if (state.view === 'groups') renderGroups(list); else renderParts(list);
     $('eqAddBtn').hidden = !canManage();
+    renderBanner();
+  }
+  function renderBanner() {
+    var un = unlinkedReports(), box = $('eqPcBanner');
+    if (!un.length) { box.hidden = true; return; }
+    box.className = 'eq-banner'; box.hidden = false;
+    box.innerHTML = '<span><b>' + un.length + ' máy đã cài HICONIQUE Agent</b> chưa có trong danh sách thiết bị:</span>' + un.slice(0, 8).map(function (r) {
+      return canManage() ? '<button type="button" class="eq-btn eq-btn-sm" data-addpc="' + esc(r.id) + '">+ ' + esc(r.hostname || r.id) + (r.memberId ? ' · ' + esc(memberName(r.memberId)) : '') + '</button>'
+        : '<span class="eq-badge mute">' + esc(r.hostname || r.id) + '</span>';
+    }).join('') + (un.length > 8 ? '<span class="eq-sub">… +' + (un.length - 8) + '</span>' : '');
   }
 
   // ---------- Modal ----------
@@ -175,6 +207,43 @@
     var fs = $('eqStatus'), fsv = fs.value;
     fs.innerHTML = '<option value="">Mọi tình trạng</option>' + STATUSES.map(function (s) { return '<option>' + esc(s) + '</option>'; }).join(''); fs.value = fsv;
   }
+  var infoTimer = null;
+  function renderPcInfoOnly() { clearTimeout(infoTimer); infoTimer = setTimeout(renderPcBox, 500); }
+  function renderPcBox() {
+    var box = $('eqPcBox');
+    var show = canManage() && $('efCat').value === 'Máy tính' && reports().length > 0;
+    box.hidden = !show;
+    if (!show) return;
+    var linkedTo = {}; TM.getEquipment().forEach(function (e) { if (e.pcId && e.id !== state.editingId) linkedTo[e.pcId] = e.name; });
+    $('eqPcPick').innerHTML = '<option value="">— Chọn máy đã báo về —</option>' + reports().map(function (r) {
+      return '<option value="' + esc(r.id) + '"' + (r.id === state.pcId ? ' selected' : '') + '>' + esc((r.hostname || r.id) + ' · ' + memberName(r.memberId) + ' · ' + [r.brand, r.model].filter(Boolean).join(' ') + (linkedTo[r.id] ? ' (đã gắn: ' + linkedTo[r.id] + ')' : '')) + '</option>';
+    }).join('');
+    var r = reportById(state.pcId), info = '';
+    if (r) {
+      var cur = { specs: JSON.stringify(readSpecs()) }, types = reportTypes(r);
+      var changed = specKey(parseSpecs(cur), types) !== specKey(rSpecs(r), types);
+      info = '<div class="eq-sub" style="margin-top:6px;">Đang gắn với máy <b>' + esc(r.hostname) + '</b> · Agent v' + esc(r.agentVersion || '?') + ' · báo lúc ' + esc(fmtAt(r.reportedAt)) + '</div>' +
+        (changed ? '<div class="eq-diff">Cấu hình trong sổ khác với máy thực tế — bấm “Nhập / đồng bộ cấu hình” để cập nhật.</div>' : '<div class="eq-sub" style="color:#7FA783;">Cấu hình khớp với máy thực tế.</div>') +
+        (jparse(r.alerts).length ? '<div class="eq-alert">⚠ ' + jparse(r.alerts).map(esc).join('<br>⚠ ') + '</div>' : '') +
+        (jparse(r.live).length ? '<div class="eq-live">' + jparse(r.live).map(esc).join(' · ') + '</div>' : '');
+    }
+    $('eqPcInfo').innerHTML = info;
+  }
+  // Nhập cấu hình từ báo cáo của Agent: điền các ô còn trống, thay các dòng linh kiện cùng loại, giữ dòng nhập tay khác (Case, bàn phím...)
+  function applyReport(r) {
+    if (!r) return;
+    state.pcId = r.id;
+    $('efCat').value = 'Máy tính';
+    if (!$('efName').value.trim()) $('efName').value = (r.hostname ? r.hostname + ' — ' : '') + [r.brand, r.model].filter(Boolean).join(' ');
+    if (!$('efBrand').value.trim()) $('efBrand').value = r.brand || '';
+    if (!$('efModel').value.trim()) $('efModel').value = r.model || '';
+    if (!$('efSerial').value.trim() && r.serial && !/system serial|to be filled|default string/i.test(r.serial)) $('efSerial').value = r.serial;
+    if (!$('efAssignee').value && r.memberId) $('efAssignee').value = r.memberId;
+    var types = reportTypes(r);
+    state.specs = rSpecs(r).concat(state.specs.filter(function (s) { return !types[s.type] && (s.type || s.name || s.spec); }));
+    refreshTypeList(); renderSpecRows(); renderPcBox();
+  }
+
   function refreshTypeList() {
     $('eqTypeList').innerHTML = catOf($('efCat').value).tpl.map(function (t) { return '<option value="' + esc(t[0]) + '">'; }).join('');
     var sup = catOf($('efCat').value).supply;
@@ -200,7 +269,7 @@
   function readSpecs() {
     return state.specs.filter(function (s) { return s.type || s.name || s.spec; }).map(function (s) { return { type: s.type.trim(), name: s.name.trim(), spec: s.spec.trim(), qty: String(s.qty || '1').trim() || '1' }; });
   }
-  function openModal(id, cloneFrom) {
+  function openModal(id, cloneFrom, fromReport) {
     var e = id ? TM.getEquipment().filter(function (x) { return x.id === id; })[0] : null;
     var src = e || cloneFrom || null;
     state.editingId = e ? e.id : null;
@@ -216,12 +285,14 @@
     $('efQty').value = g('qty'); $('efUnit').value = g('unit'); $('efMin').value = g('minQty'); $('efNote').value = g('note');
     $('efCode').value = e ? g('code') : suggestCode();
     state.specs = src ? parseSpecs(src).map(function (s) { return { type: s.type || '', name: s.name || '', spec: s.spec || '', qty: s.qty || '1' }; }) : [];
-    refreshTypeList(); renderSpecRows();
+    state.pcId = (src && !cloneFrom) ? (g('pcId') || '') : '';
+    refreshTypeList(); renderSpecRows(); renderPcBox();
     var can = canManage();
     Array.prototype.forEach.call($('eqForm').querySelectorAll('.eq-modal-body > div:first-child input, .eq-modal-body > div:first-child select, .eq-modal-body > div:first-child textarea'), function (n) { n.disabled = !can; });
     $('eqSaveBtn').hidden = !can; $('eqAddSpec').hidden = !can; $('eqPreset').hidden = !can;
     $('eqHideBtn').hidden = !(can && e); $('eqCloneBtn').hidden = !(can && e);
     $('eqModal').classList.add('active');
+    if (can && fromReport) { $('efCat').value = 'Máy tính'; applyReport(fromReport); }
     if (can) setTimeout(function () { $('efName').focus(); }, 30);
   }
   function closeModal() { $('eqModal').classList.remove('active'); state.editingId = null; }
@@ -237,7 +308,7 @@
       serial: $('efSerial').value.trim(), location: $('efLocation').value.trim(), assigneeId: $('efAssignee').value, status: $('efStatus').value,
       purchaseDate: $('efBuy').value, warrantyUntil: $('efWar').value, price: String($('efPrice').value).replace(/[^\d]/g, ''), supplier: $('efSupplier').value.trim(),
       qty: catOf($('efCat').value).supply ? $('efQty').value.trim() : '', unit: catOf($('efCat').value).supply ? $('efUnit').value.trim() : '', minQty: catOf($('efCat').value).supply ? $('efMin').value.trim() : '',
-      specs: JSON.stringify(readSpecs()), note: $('efNote').value.trim()
+      specs: JSON.stringify(readSpecs()), note: $('efNote').value.trim(), pcId: $('efCat').value === 'Máy tính' ? (state.pcId || '') : ''
     };
     var dup = TM.getEquipment().filter(function (x) { return data.code && x.code === data.code && x.id !== state.editingId; })[0];
     if (dup) { toast('Mã tài sản "' + data.code + '" đã dùng cho "' + dup.name + '"', true); return; }
@@ -278,7 +349,7 @@
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
     $('eqForm').addEventListener('submit', save);
     $('efCat').addEventListener('change', function () {
-      refreshTypeList();
+      refreshTypeList(); renderPcBox();
       if (!state.editingId) $('efCode').value = suggestCode();
     });
     $('eqAddSpec').addEventListener('click', function () { state.specs.push({ type: '', name: '', spec: '', qty: '1' }); renderSpecRows(); var r = $('eqSpecRows').lastElementChild; if (r) r.querySelector('input').focus(); });
@@ -295,6 +366,16 @@
       var d = e.target.closest('[data-del]'); if (!d) return;
       state.specs.splice(Number(d.dataset.del), 1); renderSpecRows();
     });
+    $('eqPcApply').addEventListener('click', function () {
+      var r = reportById($('eqPcPick').value);
+      if (!r) { toast('Chọn một máy trong danh sách', true); return; }
+      applyReport(r); toast('Đã nhập cấu hình từ Agent — kiểm tra rồi bấm Lưu');
+    });
+    $('eqSpecRows').addEventListener('input', function () { if (state.pcId) renderPcInfoOnly(); });
+    $('eqPcBanner').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-addpc]'); if (!b) return;
+      openModal(null, null, reportById(b.dataset.addpc));
+    });
     $('eqHideBtn').addEventListener('click', function () {
       if (!state.editingId || !confirm('Xóa thiết bị này khỏi danh sách? (dữ liệu vẫn còn trong Sheet, chỉ ẩn đi)')) return;
       TM.hideEquipment(state.editingId, user()); toast('Đã xóa khỏi danh sách'); closeModal(); render();
@@ -310,8 +391,9 @@
     if (!TM || !TM.loadEquipment) { $('eqGroups').innerHTML = '<p class="eq-empty">Không tải được dữ liệu.</p>'; return; }
     fillSelects(); bind(); render();
     TM.loadEquipment(function () { fillSelects(); render(); });
+    if (TM.loadPcReports) TM.loadPcReports(function () { if (!$('eqModal').classList.contains('active')) render(); });
     window.addEventListener('hiconique:data-refreshed', function () { if (!$('eqModal').classList.contains('active')) render(); });
-    setInterval(function () { if (!$('eqModal').classList.contains('active') && document.visibilityState === 'visible') TM.loadEquipment(function () { render(); }); }, 60000);
+    setInterval(function () { if (!$('eqModal').classList.contains('active') && document.visibilityState === 'visible') TM.loadEquipment(function () { render(); }); if (TM.loadPcReports && document.visibilityState === 'visible' && !$('eqModal').classList.contains('active')) TM.loadPcReports(function () { render(); }); }, 60000);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();

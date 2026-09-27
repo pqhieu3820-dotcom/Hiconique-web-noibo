@@ -29,7 +29,7 @@ import urllib.request
 from ctypes import wintypes
 from datetime import datetime
 
-VERSION = '1.0.0'
+VERSION = '1.0.1'
 APP_NAME = 'HiconiqueAgent'
 FROZEN = getattr(sys, 'frozen', False)
 BASE = os.path.dirname(os.path.abspath(sys.executable if FROZEN else __file__))
@@ -54,6 +54,9 @@ DEFAULTS = {
     'topTitles': 5,              # số tiêu đề nhiều nhất giữ lại cho mỗi ứng dụng
     'updateUrl': SITE + 'agent/latest.json',   # {"version","url","sha256"}; chỉ nhận file tải từ SITE (https)
     'updateCheckHours': 6,
+    'reportHardware': True,      # gửi cấu hình phần cứng (CPU/RAM/ổ cứng...) lên trang Thiết bị; false = tắt
+    'sendSerials': True,         # kèm số serial máy và địa chỉ MAC; false = không gửi
+    'hardwareHours': 24,         # tần suất gửi lại cấu hình
 }
 
 
@@ -305,6 +308,29 @@ def check_update(cfg):
         log('Kiểm tra cập nhật lỗi:', e)
 
 
+# ---------------- Báo cấu hình phần cứng (trang Thiết bị) ----------------
+def report_hardware(cfg):
+    """Đọc cấu hình máy (hardware.py) và gửi lên sheet TB-Máy đã báo. Chỉ thông tin thiết bị, không đọc file/phần mềm cá nhân."""
+    try:
+        import hardware
+        hw = hardware.collect(send_serials=cfg['sendSerials'])
+        rec = {
+            'id': 'pc_%s_%s' % (slug(hw['hostname']), slug(cfg['memberId'])), 'memberId': cfg['memberId'], 'hostname': hw['hostname'],
+            'agentVersion': VERSION, 'brand': hw['brand'], 'model': hw['model'], 'serial': hw['serial'], 'os': hw['os'],
+            'specs': json.dumps(hw['specs'], ensure_ascii=False), 'live': json.dumps(hw['live'], ensure_ascii=False),
+            'alerts': json.dumps(hw['alerts'], ensure_ascii=False), 'bootedAt': hw['bootedAt'],
+            'reportedAt': datetime.now().strftime('%Y-%m-%d %H:%M'),
+        }
+        body = urllib.parse.urlencode({'action': 'upsertPcReport', 'data': json.dumps(rec, ensure_ascii=False)}).encode('utf-8')
+        with urllib.request.urlopen(urllib.request.Request(cfg['apiUrl'], data=body, method='POST'), timeout=60) as r:
+            r.read()
+        log('Đã báo cấu hình máy', hw['hostname'], len(hw['specs']), 'mục,', len(hw['alerts']), 'cảnh báo')
+        return True
+    except Exception as e:
+        log('Báo cấu hình lỗi:', e)
+        return False
+
+
 # ---------------- Vòng lặp chạy nền ----------------
 def run_agent(after_update=False):
     cfg = load_config()
@@ -327,12 +353,13 @@ def run_agent(after_update=False):
         open(os.path.join(DATA_DIR, 'da-thong-bao-' + day), 'w').close()
         threading.Thread(target=msgbox, args=('HICONIQUE Agent',
             'HICONIQUE Agent đang chạy trên máy công ty này, trong giờ làm việc (%s).\n\n'
-            'Ghi nhận: tên ứng dụng và tiêu đề cửa sổ đang dùng.\n'
+            'Ghi nhận: tên ứng dụng và tiêu đề cửa sổ đang dùng (trong giờ làm việc); cấu hình phần cứng máy (CPU, RAM, ổ cứng, card đồ họa…) để quản lý thiết bị.\n'
             'KHÔNG ghi: màn hình, phím gõ, nội dung tin nhắn/tệp.\n\n'
             'Xem dữ liệu của bạn: %s\\hoat-dong-hom-nay.txt\n'
             'Gỡ cài đặt: Cài đặt Windows > Ứng dụng > HICONIQUE Agent.' % (cfg['workHours'], DATA_DIR)), daemon=True).start()
     last_flush = time.time()
     last_update = 0 if not after_update else time.time()
+    last_hw = time.time() - cfg['hardwareHours'] * 3600 + 90   # báo lần đầu sau ~1,5 phút
     step = cfg['sampleSeconds']
     while True:
         now = datetime.now()
@@ -367,6 +394,9 @@ def run_agent(after_update=False):
                 last_flush = time.time()
             else:
                 last_flush = time.time() - cfg['flushMinutes'] * 60 + 60  # thử lại sau ~1 phút
+        if cfg['reportHardware'] and time.time() - last_hw >= cfg['hardwareHours'] * 3600:
+            last_hw = time.time()
+            threading.Thread(target=report_hardware, args=(cfg,), daemon=True).start()
         if time.time() - last_update >= cfg['updateCheckHours'] * 3600:
             last_update = time.time()
             check_update(cfg)
@@ -426,7 +456,7 @@ def install_ui():
     tk.Label(root, text='HICONIQUE Agent', font=('Segoe UI', 15, 'bold')).pack(pady=(16, 2), **pad)
     tk.Label(root, justify='left', wraplength=480, font=('Segoe UI', 9), text=(
         'Ứng dụng chạy nền trên máy tính CÔNG TY, ghi nhận thời gian sử dụng ứng dụng trong giờ làm việc để công ty hỗ trợ phân bổ công việc.\n\n'
-        'Có ghi: tên ứng dụng và tiêu đề cửa sổ đang mở (cửa sổ ẩn danh bị che), chỉ trong giờ làm việc (%s).\n'
+        'Có ghi: tên ứng dụng và tiêu đề cửa sổ đang mở (cửa sổ ẩn danh bị che), chỉ trong giờ làm việc (%s). Ngoài ra gửi cấu hình phần cứng máy (CPU, RAM, ổ cứng, card đồ họa, tình trạng ổ/pin) để công ty quản lý thiết bị — không đọc tệp hay phần mềm cá nhân.\n'
         'KHÔNG ghi: màn hình, phím gõ, nội dung tin nhắn/tệp, clipboard, camera, micro.\n\n'
         'Bạn đọc được dữ liệu của mình tại: %s\\hoat-dong-hom-nay.txt. Gỡ cài đặt bất cứ lúc nào trong Cài đặt Windows > Ứng dụng.'
         % (cfg['workHours'], DATA_DIR))).pack(**pad)

@@ -96,6 +96,14 @@
     .eq-spec-del { background: none; border: none; color: var(--eq-muted); cursor: pointer; font-size: 1.1rem; line-height: 1; }
     .eq-spec-del:hover { color: var(--eq-bad); }
     .eq-spec-cols { display: grid; grid-template-columns: 1.1fr 1.4fr 1.6fr 54px 26px; gap: 6px; font-size: 0.625rem; text-transform: uppercase; letter-spacing: .05em; color: var(--eq-muted); margin-bottom: 4px; }
+    .eq-banner { background: color-mix(in srgb, var(--eq-blue) 12%, var(--eq-surface)); border: 1px solid color-mix(in srgb, var(--eq-blue) 45%, var(--eq-border)); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; font-size: 0.8125rem; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+    .eq-banner b { color: var(--eq-text); }
+    .eq-pc { background: var(--eq-bg); border: 1px solid var(--eq-border); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+    .eq-pc-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .eq-pc-row .eq-select { flex: 1 1 200px; width: auto; }
+    .eq-alert { color: #D07070; font-size: 0.75rem; margin-top: 6px; line-height: 1.5; }
+    .eq-diff { color: var(--eq-warn); font-size: 0.75rem; margin-top: 6px; }
+    .eq-live { font-size: 0.6875rem; color: var(--eq-muted); margin-top: 6px; line-height: 1.5; }
     .eq-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--eq-surface); border: 1px solid var(--eq-border); padding: 10px 18px; border-radius: 10px; font-size: 0.8125rem; z-index: 9500; box-shadow: 0 6px 24px rgba(0,0,0,.25); }
     .eq-toast.bad { border-color: var(--eq-bad); }
 
@@ -148,6 +156,7 @@
       <button class="eq-btn eq-btn-primary" id="eqAddBtn" type="button">+ Thêm trang thiết bị</button>
     </div>
 
+    <div id="eqPcBanner" hidden></div>
     <div id="eqGroups"></div>
     <div id="eqParts" hidden></div>
   </div>
@@ -180,6 +189,11 @@
             </div>
           </div>
           <div>
+            <div class="eq-pc" id="eqPcBox" hidden>
+              <div class="eq-label" style="margin-bottom:6px;">Máy đã cài HICONIQUE Agent</div>
+              <div class="eq-pc-row"><select class="eq-select" id="eqPcPick"></select><button class="eq-btn eq-btn-sm" type="button" id="eqPcApply">Nhập / đồng bộ cấu hình</button></div>
+              <div id="eqPcInfo"></div>
+            </div>
             <div class="eq-specs-head">
               <div class="eq-label" style="margin:0;" id="eqSpecsTitle">Linh kiện / thông số</div>
               <div style="display:flex;gap:6px;flex-wrap:wrap;">
