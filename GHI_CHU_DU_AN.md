@@ -1494,3 +1494,8 @@ không phá cách in của Soạn báo giá. Thẻ công cụ ở trang chủ tr
 - Công khai: hiện thông báo khi khởi động, nhân viên đọc được `%LOCALAPPDATA%\HiconiqueAgent\hoat-dong-hom-nay.txt`; không chụp màn hình/phím gõ; cửa sổ ẩn danh bị che tiêu đề. Chỉ cài trên máy công ty có sự đồng ý.
 - Hub: bảng "Ứng dụng đang dùng" trong modal chi tiết nhân viên ở staff-monitor.html; thông báo minh bạch (portal.js + staff-monitor.html) đã cập nhật nhắc tới Agent.
 - Chưa kiểm thử agent trên máy thật; cần redeploy Apps Script (có `upsertAppUsage`) trước khi chạy.
+
+**2026-09-27 — Thiết bị văn phòng** (`equipment.html` + `equipment.js`; nhóm Sheet mới `TB-` = Thiết bị, sheet `TB-Thiết bị`): kho máy tính (từng linh kiện CPU/RAM/SSD/VGA/PSU…),
+máy in–photo, vật tư (tồn kho + cảnh báo tồn tối thiểu), thiết bị mạng, màn hình & ngoại vi, khác. Cột `specs` = JSON mảng `{type,name,spec,qty}`; mẫu linh kiện gợi ý theo nhóm
+(nút "Điền mẫu theo nhóm"). Tab "Tổng hợp linh kiện" gộp số lượng theo loại toàn công ty; xuất CSV. Mọi người xem, CEO/quản lý thêm/sửa/xóa (ẩn mềm cột Hiển thị).
+Server: getEquipment/addEquipment/updateEquipment. Bảo hành ≤60 ngày báo vàng. sw.js cache v8.

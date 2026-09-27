@@ -78,6 +78,7 @@ function syncToGSheets(type, action, data, id) {
     priceCatalog: { add: 'addPriceCatalog', update: 'updatePriceCatalog', delete: 'deletePriceCatalog' },
     lightingPlans: { add: 'addLightingPlan', update: 'updateLightingPlan' },
     customers: { add: 'addCustomer', update: 'updateCustomer' },
+    equipment: { add: 'addEquipment', update: 'updateEquipment' },
     customerLogs: { add: 'addCustomerLog' },
     staffActivity: { update: 'upsertStaffActivity', add: 'upsertStaffActivity' },
     financeEntries: { add: 'addFinanceEntry', update: 'updateFinanceEntry', delete: 'deleteFinanceEntry' },
@@ -273,6 +274,7 @@ var TaskManager = (function() {
     lightingFactors: 'hiconique_lighting_factors',
     lightingPlans: 'hiconique_lighting_plans',
     customers: 'hiconique_customers',
+    equipment: 'hiconique_equipment',
     customerLogs: 'hiconique_customer_logs',
     staffActivity: 'hiconique_staff_activity',
     appUsage: 'hiconique_app_usage',
@@ -645,7 +647,7 @@ var TaskManager = (function() {
       priceCatalog: 'getPriceCatalog', financeEntries: 'getFinanceEntries',
       lightingStandards: 'getLightingStandards', lightingLamps: 'getLightingLamps',
       lightingFactors: 'getLightingFactors', lightingPlans: 'getLightingPlans',
-      customers: 'getCustomers', customerLogs: 'getCustomerLogs', staffActivity: 'getStaffActivity', appUsage: 'getAppUsage',
+      equipment: 'getEquipment', customers: 'getCustomers', customerLogs: 'getCustomerLogs', staffActivity: 'getStaffActivity', appUsage: 'getAppUsage',
       receivables: 'getReceivables', bsSnapshots: 'getBsSnapshots', orders: 'getOrders',
       attendanceLocations: 'getAttendanceLocations'
     };
@@ -2448,6 +2450,35 @@ var TaskManager = (function() {
   }
 
 
+  // ===================== Thiết bị văn phòng (equipment.html) — sheet TB-Thiết bị =====================
+  // specs = JSON mảng {type, name, spec, qty}: từng linh kiện/thông số của thiết bị (máy tính: CPU, RAM, SSD...).
+  function loadEquipment(callback) {
+    getFromGSheets('equipment', function (items) {
+      if (items && items.length) localStorage.setItem(STORAGE_KEYS.equipment, JSON.stringify(items));
+      if (callback) callback(getEquipment());
+    });
+  }
+  function getEquipment() {
+    return getAll(STORAGE_KEYS.equipment).filter(function (e) { return !(e.visible === false || String(e.visible).toLowerCase() === 'false'); });
+  }
+  function canManageEquipment(user) { return !!user && canManageNotifications(user); }
+  function createEquipment(data, user) {
+    if (!canManageEquipment(user) || !data || !String(data.name || '').trim()) return null;
+    var now = new Date().toISOString();
+    data.visible = true; data.createdBy = user.id; data.createdAt = now; data.updatedAt = now;
+    var created = add(STORAGE_KEYS.equipment, data);
+    syncToGSheets('equipment', 'add', created);
+    return created;
+  }
+  function updateEquipment(id, updates, user) {
+    if (!canManageEquipment(user)) return null;
+    updates.updatedAt = new Date().toISOString();
+    var updated = update(STORAGE_KEYS.equipment, id, updates);
+    if (updated) syncToGSheets('equipment', 'update', updates, id);
+    return updated;
+  }
+  function hideEquipment(id, user) { return updateEquipment(id, { visible: false }, user); }
+
   // ===================== CRM khách hàng (crm.html) — sheet KH-Khách hàng / KH-Chăm sóc =====================
   var CRM_STAGES = ['Tiềm năng', 'Đã liên hệ', 'Báo giá', 'Đàm phán', 'Đã ký', 'Từ chối'];
   function isOffFlag_(v) { return v === false || String(v).toLowerCase() === 'false'; }
@@ -3046,6 +3077,12 @@ var TaskManager = (function() {
     getLightingFactors: getLightingFactors,
     getLightingPlans: getLightingPlans,
     CRM_STAGES: CRM_STAGES,
+    loadEquipment: loadEquipment,
+    getEquipment: getEquipment,
+    canManageEquipment: canManageEquipment,
+    createEquipment: createEquipment,
+    updateEquipment: updateEquipment,
+    hideEquipment: hideEquipment,
     loadCrmData: loadCrmData,
     getCustomers: getCustomers,
     getCustomerLogs: getCustomerLogs,

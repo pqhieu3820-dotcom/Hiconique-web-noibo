@@ -45,6 +45,7 @@ const SHEETS = {
   // 2026-09-27: nhóm KH- (Khách hàng / CRM) cho crm.html + sheet NS-Hoạt động (thời gian hoạt động trên Hub
   // của từng người theo ngày — chỉ đo trong chính Hub, có thông báo cho nhân viên) cho staff-monitor.html.
   customers: 'KH-Khách hàng',
+  equipment: 'TB-Thiết bị',
   customerLogs: 'KH-Chăm sóc',
   staffActivity: 'NS-Hoạt động',
   appUsage: 'NS-Ứng dụng',
@@ -287,6 +288,14 @@ const FIELD_MAP = {
     ['LUX trung bình', 'avgLux'], ['LUX min', 'minLux'], ['LUX max', 'maxLux'], ['Độ đồng đều', 'uniformity'],
     ['Tổng công suất (W)', 'totalWatt'], ['Mật độ công suất (W/m²)', 'wattPerM2'], ['Kết luận', 'verdict'],
     ['Ghi chú', 'note'], ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt'], ['Hiển thị', 'visible']
+  ],
+  equipment: [
+    ['Mã', 'id'], ['Mã tài sản', 'code'], ['Tên thiết bị', 'name'], ['Nhóm', 'category'], ['Hãng', 'brand'], ['Model', 'model'],
+    ['Số serial', 'serial'], ['Vị trí', 'location'], ['Người sử dụng', 'assigneeId'], ['Tình trạng', 'status'],
+    ['Ngày mua', 'purchaseDate'], ['Hết bảo hành', 'warrantyUntil'], ['Giá mua', 'price'], ['Nhà cung cấp', 'supplier'],
+    ['Số lượng', 'qty'], ['Đơn vị', 'unit'], ['Tồn tối thiểu', 'minQty'],
+    ['Thông số / linh kiện (JSON)', 'specs'], ['Ghi chú', 'note'],
+    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt'], ['Hiển thị', 'visible']
   ],
   customers: [
     ['Mã KH', 'id'], ['Tên khách hàng', 'name'], ['Số điện thoại', 'phone'], ['Email', 'email'], ['Công ty', 'company'],
@@ -832,6 +841,12 @@ function handleRequest(e) {
       result = updateData(ss, SHEETS.commissionRates, params.id, JSON.parse(params.data));
     } else if (action === 'deleteCommissionRate') {
       result = deleteData(ss, SHEETS.commissionRates, params.id);
+    } else if (action === 'getEquipment') {
+      result = getAllData(ss, SHEETS.equipment);
+    } else if (action === 'addEquipment') {
+      result = addData(ss, SHEETS.equipment, JSON.parse(params.data));
+    } else if (action === 'updateEquipment') {
+      result = updateData(ss, SHEETS.equipment, params.id, JSON.parse(params.data));
     } else if (action === 'getCustomers') {
       result = getAllData(ss, SHEETS.customers);
     } else if (action === 'addCustomer') {

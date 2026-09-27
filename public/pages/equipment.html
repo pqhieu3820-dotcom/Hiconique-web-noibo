@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thiết bị văn phòng · HICONIQUE</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/reset.css">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/portal.css">
+  <link rel="stylesheet" href="/css/subpage.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-title" content="HICONIQUE" />
+  <link rel="manifest" href="/manifest.json" />
+  <script src="/js/offline.js"></script>
+  <script src="/js/gsheets-config.js"></script>
+  <script src="/js/task-data.js"></script>
+  <script src="/js/auth.js"></script>
+  <style>
+    :root {
+      --eq-bg: var(--color-bg); --eq-surface: var(--color-surface); --eq-border: var(--color-border);
+      --eq-text: var(--color-text); --eq-muted: var(--color-text-muted); --eq-bronze: var(--color-bronze);
+      --eq-ok: #4F6F52; --eq-bad: #A04848; --eq-warn: #C77A40; --eq-blue: #3B6B8C;
+    }
+    body { background: var(--eq-bg); color: var(--eq-text); font-family: 'Inter', -apple-system, sans-serif; min-height: 100vh; }
+    .eq-container { max-width: 1400px; }
+
+    .eq-kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; margin: 8px 0 20px; }
+    .eq-kpi { background: var(--eq-surface); border: 1px solid var(--eq-border); border-radius: 14px; padding: 14px 16px; }
+    .eq-kpi-label { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--eq-muted); }
+    .eq-kpi-value { font-size: 1.5rem; font-weight: 700; margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
+    .eq-kpi-value.bad { color: var(--eq-bad); } .eq-kpi-value.warn { color: var(--eq-warn); }
+    .eq-kpi-sub { font-size: 0.6875rem; color: var(--eq-muted); margin-top: 2px; }
+
+    .eq-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 16px; }
+    .eq-toolbar .eq-input, .eq-toolbar .eq-select { width: auto; }
+    .eq-search { flex: 1 1 240px; min-width: 200px; }
+    .eq-spacer { flex: 1 1 auto; }
+    .eq-input, .eq-select, .eq-textarea { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--eq-border); background: var(--eq-bg); color: var(--eq-text); font-family: inherit; font-size: 0.8125rem; }
+    .eq-textarea { min-height: 60px; resize: vertical; }
+    .eq-input:focus, .eq-select:focus, .eq-textarea:focus { outline: none; border-color: var(--eq-bronze); }
+    .eq-input:disabled, .eq-select:disabled, .eq-textarea:disabled { opacity: .75; cursor: default; }
+    .eq-btn { padding: 9px 16px; border-radius: 9px; border: 1px solid var(--eq-border); background: transparent; color: var(--eq-text); font-family: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+    .eq-btn:hover { border-color: var(--eq-bronze); color: var(--eq-bronze); }
+    .eq-btn-primary { background: var(--eq-bronze); border-color: var(--eq-bronze); color: #0B0D10; }
+    .eq-btn-primary:hover { background: #C7A464; border-color: #C7A464; color: #0B0D10; }
+    .eq-btn-danger { color: var(--eq-bad); } .eq-btn-danger:hover { border-color: var(--eq-bad); color: var(--eq-bad); }
+    .eq-btn-sm { padding: 5px 10px; font-size: 0.75rem; }
+    .eq-seg { display: inline-flex; border: 1px solid var(--eq-border); border-radius: 9px; overflow: hidden; }
+    .eq-seg button { padding: 8px 14px; background: transparent; border: none; color: var(--eq-muted); font-family: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; }
+    .eq-seg button.active { background: color-mix(in srgb, var(--eq-bronze) 16%, transparent); color: var(--eq-bronze); }
+
+    .eq-group { background: var(--eq-surface); border: 1px solid var(--eq-border); border-radius: 14px; margin-bottom: 14px; overflow: hidden; }
+    .eq-group > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 13px 18px; font-weight: 700; font-size: 0.9375rem; }
+    .eq-group > summary::-webkit-details-marker { display: none; }
+    .eq-group > summary .eq-ico { width: 20px; height: 20px; color: var(--eq-bronze); flex: none; }
+    .eq-group > summary .eq-count { font-family: 'JetBrains Mono', monospace; font-size: 0.6875rem; color: var(--eq-muted); background: var(--eq-bg); padding: 2px 8px; border-radius: 6px; font-weight: 500; }
+    .eq-group > summary .eq-chev { margin-left: auto; color: var(--eq-muted); transition: transform .15s; }
+    .eq-group[open] > summary .eq-chev { transform: rotate(90deg); }
+    .eq-table-wrap { overflow-x: auto; border-top: 1px solid var(--eq-border); }
+    .eq-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; min-width: 860px; }
+    .eq-table th { text-align: left; padding: 9px 14px; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--eq-muted); background: var(--eq-bg); border-bottom: 1px solid var(--eq-border); white-space: nowrap; }
+    .eq-table td { padding: 10px 14px; border-bottom: 1px solid var(--eq-border); vertical-align: top; }
+    .eq-table tr:last-child td { border-bottom: none; }
+    .eq-table tr.eq-row { cursor: pointer; }
+    .eq-table tr.eq-row:hover td { background: color-mix(in srgb, var(--eq-bronze) 6%, transparent); }
+    .eq-name { font-weight: 600; } .eq-sub { font-size: 0.75rem; color: var(--eq-muted); margin-top: 2px; }
+    .eq-code { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--eq-bronze); white-space: nowrap; }
+    .eq-spec { font-size: 0.75rem; line-height: 1.55; color: var(--eq-muted); }
+    .eq-spec b { color: var(--eq-text); font-weight: 600; }
+    .eq-badge { display: inline-block; padding: 2px 9px; border-radius: 6px; font-size: 0.6875rem; font-weight: 600; border: 1px solid var(--eq-border); white-space: nowrap; }
+    .eq-badge.ok { color: #7FA783; border-color: color-mix(in srgb, var(--eq-ok) 55%, transparent); }
+    .eq-badge.warn { color: var(--eq-warn); border-color: color-mix(in srgb, var(--eq-warn) 55%, transparent); }
+    .eq-badge.bad { color: #D07070; border-color: color-mix(in srgb, var(--eq-bad) 55%, transparent); }
+    .eq-badge.mute { color: var(--eq-muted); }
+    .eq-empty { padding: 26px 14px; text-align: center; font-size: 0.8125rem; color: var(--eq-muted); }
+
+    .eq-overlay { position: fixed; inset: 0; z-index: 9000; background: rgba(0,0,0,0.55); display: none; align-items: flex-start; justify-content: center; padding: 32px 16px; overflow-y: auto; }
+    .eq-overlay.active { display: flex; }
+    .eq-modal { background: var(--eq-surface); border: 1px solid var(--eq-border); border-radius: 18px; width: 100%; max-width: 1000px; overflow: hidden; }
+    .eq-modal-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 22px; border-bottom: 1px solid var(--eq-border); }
+    .eq-modal-title { font-size: 1.0625rem; font-weight: 700; }
+    .eq-x { background: none; border: none; color: var(--eq-muted); font-size: 1.4rem; cursor: pointer; line-height: 1; }
+    .eq-modal-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); }
+    .eq-modal-body > div { padding: 18px 22px; }
+    .eq-modal-body > div + div { border-left: 1px solid var(--eq-border); background: color-mix(in srgb, var(--eq-bg) 55%, transparent); }
+    .eq-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .eq-field.full { grid-column: 1 / -1; }
+    .eq-label { display: block; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--eq-muted); margin-bottom: 5px; }
+    .eq-actions { display: flex; gap: 8px; padding: 14px 22px; border-top: 1px solid var(--eq-border); flex-wrap: wrap; }
+    .eq-specs-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+    .eq-spec-rows { display: flex; flex-direction: column; gap: 8px; }
+    .eq-spec-row { display: grid; grid-template-columns: 1.1fr 1.4fr 1.6fr 54px 26px; gap: 6px; align-items: center; }
+    .eq-spec-row .eq-input { padding: 7px 8px; font-size: 0.75rem; }
+    .eq-spec-del { background: none; border: none; color: var(--eq-muted); cursor: pointer; font-size: 1.1rem; line-height: 1; }
+    .eq-spec-del:hover { color: var(--eq-bad); }
+    .eq-spec-cols { display: grid; grid-template-columns: 1.1fr 1.4fr 1.6fr 54px 26px; gap: 6px; font-size: 0.625rem; text-transform: uppercase; letter-spacing: .05em; color: var(--eq-muted); margin-bottom: 4px; }
+    .eq-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--eq-surface); border: 1px solid var(--eq-border); padding: 10px 18px; border-radius: 10px; font-size: 0.8125rem; z-index: 9500; box-shadow: 0 6px 24px rgba(0,0,0,.25); }
+    .eq-toast.bad { border-color: var(--eq-bad); }
+
+    @media (max-width: 1100px) { .eq-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 860px) { .eq-modal-body { grid-template-columns: 1fr; } .eq-modal-body > div + div { border-left: none; border-top: 1px solid var(--eq-border); } .eq-form-grid { grid-template-columns: 1fr; } .eq-spec-row, .eq-spec-cols { grid-template-columns: 1fr 1fr; } .eq-spec-cols { display: none; } }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/" class="brand">
+        <span class="brand-mark"><img class="brand-logo" src="/logo-mark.png" alt="HICONIQUE" /></span>
+        <span class="brand-name"><span class="brand-name-1">HICONIQUE</span></span>
+      </a>
+      <nav class="primary-nav">
+        <a href="/#tools" class="nav-link">Công cụ</a>
+        <a href="/pages/tasks-manager.html" class="nav-link">Tasks</a>
+        <a href="/pages/projects.html" class="nav-link">Dự án</a>
+        <a href="/pages/wiki.html" class="nav-link">Tài liệu</a>
+        <a href="/#ai" class="nav-link">AI</a>
+        <a href="/pages/notices.html" class="nav-link">Thông báo</a>
+        <a href="/pages/team.html" class="nav-link">Team</a>
+      </nav>
+      <div class="header-actions">
+        <button class="theme-toggle" aria-label="Chuyển đổi sáng/tối" data-theme-toggle>
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" stroke-linecap="round" /></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        </button>
+        <span class="clock"><span class="clock-time" data-clock>--:--</span><span class="clock-meta">GMT+7</span></span>
+        <button class="avatar"><span>--</span></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="subpage">
+  <div class="subpage-inner eq-container">
+    <p class="eyebrow">— Văn phòng</p>
+    <h1 class="subpage-title">Thiết bị <span class="subpage-title-italic">văn phòng</span></h1>
+    <p class="subpage-lede">Kho lưu trữ và tổng hợp thiết bị văn phòng: máy tính (từng linh kiện: CPU, RAM, ổ cứng, VGA…), máy in, máy photo, vật tư, thiết bị mạng. Ghi rõ thông số, người sử dụng, vị trí, bảo hành. Dữ liệu lưu chung trên Google Sheet (TB-Thiết bị).</p>
+
+    <div class="eq-kpis" id="eqKpis"></div>
+
+    <div class="eq-toolbar">
+      <input class="eq-input eq-search" id="eqSearch" type="search" placeholder="Tìm theo tên, mã tài sản, serial, người dùng, linh kiện…">
+      <select class="eq-select" id="eqCat"><option value="">Tất cả nhóm</option></select>
+      <select class="eq-select" id="eqStatus"><option value="">Mọi tình trạng</option></select>
+      <span class="eq-spacer"></span>
+      <div class="eq-seg" id="eqView"><button data-view="groups" class="active">Theo nhóm</button><button data-view="parts">Tổng hợp linh kiện</button></div>
+      <button class="eq-btn" id="eqExport" type="button">Xuất CSV</button>
+      <button class="eq-btn eq-btn-primary" id="eqAddBtn" type="button">+ Thêm trang thiết bị</button>
+    </div>
+
+    <div id="eqGroups"></div>
+    <div id="eqParts" hidden></div>
+  </div>
+  </main>
+
+  <div class="eq-overlay" id="eqModal" role="dialog" aria-modal="true" aria-labelledby="eqModalTitle">
+    <div class="eq-modal">
+      <div class="eq-modal-head"><div class="eq-modal-title" id="eqModalTitle">Thêm trang thiết bị</div><button class="eq-x" id="eqModalClose" type="button" aria-label="Đóng">×</button></div>
+      <form id="eqForm" autocomplete="off">
+        <div class="eq-modal-body">
+          <div>
+            <div class="eq-form-grid">
+              <div class="eq-field"><label class="eq-label" for="efCat">Nhóm *</label><select class="eq-select" id="efCat"></select></div>
+              <div class="eq-field"><label class="eq-label" for="efCode">Mã tài sản</label><input class="eq-input" id="efCode" maxlength="40" placeholder="Tự đề xuất theo nhóm"></div>
+              <div class="eq-field full"><label class="eq-label" for="efName">Tên thiết bị *</label><input class="eq-input" id="efName" required maxlength="160" placeholder="VD: PC thiết kế phòng KTS 01"></div>
+              <div class="eq-field"><label class="eq-label" for="efBrand">Hãng</label><input class="eq-input" id="efBrand" maxlength="60"></div>
+              <div class="eq-field"><label class="eq-label" for="efModel">Model</label><input class="eq-input" id="efModel" maxlength="80"></div>
+              <div class="eq-field"><label class="eq-label" for="efSerial">Số serial</label><input class="eq-input" id="efSerial" maxlength="80"></div>
+              <div class="eq-field"><label class="eq-label" for="efStatus">Tình trạng</label><select class="eq-select" id="efStatus"></select></div>
+              <div class="eq-field"><label class="eq-label" for="efAssignee">Người sử dụng</label><select class="eq-select" id="efAssignee"></select></div>
+              <div class="eq-field"><label class="eq-label" for="efLocation">Vị trí</label><input class="eq-input" id="efLocation" maxlength="100" placeholder="VD: Phòng KTS, Tầng 2"></div>
+              <div class="eq-field"><label class="eq-label" for="efBuy">Ngày mua</label><input class="eq-input" id="efBuy" type="date"></div>
+              <div class="eq-field"><label class="eq-label" for="efWar">Hết bảo hành</label><input class="eq-input" id="efWar" type="date"></div>
+              <div class="eq-field"><label class="eq-label" for="efPrice">Giá mua (₫)</label><input class="eq-input" id="efPrice" inputmode="numeric" placeholder="VD: 25.000.000"></div>
+              <div class="eq-field"><label class="eq-label" for="efSupplier">Nhà cung cấp</label><input class="eq-input" id="efSupplier" maxlength="120"></div>
+              <div class="eq-field" data-supply><label class="eq-label" for="efQty">Số lượng tồn</label><input class="eq-input" id="efQty" inputmode="decimal"></div>
+              <div class="eq-field" data-supply><label class="eq-label" for="efUnit">Đơn vị</label><input class="eq-input" id="efUnit" maxlength="20" placeholder="hộp, ram, cuộn…"></div>
+              <div class="eq-field" data-supply><label class="eq-label" for="efMin">Tồn tối thiểu (cảnh báo)</label><input class="eq-input" id="efMin" inputmode="decimal"></div>
+              <div class="eq-field full"><label class="eq-label" for="efNote">Ghi chú</label><textarea class="eq-textarea" id="efNote" maxlength="1000"></textarea></div>
+            </div>
+          </div>
+          <div>
+            <div class="eq-specs-head">
+              <div class="eq-label" style="margin:0;" id="eqSpecsTitle">Linh kiện / thông số</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button class="eq-btn eq-btn-sm" type="button" id="eqPreset">Điền mẫu theo nhóm</button>
+                <button class="eq-btn eq-btn-sm" type="button" id="eqAddSpec">+ Thêm dòng</button>
+              </div>
+            </div>
+            <div class="eq-spec-cols"><span>Loại</span><span>Tên / Model</span><span>Thông số</span><span>SL</span><span></span></div>
+            <div class="eq-spec-rows" id="eqSpecRows"></div>
+            <datalist id="eqTypeList"></datalist>
+            <p class="eq-sub" style="margin-top:10px;">Ví dụ máy tính: <b>RAM</b> · Kingston Fury · DDR4 3200MHz 16GB · SL 2. Mỗi linh kiện 1 dòng — hệ thống tự tổng hợp số lượng theo loại ở tab "Tổng hợp linh kiện".</p>
+          </div>
+        </div>
+        <div class="eq-actions">
+          <button class="eq-btn eq-btn-primary" type="submit" id="eqSaveBtn">Lưu</button>
+          <button class="eq-btn" type="button" id="eqCloneBtn" hidden>Nhân bản</button>
+          <button class="eq-btn eq-btn-danger" type="button" id="eqHideBtn" hidden>Xóa khỏi danh sách</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js" defer></script>
+  <script src="/js/push-notifications.js" defer></script>
+  <script src="/js/portal.js" defer></script>
+  <script src="/js/equipment.js" defer></script>
+</body>
+</html>
