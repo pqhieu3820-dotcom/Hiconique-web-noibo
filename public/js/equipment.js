@@ -11,6 +11,7 @@
   // Nhóm chính + mẫu linh kiện/thông số gợi ý cho từng nhóm
   var CATS = [
     { name: 'Máy tính', prefix: 'MT', icon: '<rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4" stroke-linecap="round"/>',
+      defaultParts: ['Bàn phím', 'Chuột'],  // luôn có sẵn dòng trống cho 2 loại này, không cần bấm "Điền mẫu theo nhóm"
       tpl: [['CPU', 'Intel Core i7-13700 / AMD Ryzen 7…', '16 nhân 24 luồng, 2.1–5.2GHz'], ['Mainboard', '', 'Socket, chipset, khe RAM'], ['RAM', '', 'DDR4/DDR5, dung lượng, bus'], ['SSD', '', 'NVMe/SATA, dung lượng'], ['HDD', '', 'Dung lượng, tốc độ vòng quay'],
         ['VGA / Card đồ họa', '', 'VRAM, dòng card'], ['Nguồn (PSU)', '', 'Công suất, chuẩn 80 Plus'], ['Vỏ case', '', ''], ['Tản nhiệt', '', 'Khí / nước'], ['Màn hình', '', 'Kích thước, độ phân giải, tần số quét'],
         ['Bàn phím', '', ''], ['Chuột', '', ''], ['Card mạng / Wifi', '', ''], ['Hệ điều hành', 'Windows 11 Pro', 'Bản quyền / key']] },
@@ -243,6 +244,7 @@
     if (!$('efAssignee').value && r.memberId) $('efAssignee').value = r.memberId;
     var types = reportTypes(r);
     state.specs = rSpecs(r).concat(state.specs.filter(function (s) { return !types[s.type] && (s.type || s.name || s.spec); }));
+    ensureDefaultParts('Máy tính');  // Agent không đọc được bàn phím/chuột — vẫn giữ dòng mặc định để điền tay
     refreshTypeList(); renderSpecRows(); renderPcBox();
   }
 
@@ -250,6 +252,12 @@
     $('eqTypeList').innerHTML = catOf($('efCat').value).tpl.map(function (t) { return '<option value="' + esc(t[0]) + '">'; }).join('');
     var sup = catOf($('efCat').value).supply;
     Array.prototype.forEach.call(document.querySelectorAll('[data-supply]'), function (n) { n.hidden = !sup; });
+  }
+  // Luôn có sẵn 1 dòng trống cho các loại "mặc định" của nhóm (VD: Bàn phím, Chuột ở Máy tính) — không cần bấm "Điền mẫu theo nhóm"
+  function ensureDefaultParts(catName) {
+    var parts = catOf(catName).defaultParts; if (!parts) return;
+    var have = {}; state.specs.forEach(function (s) { have[s.type] = true; });
+    parts.forEach(function (t) { if (!have[t]) state.specs.push({ type: t, name: '', spec: '', qty: '1' }); });
   }
   function suggestCode() {
     var c = catOf($('efCat').value), used = {};
@@ -288,6 +296,7 @@
     $('efCode').value = e ? g('code') : suggestCode();
     state.specs = src ? parseSpecs(src).map(function (s) { return { type: s.type || '', name: s.name || '', spec: s.spec || '', qty: s.qty || '1' }; }) : [];
     state.pcId = (src && !cloneFrom) ? (g('pcId') || '') : '';
+    ensureDefaultParts($('efCat').value);
     refreshTypeList(); renderSpecRows(); renderPcBox();
     var can = canManage();
     Array.prototype.forEach.call($('eqForm').querySelectorAll('.eq-modal-body > div:first-child input, .eq-modal-body > div:first-child select, .eq-modal-body > div:first-child textarea'), function (n) { n.disabled = !can; });
@@ -351,6 +360,7 @@
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
     $('eqForm').addEventListener('submit', save);
     $('efCat').addEventListener('change', function () {
+      ensureDefaultParts(this.value); renderSpecRows();
       refreshTypeList(); renderPcBox();
       if (!state.editingId) $('efCode').value = suggestCode();
     });
