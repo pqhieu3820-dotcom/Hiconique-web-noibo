@@ -275,6 +275,7 @@ var TaskManager = (function() {
     customers: 'hiconique_customers',
     customerLogs: 'hiconique_customer_logs',
     staffActivity: 'hiconique_staff_activity',
+    appUsage: 'hiconique_app_usage',
     financeEntries: 'hiconique_finance_entries',
     receivables: 'hiconique_receivables',
     bsSnapshots: 'hiconique_bs_snapshots',
@@ -644,7 +645,7 @@ var TaskManager = (function() {
       priceCatalog: 'getPriceCatalog', financeEntries: 'getFinanceEntries',
       lightingStandards: 'getLightingStandards', lightingLamps: 'getLightingLamps',
       lightingFactors: 'getLightingFactors', lightingPlans: 'getLightingPlans',
-      customers: 'getCustomers', customerLogs: 'getCustomerLogs', staffActivity: 'getStaffActivity',
+      customers: 'getCustomers', customerLogs: 'getCustomerLogs', staffActivity: 'getStaffActivity', appUsage: 'getAppUsage',
       receivables: 'getReceivables', bsSnapshots: 'getBsSnapshots', orders: 'getOrders',
       attendanceLocations: 'getAttendanceLocations'
     };
@@ -2561,6 +2562,14 @@ var TaskManager = (function() {
     });
   }
   function getStaffActivity() { return getAll(STORAGE_KEYS.staffActivity); }
+  // Dữ liệu ứng dụng do HICONIQUE Agent (cài trên máy công ty) gửi lên — chỉ đọc
+  function loadAppUsage(callback) {
+    getFromGSheets('appUsage', function (items) {
+      if (items && items.length) localStorage.setItem(STORAGE_KEYS.appUsage, JSON.stringify(items));
+      if (callback) callback(getAll(STORAGE_KEYS.appUsage));
+    });
+  }
+  function getAppUsage() { return getAll(STORAGE_KEYS.appUsage); }
   if (typeof document !== 'undefined') {
     // đợi Auth sẵn sàng (nạp sau task-data.js) rồi mới bắt đầu đo
     var actBoot = 0;
@@ -3047,6 +3056,8 @@ var TaskManager = (function() {
     addCustomerLog: addCustomerLog,
     loadStaffActivity: loadStaffActivity,
     getStaffActivity: getStaffActivity,
+    loadAppUsage: loadAppUsage,
+    getAppUsage: getAppUsage,
     saveLightingPlan: saveLightingPlan,
     hideLightingPlan: hideLightingPlan,
     createPriceCatalogItem: createPriceCatalogItem,

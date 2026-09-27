@@ -47,6 +47,7 @@ const SHEETS = {
   customers: 'KH-Khách hàng',
   customerLogs: 'KH-Chăm sóc',
   staffActivity: 'NS-Hoạt động',
+  appUsage: 'NS-Ứng dụng',
   // 6 sheet mới (2026-09-09) — công cụ theo dự án đi kèm database đơn giá 34
   // tỉnh, xem GHI_CHU_DU_AN.md. Nhóm DA- nên không đụng 46 sheet tham khảo
   // (đã đổi tiền tố "DGXD-" — VD "DGXD-Dòng tiền" khác hẳn "DA-Dòng tiền").
@@ -302,6 +303,10 @@ const FIELD_MAP = {
     ['Mã', 'id'], ['Mã thành viên', 'memberId'], ['Ngày', 'date'], ['Thiết bị', 'device'],
     ['Phút hoạt động', 'activeMin'], ['Phút không thao tác', 'idleMin'], ['Phút rời tab', 'awayMin'],
     ['Lần cuối', 'lastSeen'], ['Ngày cập nhật', 'updatedAt']
+  ],
+  appUsage: [
+    ['Mã', 'id'], ['Mã thành viên', 'memberId'], ['Ngày', 'date'], ['Thiết bị', 'device'],
+    ['Ứng dụng', 'app'], ['Phút', 'minutes'], ['Tiêu đề cửa sổ', 'titles'], ['Lần cuối', 'lastSeen']
   ],
   priceCatalog: [
     ['Mã BG', 'id'], ['Danh mục', 'category'], ['Tên dịch vụ', 'name'], ['Đơn vị tính', 'unit'],
@@ -844,6 +849,22 @@ function handleRequest(e) {
       var actData = JSON.parse(params.data);
       var actExisting = getAllData(ss, SHEETS.staffActivity).filter(function (r) { return r.id === actData.id; })[0];
       result = actExisting ? updateData(ss, SHEETS.staffActivity, actData.id, actData) : addData(ss, SHEETS.staffActivity, actData);
+    } else if (action === 'getAppUsage') {
+      result = getAllData(ss, SHEETS.appUsage);
+    } else if (action === 'upsertAppUsage') {
+      // HICONIQUE Agent (máy công ty, nhân viên biết và đồng ý): mỗi (thành viên, ngày, thiết bị, ứng dụng) 1 dòng, id cố định.
+      // Gửi theo lô (mảng). Chỉ tên ứng dụng + tiêu đề cửa sổ, không có nội dung màn hình/phím gõ.
+      var appRows = JSON.parse(params.data);
+      if (!Array.isArray(appRows)) appRows = [appRows];
+      var appExisting = {};
+      getAllData(ss, SHEETS.appUsage).forEach(function (r) { appExisting[r.id] = true; });
+      var appN = 0;
+      appRows.forEach(function (r) {
+        if (!r || !r.id || !r.memberId) return;
+        if (appExisting[r.id]) updateData(ss, SHEETS.appUsage, r.id, r); else { addData(ss, SHEETS.appUsage, r); appExisting[r.id] = true; }
+        appN++;
+      });
+      result = { success: true, count: appN };
     } else if (action === 'getLightingStandards') {
       result = getAllData(ss, SHEETS.lightingStandards);
     } else if (action === 'getLightingLamps') {
@@ -3106,6 +3127,7 @@ var SORT_SKIP_KEYS = {
   attendanceLocations: true, // danh sách địa điểm GPS/IP quản lý thủ công
   commissionRates: true,     // bảng % theo cấp bậc, thứ tự cố định theo LEVELS
   staffActivity: true, // theo id cố định, không cần sắp lại
+  appUsage: true,
   lightingStandards: true, lightingLamps: true, lightingFactors: true, // TTCS- danh mục/cấu hình, thứ tự do người quản lý sắp
   priceCatalog: true,        // bảng giá dịch vụ — thứ tự trình bày báo giá, không phải theo thời gian tạo
   bimProducts: true, bimMaterials: true, bimSuppliers: true // danh mục BIM dùng chung toàn tổ chức, thứ tự quản lý thủ công

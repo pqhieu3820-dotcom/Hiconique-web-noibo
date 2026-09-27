@@ -2,7 +2,7 @@
  * Theo dõi hiệu suất nhân viên — staff-monitor.html.
  * Nguồn dữ liệu (đều có sẵn trong Hub): chấm công (TLCC-Chấm công), hoạt động trên Hub theo ngày (NS-Hoạt động — do
  * TaskManager tự ghi, chỉ đo trong chính Hub), công việc (DA-Công việc). CEO/quản lý xem mọi người; nhân viên chỉ xem
- * số liệu của chính mình. KHÔNG có bất kỳ dữ liệu nào về web/màn hình/ứng dụng khác của nhân viên.
+ * số liệu của chính mình. Ứng dụng đang dùng (NS-Ứng dụng) do HICONIQUE Agent trên máy công ty gửi lên — chỉ tên ứng dụng + tiêu đề cửa sổ, không màn hình/phím gõ.
  */
 (function () {
   'use strict';
@@ -150,7 +150,31 @@
       '<div style="margin-bottom:12px;">' + r.flags.map(function (f) { return '<span class="sm-flag ' + f.c + '">' + esc(f.t) + '</span>'; }).join('') + '</div>' +
       '<div class="sm-wrap"><table class="sm-table" style="min-width:0"><thead><tr><th>Ngày</th><th class="num">Chấm công</th><th class="num">Hoạt động</th><th class="num">Không thao tác</th><th class="num">Rời tab</th><th class="num">Tỉ lệ</th><th class="num">Cập nhật tiến độ</th></tr></thead><tbody>' + dayRows + '</tbody></table></div>' +
       '<p class="sm-foot">Việc đang mở: ' + r.open + ' · quá hạn: ' + r.overdue + '. Hoạt động lần cuối trên Hub: ' + (r.lastActive ? new Date(r.lastActive).toLocaleString('vi-VN') : 'chưa có') + '.</p>';
+    var apps = appsFor(r.member.id, r.dates);
+    if (apps.length) {
+      var total = apps.reduce(function (s, a) { return s + a.min; }, 0);
+      $('smModalBody').innerHTML += '<h4 style="margin:18px 0 8px;font-size:0.875rem;">Ứng dụng đang dùng (máy công ty, ' + fmtDur(total) + ')</h4>' +
+        '<div class="sm-wrap"><table class="sm-table" style="min-width:0"><thead><tr><th>Ứng dụng</th><th class="num">Thời gian</th><th class="num">Tỉ trọng</th><th>Cửa sổ nhiều nhất</th></tr></thead><tbody>' +
+        apps.slice(0, 15).map(function (a) {
+          return '<tr><td>' + esc(a.app) + '</td><td class="num">' + fmtDur(a.min) + '</td><td class="num">' + Math.round(a.min / total * 100) + '%</td><td class="sm-muted" style="font-size:0.75rem;max-width:380px;">' + esc(a.titles.slice(0, 3).join(' · ')) + '</td></tr>';
+        }).join('') + '</tbody></table></div>';
+    } else {
+      $('smModalBody').innerHTML += '<p class="sm-foot">Chưa có dữ liệu ứng dụng (máy chưa cài HICONIQUE Agent hoặc chưa gửi dữ liệu).</p>';
+    }
     $('smModal').classList.add('active');
+  }
+
+  // Gộp dữ liệu ứng dụng của 1 người theo tên ứng dụng trong khoảng ngày đang xem
+  function appsFor(memberId, dates) {
+    var set = {}; dates.forEach(function (d) { set[d] = true; });
+    var by = {};
+    (TM.getAppUsage ? TM.getAppUsage() : []).forEach(function (u) {
+      if (u.memberId !== memberId || !set[u.date]) return;
+      var a = by[u.app] || (by[u.app] = { app: u.app, min: 0, titles: [] });
+      a.min += Number(u.minutes) || 0;
+      String(u.titles || '').split(' | ').forEach(function (t) { t = t.replace(/\s*\(\d+p\)$/, '').trim(); if (t && a.titles.indexOf(t) === -1) a.titles.push(t); });
+    });
+    return Object.keys(by).map(function (k) { return by[k]; }).sort(function (x, y) { return y.min - x.min; });
   }
 
   function init() {
@@ -175,6 +199,7 @@
     setInterval(function () { if (document.visibilityState === 'visible' && !$('smModal').classList.contains('active')) reload(); }, 120000);
   }
   function reload() {
+    if (TM.loadAppUsage) TM.loadAppUsage(function () {});
     if (TM.loadStaffActivity) TM.loadStaffActivity(function () { render(); });
     else render();
   }

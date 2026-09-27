@@ -1,0 +1,6 @@
+{
+  "memberId": "DIEN_MA_THANH_VIEN_TREN_HUB",
+  "workHours": "07:30-18:00",
+  "workDays": [0, 1, 2, 3, 4, 5],
+  "sendTitles": true
+}
