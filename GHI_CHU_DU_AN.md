@@ -1520,3 +1520,41 @@ File cài đặt tăng từ ~12MB lên ~67MB (PyQt5+pandas+openpyxl, đã loại
 
 **2026-09-28 — Agent 2.0.1: nút Kiểm tra cập nhật + toggle sáng/tối trên cửa sổ chính; quét thêm bàn phím/chuột; sửa lỗi link build.py.** `check_update()` giờ trả trạng thái ('latest'/'bad_url'/'bad_sha'/'error:...'/'not_frozen') thay vì chỉ True/False, để nút thủ công báo đúng kết quả (UpdateCheckThread). Nút toggle nền (☀/🌙) đổi QSS toàn app qua `qss_for(theme)`, nhớ lựa chọn bằng QSettings. `hardware.py` thêm Win32_Keyboard/Win32_PointingDevice — CHÚ Ý: Windows hay liệt kê trùng 1 thiết bị vật lý thành nhiều dòng driver (đặc thù driver stack), nên số lượng luôn ghi cố định 1 (không đếm theo số dòng WMI) để tránh báo sai số lượng tồn kho; lọc bỏ chuỗi manufacturer generic "(Standard...)"
 Sửa lỗi `build.py`: hàm tạo link "latest/download" bị thừa 1 lần `.rsplit('/',1)` làm mất đoạn `/releases/` trong URL (phát hiện ngay sau lần build 2.0.1 đầu, đã sửa code và tay chỉnh lại latest.json cho lần này, các lần build sau sẽ tự đúng).
+
+## 2026-09-29 — Chốt trạng thái trước khi chuyển máy
+
+Repo sạch, `master` khớp hoàn toàn `origin/master` tại commit `b7c9978`. Không có gì chưa commit/chưa push.
+
+**Việc vừa xong (phiên làm việc 27–29/09/2026), theo thứ tự:**
+- CRM khách hàng (`crm.html`), sheet `KH-Khách hàng`/`KH-Chăm sóc`.
+- Trang Theo dõi hiệu suất (`staff-monitor.html`) — hoạt động Hub theo ngày, drill-down xem ứng dụng theo từng ngày, thẻ tải HICONIQUE Agent + lịch sử phiên bản (đã có cuộn riêng).
+- Trang Thiết bị văn phòng (`equipment.html`) — máy tính (linh kiện, mặc định có Bàn phím/Chuột), máy in/photo, vật tư, tổng hợp linh kiện; sheet `TB-Thiết bị`, `TB-Máy đã báo`.
+- **HICONIQUE Agent** (`tools/hiconique-agent/`) — hiện tại bản **2.0.1**, viết bằng PyQt5, 5 tab: Kiểm soát dữ liệu thao tác, Thông số linh kiện máy tính (quét + nút Cập nhật lên web + nút Kiểm tra cập nhật + toggle sáng/tối), Convert Ảnh↔SKM, Lấy màu (Pick Color), Hẹn giờ tắt máy. Đóng X = ẩn khay hệ thống. File cài đặt (~67MB) đăng ở **GitHub Releases** (`agent-v<version>` tag) — KHÔNG còn ở Cloudflare (giới hạn 25MB/file). `public/agent/latest.json` (nhỏ) vẫn ở Cloudflare, trỏ URL ổn định `github.com/.../releases/latest/download/HiconiqueAgentSetup.exe`.
+- Apps Script đã deploy tới **phiên bản 94** (Web App URL không đổi, xem đầu file).
+- Dọn icon emoji → SVG đồng bộ trên vài trang.
+
+**Việc còn treo / cần làm tiếp nếu có thời gian:**
+- Chưa xem trực tiếp giao diện Agent 2.0.1 trên màn hình thật (chỉ dựng thử qua script, không lỗi) — nên tự cài bản mới nhất và xem qua, đặc biệt phần đổi màu sáng/tối và tab Lấy màu/Convert SKM.
+- Windows SmartScreen + một số diệt virus (Kaspersky...) còn báo cảnh báo cho file Agent (chưa có chữ ký số) — xem hướng xử lý trong `tools/hiconique-agent/README.md`.
+- Lịch sử git vẫn còn 1 blob ~67MB từ commit `1f0f703` (bản Agent 2.0.0 trước khi chuyển sang GitHub Releases) — chưa dọn (cần `git filter-repo`, việc lớn, chưa làm vì chưa hỏi ý kiến).
+- Repo `tools/hiconique-agent/agent.py` (bản Tkinter v1.0.2) không còn build nữa, chỉ giữ tham khảo — có thể xoá hẳn sau này nếu không cần.
+
+## Chuyển sang máy tính khác — lệnh chạy tiếp
+
+Trên máy mới, mở PowerShell hoặc Git Bash tại thư mục muốn đặt project, chạy:
+
+```bash
+git clone https://github.com/pqhieu3820-dotcom/Hiconique-web-noibo.git "WEB NỘI BỘ HICONIQUE"
+cd "WEB NỘI BỘ HICONIQUE"
+npm install
+```
+
+Sau đó mở Claude Code trong đúng thư mục đó (`claude` hoặc mở qua ứng dụng), nói với Claude đọc file `GHI_CHU_DU_AN.md` (mục này) để nắm lại bối cảnh, là tiếp tục làm việc bình thường — không cần thiết lập gì thêm cho phần web (Apps Script Web App URL, Google Sheet, Cloudflare đều không đổi theo máy).
+
+**Nếu muốn tiếp tục phát triển/build HICONIQUE Agent (app.py) trên máy mới**, cài thêm:
+```bash
+pip install -r tools/hiconique-agent/requirements.txt
+```
+Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (để Git Credential Manager có sẵn token) trước khi chạy `python tools/hiconique-agent/build.py` (script tự đăng bản mới lên GitHub Releases).
+
+**Không cần chuyển gì thủ công khác** — mọi dữ liệu nghiệp vụ nằm trên Google Sheet (không nằm trong repo), thiết bị end-user tự tải Agent qua link GitHub Releases khi cần.
