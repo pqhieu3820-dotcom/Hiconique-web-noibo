@@ -951,7 +951,7 @@
         </div>
         <div class="modal-body">
           <p style="font-size:0.8125rem; color:var(--color-text-muted); margin:-8px 0 20px;">
-            Thêm bao nhiêu điểm GPS hoặc IP Wifi cũng được — nhân viên chỉ cần đạt GPS gần 1 điểm bất kỳ HOẶC đúng 1 IP bất kỳ đang bật là chấm công được. Bỏ tick "Đang dùng" để tắt tạm 1 dòng mà không cần xoá.
+            Thêm bao nhiêu điểm GPS hoặc IP mạng (Wifi hoặc cáp LAN) cũng được — đường LAN có IP công khai khác thì thêm 1 dòng IP riêng; có thể nhập dạng "14.171.113.*" để khớp cả dải — nhân viên chỉ cần đạt GPS gần 1 điểm bất kỳ HOẶC đúng 1 IP bất kỳ đang bật là chấm công được. Bỏ tick "Đang dùng" để tắt tạm 1 dòng mà không cần xoá.
           </p>
 
           <form id="tsLocationForm">
@@ -1193,7 +1193,7 @@
           <div class="ts-verify-row" id="tsVerifyIpRow">
             <span class="ts-verify-dot" id="tsVerifyIpDot"></span>
             <span class="ts-verify-body">
-              <span class="ts-verify-label">Mạng Wifi công ty</span>
+              <span class="ts-verify-label">Mạng công ty (Wifi/LAN)</span>
               <span class="ts-verify-state" id="tsVerifyIpState">Đang kiểm tra…</span>
             </span>
           </div>
@@ -1502,18 +1502,44 @@
         // Check In đứng im chờ theo vì đang Promise.all() cùng checkGeoStatus().
         // Ép timeout cứng 6s bằng AbortController — quá giờ thì coi như lỗi
         // mạng (message đã có sẵn), không để treo vô thời hạn.
+        // 2026-09-29: kiểm tra theo IP CÔNG KHAI nên không phân biệt Wifi hay
+        // cáp LAN — nhưng máy cắm LAN thường ra Internet bằng IPv6 hoặc đường
+        // WAN khác, và 1 nguồn dò IP duy nhất (ipify IPv4) dễ trượt/trả sai.
+        // Giờ dò song song 3 nguồn (IPv4 + IPv6 + Cloudflare), lấy TẤT CẢ IP
+        // dò được, chỉ cần MỘT IP khớp MỘT dòng đang bật trong Sheet (hỗ trợ
+        // IP đầy đủ hoặc dạng đuôi ký tự đại diện "14.171.113.*"). Khi không
+        // khớp, hiện luôn IP đang dùng để CEO biết đúng IP cần thêm vào Sheet
+        // (VD đường LAN có IP công khai khác đường Wifi).
         var controller = new AbortController();
         var timer = setTimeout(function () { controller.abort(); }, 6000);
-        return fetch('https://api.ipify.org?format=json', { signal: controller.signal })
-          .then(function (r) { return r.json(); })
-          .then(function (data) {
-            var ok = validIPs.indexOf(data.ip) !== -1;
-            return { ok: ok, skip: false, message: ok ? 'Đúng mạng Wifi công ty' : 'Không phải mạng Wifi công ty', ip: data.ip };
+        function fetchIp(url, parse) {
+          return fetch(url, { signal: controller.signal }).then(parse).then(function (ip) {
+            return ip ? String(ip).trim().toLowerCase() : null;
+          }).catch(function () { return null; });
+        }
+        return Promise.all([
+          fetchIp('https://api.ipify.org?format=json', function (r) { return r.json().then(function (d) { return d.ip; }); }),
+          fetchIp('https://api64.ipify.org?format=json', function (r) { return r.json().then(function (d) { return d.ip; }); }),
+          fetchIp('https://www.cloudflare.com/cdn-cgi/trace', function (r) {
+            return r.text().then(function (t) { var m = /^ip=(.+)$/m.exec(t); return m ? m[1] : null; });
           })
-          .catch(function () {
-            return { ok: false, skip: false, message: 'Không kiểm tra được kết nối mạng', ip: '' };
-          })
-          .finally(function () { clearTimeout(timer); });
+        ]).then(function (found) {
+          var seen = {};
+          var ips = found.filter(function (ip) { if (!ip || seen[ip]) return false; seen[ip] = true; return true; });
+          if (ips.length === 0) return { ok: false, skip: false, message: 'Không kiểm tra được kết nối mạng', ip: '' };
+          function matches(ip, rule) {
+            rule = String(rule).trim().toLowerCase();
+            if (!rule) return false;
+            if (rule.charAt(rule.length - 1) === '*') return ip.indexOf(rule.slice(0, -1)) === 0;
+            return ip === rule;
+          }
+          var ok = ips.some(function (ip) { return validIPs.some(function (rule) { return matches(ip, rule); }); });
+          return {
+            ok: ok, skip: false,
+            message: ok ? 'Đúng mạng công ty (Wifi/LAN)' : 'Không phải mạng công ty (IP: ' + ips.join(' / ') + ')',
+            ip: ips[0]
+          };
+        }).finally(function () { clearTimeout(timer); });
       });
     }
 
@@ -1755,7 +1781,7 @@
           '<div class="ts-confirm-title">Chưa đủ điều kiện chấm công</div>' +
           '<div class="ts-verify-panel">' +
             verifyRowHtml('Vị trí GPS', geoResult) +
-            verifyRowHtml('Mạng Wifi công ty', ipResult) +
+            verifyRowHtml('Mạng công ty (Wifi/LAN)', ipResult) +
             verifyRowHtml('Thiết bị đã đăng ký', deviceResult) +
           '</div>' +
           '<div class="ts-confirm-actions">' +
