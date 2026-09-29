@@ -1187,7 +1187,7 @@
 
     function collect() {
       var items = TaskManager.getNotifications(user).concat(TaskManager.getComputedAlerts(user));
-      items = items.filter(function (n) { return !TaskManager.isNotificationDismissed(n.id); });
+      items = items.filter(function (n) { return !TaskManager.isNotificationDismissed(n.id) && !TaskManager.isNotificationExpired(n.id); });
       items.sort(function (a, b) { return new Date(b.createdAt || 0) - new Date(a.createdAt || 0); });
       return items;
     }

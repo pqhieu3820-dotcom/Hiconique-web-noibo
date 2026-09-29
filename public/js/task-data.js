@@ -1861,27 +1861,43 @@ var TaskManager = (function() {
   }
 
   // Read/unread — per-device only, not synced (mark-as-read isn't shared data).
-  function getReadIds() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.readNotifications) || '[]'); }
-    catch (e) { return []; }
-  }
-
-  function markNotificationRead(id) {
-    var ids = getReadIds();
-    if (ids.indexOf(id) === -1) {
-      ids.push(id);
-      localStorage.setItem(STORAGE_KEYS.readNotifications, JSON.stringify(ids));
+  // 2026-09-29: lưu THỜI ĐIỂM đọc ({id: 'YYYY-MM-DD'}) thay vì chỉ mảng id —
+  // thông báo đã bấm vào/đánh dấu đã đọc sẽ TỰ ẨN khỏi chuông sau khi hết
+  // ngày hôm đó (isNotificationExpired). Dữ liệu cũ dạng mảng id được chuyển
+  // sang dạng map với mốc là hôm nay (ẩn từ ngày mai).
+  function getReadMap() {
+    var raw;
+    try { raw = JSON.parse(localStorage.getItem(STORAGE_KEYS.readNotifications) || '{}'); }
+    catch (e) { return {}; }
+    if (Array.isArray(raw)) {
+      var map = {};
+      var today = todayStr();
+      raw.forEach(function(id) { map[id] = today; });
+      try { localStorage.setItem(STORAGE_KEYS.readNotifications, JSON.stringify(map)); } catch (e) {}
+      return map;
     }
+    return raw && typeof raw === 'object' ? raw : {};
   }
 
   function markAllNotificationsRead(ids) {
-    var read = getReadIds();
-    ids.forEach(function(id) { if (read.indexOf(id) === -1) read.push(id); });
-    localStorage.setItem(STORAGE_KEYS.readNotifications, JSON.stringify(read));
+    var map = getReadMap();
+    var today = todayStr();
+    ids.forEach(function(id) { if (!map[id]) map[id] = today; });
+    localStorage.setItem(STORAGE_KEYS.readNotifications, JSON.stringify(map));
+  }
+
+  function markNotificationRead(id) {
+    markAllNotificationsRead([id]);
   }
 
   function isNotificationRead(id) {
-    return getReadIds().indexOf(id) !== -1;
+    return !!getReadMap()[id];
+  }
+
+  // Đã đọc từ ngày trước hôm nay → hết hạn hiển thị (ẩn hẳn khỏi danh sách).
+  function isNotificationExpired(id) {
+    var d = getReadMap()[id];
+    return !!d && d < todayStr();
   }
 
   // 2026-09-17: "Xoá tất cả thông báo" — CHỈ ẩn khỏi danh sách của CHÍNH
@@ -3046,6 +3062,7 @@ var TaskManager = (function() {
     markNotificationRead: markNotificationRead,
     markAllNotificationsRead: markAllNotificationsRead,
     isNotificationRead: isNotificationRead,
+    isNotificationExpired: isNotificationExpired,
     dismissAllNotifications: dismissAllNotifications,
     isNotificationDismissed: isNotificationDismissed,
 
