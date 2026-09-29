@@ -354,6 +354,10 @@
       line-height: 1.5;
     }
 
+    .ts-sync-status { margin: -8px 0 16px; padding: 8px 12px; border-radius: 8px; font-size: 0.8125rem; text-align: center; background: var(--color-bg); color: var(--ts-muted); }
+    .ts-sync-status.saving { color: var(--ts-bronze); }
+    .ts-sync-status.ok { background: var(--ts-success-light); color: var(--ts-success); }
+    .ts-sync-status.warn { background: rgba(160,72,72,0.12); color: #A04848; }
     .ts-checkin-status.working { background: var(--ts-success-light); color: var(--ts-success); }
     .ts-checkin-status.idle { background: var(--color-bg); color: var(--ts-muted); }
     .ts-checkin-status.late, .ts-checkin-status.early { background: rgba(160,72,72,0.12); color: #A04848; }
@@ -1220,6 +1224,7 @@
              trong task-data.js. -->
         <button class="ts-checkin-btn in" id="tsCheckinBtn"><span class="ts-btn-main">Chấm công</span><span class="ts-btn-sub">Check in</span></button>
         <div class="ts-checkin-status idle" id="tsCheckinStatus">Đang tải...</div>
+        <div class="ts-sync-status" id="tsSyncStatus" hidden></div>
 
         <div class="ts-device-table" id="tsDeviceTable"></div>
       </div>
@@ -2333,6 +2338,7 @@
       setGeoStatus(null);
       updateShiftUI();
       renderCalendar();
+      showToast('✓ Đã ghi Check in lúc ' + time + (late ? ' (muộn)' : '') + ' — đang lưu lên hệ thống…', true);
     }
 
     function doShiftCheckOut(shift, time, early) {
@@ -2345,7 +2351,41 @@
       if (noteInput && early) noteInput.value = '';
       updateShiftUI();
       renderCalendar();
+      showToast('✓ Đã ghi Check out lúc ' + time + (early ? ' (sớm)' : '') + ' — đang lưu lên hệ thống…', true);
     }
+
+    // 2026-09-29: trạng thái đồng bộ lên Google Sheet (hàng đợi ghi bền vững trong task-data.js) —
+    // người dùng thấy ngay "đang lưu / đã lưu / đang tự thử lại", không phải đoán chấm công đã ghi chưa.
+    (function initSyncStatus() {
+      var el = document.getElementById('tsSyncStatus');
+      if (!el) return;
+      var everQueued = false;
+      function hm(ts) { return new Date(ts).toLocaleTimeString('vi-VN'); }
+      window.addEventListener('hiconique:sync-state', function (e) {
+        var d = e.detail || {};
+        if (d.event === 'queued') everQueued = true;
+        if (d.pending > 0) {
+          everQueued = true;
+          el.hidden = false;
+          if (d.event === 'retry') {
+            el.className = 'ts-sync-status warn';
+            el.textContent = 'Chưa lưu được lên hệ thống (mạng/máy chủ chậm) — đang tự thử lại lần ' + d.tries + '. Dữ liệu của bạn vẫn được giữ trên máy, không cần chấm lại.';
+          } else {
+            el.className = 'ts-sync-status saving';
+            el.textContent = 'Đang lưu lên hệ thống… (' + d.pending + ' thao tác)';
+          }
+        } else if (everQueued) {
+          el.hidden = false;
+          el.className = 'ts-sync-status ok';
+          el.textContent = '✓ Đã lưu lên hệ thống' + (d.lastOkAt ? ' lúc ' + hm(d.lastOkAt) : '');
+          if (d.event === 'ok' && /timesheet/i.test(d.action || '')) showToast('✓ Chấm công đã lưu lên hệ thống', true);
+        }
+      });
+      window.addEventListener('hiconique:sync-failed', function () {
+        el.hidden = false; el.className = 'ts-sync-status warn';
+        el.textContent = 'Có thao tác không lưu được lên hệ thống. Hãy báo quản lý hoặc chấm công lại.';
+      });
+    })();
 
     // Calendar — weeks start on Monday (ISO)
     function renderCalendar() {

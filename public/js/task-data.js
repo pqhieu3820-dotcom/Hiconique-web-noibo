@@ -16,50 +16,140 @@ function isUsingGSheets() {
 // đã thêm timeout+retry cho luồng ĐỌC từ 2026-09-19), KHÔNG retry, và lỗi chỉ
 // console.error() — người dùng không hề biết lần lưu đó đã mất, tưởng đã
 // xong vì UI local vẫn hiện đúng dữ liệu vừa nhập.
-function callGSheetsAPI(action, data, id, isRetry) {
-  if (!isUsingGSheets() || !GSHEETS_CONFIG.API_URL) return;
-  // Bẫy phòng hờ: bản thân add()/update()/remove() đã chặn từ trước khi gọi
-  // tới đây, nhưng vài hàm ghi đặc biệt gọi callGSheetsAPI() trực tiếp — chặn
-  // luôn ở đây để không bao giờ có request ghi nào lọt ra ngoài lúc mất mạng.
-  if (typeof Offline !== 'undefined' && !Offline.isOnline()) return;
+// 2026-09-29: HÀNG ĐỢI GHI BỀN VỮNG (persistent outbox). Bản cũ gửi mỗi lệnh ghi
+// 1 lần (timeout 8s + 1 lần thử lại rồi bỏ) — người dùng phản ánh chấm công
+// "phải đợi 5-10 phút mới thấy, đôi khi không ghi được". Nguyên nhân: (1) Apps
+// Script hay chậm 10-20s (cold start/khoá LockService) nên cả 2 lần thử đều trượt
+// và lệnh bị BỎ HẲN; (2) khi mất mạng lệnh bị bỏ im lặng; (3) trong lúc lệnh còn
+// đang bay, chu kỳ làm mới 20s kéo dữ liệu CŨ từ Sheet về ghi đè localStorage nên
+// lượt chấm công vừa bấm biến mất khỏi màn hình. Giờ MỌI lệnh ghi đi qua hàng đợi
+// lưu trong localStorage: gửi TUẦN TỰ (đúng thứ tự add → update, không đua nhau),
+// timeout 25s, tự thử lại với độ trễ tăng dần cho tới khi thành công (kể cả sau
+// khi tải lại trang/có mạng lại), và báo trạng thái qua sự kiện
+// 'hiconique:sync-state' để giao diện hiện "Đang lưu…/Đã lưu". Lệnh add đã có
+// chốt chặn trùng ID phía server (addData) nên gửi lại an toàn.
+var WRITE_QUEUE_KEY = 'hiconique_write_queue';
+var WRITE_QUEUE_LOCK_KEY = 'hiconique_write_queue_lock';
+var WRITE_TIMEOUT_MS = 25000;
+var WRITE_RETRY_DELAYS = [1500, 3000, 6000, 12000, 20000, 30000];
+var WRITE_MAX_TRIES = 12;            // lỗi tất định (server trả error) quá số lần này thì bỏ để không kẹt cả hàng đợi
+var writeQueueBusy = false;
+var writeQueueTimer = null;
+var writeTabId = 'tab_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+var lastWriteOkAt = null;
 
-  function fail(reason) {
-    console.error('GSheets API error (' + action + '):', reason);
-    if (isRetry) {
-      // Đã thử lại 1 lần vẫn lỗi — báo cho UI biết để không im lặng mất dữ
-      // liệu nữa (xem listener 'hiconique:sync-failed' trong portal.js).
-      window.dispatchEvent(new CustomEvent('hiconique:sync-failed', { detail: { action: action, id: id } }));
+function readWriteQueue_() {
+  try { var q = JSON.parse(localStorage.getItem(WRITE_QUEUE_KEY) || '[]'); return Array.isArray(q) ? q : []; }
+  catch (e) { return []; }
+}
+function saveWriteQueue_(q) {
+  try { localStorage.setItem(WRITE_QUEUE_KEY, JSON.stringify(q)); } catch (e) { /* localStorage đầy — bỏ qua */ }
+}
+function emitSyncState_(extra) {
+  var q = readWriteQueue_();
+  var detail = Object.assign({ pending: q.length, lastOkAt: lastWriteOkAt }, extra || {});
+  try { window.dispatchEvent(new CustomEvent('hiconique:sync-state', { detail: detail })); } catch (e) {}
+}
+function writeQueueLockedByOtherTab_() {
+  try {
+    var v = String(localStorage.getItem(WRITE_QUEUE_LOCK_KEY) || '').split('|');
+    return v[0] && v[0] !== writeTabId && (Date.now() - Number(v[1] || 0)) < WRITE_TIMEOUT_MS + 5000;
+  } catch (e) { return false; }
+}
+function touchWriteQueueLock_() {
+  try { localStorage.setItem(WRITE_QUEUE_LOCK_KEY, writeTabId + '|' + Date.now()); } catch (e) {}
+}
+function scheduleWriteQueue_(delay) {
+  clearTimeout(writeQueueTimer);
+  writeQueueTimer = setTimeout(processWriteQueue_, delay);
+}
+
+function callGSheetsAPI(action, data, id) {
+  if (!isUsingGSheets() || !GSHEETS_CONFIG.API_URL) return;
+  var q = readWriteQueue_();
+  q.push({ qid: 'q_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7), action: action, data: data || {}, id: id || '', ts: Date.now(), tries: 0 });
+  saveWriteQueue_(q);
+  emitSyncState_({ event: 'queued', action: action, id: id });
+  processWriteQueue_();
+}
+
+function processWriteQueue_() {
+  if (writeQueueBusy) return;
+  var q = readWriteQueue_();
+  if (!q.length) { emitSyncState_(); return; }
+  // Mất mạng → giữ nguyên trong hàng đợi, tự gửi khi có mạng lại (không bỏ lệnh như trước).
+  if ((typeof Offline !== 'undefined' && !Offline.isOnline()) || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+    scheduleWriteQueue_(5000);
+    return;
+  }
+  if (writeQueueLockedByOtherTab_()) { scheduleWriteQueue_(4000); return; }   // tab khác đang gửi, tránh gửi trùng
+  writeQueueBusy = true;
+  touchWriteQueueLock_();
+  var op = q[0];
+
+  function finish(ok, reason, deterministic) {
+    clearTimeout(timer);
+    writeQueueBusy = false;
+    var cur = readWriteQueue_();
+    var idx = -1;
+    for (var i = 0; i < cur.length; i++) { if (cur[i].qid === op.qid) { idx = i; break; } }
+    if (ok) {
+      if (idx !== -1) cur.splice(idx, 1);
+      saveWriteQueue_(cur);
+      lastWriteOkAt = Date.now();
+      emitSyncState_({ event: 'ok', action: op.action, id: op.id });
+      if (cur.length) scheduleWriteQueue_(50); else emitSyncState_();
       return;
     }
-    setTimeout(function () { callGSheetsAPI(action, data, id, true); }, 1500);
-  }
-
-  try {
-    var params = '?action=' + encodeURIComponent(action);
-    if (id) params += '&id=' + encodeURIComponent(id);
-    if (data && Object.keys(data).length > 0) {
-      params += '&data=' + encodeURIComponent(JSON.stringify(data));
+    console.error('GSheets API error (' + op.action + '):', reason);
+    if (idx !== -1) {
+      cur[idx].tries = (cur[idx].tries || 0) + 1;
+      if (deterministic && cur[idx].tries >= WRITE_MAX_TRIES) {
+        cur.splice(idx, 1);
+        saveWriteQueue_(cur);
+        window.dispatchEvent(new CustomEvent('hiconique:sync-failed', { detail: { action: op.action, id: op.id } }));
+        emitSyncState_({ event: 'dropped', action: op.action, id: op.id });
+        if (cur.length) scheduleWriteQueue_(200);
+        return;
+      }
+      saveWriteQueue_(cur);
+      var delay = WRITE_RETRY_DELAYS[Math.min(cur[idx].tries - 1, WRITE_RETRY_DELAYS.length - 1)];
+      emitSyncState_({ event: 'retry', tries: cur[idx].tries, action: op.action, id: op.id });
+      scheduleWriteQueue_(delay);
     }
-
-    var controller = new AbortController();
-    var timer = setTimeout(function () { controller.abort(); }, 8000);
-
-    fetch(GSHEETS_CONFIG.API_URL + params, {
-      method: 'GET',
-      redirect: 'follow',
-      signal: controller.signal
-    }).then(function(response) {
-      clearTimeout(timer);
-      return response.json();
-    }).then(function(result) {
-      if (result && result.error) fail(result.error);
-    }).catch(function(e) {
-      clearTimeout(timer);
-      fail(e);
-    });
-  } catch (e) {
-    fail(e);
   }
+
+  var controller = new AbortController();
+  var timer = setTimeout(function () { controller.abort(); }, WRITE_TIMEOUT_MS);
+  try {
+    var params = '?action=' + encodeURIComponent(op.action);
+    if (op.id) params += '&id=' + encodeURIComponent(op.id);
+    if (op.data && Object.keys(op.data).length > 0) {
+      params += '&data=' + encodeURIComponent(JSON.stringify(op.data));
+    }
+    fetch(GSHEETS_CONFIG.API_URL + params, { method: 'GET', redirect: 'follow', signal: controller.signal })
+      .then(function (response) { return response.json(); })
+      .then(function (result) {
+        if (result && result.error) {
+          // Xoá 1 dòng đã xoá rồi (gửi lại sau khi lần đầu đã thành công nhưng mất phản hồi) = coi như xong.
+          if (/^delete/i.test(op.action) && /not found/i.test(String(result.error))) { finish(true); return; }
+          finish(false, result.error, !/not found/i.test(String(result.error)));
+          return;
+        }
+        finish(true);
+      })
+      .catch(function (e) { finish(false, e, false); });
+  } catch (e) {
+    finish(false, e, false);
+  }
+}
+
+// Có mạng lại / quay lại tab / tải trang → xả hàng đợi ngay; và định kỳ 10s phòng khi hẹn giờ bị trình duyệt hoãn.
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', function () { scheduleWriteQueue_(200); });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) scheduleWriteQueue_(200); });
+  setInterval(function () { if (!writeQueueBusy && readWriteQueue_().length) processWriteQueue_(); }, 10000);
+  setTimeout(processWriteQueue_, 1500);
 }
 
 function syncToGSheets(type, action, data, id) {
@@ -395,6 +485,26 @@ var TaskManager = (function() {
     return Object.assign({}, winner, { dailyTasks: mergedDaily, progress: totalProgress });
   }
 
+  // Phủ các lệnh ghi CHƯA gửi được lên Sheet (hàng đợi ghi bền vững, xem callGSheetsAPI) lên dữ liệu
+  // server vừa tải về, theo đúng thứ tự — để dữ liệu người dùng vừa nhập không bị bản cũ trên Sheet đè mất.
+  var PENDING_ACTION_TYPE = { addTimesheet: 'timesheet', updateTimesheet: 'timesheet' };
+  function applyPendingWrites_(type, list) {
+    var pend = readWriteQueue_().filter(function (op) { return PENDING_ACTION_TYPE[op.action] === type; });
+    if (!pend.length) return list;
+    var out = list.slice();
+    pend.forEach(function (op) {
+      var id = op.id || (op.data && op.data.id);
+      var idx = -1;
+      for (var i = 0; i < out.length; i++) { if (out[i] && out[i].id === id) { idx = i; break; } }
+      if (idx === -1) {
+        if (/^add/i.test(op.action)) out.unshift(Object.assign({}, op.data));
+      } else {
+        out[idx] = Object.assign({}, out[idx], op.data);
+      }
+    });
+    return out;
+  }
+
   function mergeServerData(storageKey, serverArr) {
     var localArr = [];
     try { localArr = JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch (e) {}
@@ -554,7 +664,10 @@ var TaskManager = (function() {
     });
     getFromGSheets('timesheet', function(timesheet) {
       if (timesheet.length > 0) {
-        localStorage.setItem(STORAGE_KEYS.timesheet, JSON.stringify(timesheet));
+        // 2026-09-29: KHÔNG ghi đè thẳng nữa — gộp với dữ liệu local và phủ lại các lệnh ghi còn
+        // trong hàng đợi (chưa lên được Sheet), nếu không lượt chấm công vừa bấm sẽ biến mất khỏi
+        // màn hình mỗi lần làm mới ngầm 20s cho tới khi Sheet nhận được.
+        localStorage.setItem(STORAGE_KEYS.timesheet, JSON.stringify(applyPendingWrites_('timesheet', mergeServerData(STORAGE_KEYS.timesheet, timesheet))));
       }
       checkDone();
     });
