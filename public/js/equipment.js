@@ -50,11 +50,14 @@
       tpl: [['Loại', 'Điện thoại / Điều hòa / Camera / Máy hủy giấy…', ''], ['Công suất', '', ''], ['Kích thước', '', '']] }
   ];
   var STATUSES = ['Đang dùng', 'Dự phòng', 'Đang sửa', 'Hỏng', 'Thanh lý'];
+  // Đơn vị tính chuẩn (dropdown) — PHẢI khớp EQUIPMENT_UNITS trong gsheets-api-v2.js (dropdown trên Sheet). Chọn "Khác…" để nhập đơn vị riêng.
+  var UNITS = ['cái', 'chiếc', 'bộ', 'cặp', 'đôi', 'hộp', 'thùng', 'cây', 'cuộn', 'ram', 'tờ', 'quyển', 'chai', 'lọ', 'gói', 'túi', 'bao', 'kg', 'lít', 'm', 'm²', 'm³', 'tấm', 'thanh', 'viên'];
+  var EMPTY_CAT = { name: '', prefix: '', tpl: [] };   // form "Thêm mới" chưa chọn nhóm — chưa hiện gì theo nhóm
   // Icon cảnh báo dùng chung toàn app (giống overdue task ở projects.js) — không dùng emoji
   var WARN_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;vertical-align:-2px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
   var STATUS_CLS = { 'Đang dùng': 'ok', 'Dự phòng': 'mute', 'Đang sửa': 'warn', 'Hỏng': 'bad', 'Thanh lý': 'mute' };
   var WARN_DAYS = 60;
-  var state = { view: 'groups', q: '', cat: '', status: '', editingId: null, specs: [], pcId: '', stock: [], history: [] };
+  var state = { view: 'groups', q: '', cat: '', status: '', editingId: null, specs: [], pcId: '', stock: [], history: [], prevCat: '' };
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function num(v) { var n = Number(String(v == null ? '' : v).replace(/[^\d.-]/g, '')); return isNaN(n) ? 0 : n; }
@@ -65,6 +68,7 @@
   function canManage() { return !!(TM && TM.canManageEquipment && TM.canManageEquipment(user())); }
   function toast(msg, bad) { var t = document.createElement('div'); t.className = 'eq-toast' + (bad ? ' bad' : ''); t.textContent = msg; document.body.appendChild(t); setTimeout(function () { t.remove(); }, 2600); }
   function memberName(id) { var m = TM.getMember ? TM.getMember(id) : null; return m ? (m.name || id) : (id || ''); }
+  function formCat(name) { return name ? catOf(name) : EMPTY_CAT; }
   function catOf(name) { for (var i = 0; i < CATS.length; i++) if (CATS[i].name === name) return CATS[i]; return CATS[CATS.length - 1]; }
   function parseSpecs(e) { try { var a = typeof e.specs === 'string' ? JSON.parse(e.specs || '[]') : (e.specs || []); return Array.isArray(a) ? a : []; } catch (x) { return []; } }
   function daysTo(d) { if (!d) return null; var t = new Date(String(d).slice(0, 10) + 'T00:00:00').getTime(); return isNaN(t) ? null : Math.ceil((t - new Date().setHours(0, 0, 0, 0)) / 86400000); }
@@ -268,8 +272,9 @@
   // ---------- Modal ----------
   function fillSelects() {
     var cat = $('efCat'), cur = cat.value;
-    cat.innerHTML = CATS.map(function (c) { return '<option>' + esc(c.name) + '</option>'; }).join('');
+    cat.innerHTML = '<option value="">— Chọn nhóm —</option>' + CATS.map(function (c) { return '<option>' + esc(c.name) + '</option>'; }).join('');
     if (cur) cat.value = cur;
+    fillUnits();
     $('efStatus').innerHTML = STATUSES.map(function (s) { return '<option>' + esc(s) + '</option>'; }).join('');
     var members = TM.getActiveMembers ? TM.getActiveMembers() : (TM.getMembers ? TM.getMembers() : []);
     $('efAssignee').innerHTML = '<option value="">— Chưa gán / dùng chung —</option>' + members.map(function (m) { return '<option value="' + esc(m.id) + '">' + esc(m.name || m.id) + '</option>'; }).join('');
@@ -277,6 +282,25 @@
     fc.innerHTML = '<option value="">Tất cả nhóm</option>' + CATS.map(function (c) { return '<option>' + esc(c.name) + '</option>'; }).join(''); fc.value = fcv;
     var fs = $('eqStatus'), fsv = fs.value;
     fs.innerHTML = '<option value="">Mọi tình trạng</option>' + STATUSES.map(function (s) { return '<option>' + esc(s) + '</option>'; }).join(''); fs.value = fsv;
+  }
+  // ---- Đơn vị: dropdown chuẩn + "Khác…" (nhập tay) ----
+  function fillUnits() {
+    var u = $('efUnit'), cur = u.value;
+    u.innerHTML = '<option value="">— Chọn đơn vị —</option>' + UNITS.map(function (x) { return '<option>' + esc(x) + '</option>'; }).join('') + '<option value="__other">Khác… (nhập tay)</option>';
+    if (cur) u.value = cur;
+  }
+  function setUnit(v) {
+    v = String(v || '').trim();
+    var u = $('efUnit'), other = $('efUnitOther');
+    if (!v) { u.value = ''; other.hidden = true; other.value = ''; return; }
+    if (UNITS.indexOf(v) !== -1) { u.value = v; other.hidden = true; other.value = ''; }
+    else { u.value = '__other'; other.hidden = false; other.value = v; }
+  }
+  function getUnit() { var u = $('efUnit').value; return u === '__other' ? $('efUnitOther').value.trim() : u; }
+  function fillHintLists() {
+    var uniq = function (f) { var s = {}; TM.getEquipment().forEach(function (e) { if (e[f]) s[String(e[f]).trim()] = 1; }); return Object.keys(s).sort(function (a, b) { return a.localeCompare(b, 'vi'); }); };
+    $('eqBrandList').innerHTML = uniq('brand').map(function (n) { return '<option value="' + esc(n) + '">'; }).join('');
+    $('eqSupList').innerHTML = uniq('supplier').map(function (n) { return '<option value="' + esc(n) + '">'; }).join('');
   }
   var infoTimer = null;
   function renderPcInfoOnly() { clearTimeout(infoTimer); infoTimer = setTimeout(renderPcBox, 500); }
@@ -317,22 +341,27 @@
   }
 
   function refreshTypeList() {
-    $('eqTypeList').innerHTML = catOf($('efCat').value).tpl.map(function (t) { return '<option value="' + esc(t[0]) + '">'; }).join('');
-    var cat = catOf($('efCat').value), sup = !!cat.supply;
+    var cat = formCat($('efCat').value), sup = !!cat.supply, picked = !!cat.name;
+    $('eqTypeList').innerHTML = cat.tpl.map(function (t) { return '<option value="' + esc(t[0]) + '">'; }).join('');
     Array.prototype.forEach.call(document.querySelectorAll('[data-supply]'), function (n) { n.hidden = !sup; });
+    // Chưa chọn nhóm: chưa hiện thông số/linh kiện (VD Bàn phím, Chuột chỉ hiện khi chọn nhóm Máy tính)
+    Array.prototype.forEach.call(document.querySelectorAll('[data-needcat]'), function (n) { n.hidden = !picked; });
+    $('eqPickCat').hidden = picked;
     $('eqNameList').innerHTML = (cat.names || []).map(function (n) { return '<option value="' + esc(n) + '">'; }).join('');
     $('eqLocList').innerHTML = locSuggestions().map(function (n) { return '<option value="' + esc(n) + '">'; }).join('');
     $('efPriceLbl').textContent = sup ? 'Đơn giá (₫ / đơn vị)' : 'Giá mua (₫)';
-    if (sup && !$('efUnit').value && cat.unit) $('efUnit').value = cat.unit;
+    if (sup && !getUnit() && cat.unit) setUnit(cat.unit);
+    fillHintLists();
   }
   // Luôn có sẵn 1 dòng trống cho các loại "mặc định" của nhóm (VD: Bàn phím, Chuột ở Máy tính) — không cần bấm "Điền mẫu theo nhóm"
   function ensureDefaultParts(catName) {
-    var parts = catOf(catName).defaultParts; if (!parts) return;
+    var parts = formCat(catName).defaultParts; if (!parts) return;
     var have = {}; state.specs.forEach(function (s) { have[s.type] = true; });
     parts.forEach(function (t) { if (!have[t]) state.specs.push({ type: t, name: '', spec: '', qty: '1' }); });
   }
   function suggestCode() {
-    var c = catOf($('efCat').value), used = {};
+    var c = formCat($('efCat').value), used = {};
+    if (!c.prefix) return '';
     TM.getEquipment().forEach(function (e) { used[e.code] = true; });
     for (var i = 1; i < 1000; i++) { var code = c.prefix + '-' + ('00' + i).slice(-3); if (!used[code]) return code; }
     return '';
@@ -407,15 +436,15 @@
     fillSelects();
     var g = function (k) { return src && src[k] != null ? src[k] : ''; };
     $('eqModalTitle').textContent = e ? e.name : (cloneFrom ? 'Nhân bản' : 'Thêm tài sản / vật tư');
-    $('efCat').value = src ? catOf(g('category')).name : (state.cat || CATS[0].name);
+    $('efCat').value = src ? catOf(g('category')).name : (state.cat || '');   // thêm mới: chưa chọn nhóm (trừ khi đang lọc theo 1 nhóm)
+    state.prevCat = $('efCat').value;
     $('efName').value = cloneFrom ? g('name') + ' (bản sao)' : g('name');
     $('efBrand').value = g('brand'); $('efModel').value = g('model'); $('efSerial').value = cloneFrom ? '' : g('serial');
     $('efStatus').value = g('status') || 'Đang dùng'; $('efAssignee').value = cloneFrom ? '' : g('assigneeId'); $('efLocation').value = g('location');
     $('efBuy').value = String(g('purchaseDate')).slice(0, 10); $('efWar').value = String(g('warrantyUntil')).slice(0, 10);
     $('efPrice').value = g('price') ? Number(String(g('price')).replace(/[^\d]/g, '')).toLocaleString('vi-VN') : ''; $('efSupplier').value = g('supplier');
-    $('efQty').value = g('qty'); $('efUnit').value = g('unit'); $('efMin').value = g('minQty'); $('efNote').value = g('note');
+    $('efQty').value = g('qty'); setUnit(g('unit')); $('efMin').value = g('minQty'); $('efNote').value = g('note');
     $('efCode').value = e ? g('code') : suggestCode();
-    $('efUnit').value = g('unit');
     state.specs = src ? parseSpecs(src).map(function (s) { return { type: s.type || '', name: s.name || '', spec: s.spec || '', qty: s.qty || '1' }; }) : [];
     state.pcId = (src && !cloneFrom) ? (g('pcId') || '') : '';
     state.stock = src ? stockRows(src) : [];
@@ -429,7 +458,7 @@
     $('eqSaveBtn').hidden = !can; $('eqAddSpec').hidden = !can; $('eqPreset').hidden = !can;
     $('eqHideBtn').hidden = !(can && e); $('eqCloneBtn').hidden = !(can && e);
     $('eqModal').classList.add('active');
-    if (can && fromReport) { $('efCat').value = 'Máy tính'; applyReport(fromReport); }
+    if (can && fromReport) { $('efCat').value = 'Máy tính'; state.prevCat = 'Máy tính'; applyReport(fromReport); }
     if (can) setTimeout(function () { $('efName').focus(); }, 30);
   }
   // Hộp xác nhận tự dựng — quy tắc dự án: KHÔNG dùng confirm()/alert() gốc của trình duyệt
@@ -446,18 +475,19 @@
     ev.preventDefault();
     var u = user();
     if (!u || !canManage()) { toast('Chỉ CEO/quản lý được thêm hoặc sửa tài sản', true); return; }
+    if (!$('efCat').value) { toast('Chọn nhóm trước khi lưu', true); $('efCat').focus(); return; }
     var name = $('efName').value.trim();
     if (!name) { toast('Nhập tên tài sản', true); return; }
     var data = {
       code: $('efCode').value.trim(), name: name, category: $('efCat').value, brand: $('efBrand').value.trim(), model: $('efModel').value.trim(),
       serial: $('efSerial').value.trim(), location: $('efLocation').value.trim(), assigneeId: $('efAssignee').value, status: $('efStatus').value,
       purchaseDate: $('efBuy').value, warrantyUntil: $('efWar').value, price: String($('efPrice').value).replace(/[^\d]/g, ''), supplier: $('efSupplier').value.trim(),
-      qty: catOf($('efCat').value).supply ? String(state.stock.length ? stockTotal(state.stock) : $('efQty').value.trim()) : '', stock: catOf($('efCat').value).supply ? JSON.stringify(state.stock.filter(function (r) { return r.loc && num(r.qty) > 0; })) : '', unit: catOf($('efCat').value).supply ? $('efUnit').value.trim() : '', minQty: catOf($('efCat').value).supply ? $('efMin').value.trim() : '',
+      qty: formCat($('efCat').value).supply ? String(state.stock.length ? stockTotal(state.stock) : $('efQty').value.trim()) : '', stock: formCat($('efCat').value).supply ? JSON.stringify(state.stock.filter(function (r) { return r.loc && num(r.qty) > 0; })) : '', unit: formCat($('efCat').value).supply ? getUnit() : '', minQty: formCat($('efCat').value).supply ? $('efMin').value.trim() : '',
       specs: JSON.stringify(readSpecs()), note: $('efNote').value.trim(), pcId: $('efCat').value === 'Máy tính' ? (state.pcId || '') : ''
     };
     var dup = TM.getEquipment().filter(function (x) { return data.code && x.code === data.code && x.id !== state.editingId; })[0];
     if (dup) { toast('Mã tài sản "' + data.code + '" đã dùng cho "' + dup.name + '"', true); return; }
-    if (!catOf($('efCat').value).supply) { data.stock = ''; }
+    if (!formCat($('efCat').value).supply) { data.stock = ''; }
     var ok = state.editingId ? TM.updateEquipment(state.editingId, data, u) : TM.createEquipment(data, u);
     if (!ok) { toast('Không lưu được', true); return; }
     toast(state.editingId ? 'Đã cập nhật' : 'Đã thêm vào danh sách');
@@ -495,11 +525,16 @@
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
     $('eqForm').addEventListener('submit', save);
     $('efCat').addEventListener('change', function () {
+      // Đổi nhóm: bỏ các dòng mặc định còn TRỐNG của nhóm cũ (VD Bàn phím/Chuột khi rời nhóm Máy tính)
+      var prev = formCat(state.prevCat);
+      if (prev.defaultParts) state.specs = state.specs.filter(function (s) { return !(prev.defaultParts.indexOf(s.type) !== -1 && !s.name && !s.spec); });
+      state.prevCat = this.value;
       ensureDefaultParts(this.value); renderSpecRows();
-      $('efUnit').value = '';
+      setUnit('');
       refreshTypeList(); renderPcBox();
       if (!state.editingId) $('efCode').value = suggestCode();
     });
+    $('efUnit').addEventListener('change', function () { $('efUnitOther').hidden = this.value !== '__other'; if (this.value === '__other') $('efUnitOther').focus(); });
     $('eqAddStock').addEventListener('click', function () { state.stock.push({ loc: '', qty: '' }); renderStock(); var r = $('eqStockRows').lastElementChild; if (r) r.querySelector('input').focus(); });
     $('eqStockRows').addEventListener('input', function (e) {
       var row = e.target.closest('.eq-stock-row'); if (!row || !e.target.dataset.f) return;
@@ -515,7 +550,7 @@
     $('eqAddSpec').addEventListener('click', function () { state.specs.push({ type: '', name: '', spec: '', qty: '1' }); renderSpecRows(); var r = $('eqSpecRows').lastElementChild; if (r) r.querySelector('input').focus(); });
     $('eqPreset').addEventListener('click', function () {
       var have = {}; state.specs.forEach(function (s) { have[s.type] = true; });
-      catOf($('efCat').value).tpl.forEach(function (t) { if (!have[t[0]]) state.specs.push({ type: t[0], name: '', spec: '', qty: '1' }); });
+      formCat($('efCat').value).tpl.forEach(function (t) { if (!have[t[0]]) state.specs.push({ type: t[0], name: '', spec: '', qty: '1' }); });
       renderSpecRows();
     });
     $('eqSpecRows').addEventListener('input', function (e) {

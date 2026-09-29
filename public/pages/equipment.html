@@ -115,6 +115,7 @@
     .eq-toast.bad { border-color: var(--eq-bad); }
 
     @media (max-width: 1100px) { .eq-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .eq-kpi:last-child:nth-child(odd) { grid-column: 1 / -1; } }
+    .eq-modal [hidden] { display: none !important; }
     /* Chống tràn ngang: mọi ô lưới/flex phải được phép co (min-width:0) và chữ dài phải xuống hàng */
     .eq-modal, .eq-modal form { min-width: 0; }
     .eq-modal-body > div, .eq-field, .eq-pc { min-width: 0; }
@@ -201,21 +202,21 @@
         <div class="eq-modal-body">
           <div>
             <div class="eq-form-grid">
-              <div class="eq-field"><label class="eq-label" for="efCat">Nhóm *</label><select class="eq-select" id="efCat"></select></div>
+              <div class="eq-field"><label class="eq-label" for="efCat">Nhóm *</label><select class="eq-select" id="efCat" required></select></div>
               <div class="eq-field"><label class="eq-label" for="efCode">Mã tài sản</label><input class="eq-input" id="efCode" maxlength="40" placeholder="Tự đề xuất theo nhóm"></div>
               <div class="eq-field full"><label class="eq-label" for="efName">Tên *</label><input class="eq-input" id="efName" required maxlength="160" list="eqNameList" placeholder="VD: PC thiết kế phòng KTS 01 · Bút bi Thiên Long · Khung giàn giáo 1.7m"></div>
-              <div class="eq-field"><label class="eq-label" for="efBrand">Hãng</label><input class="eq-input" id="efBrand" maxlength="60"></div>
+              <div class="eq-field"><label class="eq-label" for="efBrand">Hãng</label><input class="eq-input" id="efBrand" maxlength="60" list="eqBrandList"></div>
               <div class="eq-field"><label class="eq-label" for="efModel">Model</label><input class="eq-input" id="efModel" maxlength="80"></div>
               <div class="eq-field"><label class="eq-label" for="efSerial">Số serial</label><input class="eq-input" id="efSerial" maxlength="80"></div>
               <div class="eq-field"><label class="eq-label" for="efStatus">Tình trạng</label><select class="eq-select" id="efStatus"></select></div>
               <div class="eq-field"><label class="eq-label" for="efAssignee">Người sử dụng</label><select class="eq-select" id="efAssignee"></select></div>
-              <div class="eq-field"><label class="eq-label" for="efLocation">Vị trí</label><input class="eq-input" id="efLocation" maxlength="100" placeholder="VD: Phòng KTS, Tầng 2"></div>
+              <div class="eq-field"><label class="eq-label" for="efLocation">Vị trí</label><input class="eq-input" id="efLocation" maxlength="100" list="eqLocList" placeholder="VD: Phòng KTS, Tầng 2 · Kho công ty"></div>
               <div class="eq-field"><label class="eq-label" for="efBuy">Ngày mua</label><input class="eq-input" id="efBuy" type="date"></div>
               <div class="eq-field"><label class="eq-label" for="efWar">Hết bảo hành</label><input class="eq-input" id="efWar" type="date"></div>
               <div class="eq-field"><label class="eq-label" id="efPriceLbl" for="efPrice">Giá mua (₫)</label><input class="eq-input" id="efPrice" type="text" data-money-input inputmode="numeric" placeholder="VD: 25.000.000"></div>
-              <div class="eq-field"><label class="eq-label" for="efSupplier">Nhà cung cấp</label><input class="eq-input" id="efSupplier" maxlength="120"></div>
+              <div class="eq-field"><label class="eq-label" for="efSupplier">Nhà cung cấp</label><input class="eq-input" id="efSupplier" maxlength="120" list="eqSupList"></div>
               <div class="eq-field" data-supply><label class="eq-label" for="efQty">Số lượng tồn (tự cộng khi có phân bổ)</label><input class="eq-input" id="efQty" inputmode="decimal"></div>
-              <div class="eq-field" data-supply><label class="eq-label" for="efUnit">Đơn vị</label><input class="eq-input" id="efUnit" maxlength="20" placeholder="cái, bộ, hộp, ram, m², tấm…"></div>
+              <div class="eq-field" data-supply><label class="eq-label" for="efUnit">Đơn vị</label><select class="eq-select" id="efUnit"></select><input class="eq-input" id="efUnitOther" maxlength="20" placeholder="Nhập đơn vị" hidden style="margin-top:6px;"></div>
               <div class="eq-field" data-supply><label class="eq-label" for="efMin">Tồn tối thiểu (cảnh báo)</label><input class="eq-input" id="efMin" inputmode="decimal"></div>
               <div class="eq-field full"><label class="eq-label" for="efNote">Ghi chú</label><textarea class="eq-textarea" id="efNote" maxlength="1000"></textarea></div>
             </div>
@@ -247,18 +248,21 @@
               <div class="eq-pc-row"><select class="eq-select" id="eqPcPick"></select><button class="eq-btn eq-btn-sm" type="button" id="eqPcApply">Nhập / đồng bộ cấu hình</button></div>
               <div id="eqPcInfo"></div>
             </div>
-            <div class="eq-specs-head">
+            <p class="eq-sub" id="eqPickCat" style="margin:4px 0 0;">Chọn <b>Nhóm</b> ở bên trái trước — các ô thông số, linh kiện và số lượng phù hợp với nhóm đó sẽ hiện ra (VD: chọn <b>Máy tính</b> mới có Bàn phím, Chuột, CPU, RAM…).</p>
+            <div class="eq-specs-head" data-needcat>
               <div class="eq-label" style="margin:0;" id="eqSpecsTitle">Linh kiện / thông số</div>
               <div style="display:flex;gap:6px;flex-wrap:wrap;">
                 <button class="eq-btn eq-btn-sm" type="button" id="eqPreset">Điền mẫu theo nhóm</button>
                 <button class="eq-btn eq-btn-sm" type="button" id="eqAddSpec">+ Thêm dòng</button>
               </div>
             </div>
-            <div class="eq-spec-cols"><span>Loại</span><span>Tên / Model</span><span>Thông số</span><span>SL</span><span></span></div>
-            <div class="eq-spec-rows" id="eqSpecRows"></div>
+            <div class="eq-spec-cols" data-needcat><span>Loại</span><span>Tên / Model</span><span>Thông số</span><span>SL</span><span></span></div>
+            <div class="eq-spec-rows" id="eqSpecRows" data-needcat></div>
             <datalist id="eqTypeList"></datalist>
             <datalist id="eqNameList"></datalist>
-            <p class="eq-sub" style="margin-top:10px;">Ví dụ máy tính: <b>RAM</b> · Kingston Fury · DDR4 3200MHz 16GB · SL 2. Mỗi linh kiện 1 dòng — hệ thống tự tổng hợp số lượng theo loại ở tab "Tổng hợp linh kiện".</p>
+            <datalist id="eqBrandList"></datalist>
+            <datalist id="eqSupList"></datalist>
+            <p class="eq-sub" data-needcat style="margin-top:10px;">Ví dụ máy tính: <b>RAM</b> · Kingston Fury · DDR4 3200MHz 16GB · SL 2. Mỗi linh kiện 1 dòng — hệ thống tự tổng hợp số lượng theo loại ở tab "Tổng hợp linh kiện".</p>
           </div>
         </div>
         <div class="eq-actions">

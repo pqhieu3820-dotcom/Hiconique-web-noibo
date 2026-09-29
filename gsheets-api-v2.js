@@ -3808,3 +3808,50 @@ function cleanScheduleSheet_impl() {
   Logger.log(msg);
   return msg;
 }
+
+// 2026-09-29: dropdown cho các cột cố định của sheet "TB-Thiết bị" (chạy TAY 1 LẦN từ trình chỉnh sửa Apps Script, an toàn chạy lại):
+//   Nhóm / Tình trạng = danh sách CỨNG (không cho gõ giá trị lạ); Đơn vị = danh sách chuẩn nhưng vẫn cho gõ đơn vị riêng (cảnh báo, không chặn);
+//   Người sử dụng = dropdown SỐNG lấy từ cột Mã NV của sheet Thành viên (thành viên mới tự có trong dropdown);
+//   Ngày mua / Hết bảo hành = ngày hợp lệ; Giá mua / Số lượng / Tồn tối thiểu = số >= 0.
+// 3 danh sách dưới PHẢI khớp CATS / STATUSES / UNITS trong public/js/equipment.js (đổi 1 bên thì đổi bên kia rồi chạy lại hàm này).
+const EQUIPMENT_CATEGORIES = ['Máy tính', 'Máy in – Photo', 'Vật tư', 'Thiết bị mạng', 'Màn hình & ngoại vi', 'Văn phòng phẩm', 'Dụng cụ đo đạc', 'Máy móc & dụng cụ thi công', 'Giàn giáo & cốp pha', 'Bảo hộ lao động', 'Nội thất văn phòng', 'Thiết bị khác'];
+const EQUIPMENT_STATUSES = ['Đang dùng', 'Dự phòng', 'Đang sửa', 'Hỏng', 'Thanh lý'];
+const EQUIPMENT_UNITS = ['cái', 'chiếc', 'bộ', 'cặp', 'đôi', 'hộp', 'thùng', 'cây', 'cuộn', 'ram', 'tờ', 'quyển', 'chai', 'lọ', 'gói', 'túi', 'bao', 'kg', 'lít', 'm', 'm²', 'm³', 'tấm', 'thanh', 'viên'];
+
+function applyEquipmentDropdowns() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = findSheet(ss, SHEETS.equipment);
+  if (!sheet) return 'Không tìm thấy sheet TB-Thiết bị';
+  const headers = getHeaders(sheet);
+  const numRows = Math.min(Math.max(sheet.getLastRow() - 1, 0) + 200, sheet.getMaxRows() - 1);
+  const lines = [];
+  function apply(enKey, rule, label) {
+    const col = headers.indexOf(enToViHeader(SHEETS.equipment, enKey));
+    if (col === -1) { lines.push(enKey + ': chưa có cột trên Sheet (sẽ tự thêm khi có dữ liệu) — chạy lại hàm này sau'); return; }
+    const range = sheet.getRange(2, col + 1, numRows, 1);
+    range.clearDataValidations();
+    range.setDataValidation(rule);
+    lines.push(enKey + ': ' + label);
+  }
+  apply('category', SpreadsheetApp.newDataValidation().requireValueInList(EQUIPMENT_CATEGORIES, true).setAllowInvalid(false).build(), 'dropdown ' + EQUIPMENT_CATEGORIES.length + ' nhóm');
+  apply('status', SpreadsheetApp.newDataValidation().requireValueInList(EQUIPMENT_STATUSES, true).setAllowInvalid(false).build(), 'dropdown ' + EQUIPMENT_STATUSES.length + ' tình trạng');
+  apply('unit', SpreadsheetApp.newDataValidation().requireValueInList(EQUIPMENT_UNITS, true).setAllowInvalid(true).build(), 'dropdown ' + EQUIPMENT_UNITS.length + ' đơn vị (cho phép nhập riêng)');
+  const mem = findSheet(ss, SHEETS.members);
+  if (mem) {
+    const mh = getHeaders(mem);
+    const idCol = mh.indexOf(enToViHeader(SHEETS.members, 'id'));
+    if (idCol !== -1) {
+      apply('assigneeId', SpreadsheetApp.newDataValidation().requireValueInRange(mem.getRange(2, idCol + 1, Math.max(mem.getMaxRows() - 1, 1), 1), true).setAllowInvalid(true).build(), 'dropdown sống theo Mã NV của sheet Thành viên');
+    }
+  }
+  const dateRule = SpreadsheetApp.newDataValidation().requireDate().setAllowInvalid(true).setHelpText('Nhập ngày hợp lệ, VD 26/09/2026').build();
+  apply('purchaseDate', dateRule, 'ngày hợp lệ');
+  apply('warrantyUntil', dateRule, 'ngày hợp lệ');
+  const numRule = SpreadsheetApp.newDataValidation().requireNumberGreaterThanOrEqualTo(0).setAllowInvalid(true).setHelpText('Nhập số từ 0 trở lên').build();
+  apply('price', numRule, 'số >= 0');
+  apply('qty', numRule, 'số >= 0');
+  apply('minQty', numRule, 'số >= 0');
+  const report = lines.join('\n');
+  Logger.log(report);
+  return report;
+}
