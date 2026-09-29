@@ -348,9 +348,13 @@ var Offline = (function () {
   // vài người cùng mở app dễ vượt quota thực thi của Apps Script (tài khoản
   // Google cá nhân), sập hẳn cho TẤT CẢ mọi người chứ không riêng máy đó.
   // 5s vẫn nhanh hơn hẳn (gấp 4 lần) mà vẫn an toàn quota.
-  var SILENT_REFRESH_MS = 5000;
+  // 2026-09-29: đo thực tế — 5s x 16 lệnh song song = ~192 lệnh Apps Script/phút/tab làm NGHẼN hàng đợi (12-35s, 404).
+  // Nay: 1 lệnh gói (getBundle) + cache phía server, hẹn giờ 10-15s có độ lệch ngẫu nhiên (các thiết bị không bắn cùng lúc),
+  // bỏ qua khi tab đang ẩn (visibilitychange tự làm mới ngay khi hiện lại).
+  var SILENT_REFRESH_MIN_MS = 10000, SILENT_REFRESH_JITTER_MS = 5000;
   function silentRefresh() {
     if (!online) return;
+    if (document.visibilityState === 'hidden') return;
     if (typeof TaskManager === 'undefined' || !TaskManager.silentRefresh) return;
     TaskManager.silentRefresh();
   }
@@ -375,7 +379,9 @@ var Offline = (function () {
     });
     pingCheck();
     pingTimer = setInterval(pingCheck, PING_INTERVAL_MS);
-    setInterval(silentRefresh, SILENT_REFRESH_MS);
+    (function scheduleSilentRefresh() {
+      setTimeout(function () { silentRefresh(); scheduleSilentRefresh(); }, SILENT_REFRESH_MIN_MS + Math.random() * SILENT_REFRESH_JITTER_MS);
+    })();
     registerServiceWorker();
     initPullToRefresh();
   }

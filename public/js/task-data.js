@@ -609,13 +609,30 @@ var TaskManager = (function() {
     flushRefresh_();
   }
 
+  var refreshBusy_ = false, refreshWaiters_ = [];
   function refreshFromGSheets(callback) {
     gsCacheTime = {};
     if (!isUsingGSheets()) {
       if (callback) callback(false);
       return;
     }
+    // Không chạy chồng 2 lần làm mới (mạng chậm + hẹn giờ 10-15s sẽ dồn lệnh lên Apps Script) — lượt gọi thêm được xếp hàng chờ kết quả lượt đang chạy
+    if (refreshBusy_) { if (callback) refreshWaiters_.push(callback); return; }
+    refreshBusy_ = true;
+    function finish(ok) {
+      refreshBusy_ = false;
+      var waiters = refreshWaiters_; refreshWaiters_ = [];
+      if (callback) callback(ok);
+      waiters.forEach(function (fn) { try { fn(ok); } catch (e) { console.error(e); } });
+    }
+    prefetchBundle(function (mode) {
+      if (mode === 'fail') { finish(false); return; }   // mạng/máy chủ lỗi: bỏ lượt này, KHÔNG bắn 16 lệnh dự phòng
+      gsBundle = mode === 'ok' ? gsBundle : null;
+      refreshAllFromCache_(finish);
+    });
+  }
 
+  function refreshAllFromCache_(callback) {
     var done = 0;
     var total = 16;
     var success = false;
@@ -734,8 +751,64 @@ var TaskManager = (function() {
     return Number(parts[2]) + '/' + Number(parts[1]) + '/' + parts[0];
   }
 
+  // 2026-09-29: BẢNG type -> action đọc (dùng chung getFromGSheets + gói dữ liệu getBundle bên dưới)
+  var API_READ_ACTIONS = {
+      projects: 'getProjects', tasks: 'getTasks', members: 'getMembers',
+      proposals: 'getProposals', timesheet: 'getTimesheet',
+      notifications: 'getNotifications', notices: 'getNotices',
+      documents: 'getDocuments', payslips: 'getPayslips',
+      commissions: 'getCommissions', commissionRates: 'getCommissionRates',
+      priceCatalog: 'getPriceCatalog', financeEntries: 'getFinanceEntries',
+      lightingStandards: 'getLightingStandards', lightingLamps: 'getLightingLamps',
+      lightingFactors: 'getLightingFactors', lightingPlans: 'getLightingPlans',
+      equipment: 'getEquipment', pcReports: 'getPcReports', customers: 'getCustomers', customerLogs: 'getCustomerLogs', staffActivity: 'getStaffActivity', appUsage: 'getAppUsage',
+      receivables: 'getReceivables', bsSnapshots: 'getBsSnapshots', orders: 'getOrders',
+      attendanceLocations: 'getAttendanceLocations'
+    };
+
+  // 2026-09-29: GÓI DỮ LIỆU — thay vì 16 lệnh GET song song mỗi lần làm mới (mỗi lệnh là 1 lần Apps Script chạy, dồn hàng đợi,
+  // 12-35s và 404), gọi 1 lệnh `getBundle` lấy đủ 16 loại; phần còn lại của refreshFromGSheets() đọc từ gói này (không gọi mạng).
+  var REFRESH_TYPES = ['projects', 'tasks', 'members', 'proposals', 'timesheet', 'notifications', 'notices', 'documents', 'payslips',
+    'commissions', 'commissionRates', 'priceCatalog', 'financeEntries', 'receivables', 'bsSnapshots', 'orders'];
+  var gsBundle = null, gsBundleAt = 0, BUNDLE_FRESH_MS = 20000;
+  var gsHashes = {};   // type -> mã băm nội dung lần tải gần nhất (chỉ trong bộ nhớ; mất khi tải lại trang → tải đủ 1 lần)
+  // callback(mode): 'ok' = đã có gói mới; 'legacy' = máy chủ chưa hỗ trợ getBundle (dùng đường cũ 16 lệnh); 'fail' = lỗi mạng/timeout
+  function prefetchBundle(callback) {
+    var actions = REFRESH_TYPES.map(function (ty) { return API_READ_ACTIONS[ty]; });
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, 25000);
+    // Chỉ gửi mã băm của loại đang có bản đầy đủ trong bộ nhớ; server thấy trùng thì KHÔNG gửi lại dữ liệu loại đó
+    var known = {};
+    REFRESH_TYPES.forEach(function (ty) { if (gsHashes[ty] && gsCache[ty] && gsCache[ty].length > 0) known[API_READ_ACTIONS[ty]] = gsHashes[ty]; });
+    var hashParam = Object.keys(known).length ? '&hashes=' + encodeURIComponent(JSON.stringify(known)) : '';
+    fetch(GSHEETS_CONFIG.API_URL + '?action=getBundle&types=' + encodeURIComponent(actions.join(',')) + hashParam, { redirect: 'follow', signal: controller.signal })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        clearTimeout(timer);
+        if (!data || Array.isArray(data) || data.error) { callback('legacy'); return; }   // {error:'Unknown action'} = Apps Script bản cũ
+        var map = {};
+        var hs = data._h || {};
+        REFRESH_TYPES.forEach(function (ty) {
+          var act = API_READ_ACTIONS[ty], v = data[act];
+          if (v && v.same === true && gsCache[ty]) { map[ty] = gsCache[ty]; return; }   // không đổi: dùng lại bản đang có
+          if (Array.isArray(v)) { map[ty] = v; if (hs[act]) gsHashes[ty] = hs[act]; }
+        });
+        gsBundle = map; gsBundleAt = Date.now();
+        if (typeof Offline !== 'undefined') Offline.markSynced();
+        callback('ok');
+      })
+      .catch(function (e) { clearTimeout(timer); console.error('getBundle failed:', e); callback('fail'); });
+  }
+
   function getFromGSheets(type, callback) {
     var now = Date.now();
+    // Có gói dữ liệu còn mới → đọc từ gói, KHÔNG gọi mạng (giữ nguyên quy tắc: mảng rỗng không xoá cache tốt)
+    if (gsBundle && gsBundle[type] && (now - gsBundleAt) < BUNDLE_FRESH_MS) {
+      var fromBundle = gsBundle[type];
+      if (fromBundle.length > 0) { gsCache[type] = fromBundle; gsCacheTime[type] = now; }
+      callback(fromBundle.length > 0 ? fromBundle : (gsCache[type] || []));
+      return;
+    }
     // Cache for 30 seconds — chỉ tin cache khi THẬT SỰ có dữ liệu (mảng rỗng
     // do 1 lần fetch lỗi/timeout KHÔNG được coi là cache hợp lệ, tự thử lại
     // ngay ở lần gọi kế tiếp thay vì khoá cứng cả 30s hoặc lâu hơn).
@@ -752,19 +825,7 @@ var TaskManager = (function() {
     // (e.g. "Mã NV" instead of "id", "Còn làm việc" instead of "active"),
     // which silently broke every .id/.name/.status/.roleLevel lookup after
     // the Sheet was renamed to Vietnamese.
-    var apiReadActions = {
-      projects: 'getProjects', tasks: 'getTasks', members: 'getMembers',
-      proposals: 'getProposals', timesheet: 'getTimesheet',
-      notifications: 'getNotifications', notices: 'getNotices',
-      documents: 'getDocuments', payslips: 'getPayslips',
-      commissions: 'getCommissions', commissionRates: 'getCommissionRates',
-      priceCatalog: 'getPriceCatalog', financeEntries: 'getFinanceEntries',
-      lightingStandards: 'getLightingStandards', lightingLamps: 'getLightingLamps',
-      lightingFactors: 'getLightingFactors', lightingPlans: 'getLightingPlans',
-      equipment: 'getEquipment', pcReports: 'getPcReports', customers: 'getCustomers', customerLogs: 'getCustomerLogs', staffActivity: 'getStaffActivity', appUsage: 'getAppUsage',
-      receivables: 'getReceivables', bsSnapshots: 'getBsSnapshots', orders: 'getOrders',
-      attendanceLocations: 'getAttendanceLocations'
-    };
+    var apiReadActions = API_READ_ACTIONS;
     var action = apiReadActions[type];
     if (!action) { callback([]); return; }
     fetchFromAPI(action, function (data) {

@@ -670,7 +670,77 @@ function enToViValue(sheetName, enKey, val) {
 function doGet(e) { return handleRequest(e); }
 function doPost(e) { return handleRequest(e); }
 
+// ===================== Hiệu năng (2026-09-29) =====================
+// Điều tra: mỗi lần làm mới, mỗi trang web bắn 16 lệnh GET song song mỗi 5s (~192 lệnh/phút/tab); mỗi lệnh lại mở cả bảng tính
+// (>100 tab) + liệt kê hết tab + đọc lại cả sheet → nghẽn hàng đợi (giới hạn ~30 lệnh đồng thời), 12-35s và 404. Cách xử lý:
+//   1) getBundle: 1 lệnh trả về nhiều loại dữ liệu (1 lần mở bảng tính) — client gộp 16 lệnh thành 1;
+//   2) CacheService: kết quả các lệnh get* được nhớ 15s, TỰ HỦY ngay khi có bất kỳ lệnh ghi nào (tăng số phiên bản 'rv');
+//   3) getSS_/findSheet nhớ trong phạm vi 1 lần thực thi: không mở lại bảng tính, không liệt kê lại toàn bộ tab.
+// Sửa tay trực tiếp trên Sheet hoặc trigger nền không tự hủy cache → dữ liệu có thể cũ tối đa 15s (chấp nhận được).
+var SS_MEMO_ = null;
+function getSS_() { return SS_MEMO_ || (SS_MEMO_ = SpreadsheetApp.openById(SPREADSHEET_ID)); }
+var SHEET_MEMO_ = null;
+var READ_CACHE_TTL_S = 15;
+var READ_CACHE_MAX_CHARS = 90000;   // CacheService giới hạn ~100KB/khoá; lớn hơn thì bỏ qua cache
+function isReadAction_(a) { return typeof a === 'string' && /^get[A-Z]/.test(a); }
+function readCacheVersion_() { try { return CacheService.getScriptCache().get('rv') || '0'; } catch (err) { return '0'; } }
+function bumpReadCacheVersion_() { try { CacheService.getScriptCache().put('rv', String(Date.now()), 21600); } catch (err) { /* bỏ qua */ } }
+function readCacheKey_(params) {
+  var p = {};
+  Object.keys(params).sort().forEach(function (k) { if (k !== 'callback') p[k] = params[k]; });
+  return 'r' + readCacheVersion_() + '_' + md5Hex_(JSON.stringify(p));
+}
+function jsonOut_(text) { return ContentService.createTextOutput(text).setMimeType(ContentService.MimeType.JSON); }
+
+function md5Hex_(s) {
+  return Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, s).map(function (b) { return ('0' + (b & 0xff).toString(16)).slice(-2); }).join('');
+}
+
+// "CHỈ TẢI PHẦN ĐÃ ĐỔI": client gửi kèm `hashes` = {getProjects:'<md5>', ...} của bản đang có; loại nào nội dung không đổi thì trả {same:true}
+// (không gửi lại dữ liệu), loại nào đổi thì trả mảng mới; luôn kèm `_h` = mã băm hiện tại của từng loại để lần sau so.
+function handleBundle_(params) {
+  const actions = String(params.types || '').split(',').map(function (s) { return s.trim(); }).filter(isReadAction_).slice(0, 40);
+  let known = {};
+  try { known = JSON.parse(params.hashes || '{}') || {}; } catch (err) { known = {}; }
+  const out = { _h: {} };
+  actions.forEach(function (a) {
+    try {
+      const body = handleRequest({ parameter: { action: a } }).getContent();
+      const h = md5Hex_(body);
+      out._h[a] = h;
+      out[a] = (known[a] && known[a] === h) ? { same: true } : JSON.parse(body);
+    } catch (err) { out[a] = { error: String((err && err.message) || err) }; }
+  });
+  return jsonOut_(JSON.stringify(out));
+}
+
 function handleRequest(e) {
+  const params = (e && e.parameter) || {};
+  const action = params.action;
+  if (action === 'getBundle') return handleBundle_(params);
+  if (isReadAction_(action)) {
+    let cache = null, key = '';
+    try {
+      cache = CacheService.getScriptCache();
+      key = readCacheKey_(params);
+      const hit = cache.get(key);
+      if (hit) return jsonOut_(hit);
+    } catch (err) { cache = null; }
+    const out = handleRequestImpl_(e);
+    if (cache) {
+      try {
+        const body = out.getContent();
+        if (body.length <= READ_CACHE_MAX_CHARS && body.indexOf('{"error"') !== 0) cache.put(key, body, READ_CACHE_TTL_S);
+      } catch (err) { /* không cache được thì thôi */ }
+    }
+    return out;
+  }
+  const res = handleRequestImpl_(e);
+  if (action && action !== 'ping' && action !== 'resolveMapLink') bumpReadCacheVersion_();   // có ghi → mọi cache đọc cũ mất hiệu lực
+  return res;
+}
+
+function handleRequestImpl_(e) {
   try {
     const params = e.parameter || {};
     const action = params.action;
@@ -692,7 +762,7 @@ function handleRequest(e) {
       return ContentService.createTextOutput(JSON.stringify(resolveMapLink_(params.url))).setMimeType(ContentService.MimeType.JSON);
     }
 
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = getSS_();
     let result;
 
     if (action === 'getProjects') {
@@ -1083,17 +1153,28 @@ function normalizeName(s) {
 }
 function findSheet(ss, sheetName) {
   const target = normalizeName(sheetName);
-  const sheets = ss.getSheets();
-  for (let i = 0; i < sheets.length; i++) {
-    if (normalizeName(sheets[i].getName()) === target) return sheets[i];
+  // Đường nhanh: tên khớp đúng từng ký tự (không cần liệt kê hết tab)
+  const direct = ss.getSheetByName(sheetName);
+  if (direct && normalizeName(direct.getName()) === target) return direct;
+  // Đường chậm (tên khác dạng Unicode/khoảng trắng): dựng bảng tra 1 lần cho cả lần thực thi, tab đầu tiên khớp thắng như cũ
+  if (!SHEET_MEMO_) {
+    SHEET_MEMO_ = {};
+    const sheets = ss.getSheets();
+    for (let i = 0; i < sheets.length; i++) {
+      const k = normalizeName(sheets[i].getName());
+      if (!(k in SHEET_MEMO_)) SHEET_MEMO_[k] = sheets[i];
+    }
   }
-  return null;
+  return SHEET_MEMO_[target] || null;
 }
 // Only creates when the tab genuinely does not exist (matched via findSheet,
 // so a Unicode/whitespace variant is reused, never duplicated). Used by the
 // WRITE paths — reads must never create (see getAllData).
 function getOrCreateSheet(ss, sheetName) {
-  return findSheet(ss, sheetName) || ss.insertSheet(sheetName);
+  const found = findSheet(ss, sheetName);
+  if (found) return found;
+  SHEET_MEMO_ = null;   // vừa tạo tab mới → bảng tra cũ hết đúng
+  return ss.insertSheet(sheetName);
 }
 
 function getAllData(ss, sheetName) {
