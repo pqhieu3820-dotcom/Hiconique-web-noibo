@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Chấm công · HICONIQUE</title>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Be+Vietnam+Pro:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/reset.css">
   <link rel="stylesheet" href="/css/tokens.css">
   <link rel="stylesheet" href="/css/portal.css">
@@ -236,7 +236,7 @@
     .ts-confirm-ok { background: var(--ts-bronze); color: #0B0D10; }
 
     /* Bảng thiết bị đã đăng ký chấm công (tối đa 2) */
-    .ts-device-table { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--ts-border); }
+    .ts-device-table { text-align: left; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--ts-border); }
     .ts-device-title { font-size: 0.6875rem; color: var(--ts-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
     .ts-device-row {
       display: flex; align-items: center; justify-content: space-between;
@@ -244,7 +244,7 @@
       font-size: 0.8125rem; margin-bottom: 6px;
     }
     .ts-device-row.ts-device-empty { color: var(--ts-muted); font-style: italic; }
-    .ts-device-id { color: var(--ts-text); }
+    .ts-device-id { color: var(--ts-text); text-align: left; flex: 1; min-width: 0; padding-right: 8px; }
     .ts-device-id em { color: var(--ts-bronze); font-style: normal; font-family: inherit; margin-left: 4px; }
     .ts-device-remove {
       border: 1px solid var(--ts-border); background: transparent; color: var(--ts-danger);
@@ -338,7 +338,7 @@
       margin-bottom: 16px;
     }
 
-    .ts-checkin-btn .ts-btn-main { display: block; font-family: 'Cormorant Garamond', 'Times New Roman', Georgia, serif; font-size: 1.75rem; font-weight: 700; letter-spacing: 0.02em; line-height: 1.1; }
+    .ts-checkin-btn .ts-btn-main { display: block; font-family: 'Be Vietnam Pro', 'Inter', -apple-system, sans-serif; font-size: 1.5rem; font-weight: 800; letter-spacing: 0.01em; line-height: 1.15; }
     .ts-checkin-btn .ts-btn-sub { display: block; margin-top: 2px; font-size: 0.6875rem; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.85; }
     .ts-checkin-btn.in { background: var(--ts-bronze); color: #0B0D10; }
     .ts-checkin-btn.in:hover { background: #C7A464; transform: translateY(-1px); }
