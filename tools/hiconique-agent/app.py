@@ -343,13 +343,42 @@ def check_update(cfg, progress=None, exe=None, restart=True):
 
 
 # ---------------- Báo cấu hình phần cứng (trang Thiết bị) ----------------
+HW_SAVED_FILE = os.path.join(DATA_DIR, 'hardware_saved.json')
+
+
+def load_saved_hardware():
+    try:
+        with open(HW_SAVED_FILE, encoding='utf-8') as f:
+            d = json.load(f)
+        return d if isinstance(d, dict) and d.get('specs') is not None else None
+    except Exception:
+        return None
+
+
+def save_hardware(hw):
+    try:
+        with open(HW_SAVED_FILE, 'w', encoding='utf-8') as f:
+            json.dump(hw, f, ensure_ascii=False, indent=1)
+    except Exception as e:
+        log('Lưu cấu hình máy lỗi:', e)
+
+
 def report_hardware(cfg, hw=None):
     """Đọc cấu hình máy (hardware.py) và gửi lên sheet TB-Máy đã báo. Trả về (ok, hw|error_str)."""
     try:
         import hardware
-        hw = hw or hardware.collect(send_serials=cfg['sendSerials'])
+        if hw is None:
+            saved = load_saved_hardware()
+            if saved and saved.get('edited'):
+                hw = saved          # người dùng đã chỉnh sửa tay -> giữ nguyên nội dung đó, không quét đè
+            else:
+                hw = hardware.collect(send_serials=cfg['sendSerials'])
+                hw['_idHost'] = hw.get('hostname', '')
+                hw['edited'] = False
+                hw['savedAt'] = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+                save_hardware(hw)
         rec = {
-            'id': 'pc_%s_%s' % (slug(hw['hostname']), slug(cfg['memberId'])), 'memberId': cfg['memberId'], 'hostname': hw['hostname'],
+            'id': 'pc_%s_%s' % (slug(hw.get('_idHost') or hw['hostname']), slug(cfg['memberId'])), 'memberId': cfg['memberId'], 'hostname': hw['hostname'],
             'agentVersion': VERSION, 'brand': hw['brand'], 'model': hw['model'], 'serial': hw['serial'], 'os': hw['os'],
             'specs': json.dumps(hw['specs'], ensure_ascii=False), 'live': json.dumps(hw['live'], ensure_ascii=False),
             'alerts': json.dumps(hw['alerts'], ensure_ascii=False), 'bootedAt': hw['bootedAt'],
@@ -759,15 +788,22 @@ class ActivityTab(QWidget):
 class HardwareScanThread(QThread):
     done = pyqtSignal(bool, object)
 
-    def __init__(self, cfg, upload=False):
+    def __init__(self, cfg, upload=False, hw=None):
         super().__init__()
         self.cfg = cfg
         self.upload = upload
+        self.hw = hw          # có sẵn dữ liệu (đã chỉnh sửa) -> chỉ gửi lên web, KHÔNG quét lại
 
     def run(self):
         try:
-            import hardware
-            hw = hardware.collect(send_serials=self.cfg['sendSerials'])
+            hw = self.hw
+            if hw is None:
+                import hardware
+                hw = hardware.collect(send_serials=self.cfg['sendSerials'])
+                hw['_idHost'] = hw.get('hostname', '')   # mã bản ghi trên web luôn theo tên máy thật lúc quét, dù sau này tên hiển thị bị sửa
+                hw['edited'] = False
+                hw['savedAt'] = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+                save_hardware(hw)
             if self.upload:
                 ok, _ = report_hardware(self.cfg, hw=hw)
                 self.done.emit(ok, hw)
@@ -782,6 +818,8 @@ class HardwareTab(QWidget):
         super().__init__(parent)
         self.shared = shared
         self.hw = None
+        self.dirty = False
+        self._loading = False
         lay = QVBoxLayout(self)
         lay.setContentsMargins(28, 24, 28, 24)
         lay.setSpacing(10)
@@ -790,18 +828,27 @@ class HardwareTab(QWidget):
         head.setObjectName('h1')
         lay.addWidget(head)
         sub = QLabel('Quét CPU, mainboard, RAM, ổ cứng, card đồ họa, màn hình, pin, bảo mật... của chính máy này. '
-                     'Bấm "Cập nhật lên web" để đẩy ngay lên trang Thiết bị (bình thường app tự gửi mỗi %d giờ).' % shared.cfg['hardwareHours'])
+                     'Nhấp đúp vào một ô để sửa nội dung, rồi bấm "Lưu chỉnh sửa" — phần đã sửa được giữ nguyên cho tới khi bạn bấm '
+                     '"Quét lại phần cứng". "Cập nhật lên web" gửi đúng nội dung đang hiển thị (bình thường app tự gửi mỗi %d giờ).' % shared.cfg['hardwareHours'])
         sub.setWordWrap(True)
         sub.setProperty('muted', True)
         lay.addWidget(sub)
 
         row = QHBoxLayout()
         self.btnScan = QPushButton('Quét lại phần cứng')
-        self.btnScan.clicked.connect(lambda: self.scan(False))
+        self.btnScan.clicked.connect(self.on_scan_clicked)
         row.addWidget(self.btnScan)
+        self.btnSave = QPushButton('Lưu chỉnh sửa')
+        self.btnSave.setEnabled(False)
+        self.btnSave.clicked.connect(self.save_edits)
+        row.addWidget(self.btnSave)
+        self.btnDiscard = QPushButton('Hủy chỉnh sửa')
+        self.btnDiscard.setEnabled(False)
+        self.btnDiscard.clicked.connect(self.discard_edits)
+        row.addWidget(self.btnDiscard)
         self.btnUpload = QPushButton('Cập nhật lên web')
         self.btnUpload.setObjectName('primary')
-        self.btnUpload.clicked.connect(lambda: self.scan(True))
+        self.btnUpload.clicked.connect(self.upload_current)
         row.addWidget(self.btnUpload)
         row.addStretch(1)
         self.lblStatus = QLabel('')
@@ -821,8 +868,9 @@ class HardwareTab(QWidget):
         self.table.setShowGrid(False)
         self.table.setWordWrap(True)
         self.table.setTextElideMode(Qt.ElideNone)
-        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectItems)
+        self.table.setEditTriggers(QAbstractItemView.DoubleClicked | QAbstractItemView.EditKeyPressed)   # nhấp đúp (hoặc F2) để sửa
+        self.table.itemChanged.connect(self.on_item_changed)
         lay.addWidget(self.table, 2)
 
         self.txtAlerts = QTextEdit()
@@ -831,32 +879,33 @@ class HardwareTab(QWidget):
         self.txtAlerts.setPlaceholderText('Không có cảnh báo.')
         lay.addWidget(self.txtAlerts)
 
-        QTimer.singleShot(300, lambda: self.scan(False))
+        saved = load_saved_hardware()
+        if saved:
+            # Có dữ liệu đã lưu (đã sửa hoặc lần quét trước) -> hiện luôn, KHÔNG tự quét đè lên phần đã chỉnh sửa
+            self.hw = saved
+            self.render(saved)
+            self.lblStatus.setText('Đang hiển thị dữ liệu %s lúc %s' % ('đã chỉnh sửa' if saved.get('edited') else 'quét', saved.get('savedAt', '?')))
+        else:
+            QTimer.singleShot(300, lambda: self.scan(False))
 
-    def scan(self, upload):
-        self.btnScan.setEnabled(False)
-        self.btnUpload.setEnabled(False)
-        self.lblStatus.setText('Đang quét… (có thể mất 10–20 giây)')
-        self.hwThread = HardwareScanThread(self.shared.cfg, upload=upload)
-        self.hwThread.done.connect(lambda ok, hw: self.on_done(ok, hw, upload))
-        self.hwThread.start()
-
-    def on_done(self, ok, hw, upload):
-        self.btnScan.setEnabled(True)
-        self.btnUpload.setEnabled(True)
-        if not ok or isinstance(hw, str):
-            self.lblStatus.setText('Lỗi: %s' % hw)
-            return
-        self.hw = hw
+    # ---- hiển thị / theo dõi chỉnh sửa ----
+    def render(self, hw):
+        self._loading = True
         self.table.setRowCount(0)
         header = [('Máy', hw.get('hostname', ''), ' '.join(x for x in (hw.get('brand'), hw.get('model')) if x)),
                   ('Hệ điều hành', hw.get('os', ''), '')]
         rows = header + [(s['type'], s['name'], s['spec']) for s in hw.get('specs', [])]
         self.table.setRowCount(len(rows))
         for i, (t, n, s) in enumerate(rows):
-            self.table.setItem(i, 0, QTableWidgetItem(t))
+            it0 = QTableWidgetItem(t)
+            if i < 2:
+                it0.setFlags(it0.flags() & ~Qt.ItemIsEditable)   # 2 dòng đầu: nhãn cố định
+            self.table.setItem(i, 0, it0)
             self.table.setItem(i, 1, QTableWidgetItem(n))
-            self.table.setItem(i, 2, QTableWidgetItem(s))
+            it2 = QTableWidgetItem(s)
+            if i == 1:
+                it2.setFlags(it2.flags() & ~Qt.ItemIsEditable)
+            self.table.setItem(i, 2, it2)
         self.table.resizeRowsToContents()
         alerts = hw.get('alerts', [])
         live = hw.get('live', [])
@@ -866,7 +915,97 @@ class HardwareTab(QWidget):
         if live:
             text += 'Tình trạng hiện tại: ' + ' · '.join(live)
         self.txtAlerts.setPlainText(text or 'Không có cảnh báo.')
+        self._loading = False
+        self._set_dirty(False)
+
+    def _set_dirty(self, dirty):
+        self.dirty = dirty
+        self.btnSave.setEnabled(dirty)
+        self.btnDiscard.setEnabled(dirty)
+
+    def on_item_changed(self, item):
+        if self._loading:
+            return
+        self._set_dirty(True)
+        self.table.resizeRowToContents(item.row())
+        self.lblStatus.setText('Có chỉnh sửa chưa lưu — bấm "Lưu chỉnh sửa"')
+
+    def _cell(self, r, c):
+        it = self.table.item(r, c)
+        return it.text().strip() if it else ''
+
+    def save_edits(self):
+        """Ghi nội dung bảng (đã sửa) vào dữ liệu máy và lưu ra file — mở lại app vẫn giữ nguyên."""
+        if not self.hw:
+            return
+        hw = self.hw
+        n = self.table.rowCount()
+        if n >= 1:
+            hw['hostname'] = self._cell(0, 1)
+            orig = ' '.join(x for x in (hw.get('brand'), hw.get('model')) if x)
+            new_bm = self._cell(0, 2)
+            if new_bm != orig:            # chỉ khi có sửa mới ghi đè (hãng/model gộp 1 ô nên không tách lại được)
+                hw['brand'], hw['model'] = new_bm, ''
+        if n >= 2:
+            hw['os'] = self._cell(1, 1)
+        specs = hw.get('specs', [])
+        for i in range(2, n):
+            k = i - 2
+            if k < len(specs):
+                specs[k] = {'type': self._cell(i, 0), 'name': self._cell(i, 1), 'spec': self._cell(i, 2)}
+        hw['edited'] = True
+        hw['savedAt'] = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+        save_hardware(hw)
+        self._set_dirty(False)
+        self.lblStatus.setText('Đã lưu chỉnh sửa lúc %s' % datetime.now().strftime('%H:%M:%S'))
+
+    def discard_edits(self):
+        if self.hw:
+            self.render(self.hw)
+            self.lblStatus.setText('Đã hủy chỉnh sửa chưa lưu')
+
+    # ---- quét / gửi lên web ----
+    def on_scan_clicked(self):
+        if self.dirty and QMessageBox.question(self, 'Quét lại phần cứng',
+                                               'Bạn có chỉnh sửa CHƯA LƯU. Quét lại sẽ ghi đè toàn bộ bảng bằng kết quả quét mới.\nTiếp tục quét?',
+                                               QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
+            return
+        if not self.dirty and self.hw and self.hw.get('edited') and QMessageBox.question(
+                self, 'Quét lại phần cứng',
+                'Bảng đang có nội dung bạn đã chỉnh sửa. Quét lại sẽ thay bằng kết quả quét mới.\nTiếp tục quét?',
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
+            return
+        self.scan(False)
+
+    def upload_current(self):
+        if not self.hw:
+            self.scan(True)
+            return
+        if self.dirty:
+            self.save_edits()
+        self._start_thread(upload=True, hw=self.hw, msg='Đang gửi lên web…')
+
+    def scan(self, upload):
+        self._start_thread(upload=upload, hw=None, msg='Đang quét… (có thể mất 10–20 giây)')
+
+    def _start_thread(self, upload, hw, msg):
+        for b in (self.btnScan, self.btnUpload):
+            b.setEnabled(False)
+        self.lblStatus.setText(msg)
+        self.hwThread = HardwareScanThread(self.shared.cfg, upload=upload, hw=hw)
+        self.hwThread.done.connect(lambda ok, res: self.on_done(ok, res, upload, hw is not None))
+        self.hwThread.start()
+
+    def on_done(self, ok, hw, upload, was_resend):
+        self.btnScan.setEnabled(True)
+        self.btnUpload.setEnabled(True)
+        if not ok or isinstance(hw, str):
+            self.lblStatus.setText('Lỗi: %s' % hw if isinstance(hw, str) else ('Gửi lên web thất bại, thử lại sau' if upload else 'Lỗi quét'))
+            return
         now = datetime.now().strftime('%H:%M:%S')
+        if not was_resend:                 # vừa quét mới -> thay bảng
+            self.hw = hw
+            self.render(hw)
         self.lblStatus.setText(('Đã cập nhật lên web lúc %s' if upload else 'Đã quét lúc %s') % now)
 
 

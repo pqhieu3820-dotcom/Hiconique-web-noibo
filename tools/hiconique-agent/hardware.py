@@ -12,6 +12,8 @@ import re
 import subprocess
 from datetime import datetime
 
+EXTERNAL_BUS = {'USB', 'SD', 'MMC', '1394', 'ISCSI', 'FILE BACKED VIRTUAL', 'VIRTUAL', 'FIBRE CHANNEL', 'SPACES'}
+
 PS = r"""
 $ErrorActionPreference = 'SilentlyContinue'
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
@@ -22,7 +24,14 @@ $bb = Get-CimInstance Win32_BaseBoard
 $cpu = @(Get-CimInstance Win32_Processor | Select-Object Name, NumberOfCores, NumberOfLogicalProcessors, MaxClockSpeed, SocketDesignation, L3CacheSize)
 $mem = @(Get-CimInstance Win32_PhysicalMemory | Select-Object Manufacturer, PartNumber, Capacity, Speed, ConfiguredClockSpeed, SMBIOSMemoryType)
 $arr = Get-CimInstance Win32_PhysicalMemoryArray | Select-Object -First 1 MemoryDevices, MaxCapacity
-$pd = @(Get-PhysicalDisk | Select-Object FriendlyName, MediaType, BusType, Size, HealthStatus, SerialNumber)
+$pd = @(Get-PhysicalDisk | Select-Object DeviceId, FriendlyName, MediaType, BusType, Size, HealthStatus, SerialNumber)
+# Phân loại từng ổ theo Win32_DiskDrive: ổ USB/ổ rời (InterfaceType USB, PNPDeviceID USBSTOR, MediaType External/Removable) bị loại; kèm danh sách ký tự ổ đĩa thuộc từng ổ vật lý
+$dd = @(Get-CimInstance Win32_DiskDrive | ForEach-Object {
+  $d = $_
+  $usb = ($d.InterfaceType -eq 'USB') -or ("$($d.PNPDeviceID)" -like 'USBSTOR*') -or ("$($d.PNPDeviceID)" -like 'USB\*') -or ("$($d.MediaType)" -match 'External|Removable')
+  $letters = @(Get-CimAssociatedInstance -InputObject $d -ResultClassName Win32_DiskPartition | ForEach-Object { Get-CimAssociatedInstance -InputObject $_ -ResultClassName Win32_LogicalDisk } | ForEach-Object { $_.DeviceID })
+  [pscustomobject]@{ Index = $d.Index; Model = $d.Model; Iface = $d.InterfaceType; Media = "$($d.MediaType)"; Usb = [bool]$usb; Letters = $letters }
+})
 $ld = @(Get-CimInstance Win32_LogicalDisk -Filter 'DriveType=3' | Select-Object DeviceID, Size, FreeSpace)
 $vr = @{}
 Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\0*' | ForEach-Object { if ($_.'HardwareInformation.qwMemorySize') { $vr[$_.DriverDesc] = [int64]$_.'HardwareInformation.qwMemorySize' } }
@@ -44,7 +53,7 @@ $mouse = @(Get-CimInstance Win32_PointingDevice | Select-Object Name, Descriptio
 [pscustomobject]@{
   Host = $env:COMPUTERNAME; Manu = $cs.Manufacturer; Model = $cs.Model; Serial = $bios.SerialNumber; BiosVer = $bios.SMBIOSBIOSVersion
   BoardManu = $bb.Manufacturer; BoardProduct = $bb.Product; BoardSerial = $bb.SerialNumber
-  Cpu = $cpu; Mem = $mem; MemSlots = $arr.MemoryDevices; MemMaxKB = $arr.MaxCapacity; Disks = $pd; Logical = $ld; Gpu = $gpu; Mon = $mon
+  Cpu = $cpu; Mem = $mem; MemSlots = $arr.MemoryDevices; MemMaxKB = $arr.MaxCapacity; Disks = $pd; DiskDrives = $dd; Logical = $ld; Gpu = $gpu; Mon = $mon
   OsCaption = $os.Caption; OsBuild = $os.BuildNumber; OsInstall = "$($os.InstallDate)"; OsBoot = "$($os.LastBootUpTime)"; LicStatus = $lic.LicenseStatus
   Battery = $bat; BatDesign = $bs.DesignedCapacity; BatFull = $bf.FullChargedCapacity; SecureBoot = $sb; Tpm = $tpm; Net = $net; Av = $av
   Kbd = $kbd; Mouse = $mouse
@@ -120,10 +129,20 @@ def collect(send_serials=True):
     for (name, spec), q in ram.items():
         add('RAM', name, spec, q)
 
+    # Chỉ ổ cứng gắn TRONG máy: bỏ ổ USB/ổ rời/thẻ nhớ/ổ ảo (VHD)/ổ mạng — dựa cả BusType của Get-PhysicalDisk lẫn
+    # phân loại Win32_DiskDrive (theo số ổ), và chỉ giữ các phân vùng thuộc ổ trong máy.
+    drives = _list(d.get('DiskDrives'))
+    external_idx = set(str(x.get('Index')) for x in drives if x.get('Usb'))
+    internal_letters = set()
+    for x in drives:
+        if not x.get('Usb'):
+            internal_letters.update(str(v).upper() for v in _list(x.get('Letters')))
     physical = _list(d.get('Disks'))
     for k in physical:
         bus = str(k.get('BusType') or '')
         media = str(k.get('MediaType') or '')
+        if bus.upper() in EXTERNAL_BUS or str(k.get('DeviceId')) in external_idx:
+            continue
         is_ssd = media == 'SSD' or bus.upper() == 'NVME' or media == 'SCM'
         add('SSD' if is_ssd else 'HDD', k.get('FriendlyName'), ' '.join(x for x in (_gb(k.get('Size')), bus if bus and bus != 'Unknown' else '') if x))
         hs = str(k.get('HealthStatus') or '')
@@ -137,6 +156,8 @@ def collect(send_serials=True):
         size, free = float(l.get('Size') or 0), float(l.get('FreeSpace') or 0)
         if size <= 0:
             continue
+        if internal_letters and str(l.get('DeviceID')).upper() not in internal_letters:
+            continue   # phân vùng của ổ USB/ổ rời
         parts.append('%s %s' % (l['DeviceID'], _gb(size)))
         live.append('%s trống %s/%s' % (l['DeviceID'], _gb(free), _gb(size)))
         if (size - free) / size > 0.9:

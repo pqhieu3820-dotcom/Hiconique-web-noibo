@@ -2,7 +2,7 @@
   {
     "version": "2.0.2",
     "date": "2026-09-29",
-    "notes": "Sửa lỗi TỰ CẬP NHẬT không hoạt động (máy chủ web chặn yêu cầu không có User-Agent nên nút 'Kiểm tra cập nhật' luôn báo lỗi mạng) — giờ có bản mới thì tự tải về, kiểm SHA-256, ghi đè và khởi động lại, hiện % tiến trình. Giao diện mới: icon ứng dụng đổi sang logo giống icon trên điện thoại, cửa sổ co kéo được với thanh điều hướng bên trái, sửa chữ bị cắt/đè ở các tab (thanh tab, ô nhập, tab Lấy màu, tab Convert), làm lại tab Hẹn giờ tắt máy (đồng hồ đếm ngược lớn + nút chọn nhanh), icon sáng/tối giống trên web. Sửa lỗi ghi log từ luồng phụ ở tab Convert SKM."
+    "notes": "Sửa lỗi TỰ CẬP NHẬT không hoạt động (máy chủ web chặn yêu cầu không có User-Agent nên nút 'Kiểm tra cập nhật' luôn báo lỗi mạng) — giờ có bản mới thì tự tải về, kiểm SHA-256, ghi đè và khởi động lại, hiện % tiến trình. Giao diện mới: icon ứng dụng đổi sang logo giống icon trên điện thoại, cửa sổ co kéo được với thanh điều hướng bên trái, sửa chữ bị cắt/đè ở các tab (thanh tab, ô nhập, tab Lấy màu, tab Convert), làm lại tab Hẹn giờ tắt máy (đồng hồ đếm ngược lớn + nút chọn nhanh), icon sáng/tối giống trên web. Sửa lỗi ghi log từ luồng phụ ở tab Convert SKM. Tab Thông số linh kiện: nhấp đúp vào ô để sửa nội dung rồi bấm 'Lưu chỉnh sửa' — phần đã sửa được giữ nguyên (kể cả sau khi mở lại app, kể cả khi app tự báo lên web mỗi 24 giờ) cho tới khi bấm 'Quét lại phần cứng'; 'Cập nhật lên web' gửi đúng nội dung đang hiển thị. Quét ổ cứng chỉ đọc ổ gắn TRONG máy: bỏ ổ USB/ổ rời/thẻ nhớ/ổ ảo và cả phân vùng của chúng."
   },
   {
     "version": "2.0.1",

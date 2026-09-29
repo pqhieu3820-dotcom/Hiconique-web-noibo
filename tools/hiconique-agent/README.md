@@ -4,6 +4,8 @@ Một ứng dụng Windows duy nhất (1 file .exe), cửa sổ co kéo được
 
 1. **Kiểm soát dữ liệu thao tác** — bật/tạm dừng ghi nhận, xem ứng dụng đã dùng hôm nay (bảng, không phải chỉ số), mở file dữ liệu, gửi ngay lên Hub.
 2. **Thông số linh kiện máy tính** — quét CPU/mainboard/RAM/ổ cứng/card đồ họa/màn hình/pin/bảo mật/card mạng/diệt virus, hiển thị đầy đủ ngay trong app; nút **"Cập nhật lên web"** đẩy ngay lên trang Thiết bị (bình thường app tự gửi mỗi 24 giờ).
+   - **Sửa tay được**: nhấp đúp ô → sửa → **Lưu chỉnh sửa** (lưu ở `%LOCALAPPDATA%\HiconiqueAgent\hardware_saved.json`, mở lại app vẫn giữ). Đã có chỉnh sửa thì app KHÔNG tự quét đè và lần tự báo 24 giờ cũng gửi nội dung đã sửa; chỉ khi bấm **Quét lại phần cứng** mới quét mới (có hỏi xác nhận). Mã bản ghi trên web luôn theo tên máy thật lúc quét (`_idHost`) dù sửa tên hiển thị.
+   - **Ổ cứng chỉ đọc ổ gắn trong máy**: loại ổ USB/ổ rời/thẻ nhớ/ổ ảo/ổ mạng (theo BusType của Get-PhysicalDisk + InterfaceType/PNPDeviceID của Win32_DiskDrive) và cả phân vùng (ký tự ổ đĩa) của chúng.
 3. **Convert Ảnh ↔ SketchUp Material (.skm)** — 3 tab con: Ảnh → SKM, SKM → Ảnh, Cập nhật Thumbnail. Kéo-thả file/thư mục trực tiếp vào danh sách.
 4. **Lấy màu (Pick Color)** — trích màu từ ảnh/màn hình (kính lúp, trích hàng loạt), quản lý danh sách màu (nhập/xuất Excel), canvas đặt chữ có snap, xuất ảnh/Excel hàng loạt.
 5. **Hẹn giờ tắt máy** — đặt giờ/phút, đếm ngược, hủy bất cứ lúc nào.
