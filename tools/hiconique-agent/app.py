@@ -34,7 +34,7 @@ import zipfile
 from ctypes import wintypes
 from datetime import datetime, timezone
 
-VERSION = '2.0.2'
+VERSION = '2.0.3'
 APP_NAME = 'HiconiqueAgent'
 FROZEN = getattr(sys, 'frozen', False)
 BASE = os.path.dirname(os.path.abspath(sys.executable if FROZEN else __file__))
@@ -454,18 +454,45 @@ def unregister_windows():
         pass
 
 
-def fetch_members(cfg):
+MEMBERS_CACHE = os.path.join(DATA_DIR, 'members_cache.json')
+
+
+def load_members_cache():
     try:
-        with urllib.request.urlopen(cfg['apiUrl'] + '?action=getMembers', timeout=25) as r:
-            items = json.loads(r.read().decode('utf-8'))
-        out = []
-        for m in items:
-            if m.get('id') and m.get('name') and m.get('visible', True) is not False:
-                out.append((str(m['name']), str(m['id'])))
-        return sorted(out)
-    except Exception as e:
-        log('Không tải được danh sách thành viên:', e)
+        with open(MEMBERS_CACHE, encoding='utf-8') as f:
+            return [tuple(x) for x in json.load(f)]
+    except Exception:
         return []
+
+
+def fetch_members(cfg, attempts=4, timeout=60, progress=None):
+    """Tải danh sách thành viên từ Hub. Máy chủ Google Sheet đôi lúc trả lời rất chậm (16-35 giây) hoặc lỗi 404 thoáng qua,
+    nên chờ tối đa `timeout` giây/lần và tự thử lại `attempts` lần. Trả về (danh_sách, lỗi_cuối); thành công thì lưu cache ra đĩa."""
+    err = ''
+    for i in range(attempts):
+        if progress:
+            progress(i + 1, attempts)
+        try:
+            with http_open(cfg['apiUrl'] + '?action=getMembers', timeout=timeout) as r:
+                items = json.loads(r.read().decode('utf-8'))
+            out = []
+            for m in items:
+                if m.get('id') and m.get('name') and m.get('visible', True) is not False:
+                    out.append((str(m['name']), str(m['id'])))
+            out = sorted(out)
+            if out:
+                try:
+                    with open(MEMBERS_CACHE, 'w', encoding='utf-8') as f:
+                        json.dump(out, f, ensure_ascii=False)
+                except Exception:
+                    pass
+                return out, ''
+            err = 'danh sách rỗng'
+        except Exception as e:
+            err = str(e)
+            log('Không tải được danh sách thành viên (lần %d/%d): %s' % (i + 1, attempts, e))
+        time.sleep(2)
+    return [], err
 
 
 # ==============================================================================
@@ -3389,6 +3416,19 @@ def try_activate_existing_instance():
     return False
 
 
+class MembersThread(QThread):
+    progress = pyqtSignal(int, int)
+    done = pyqtSignal(list, str)
+
+    def __init__(self, cfg):
+        super().__init__()
+        self.cfg = cfg
+
+    def run(self):
+        out, err = fetch_members(self.cfg, progress=lambda i, n: self.progress.emit(i, n))
+        self.done.emit(out, err)
+
+
 class InstallDialog(QDialog):
     def __init__(self, cfg, parent=None):
         super().__init__(parent)
@@ -3414,15 +3454,32 @@ class InstallDialog(QDialog):
         lay.addWidget(info)
 
         lay.addWidget(QLabel('<b>Chọn tên của bạn:</b>'))
+        comboRow = QHBoxLayout()
         self.combo = QComboBox()
         self.combo.setEditable(True)
-        self.combo.addItem('Đang tải danh sách…')
-        lay.addWidget(self.combo)
-        hint = QLabel('Nếu không thấy tên, hãy nhập mã thành viên (xem sheet NS-Thành viên).')
+        self.combo.setInsertPolicy(QComboBox.NoInsert)
+        self.combo.lineEdit().setPlaceholderText('Chọn tên trong danh sách, hoặc gõ thẳng mã thành viên (VD: NV_XX_010190)')
+        comboRow.addWidget(self.combo, 1)
+        self.btnReload = QPushButton('Tải lại')
+        self.btnReload.setToolTip('Tải lại danh sách thành viên')
+        self.btnReload.clicked.connect(self.load_members)
+        comboRow.addWidget(self.btnReload)
+        lay.addLayout(comboRow)
+        self.lblLoad = QLabel('')
+        self.lblLoad.setProperty('muted', True)
+        self.lblLoad.setWordWrap(True)
+        lay.addWidget(self.lblLoad)
+        hint = QLabel('Nếu không thấy tên (hoặc mạng chậm), cứ gõ thẳng mã thành viên của bạn (xem sheet NS-Thành viên) rồi bấm Cài đặt.')
         hint.setProperty('muted', True)
+        hint.setWordWrap(True)
         lay.addWidget(hint)
 
         self.members = {}
+        self.membersThread = None
+        # hiện ngay danh sách lần trước (nếu có) trong lúc tải bản mới
+        cached = load_members_cache()
+        if cached:
+            self._fill_members(cached)
         QTimer.singleShot(200, self.load_members)
 
         self.agree = QCheckBox('Tôi đã đọc và đồng ý để công ty ghi nhận như trên trên máy tính công ty này.')
@@ -3439,17 +3496,39 @@ class InstallDialog(QDialog):
         lay.addWidget(self.btnInstall)
         lay.addStretch(1)
 
-    def load_members(self):
-        ms = fetch_members(self.cfg)
+    def _fill_members(self, ms):
+        typed = self.combo.currentText().strip()
         self.members = {'%s (%s)' % (n, i): i for n, i in ms}
         self.combo.clear()
         self.combo.addItems(list(self.members.keys()))
-        self.combo.setCurrentText('')
+        self.combo.setCurrentText(typed)   # giữ nguyên chữ người dùng đã gõ dở
+
+    def load_members(self):
+        if self.membersThread is not None and self.membersThread.isRunning():
+            return
+        self.btnReload.setEnabled(False)
+        self.lblLoad.setStyleSheet('')
+        self.lblLoad.setText('Đang tải danh sách thành viên… (mạng chậm có thể mất tới 1–2 phút — bạn có thể gõ mã thành viên ngay)')
+        self.membersThread = MembersThread(self.cfg)
+        self.membersThread.progress.connect(lambda i, n: self.lblLoad.setText(
+            'Đang tải danh sách thành viên… lần %d/%d (mạng chậm có thể mất tới 1–2 phút — bạn có thể gõ mã thành viên ngay)' % (i, n)))
+        self.membersThread.done.connect(self.on_members_loaded)
+        self.membersThread.start()
+
+    def on_members_loaded(self, ms, err):
+        self.btnReload.setEnabled(True)
+        if ms:
+            self._fill_members(ms)
+            self.lblLoad.setStyleSheet('')
+            self.lblLoad.setText('Đã tải %d thành viên — bấm vào ô để chọn tên.' % len(ms))
+        else:
+            self.lblLoad.setStyleSheet('color:#D07070;')
+            self.lblLoad.setText('Chưa tải được danh sách (%s). Bấm "Tải lại", hoặc gõ thẳng mã thành viên vào ô rồi bấm Cài đặt.' % (err or 'mạng chậm'))
 
     def do_install(self):
         sel = self.combo.currentText().strip()
         member = self.members.get(sel) or sel
-        if not member or member.startswith('Đang tải'):
+        if not member:
             self.status.setText('Hãy chọn tên hoặc nhập mã thành viên.')
             return
         if not self.agree.isChecked():
