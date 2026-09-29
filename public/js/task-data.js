@@ -169,6 +169,7 @@ function syncToGSheets(type, action, data, id) {
     lightingPlans: { add: 'addLightingPlan', update: 'updateLightingPlan' },
     customers: { add: 'addCustomer', update: 'updateCustomer' },
     equipment: { add: 'addEquipment', update: 'updateEquipment' },
+    pcReports: { delete: 'deletePcReport' },
     customerLogs: { add: 'addCustomerLog' },
     staffActivity: { update: 'upsertStaffActivity', add: 'upsertStaffActivity' },
     financeEntries: { add: 'addFinanceEntry', update: 'updateFinanceEntry', delete: 'deleteFinanceEntry' },
@@ -2660,9 +2661,21 @@ var TaskManager = (function() {
   // Máy tính đã cài HICONIQUE Agent báo cấu hình phần cứng (chỉ đọc; ghi bởi Agent qua upsertPcReport)
   function loadPcReports(callback) {
     getFromGSheets('pcReports', function (items) {
-      if (items && items.length) localStorage.setItem(STORAGE_KEYS.pcReports, JSON.stringify(items));
+      if (items && items.length) {
+        // bỏ các máy đang chờ xoá trong hàng đợi ghi để không "sống lại" trước khi lệnh xoá tới Sheet
+        var gone = {};
+        readWriteQueue_().forEach(function (op) { if (op.action === 'deletePcReport') gone[op.id] = true; });
+        localStorage.setItem(STORAGE_KEYS.pcReports, JSON.stringify(items.filter(function (r) { return !gone[r.id]; })));
+      }
       if (callback) callback(getPcReports());
     });
+  }
+  // Xoá máy đã báo: xoá luôn dòng trong Sheet TB-Máy đã báo (Agent báo lại thì máy sẽ xuất hiện lại)
+  function deletePcReport(id, user) {
+    if (!canManageEquipment(user) || !id) return false;
+    remove(STORAGE_KEYS.pcReports, id);
+    syncToGSheets('pcReports', 'delete', {}, id);
+    return true;
   }
   function getPcReports() { return getAll(STORAGE_KEYS.pcReports); }
   function canManageEquipment(user) { return !!user && canManageNotifications(user); }
@@ -3284,6 +3297,7 @@ var TaskManager = (function() {
     CRM_STAGES: CRM_STAGES,
     loadPcReports: loadPcReports,
     getPcReports: getPcReports,
+    deletePcReport: deletePcReport,
     loadEquipment: loadEquipment,
     getEquipment: getEquipment,
     canManageEquipment: canManageEquipment,

@@ -34,7 +34,7 @@ import zipfile
 from ctypes import wintypes
 from datetime import datetime, timezone
 
-VERSION = '2.0.3'
+VERSION = '2.0.4'
 APP_NAME = 'HiconiqueAgent'
 FROZEN = getattr(sys, 'frozen', False)
 BASE = os.path.dirname(os.path.abspath(sys.executable if FROZEN else __file__))
@@ -399,6 +399,24 @@ def desktop_shortcut_path():
     return os.path.join(os.path.join(os.environ.get('USERPROFILE', os.path.expanduser('~')), 'Desktop'), 'HICONIQUE Agent.lnk')
 
 
+def versioned_icon_path():
+    """Windows lưu icon theo ĐƯỜNG DẪN file (icon cache) nên đổi logo mà file vẫn cùng đường dẫn thì shortcut/Apps&features vẫn hiện
+    logo cũ. Mỗi phiên bản dùng 1 bản sao icon có TÊN KHÁC (HiconiqueAgent-<ver>.ico trong thư mục dữ liệu) → Windows buộc nạp icon mới."""
+    dst = os.path.join(DATA_DIR, 'HiconiqueAgent-%s.ico' % VERSION)
+    try:
+        if os.path.exists(ICON_PATH) and not os.path.exists(dst):
+            shutil.copy2(ICON_PATH, dst)
+        for f in os.listdir(DATA_DIR):
+            if f.startswith('HiconiqueAgent-') and f.endswith('.ico') and f != os.path.basename(dst):
+                try:
+                    os.remove(os.path.join(DATA_DIR, f))
+                except OSError:
+                    pass
+    except Exception as e:
+        log('Tạo icon theo phiên bản lỗi:', e)
+    return dst if os.path.exists(dst) else INSTALL_EXE
+
+
 def create_desktop_shortcut():
     try:
         lnk = desktop_shortcut_path()
@@ -406,7 +424,7 @@ def create_desktop_shortcut():
             "$s = New-Object -ComObject WScript.Shell",
             "$lnk = $s.CreateShortcut('%s')" % lnk,
             "$lnk.TargetPath = '%s'" % INSTALL_EXE,
-            "$lnk.IconLocation = '%s,0'" % INSTALL_EXE,
+            "$lnk.IconLocation = '%s,0'" % versioned_icon_path(),
             "$lnk.WorkingDirectory = '%s'" % INSTALL_DIR,
             "$lnk.Description = 'HICONIQUE Agent - bang dieu khien'",
             "$lnk.Save()",
@@ -434,7 +452,7 @@ def register_windows():
         winreg.SetValueEx(k, APP_NAME, 0, winreg.REG_SZ, '"%s" --run' % INSTALL_EXE)
     with winreg.CreateKey(winreg.HKEY_CURRENT_USER, UNINSTALL_KEY) as k:
         for name, val in (('DisplayName', 'HICONIQUE Agent'), ('DisplayVersion', VERSION), ('Publisher', 'HICONIQUE'),
-                          ('InstallLocation', INSTALL_DIR), ('DisplayIcon', INSTALL_EXE),
+                          ('InstallLocation', INSTALL_DIR), ('DisplayIcon', versioned_icon_path()),
                           ('UninstallString', '"%s" --uninstall' % INSTALL_EXE)):
             winreg.SetValueEx(k, name, 0, winreg.REG_SZ, val)
         winreg.SetValueEx(k, 'NoModify', 0, winreg.REG_DWORD, 1)
@@ -2378,9 +2396,28 @@ class CpCanvasView(QGraphicsView):
         self.nudge_timer = QTimer(self)
         self.nudge_timer.setInterval(40)
         self.nudge_timer.timeout.connect(self.execute_nudge)
+        self.auto_fit = True   # mặc định thu nhỏ vừa khung để thấy trọn ảnh; Ctrl+cuộn chuột = tự zoom, 
+        scene.sceneRectChanged.connect(lambda _r: self.fit_all())
+
+    def fit_all(self):
+        self.auto_fit = True
+        r = self.sceneRect()
+        if r.width() > 1 and r.height() > 1 and self.viewport().width() > 20:
+            self.fitInView(r.adjusted(-8, -8, 8, 8), Qt.KeepAspectRatio)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if self.auto_fit:
+            self.fit_all()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if self.auto_fit:
+            QTimer.singleShot(0, self.fit_all)
 
     def wheelEvent(self, event):
         if event.modifiers() == Qt.ControlModifier:
+            self.auto_fit = False
             zoom_in_factor = 1.15
             zoom_out_factor = 1 / zoom_in_factor
             if event.angleDelta().y() > 0:
@@ -3174,9 +3211,14 @@ NAV_ITEMS = [
 
 
 def refresh_windows_icon_cache():
-    """Báo Windows vẽ lại icon (icon Desktop/Start sau khi app tự cập nhật sang icon mới)."""
+    """Báo Windows vẽ lại icon Desktop/Start/Apps & features (icon cache hay giữ logo cũ sau khi đổi icon)."""
+    for args in (['ie4uinit.exe', '-ClearIconCache'], ['ie4uinit.exe', '-show']):
+        try:
+            subprocess.run(args, capture_output=True, timeout=20, creationflags=0x08000000)
+        except Exception:
+            pass
     try:
-        subprocess.Popen(['ie4uinit.exe', '-show'], creationflags=0x08000000)
+        ctypes.windll.shell32.SHChangeNotify(0x08000000, 0, None, None)   # SHCNE_ASSOCCHANGED: làm mới toàn bộ icon
     except Exception:
         pass
 
@@ -3552,6 +3594,7 @@ class InstallDialog(QDialog):
             save_config(c)
             register_windows()
             create_desktop_shortcut()
+            refresh_windows_icon_cache()
             self.installed = True
             QMessageBox.information(self, 'HICONIQUE Agent',
                                     'Cài đặt xong! Đã tạo icon "HICONIQUE Agent" trên Desktop.\n'

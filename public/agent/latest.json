@@ -1,11 +1,16 @@
 {
-  "version": "2.0.3",
+  "version": "2.0.4",
   "url": "https://github.com/pqhieu3820-dotcom/Hiconique-web-noibo/releases/latest/download/HiconiqueAgentSetup.exe",
-  "sha256": "395222cfa4121a13055ac181a79d31296bf857488c53a2b79f58543d94a52459",
-  "size": 69636174,
-  "releasedAt": "2026-09-29T14:17:16Z",
-  "notes": "Sửa trình cài đặt: ô 'Chọn tên của bạn' trước đây trống trơn khi mạng/máy chủ chậm (chỉ chờ 25 giây rồi im lặng và đứng hình). Nay tải danh sách ở nền không đứng hình, chờ tối đa 60 giây/lần và tự thử lại 4 lần, hiện tiến trình và báo lỗi rõ ràng, có nút 'Tải lại', nhớ danh sách lần trước, và cho gõ thẳng mã thành viên.",
+  "sha256": "1548328b536441a4b29c986939b00b72af7d7a5688b760199b3d2779d28bb2b3",
+  "size": 69637554,
+  "releasedAt": "2026-09-29T22:38:45Z",
+  "notes": "Sửa lỗi sau khi cài/cập nhật icon Desktop và Apps & features vẫn hiện logo CŨ (Windows lưu icon theo đường dẫn file). Nay mỗi phiên bản dùng 1 file icon tên riêng (HiconiqueAgent-<phiên bản>.ico) và tự làm mới bộ nhớ đệm icon của Windows sau khi cài/cập nhật. Tab Lấy màu: ô xem trước tự thu nhỏ vừa khung để thấy đủ thông tin (Ctrl+cuộn chuột để phóng/thu tự do).",
   "history": [
+    {
+      "version": "2.0.4",
+      "date": "2026-09-29",
+      "notes": "Sửa lỗi sau khi cài/cập nhật icon Desktop và Apps & features vẫn hiện logo CŨ (Windows lưu icon theo đường dẫn file). Nay mỗi phiên bản dùng 1 file icon tên riêng (HiconiqueAgent-<phiên bản>.ico) và tự làm mới bộ nhớ đệm icon của Windows sau khi cài/cập nhật. Tab Lấy màu: ô xem trước tự thu nhỏ vừa khung để thấy đủ thông tin (Ctrl+cuộn chuột để phóng/thu tự do)."
+    },
     {
       "version": "2.0.3",
       "date": "2026-09-29",

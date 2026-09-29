@@ -925,6 +925,9 @@ function handleRequestImpl_(e) {
       var pcData = JSON.parse(params.data);
       var pcExisting = getAllData(ss, SHEETS.pcReports).filter(function (r) { return r.id === pcData.id; })[0];
       result = pcExisting ? updateData(ss, SHEETS.pcReports, pcData.id, pcData) : addData(ss, SHEETS.pcReports, pcData);
+    } else if (action === 'deletePcReport') {
+      // Xoá HẲN dòng máy đã báo (TB-Máy đã báo) khỏi Sheet — chỉ dùng cho mục "Máy đã cài HICONIQUE Agent" ở trang Thiết bị
+      result = deleteData(ss, SHEETS.pcReports, params.id);
     } else if (action === 'getEquipment') {
       result = getAllData(ss, SHEETS.equipment);
     } else if (action === 'addEquipment') {

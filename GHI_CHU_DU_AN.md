@@ -35,6 +35,19 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
 **Link production chính đã đổi sang Cloudflare Workers**: `https://hiconique-web-noibo.pqhieu3820.workers.dev` (link Netlify cũ `noibo.hiconique.com` bị lỗi DNS NXDOMAIN ngày 24/9, không liên quan code — người dùng đã chuyển hẳn sang dùng link Workers, vẫn giữ link cũ nhưng không phải link chính nữa). **Luôn dùng link Workers khi cần mở/test web live, không hỏi lại người dùng về việc này nữa.**
 
+### Phiên 2026-09-30 (i) — Nút "Xóa" cho "Máy đã cài HICONIQUE Agent" (xóa luôn trên Google Sheet)
+
+- Form Thêm/Sửa tài sản (nhóm Máy tính) → khung "Máy đã cài HICONIQUE Agent": thêm nút **Xóa** cạnh "Nhập / đồng bộ cấu hình" (`#eqPcDelete`, `equipment.js`). Có hộp xác nhận, chỉ admin/manager (`canManageEquipment`).
+- **Xóa THẬT** dòng trong sheet `TB-Máy đã báo` (khác "Xóa mục" tài sản chỉ ẩn `visible=false`): action mới `deletePcReport` (Apps Script **v99**, dùng `deleteData`), client `TM.deletePcReport(id,user)` → `remove()` cục bộ + `syncToGSheets('pcReports','delete')` qua hàng đợi ghi bền vững. `loadPcReports` bỏ các máy đang chờ xóa trong hàng đợi để không "sống lại"; vẫn giữ luật "không ghi khi server trả rỗng" (lỗi mạng trả `[]`).
+- Lưu ý: nếu Agent trên máy đó còn chạy, lần báo sau (`upsertPcReport`) máy sẽ xuất hiện lại. Không xóa tài sản đã gắn máy đó. sw v27.
+- Đã test (mock fetch): xác nhận → 1 lệnh `deletePcReport&id=…`, máy biến khỏi danh sách; server thật trả `{"error":"Not found"}` cho id không tồn tại (action đã có).
+
+### Phiên 2026-09-29 (h) — Agent 2.0.4 (đã build, CHƯA đăng release — chờ "push")
+
+- **Logo cũ trên shortcut Desktop**: Windows lưu icon theo ĐƯỜNG DẪN file (icon cache); exe cài đặt cùng đường dẫn nên shortcut vẫn hiện chữ H cũ dù file đã có icon mới. Sửa: `versioned_icon_path()` copy `icon.ico` thành `%LOCALAPPDATA%\HiconiqueAgent\HiconiqueAgent-<ver>.ico` (tên đổi mỗi bản), shortcut + `DisplayIcon` trỏ vào đó; `refresh_windows_icon_cache()` (`ie4uinit -ClearIconCache`, `-show`, `SHChangeNotify`) chạy sau khi cài và sau khi cập nhật.
+- **Quy ước file exe**: mỗi bản build tạo `dist\HiconiqueAgent-v<ver>.exe` và tự copy ra Desktop (`build.py`); file cài đặt/phát hành vẫn tên `HiconiqueAgent.exe`. `python build.py --no-publish` = chỉ build + copy Desktop, không đăng release/latest.json.
+- **Tab Lấy màu**: ô xem trước canvas tự thu nhỏ vừa khung (`CpCanvasView.fit_all`, tự fit lại khi đổi cỡ cửa sổ/canvas); Ctrl+cuộn chuột để tự zoom.
+
 ### 🔎 ĐIỀU TRA + ĐÃ SỬA (2026-09-29 tối) — vì sao Apps Script chậm/404 (chấm công lâu, danh sách thành viên không tải): đã làm CẢ 4 phương án, nhịp làm mới 10–15s
 
 - **Số đo (từ máy này)**: gọi thẳng `?action=...` mất 12–35s, nhiều lệnh trả **HTTP 404 sau ~34s** (getMembers 404 cả 2 lần; getTasks 404; getWorkSchedule 12s rồi 404; getTimesheet timeout 90s). Lệnh nhỏ nhất (`getWorkSchedule`) cũng 12s → không phải do sheet lớn mà do nghẽn hàng đợi.

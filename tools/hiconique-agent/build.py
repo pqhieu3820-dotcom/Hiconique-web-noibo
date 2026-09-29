@@ -104,10 +104,23 @@ subprocess.check_call([
 ])
 
 exe = os.path.join(HERE, 'dist', 'HiconiqueAgent.exe')
+# bản sao có HẬU TỐ PHIÊN BẢN để phát/lưu trữ (file cài đặt dùng đúng tên HiconiqueAgent.exe nên giữ nguyên bản gốc)
+import shutil
+VERSIONED = os.path.join(HERE, 'dist', 'HiconiqueAgent-v%s.exe' % version)
+shutil.copy2(exe, VERSIONED)
+print('Bản có hậu tố phiên bản:', VERSIONED)
 sha = hashlib.sha256(open(exe, 'rb').read()).hexdigest()
 size = os.path.getsize(exe)
 history = json.load(open(os.path.join(HERE, 'CHANGELOG.json'), encoding='utf-8'))  # [{version,date,notes}] mới nhất ở đầu
 assert history[0]['version'] == version, 'CHANGELOG.json chưa có mục cho phiên bản %s' % version
+
+DESKTOP = os.path.join(os.path.expanduser('~'), 'Desktop')
+if os.path.isdir(DESKTOP):   # luôn copy 1 bản có hậu tố phiên bản ra Desktop
+    shutil.copy2(VERSIONED, os.path.join(DESKTOP, os.path.basename(VERSIONED)))
+    print('Đã copy ra Desktop:', os.path.join(DESKTOP, os.path.basename(VERSIONED)))
+if '--no-publish' in sys.argv:
+    print('OK (--no-publish): chỉ build + copy Desktop, chưa đăng release/latest.json', version, sha)
+    sys.exit(0)
 
 print('Đang tải lên GitHub Releases (%s, ~%d MB)...' % (ASSET_NAME, size // 1024 // 1024))
 stable_url = publish_release(version, exe, history[0]['notes'])

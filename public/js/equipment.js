@@ -566,6 +566,18 @@
       if (!r) { toast('Chọn một máy trong danh sách', true); return; }
       applyReport(r); toast('Đã nhập cấu hình từ Agent — kiểm tra rồi bấm Lưu');
     });
+    $('eqPcDelete').addEventListener('click', function () {
+      var r = reportById($('eqPcPick').value);
+      if (!r) { toast('Chọn một máy trong danh sách để xóa', true); return; }
+      var linked = TM.getEquipment().filter(function (e) { return e.pcId === r.id && e.id !== state.editingId; })[0];
+      showConfirm('Xóa máy "' + (r.hostname || r.id) + '" khỏi danh sách máy đã báo và XÓA LUÔN dòng trong Google Sheet (TB-Máy đã báo)?' +
+        (linked ? ' Máy này đang gắn với tài sản "' + linked.name + '" (tài sản không bị xóa).' : '') +
+        ' Nếu Agent trên máy đó còn chạy, máy sẽ tự xuất hiện lại ở lần báo sau.', function () {
+        if (!TM.deletePcReport(r.id, user())) { toast('Bạn không có quyền xóa', true); return; }
+        if (state.pcId === r.id) state.pcId = '';
+        renderPcBox(); toast('Đã xóa máy khỏi danh sách và Google Sheet');
+      });
+    });
     $('eqSpecRows').addEventListener('input', function () { if (state.pcId) renderPcInfoOnly(); });
     $('eqPcBanner').addEventListener('click', function (e) {
       var b = e.target.closest('[data-addpc]'); if (!b) return;

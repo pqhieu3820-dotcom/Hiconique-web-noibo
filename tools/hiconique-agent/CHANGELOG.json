@@ -1,5 +1,10 @@
 [
   {
+    "version": "2.0.4",
+    "date": "2026-09-29",
+    "notes": "Sửa lỗi sau khi cài/cập nhật icon Desktop và Apps & features vẫn hiện logo CŨ (Windows lưu icon theo đường dẫn file). Nay mỗi phiên bản dùng 1 file icon tên riêng (HiconiqueAgent-<phiên bản>.ico) và tự làm mới bộ nhớ đệm icon của Windows sau khi cài/cập nhật. Tab Lấy màu: ô xem trước tự thu nhỏ vừa khung để thấy đủ thông tin (Ctrl+cuộn chuột để phóng/thu tự do)."
+  },
+  {
     "version": "2.0.3",
     "date": "2026-09-29",
     "notes": "Sửa trình cài đặt: ô 'Chọn tên của bạn' trước đây trống trơn khi mạng/máy chủ chậm (chỉ chờ 25 giây rồi im lặng và đứng hình). Nay tải danh sách ở nền không đứng hình, chờ tối đa 60 giây/lần và tự thử lại 4 lần, hiện tiến trình và báo lỗi rõ ràng, có nút 'Tải lại', nhớ danh sách lần trước, và cho gõ thẳng mã thành viên."
