@@ -295,7 +295,7 @@ const FIELD_MAP = {
     ['Số serial', 'serial'], ['Vị trí', 'location'], ['Người sử dụng', 'assigneeId'], ['Tình trạng', 'status'],
     ['Ngày mua', 'purchaseDate'], ['Hết bảo hành', 'warrantyUntil'], ['Giá mua', 'price'], ['Nhà cung cấp', 'supplier'],
     ['Số lượng', 'qty'], ['Đơn vị', 'unit'], ['Tồn tối thiểu', 'minQty'],
-    ['Thông số / linh kiện (JSON)', 'specs'], ['Ghi chú', 'note'], ['Mã máy Agent', 'pcId'],
+    ['Thông số / linh kiện (JSON)', 'specs'], ['Phân bổ vị trí (JSON)', 'stock'], ['Lịch sử nhập xuất (JSON)', 'history'], ['Ghi chú', 'note'], ['Mã máy Agent', 'pcId'],
     ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt'], ['Hiển thị', 'visible']
   ],
   pcReports: [

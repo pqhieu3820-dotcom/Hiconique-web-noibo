@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Thiết bị văn phòng · HICONIQUE</title>
+  <title>Tài sản & vật tư · HICONIQUE</title>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/reset.css">
   <link rel="stylesheet" href="/css/tokens.css">
@@ -17,6 +17,7 @@
   <script src="/js/gsheets-config.js"></script>
   <script src="/js/task-data.js"></script>
   <script src="/js/auth.js"></script>
+  <script src="/js/money-input.js"></script>
   <style>
     :root {
       --eq-bg: var(--color-bg); --eq-surface: var(--color-surface); --eq-border: var(--color-border);
@@ -104,6 +105,12 @@
     .eq-alert { color: #D07070; font-size: 0.75rem; margin-top: 6px; line-height: 1.5; }
     .eq-diff { color: var(--eq-warn); font-size: 0.75rem; margin-top: 6px; }
     .eq-live { font-size: 0.6875rem; color: var(--eq-muted); margin-top: 6px; line-height: 1.5; }
+    .eq-stock-row { display: grid; grid-template-columns: 1fr 90px 26px; gap: 6px; align-items: center; }
+    .eq-move-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+    .eq-move-row .eq-input, .eq-move-row .eq-select { padding: 7px 8px; font-size: 0.75rem; }
+    .eq-move-row #emNote, .eq-move-row #eqMoveBtn { grid-column: 1 / -1; }
+    .eq-hist { display: flex; flex-direction: column; gap: 5px; max-height: 190px; overflow-y: auto; font-size: 0.75rem; margin-top: 6px; }
+    .eq-hist-row { line-height: 1.5; }
     .eq-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--eq-surface); border: 1px solid var(--eq-border); padding: 10px 18px; border-radius: 10px; font-size: 0.8125rem; z-index: 9500; box-shadow: 0 6px 24px rgba(0,0,0,.25); }
     .eq-toast.bad { border-color: var(--eq-bad); }
 
@@ -140,38 +147,39 @@
 
   <main class="subpage">
   <div class="subpage-inner eq-container">
-    <p class="eyebrow">— Văn phòng</p>
-    <h1 class="subpage-title">Thiết bị <span class="subpage-title-italic">văn phòng</span></h1>
-    <p class="subpage-lede">Kho lưu trữ và tổng hợp thiết bị văn phòng: máy tính (từng linh kiện: CPU, RAM, ổ cứng, VGA…), máy in, máy photo, vật tư, thiết bị mạng. Ghi rõ thông số, người sử dụng, vị trí, bảo hành. Dữ liệu lưu chung trên Google Sheet (TB-Thiết bị).</p>
+    <p class="eyebrow">— Tài sản công ty</p>
+    <h1 class="subpage-title">Quản lý tài sản <span class="subpage-title-italic">&amp; vật tư</span></h1>
+    <p class="subpage-lede">Quản lý toàn bộ tài sản hữu hình của công ty: máy tính (từng linh kiện), máy in, thiết bị mạng; văn phòng phẩm (bút bi, bút chì, giấy…); dụng cụ đo đạc (máy thủy bình, máy cân bằng laser…); máy móc thi công; giàn giáo, mâm, thang giàn giáo, ván khuôn; bảo hộ lao động; nội thất. Theo dõi số lượng tồn, phân bổ theo kho/văn phòng/công trình, nhập – xuất – điều chuyển, người sử dụng, bảo hành. Dữ liệu lưu chung trên Google Sheet (TB-Thiết bị).</p>
 
     <div class="eq-kpis" id="eqKpis"></div>
 
     <div class="eq-toolbar">
-      <input class="eq-input eq-search" id="eqSearch" type="search" placeholder="Tìm theo tên, mã tài sản, serial, người dùng, linh kiện…">
+      <input class="eq-input eq-search" id="eqSearch" type="search" placeholder="Tìm theo tên, mã tài sản, serial, người dùng, vị trí, linh kiện…">
       <select class="eq-select" id="eqCat"><option value="">Tất cả nhóm</option></select>
       <select class="eq-select" id="eqStatus"><option value="">Mọi tình trạng</option></select>
       <span class="eq-spacer"></span>
-      <div class="eq-seg" id="eqView"><button data-view="groups" class="active">Theo nhóm</button><button data-view="parts">Tổng hợp linh kiện</button></div>
+      <div class="eq-seg" id="eqView"><button data-view="groups" class="active">Theo nhóm</button><button data-view="loc">Theo vị trí</button><button data-view="parts">Tổng hợp linh kiện</button></div>
       <button class="eq-btn" id="eqExport" type="button">Xuất CSV</button>
-      <button class="eq-btn eq-btn-primary" id="eqAddBtn" type="button">+ Thêm trang thiết bị</button>
+      <button class="eq-btn eq-btn-primary" id="eqAddBtn" type="button">+ Thêm tài sản / vật tư</button>
     </div>
 
     <div id="eqPcBanner" hidden></div>
     <div id="eqGroups"></div>
     <div id="eqParts" hidden></div>
+    <div id="eqLocs" hidden></div>
   </div>
   </main>
 
   <div class="eq-overlay" id="eqModal" role="dialog" aria-modal="true" aria-labelledby="eqModalTitle">
     <div class="eq-modal">
-      <div class="eq-modal-head"><div class="eq-modal-title" id="eqModalTitle">Thêm trang thiết bị</div><button class="eq-x" id="eqModalClose" type="button" aria-label="Đóng">×</button></div>
+      <div class="eq-modal-head"><div class="eq-modal-title" id="eqModalTitle">Thêm tài sản / vật tư</div><button class="eq-x" id="eqModalClose" type="button" aria-label="Đóng">×</button></div>
       <form id="eqForm" autocomplete="off">
         <div class="eq-modal-body">
           <div>
             <div class="eq-form-grid">
               <div class="eq-field"><label class="eq-label" for="efCat">Nhóm *</label><select class="eq-select" id="efCat"></select></div>
               <div class="eq-field"><label class="eq-label" for="efCode">Mã tài sản</label><input class="eq-input" id="efCode" maxlength="40" placeholder="Tự đề xuất theo nhóm"></div>
-              <div class="eq-field full"><label class="eq-label" for="efName">Tên thiết bị *</label><input class="eq-input" id="efName" required maxlength="160" placeholder="VD: PC thiết kế phòng KTS 01"></div>
+              <div class="eq-field full"><label class="eq-label" for="efName">Tên *</label><input class="eq-input" id="efName" required maxlength="160" list="eqNameList" placeholder="VD: PC thiết kế phòng KTS 01 · Bút bi Thiên Long · Khung giàn giáo 1.7m"></div>
               <div class="eq-field"><label class="eq-label" for="efBrand">Hãng</label><input class="eq-input" id="efBrand" maxlength="60"></div>
               <div class="eq-field"><label class="eq-label" for="efModel">Model</label><input class="eq-input" id="efModel" maxlength="80"></div>
               <div class="eq-field"><label class="eq-label" for="efSerial">Số serial</label><input class="eq-input" id="efSerial" maxlength="80"></div>
@@ -180,15 +188,36 @@
               <div class="eq-field"><label class="eq-label" for="efLocation">Vị trí</label><input class="eq-input" id="efLocation" maxlength="100" placeholder="VD: Phòng KTS, Tầng 2"></div>
               <div class="eq-field"><label class="eq-label" for="efBuy">Ngày mua</label><input class="eq-input" id="efBuy" type="date"></div>
               <div class="eq-field"><label class="eq-label" for="efWar">Hết bảo hành</label><input class="eq-input" id="efWar" type="date"></div>
-              <div class="eq-field"><label class="eq-label" for="efPrice">Giá mua (₫)</label><input class="eq-input" id="efPrice" inputmode="numeric" placeholder="VD: 25.000.000"></div>
+              <div class="eq-field"><label class="eq-label" id="efPriceLbl" for="efPrice">Giá mua (₫)</label><input class="eq-input" id="efPrice" type="text" data-money-input inputmode="numeric" placeholder="VD: 25.000.000"></div>
               <div class="eq-field"><label class="eq-label" for="efSupplier">Nhà cung cấp</label><input class="eq-input" id="efSupplier" maxlength="120"></div>
-              <div class="eq-field" data-supply><label class="eq-label" for="efQty">Số lượng tồn</label><input class="eq-input" id="efQty" inputmode="decimal"></div>
-              <div class="eq-field" data-supply><label class="eq-label" for="efUnit">Đơn vị</label><input class="eq-input" id="efUnit" maxlength="20" placeholder="hộp, ram, cuộn…"></div>
+              <div class="eq-field" data-supply><label class="eq-label" for="efQty">Số lượng tồn (tự cộng khi có phân bổ)</label><input class="eq-input" id="efQty" inputmode="decimal"></div>
+              <div class="eq-field" data-supply><label class="eq-label" for="efUnit">Đơn vị</label><input class="eq-input" id="efUnit" maxlength="20" placeholder="cái, bộ, hộp, ram, m², tấm…"></div>
               <div class="eq-field" data-supply><label class="eq-label" for="efMin">Tồn tối thiểu (cảnh báo)</label><input class="eq-input" id="efMin" inputmode="decimal"></div>
               <div class="eq-field full"><label class="eq-label" for="efNote">Ghi chú</label><textarea class="eq-textarea" id="efNote" maxlength="1000"></textarea></div>
             </div>
           </div>
           <div>
+            <div class="eq-pc" id="eqStockBox" data-supply hidden>
+              <div class="eq-specs-head" style="margin-bottom:8px;">
+                <div class="eq-label" style="margin:0;">Phân bổ theo vị trí</div>
+                <button class="eq-btn eq-btn-sm" type="button" id="eqAddStock">+ Thêm vị trí</button>
+              </div>
+              <div id="eqStockRows" class="eq-spec-rows"></div>
+              <div id="eqMoveBox" hidden style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--eq-border);">
+                <div class="eq-label">Nhập / Xuất / Điều chuyển (ghi ngay, có lịch sử)</div>
+                <div class="eq-move-row">
+                  <select class="eq-select" id="emType"><option value="in">Nhập kho</option><option value="out">Xuất dùng</option><option value="move">Điều chuyển</option></select>
+                  <input class="eq-input" id="emQty" inputmode="decimal" placeholder="Số lượng">
+                  <input class="eq-input" id="emLoc" list="eqLocList" placeholder="Vị trí (mặc định: Kho công ty)">
+                  <input class="eq-input" id="emTo" list="eqLocList" placeholder="Chuyển đến vị trí…" hidden>
+                  <input class="eq-input" id="emNote" placeholder="Ghi chú (người nhận, công trình, lý do…)">
+                  <button class="eq-btn eq-btn-primary eq-btn-sm" type="button" id="eqMoveBtn">Ghi</button>
+                </div>
+                <div class="eq-label" style="margin-top:12px;">Lịch sử gần đây</div>
+                <div id="eqHistory" class="eq-hist"></div>
+              </div>
+              <datalist id="eqLocList"></datalist>
+            </div>
             <div class="eq-pc" id="eqPcBox" hidden>
               <div class="eq-label" style="margin-bottom:6px;">Máy đã cài HICONIQUE Agent</div>
               <div class="eq-pc-row"><select class="eq-select" id="eqPcPick"></select><button class="eq-btn eq-btn-sm" type="button" id="eqPcApply">Nhập / đồng bộ cấu hình</button></div>
@@ -204,6 +233,7 @@
             <div class="eq-spec-cols"><span>Loại</span><span>Tên / Model</span><span>Thông số</span><span>SL</span><span></span></div>
             <div class="eq-spec-rows" id="eqSpecRows"></div>
             <datalist id="eqTypeList"></datalist>
+            <datalist id="eqNameList"></datalist>
             <p class="eq-sub" style="margin-top:10px;">Ví dụ máy tính: <b>RAM</b> · Kingston Fury · DDR4 3200MHz 16GB · SL 2. Mỗi linh kiện 1 dòng — hệ thống tự tổng hợp số lượng theo loại ở tab "Tổng hợp linh kiện".</p>
           </div>
         </div>

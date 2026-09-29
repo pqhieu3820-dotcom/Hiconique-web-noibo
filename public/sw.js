@@ -68,7 +68,7 @@ self.addEventListener('notificationclick', function (event) {
   );
 });
 
-const CACHE_VERSION = 'hiconique-shell-v20';
+const CACHE_VERSION = 'hiconique-shell-v21';
 
 const PRECACHE_URLS = [
   '/',
@@ -118,6 +118,7 @@ const PRECACHE_URLS = [
   '/js/lighting.js',
   '/js/crm.js',
   '/js/equipment.js',
+  '/js/money-input.js',
   '/js/staff-monitor.js',
   '/js/offline.js',
   '/js/portal.js',
