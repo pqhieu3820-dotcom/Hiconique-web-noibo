@@ -1711,7 +1711,12 @@ var TaskManager = (function() {
     if (!levelInfo) return null;
     var updates = { level: levelCode, roleLevel: levelInfo.roleLevel };
     var updated = update(STORAGE_KEYS.members, id, updates);
-    if (updated) syncToGSheets('members', 'update', updates, id);
+    if (updated) {
+      syncToGSheets('members', 'update', updates, id);
+      // 2026-09-29: server tự đổi tiền tố Mã NV theo Cấp bậc mới (CEO_/GD_/QL_/NV_)
+      // và cập nhật mọi chỗ tham chiếu — kéo dữ liệu mới về để client thấy mã mới.
+      setTimeout(function () { refreshFromGSheets(); }, 4000);
+    }
     return updated;
   }
 

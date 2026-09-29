@@ -1497,6 +1497,12 @@ function updateData_impl(ss, sheetName, id, updates) {
       }
     }
   });
+  // 2026-09-29: đổi Cấp bậc qua web → tiền tố Mã NV tự đổi theo (xem
+  // syncMemberIdPrefixForRow_). Kết quả trả về mang id MỚI để client biết.
+  if (sheetName === SHEETS.members && updates.level !== undefined) {
+    const newId = syncMemberIdPrefixForRow_(ss, sheet, headers, rowNum);
+    if (newId && newId !== id) { updates.id = newId; }
+  }
   // 2026-09-16: chuyển sang 'rejected' (từ trạng thái khác) qua chính API này
   // (nút "Từ chối" trên web) — stamp mốc 48h + báo Founder. Chuyển RA KHỎI
   // 'rejected' (được duyệt lại) — xoá mốc cũ để lần từ chối sau (nếu có) tính
@@ -1561,6 +1567,12 @@ function onEdit(e) {
       const oldId = e.oldValue;
       const newId = e.value;
       if (oldId && newId && oldId !== newId) cascadeMemberIdChange(oldId, newId);
+      return;
+    }
+
+    // 2026-09-29: sửa tay cột "Cấp bậc" trên Sheet → tiền tố Mã NV tự đổi theo.
+    if (header === enToViHeader(SHEETS.members, 'level')) {
+      syncMemberIdPrefixForRow_(sheet.getParent(), sheet, headers, e.range.getRow());
       return;
     }
 
@@ -1746,6 +1758,52 @@ function fixRejectionCountdownFormulas() {
   return report;
 }
 
+// 2026-09-29: Mã NV có dạng <TIỀN TỐ>_<VIẾT TẮT>_<NGÀYSINH>, tiền tố theo Cấp
+// bậc: Founder/CEO → CEO, Giám đốc Bộ phận → GD, Quản lý → QL, Nhân viên → NV.
+// Khi Cấp bậc của một người đổi (qua web hoặc sửa tay trên Sheet), tiền tố của
+// Mã NV tự đổi theo và đổi luôn mọi chỗ tham chiếu (cascadeMemberIdChange). Chỉ
+// đổi phần tiền tố; nếu mã mới đã có người dùng thì bỏ qua để không trùng.
+const MEMBER_ID_PREFIX_BY_LEVEL = { founder: 'CEO', ceo: 'CEO', dept_director: 'GD', manager: 'QL', member: 'NV' };
+
+function syncMemberIdPrefixForRow_(ss, sheet, headers, row) {
+  const idCol = headers.indexOf(enToViHeader(SHEETS.members, 'id'));
+  const lvCol = headers.indexOf(enToViHeader(SHEETS.members, 'level'));
+  if (idCol === -1 || lvCol === -1) return null;
+  const oldId = String(sheet.getRange(row, idCol + 1).getValue() || '');
+  const levelCode = viToEnValue(SHEETS.members, 'level', String(sheet.getRange(row, lvCol + 1).getValue() || ''));
+  const prefix = MEMBER_ID_PREFIX_BY_LEVEL[levelCode];
+  const m = /^([A-Za-z]+)_(.+)$/.exec(oldId);
+  if (!prefix || !m || m[1] === prefix) return oldId || null;
+  const newId = prefix + '_' + m[2];
+  const clash = sheet.getRange(2, idCol + 1, Math.max(sheet.getLastRow() - 1, 1), 1).getValues()
+    .some(function (r) { return String(r[0]) === newId; });
+  if (clash) return oldId;
+  sheet.getRange(row, idCol + 1).setValue(newId);
+  cascadeMemberIdChange(oldId, newId);
+  return newId;
+}
+
+// Chạy TAY 1 lần từ trình chỉnh sửa Apps Script để sửa các Mã NV ĐÃ LỆCH tiền
+// tố so với Cấp bậc hiện tại (VD CEO mà vẫn NV_...). Chạy lại an toàn.
+function syncAllMemberIdPrefixes() { return withScriptLock_(syncAllMemberIdPrefixes_impl); }
+function syncAllMemberIdPrefixes_impl() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = findSheet(ss, SHEETS.members);
+  if (!sheet) return 'Không tìm thấy sheet Thành viên';
+  const headers = getHeaders(sheet);
+  const report = [];
+  for (let row = 2; row <= sheet.getLastRow(); row++) {
+    const idCol = headers.indexOf(enToViHeader(SHEETS.members, 'id'));
+    const before = String(sheet.getRange(row, idCol + 1).getValue() || '');
+    if (!before) continue;
+    const after = syncMemberIdPrefixForRow_(ss, sheet, headers, row);
+    if (after && after !== before) report.push(before + ' → ' + after);
+  }
+  const msg = report.length ? 'Đã đổi ' + report.length + ' mã: ' + report.join('; ') : 'Không có mã nào lệch tiền tố.';
+  Logger.log(msg);
+  return msg;
+}
+
 function cascadeMemberIdChange(oldId, newId) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   replaceIdInListColumn(ss, SHEETS.tasks, 'assigneeIds', oldId, newId);
@@ -1756,6 +1814,8 @@ function cascadeMemberIdChange(oldId, newId) {
   replaceIdInColumn(ss, SHEETS.payslips, 'memberId', oldId, newId);
   replaceIdInColumn(ss, SHEETS.commissions, 'memberId', oldId, newId);
   replaceIdInListColumn(ss, SHEETS.projects, 'members', oldId, newId);
+  replaceIdInColumn(ss, SHEETS.notifications, 'scope', oldId, newId);
+  replaceIdInColumn(ss, SHEETS.notifications, 'createdBy', oldId, newId);
 }
 
 function replaceIdInColumn(ss, sheetName, headerNameEn, oldId, newId) {
