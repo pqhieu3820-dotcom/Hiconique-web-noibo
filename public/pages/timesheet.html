@@ -338,6 +338,7 @@
       margin-bottom: 16px;
     }
 
+    .ts-checkin-btn .ts-btn-sub { display: block; margin-top: 2px; font-size: 0.6875rem; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.85; }
     .ts-checkin-btn.in { background: var(--ts-bronze); color: #0B0D10; }
     .ts-checkin-btn.in:hover { background: #C7A464; transform: translateY(-1px); }
     .ts-checkin-btn.out { background: #A04848; color: white; }
@@ -1216,7 +1217,7 @@
              công hôm nay + giờ hiện tại so với "Setup thời gian làm việc".
              Logic ghi thật vẫn giữ nguyên shiftCheckIn()/shiftCheckOut()
              trong task-data.js. -->
-        <button class="ts-checkin-btn in" id="tsCheckinBtn">Check In</button>
+        <button class="ts-checkin-btn in" id="tsCheckinBtn">Chấm công<span class="ts-btn-sub">Check in</span></button>
         <div class="ts-checkin-status idle" id="tsCheckinStatus">Đang tải...</div>
 
         <div class="ts-device-table" id="tsDeviceTable"></div>
@@ -2157,7 +2158,9 @@
         // nhận trước khi ghi, xem bindCheckinButton()). Màu vẫn đổi theo hành
         // động sắp thực hiện: vàng nâu đất (in) = sắp check-in, đỏ (out) = sắp
         // check-out — giữ lại tín hiệu màu để không phải đọc chữ mới biết.
-        btn.textContent = 'Chấm công';
+        // 2026-09-29: thêm chữ nhỏ Check in / Check out dưới chữ "Chấm công" để
+        // mọi người phân biệt được hành động sắp làm (màu nút giữ nguyên).
+        btn.innerHTML = 'Chấm công<span class="ts-btn-sub">' + (inTime ? 'Check out' : 'Check in') + '</span>';
         if (inTime) {
           btn.className = 'ts-checkin-btn out';
           btn.disabled = false;
@@ -2560,7 +2563,7 @@
     // phải biết ĐÚNG nút nào vừa được bấm để khoá/hiện "Đang kiểm tra..." lên
     // đúng chỗ, không đụng tới nút của ca kia.
     function verifyThenProceed(btn, onPass) {
-      var originalText = btn.textContent;
+      var originalHtml = btn.innerHTML;
       setGeoStatus(null);
       btn.disabled = true;
       btn.textContent = 'Đang kiểm tra...';
@@ -2572,7 +2575,7 @@
         renderVerifyRow('tsVerifyIpDot', 'tsVerifyIpState', ipResult);
         renderVerifyRow('tsVerifyDeviceDot', 'tsVerifyDeviceState', deviceResult);
         btn.disabled = false;
-        btn.textContent = originalText;
+        btn.innerHTML = originalHtml;
 
         var checks = [geoResult, ipResult, deviceResult].filter(function (r) { return !r.skip; });
         if (checks.length === 0) { onPass(geoResult, ipResult, deviceResult); return; }
