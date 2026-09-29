@@ -1,6 +1,6 @@
-# HICONIQUE Agent (v2.0.0 — PyQt5, 5 tab, khay hệ thống)
+# HICONIQUE Agent (v2.0.2 — PyQt5, 5 mục, khay hệ thống)
 
-Một ứng dụng Windows duy nhất (1 file .exe), gồm 5 tab theo đúng thứ tự:
+Một ứng dụng Windows duy nhất (1 file .exe), cửa sổ co kéo được, thanh điều hướng bên trái gồm 5 mục theo đúng thứ tự:
 
 1. **Kiểm soát dữ liệu thao tác** — bật/tạm dừng ghi nhận, xem ứng dụng đã dùng hôm nay (bảng, không phải chỉ số), mở file dữ liệu, gửi ngay lên Hub.
 2. **Thông số linh kiện máy tính** — quét CPU/mainboard/RAM/ổ cứng/card đồ họa/màn hình/pin/bảo mật/card mạng/diệt virus, hiển thị đầy đủ ngay trong app; nút **"Cập nhật lên web"** đẩy ngay lên trang Thiết bị (bình thường app tự gửi mỗi 24 giờ).
@@ -38,7 +38,11 @@ Tải ở trang **Theo dõi hiệu suất** của Hub, hoặc trực tiếp `htt
 3. `git add -A && git commit && git push` (chỉ đẩy `latest.json`, không đẩy file .exe lên Cloudflare). Các máy đã cài kiểm tra `latest.json` mỗi 6 giờ, tải bản mới từ GitHub Releases, kiểm SHA-256, thay file rồi tự khởi động lại. Chỉ nhận URL từ `hiconique-web-noibo.pqhieu3820.workers.dev` hoặc `github.com/pqhieu3820-dotcom/Hiconique-web-noibo/releases/` (xem `ALLOWED_UPDATE_HOSTS` trong `app.py`).
 
 ## Icon
-`icon.ico` (chữ H trên nền đồng, tạo bằng `make_icon.py`, cần `pip install pillow`) dùng cho file exe, cửa sổ ứng dụng (taskbar/title bar — trước đây v1.x quên gán nên hiện icon mặc định), icon khay hệ thống, và shortcut Desktop.
+`icon.ico` + `logo.png` do `make_icon.py` tạo từ `public/icon-512.png` — CHÍNH icon app đang dùng trên điện thoại (logo trắng trên nền gradient đen-xám-xanh), bo góc. Dùng cho file exe, cửa sổ (taskbar/title bar), icon khay hệ thống, shortcut Desktop và logo trên thanh tiêu đề trong app. Đổi icon web thì chạy lại `python make_icon.py` rồi build lại. Icon sáng/tối trong app (mặt trời vàng đồng / mặt trăng xanh) vẽ bằng SVG cùng nét với icon trên web.
+
+## Tự cập nhật (đã kiểm thử)
+Nút **Kiểm tra cập nhật** (và tự động mỗi 6 giờ): đọc `latest.json` trên web → nếu có bản mới thì tự tải từ GitHub Releases (hiện % tiến trình), kiểm SHA-256, đổi tên exe đang chạy thành `.old`, ghi bản mới vào đúng đường dẫn cũ, rồi tự khởi động lại (làm mới luôn thông tin phiên bản trong Cài đặt Windows và icon Desktop). Bản mới hỏng giữa chừng thì tự khôi phục bản cũ.
+**Lưu ý quan trọng:** Cloudflare (host web Hub) chặn 403 (mã 1010) mọi yêu cầu mang User-Agent mặc định `Python-urllib` — mọi lời gọi tới `hiconique-web-noibo.pqhieu3820.workers.dev` phải qua `http_open()` (có User-Agent riêng). Các bản Agent ≤ 2.0.1 vì lỗi này KHÔNG tự cập nhật được — cài tay bản 2.0.2 một lần, từ đó tự cập nhật bình thường.
 
 ## Kiến trúc (app.py, ~3000 dòng)
 - **Nền chia sẻ**: `Shared` (cấu hình + dữ liệu hôm nay) + `BackgroundWorker` (QThread) — ghi nhận ứng dụng, gửi lên Hub, báo phần cứng, tự kiểm tra cập nhật; chạy độc lập với cửa sổ ẩn/hiện.

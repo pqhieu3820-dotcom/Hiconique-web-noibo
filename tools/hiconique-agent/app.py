@@ -34,7 +34,7 @@ import zipfile
 from ctypes import wintypes
 from datetime import datetime, timezone
 
-VERSION = '2.0.1'
+VERSION = '2.0.2'
 APP_NAME = 'HiconiqueAgent'
 FROZEN = getattr(sys, 'frozen', False)
 BASE = os.path.dirname(os.path.abspath(sys.executable if FROZEN else __file__))
@@ -257,43 +257,85 @@ def vtuple(v):
     return tuple(int(x) for x in re.findall(r'\d+', str(v))[:4])
 
 
-def check_update(cfg):
-    """Trả về 'latest' (đã mới nhất), 'updating' (đang tải, sắp khởi động lại — process sẽ tự thoát),
-    'bad_url'/'bad_sha' (dữ liệu bản cập nhật đáng ngờ, đã hủy), 'error:<msg>' (lỗi mạng/khác), hoặc
-    'not_frozen' (chạy từ mã nguồn, không áp dụng)."""
-    if not FROZEN:
+CRLF_ = chr(13) + chr(10)
+
+
+def http_open(url, timeout=30):
+    """urlopen có User-Agent riêng. BẮT BUỘC: Cloudflare (chỗ host web Hub) chặn 403 (mã 1010) mọi yêu cầu mang
+    User-Agent mặc định 'Python-urllib' — trước đây nút/luồng kiểm tra cập nhật luôn báo lỗi mạng vì lý do này."""
+    return urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'HiconiqueAgent/%s' % VERSION}), timeout=timeout)
+
+
+def relaunch_after_exit(exe):
+    """Mở lại exe SAU KHI tiến trình hiện tại đã thoát (tránh bản mới tưởng đã có cửa sổ đang chạy rồi tự thoát)."""
+    bat = os.path.join(tempfile.gettempdir(), 'hiconique_relaunch.bat')
+    with open(bat, 'w', encoding='utf-8') as f:
+        f.write('@echo off' + CRLF_ + 'ping -n 3 127.0.0.1 >nul' + CRLF_ + 'start "" "%s" --run --after-update' % exe + CRLF_ + 'del "%~f0"' + CRLF_)
+    subprocess.Popen(['cmd', '/c', bat], close_fds=True, creationflags=0x08000000 | 0x00000008)  # NO_WINDOW | DETACHED
+
+
+def check_update(cfg, progress=None, exe=None, restart=True):
+    """Kiểm tra bản mới; nếu có thì TỰ TẢI về, kiểm SHA-256 rồi ghi đè file exe đang chạy.
+    Trả về: 'latest' (đã mới nhất), 'updated:<ver>' (đã ghi đè xong, restart=False để giao diện tự khởi động lại;
+    restart=True thì tự khởi động lại luôn và không bao giờ trả về), 'bad_url'/'bad_sha' (dữ liệu bản cập nhật
+    đáng ngờ, đã hủy), 'error:<msg>' (lỗi mạng/khác), 'not_frozen' (chạy từ mã nguồn, không áp dụng).
+    progress(text): gọi khi tìm thấy bản mới / trong lúc tải (để giao diện hiện tiến trình). exe: file cần ghi đè (mặc định
+    chính exe đang chạy — tham số này chỉ để kiểm thử)."""
+    target = exe or sys.executable
+    if not FROZEN and not exe:
         return 'not_frozen'
     try:
-        with urllib.request.urlopen(cfg['updateUrl'], timeout=30) as r:
+        with http_open(cfg['updateUrl'], timeout=30) as r:
             info = json.loads(r.read().decode('utf-8'))
         if vtuple(info['version']) <= vtuple(VERSION):
             return 'latest'
         url = info['url']
-        if not url.startswith(ALLOWED_UPDATE_HOSTS):
+        if not url.startswith(cfg.get('_allowedUpdateHosts', ALLOWED_UPDATE_HOSTS)):
             log('Bỏ qua bản cập nhật: URL lạ', url)
             return 'bad_url'
+        if progress:
+            progress('Có bản mới %s — đang tải về…' % info['version'])
         tmp = os.path.join(DATA_DIR, 'update.exe')
+        total = int(info.get('size') or 0)
+        got, last_pct = 0, -1
         h = hashlib.sha256()
-        with urllib.request.urlopen(url, timeout=600) as r, open(tmp, 'wb') as f:
+        with http_open(url, timeout=600) as r, open(tmp, 'wb') as f:
+            total = total or int(r.headers.get('Content-Length') or 0)
             while True:
                 chunk = r.read(1 << 20)
                 if not chunk:
                     break
                 h.update(chunk)
                 f.write(chunk)
+                got += len(chunk)
+                if progress and total:
+                    pct = min(99, int(got * 100 / total))
+                    if pct != last_pct:
+                        last_pct = pct
+                        progress('Đang tải bản %s… %d%%' % (info['version'], pct))
         if h.hexdigest().lower() != str(info['sha256']).lower():
             log('Bản cập nhật sai mã SHA-256, hủy')
             os.remove(tmp)
             return 'bad_sha'
-        exe = sys.executable
-        old = exe + '.old'
+        if progress:
+            progress('Đang cài bản %s…' % info['version'])
+        old = target + '.old'
         if os.path.exists(old):
-            os.remove(old)
-        os.replace(exe, old)
-        shutil.copy2(tmp, exe)
+            try:
+                os.remove(old)
+            except OSError:
+                pass
+        os.replace(target, old)   # Windows cho phép đổi tên exe đang chạy; file mới ghi vào đúng đường dẫn cũ
+        try:
+            shutil.copy2(tmp, target)
+        except Exception:
+            os.replace(old, target)   # ghi đè hỏng giữa chừng — khôi phục bản cũ để app vẫn mở được
+            raise
         os.remove(tmp)
         log('Đã tải bản cập nhật', VERSION, '->', info['version'], '- sẽ khởi động lại')
-        spawn_detached([exe, '--run', '--after-update'])
+        if not restart:
+            return 'updated:%s' % info['version']
+        relaunch_after_exit(target)
         os._exit(0)
     except Exception as e:
         log('Kiểm tra cập nhật lỗi:', e)
@@ -400,15 +442,16 @@ def fetch_members(cfg):
 # ==============================================================================
 # PyQt5 — toàn bộ giao diện. Cài từ requirements: PyQt5, pandas, openpyxl, pillow (chỉ build icon)
 # ==============================================================================
-from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal, QSettings, QRectF, QRect, QStandardPaths
-from PyQt5.QtGui import QIcon, QColor, QPainter, QFont, QImage, QBrush, QPen, QPainterPath, QCloseEvent
+from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal, QSettings, QRectF, QRect, QStandardPaths, QByteArray, QSize
+from PyQt5.QtGui import QIcon, QColor, QPainter, QFont, QImage, QBrush, QPen, QPainterPath, QCloseEvent, QPixmap
+from PyQt5.QtSvg import QSvgRenderer
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QFormLayout,
     QPushButton, QLabel, QLineEdit, QComboBox, QCheckBox, QSpinBox, QTextEdit, QTabWidget,
     QTableWidget, QTableWidgetItem, QHeaderView, QListWidget, QListWidgetItem, QAbstractItemView,
     QFileDialog, QMessageBox, QDialog, QGroupBox, QSystemTrayIcon, QMenu, QAction, QScrollArea,
     QGraphicsView, QGraphicsScene, QGraphicsRectItem, QGraphicsTextItem, QGraphicsLineItem,
-    QGraphicsItem, QSizePolicy, QSplitter, QRadioButton, QButtonGroup,
+    QGraphicsItem, QSizePolicy, QSplitter, QRadioButton, QButtonGroup, QStackedWidget, QFrame,
 )
 from PyQt5.QtNetwork import QLocalServer, QLocalSocket
 
@@ -418,33 +461,69 @@ SURFACE = '#1D2025'
 BORDER = '#2C2F36'
 TEXT = '#F4F1EC'
 MUTED = '#9AA0AA'
+SUN_COLOR = '#C7A464'    # cùng màu icon mặt trời/mặt trăng trên web (tokens.css: --color-warning / --color-blue)
+MOON_COLOR = '#3B6B8C'
 
 # Nền sáng/tối — cùng 1 khung QSS, chỉ đổi bảng màu. Toggle ở góc phải thanh tiêu đề, nhớ lựa chọn qua QSettings.
 THEME_COLORS = {
-    'dark': {'bg': DARK_BG, 'surface': SURFACE, 'border': BORDER, 'text': TEXT, 'muted': MUTED, 'bronze': BRONZE},
-    'light': {'bg': '#F7F4EF', 'surface': '#FFFFFF', 'border': '#E1DACD', 'text': '#20221F', 'muted': '#7A7568', 'bronze': BRONZE},
+    'dark': {'bg': DARK_BG, 'surface': SURFACE, 'border': BORDER, 'text': TEXT, 'muted': MUTED, 'bronze': BRONZE, 'hover': '#262A31', 'sel': 'rgba(176,141,87,0.22)'},
+    'light': {'bg': '#F7F4EF', 'surface': '#FFFFFF', 'border': '#E1DACD', 'text': '#20221F', 'muted': '#7A7568', 'bronze': BRONZE, 'hover': '#F0EBE2', 'sel': 'rgba(176,141,87,0.20)'},
 }
 QSS_TEMPLATE = """
-QMainWindow, QWidget { background: %(bg)s; color: %(text)s; font-family: 'Segoe UI'; font-size: 13px; }
-QTabWidget::pane { border: 1px solid %(border)s; border-radius: 8px; top: -1px; background: %(surface)s; }
-QTabBar::tab { background: %(bg)s; color: %(muted)s; padding: 9px 18px; margin-right: 2px; border-top-left-radius: 8px; border-top-right-radius: 8px; font-weight: 600; }
-QTabBar::tab:selected { background: %(surface)s; color: %(bronze)s; border: 1px solid %(border)s; border-bottom: none; }
-QTabBar::tab:hover { color: %(text)s; }
-QPushButton { background: %(surface)s; color: %(text)s; border: 1px solid %(border)s; border-radius: 7px; padding: 7px 14px; }
-QPushButton:hover { border-color: %(bronze)s; color: %(bronze)s; }
-QPushButton:disabled { color: %(muted)s; }
-QPushButton#primary { background: %(bronze)s; color: #0B0D10; font-weight: 700; border: none; }
-QPushButton#primary:hover { background: #C7A464; }
-QPushButton#danger { color: #D07070; }
-QLineEdit, QComboBox, QSpinBox, QTextEdit, QListWidget, QTableWidget { background: %(bg)s; color: %(text)s; border: 1px solid %(border)s; border-radius: 6px; padding: 5px; }
-QTableWidget { gridline-color: %(border)s; }
-QHeaderView::section { background: %(surface)s; color: %(muted)s; border: none; border-bottom: 1px solid %(border)s; padding: 6px; font-weight: 600; }
-QGroupBox { border: 1px solid %(border)s; border-radius: 8px; margin-top: 14px; padding-top: 10px; font-weight: 600; }
-QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 6px; color: %(bronze)s; }
-QScrollBar:vertical { background: %(bg)s; width: 10px; }
-QScrollBar::handle:vertical { background: %(border)s; border-radius: 5px; min-height: 24px; }
-QCheckBox, QRadioButton, QLabel { color: %(text)s; }
+QMainWindow, QDialog, QMessageBox { background: %(bg)s; }
+QWidget { background: %(bg)s; color: %(text)s; font-family: 'Segoe UI'; font-size: 13px; }
+QLabel, QCheckBox, QRadioButton { background: transparent; color: %(text)s; }
 QLabel[muted="true"] { color: %(muted)s; }
+QLabel#h1 { font-size: 19px; font-weight: 700; }
+QWidget#header { background: %(surface)s; border-bottom: 1px solid %(border)s; }
+QWidget#header QLabel, QWidget#sidebar QLabel { background: transparent; }
+QWidget#sidebar { background: %(surface)s; border-right: 1px solid %(border)s; }
+QPushButton#nav { text-align: left; padding: 11px 14px; border: none; border-radius: 9px; color: %(muted)s; background: transparent; font-size: 13px; }
+QPushButton#nav:hover { background: %(hover)s; color: %(text)s; }
+QPushButton#nav:checked { background: %(sel)s; color: %(bronze)s; font-weight: 600; }
+QPushButton#iconbtn { padding: 0; border: 1px solid %(border)s; border-radius: 9px; background: %(bg)s; }
+QPushButton#iconbtn:hover { border-color: %(bronze)s; }
+QFrame#card { background: %(surface)s; border: 1px solid %(border)s; border-radius: 14px; }
+QFrame#card QLabel { background: transparent; }
+QFrame#card QSpinBox { background: %(bg)s; }
+QTabWidget::pane { border: 1px solid %(border)s; border-radius: 9px; top: -1px; background: %(surface)s; }
+QTabBar { background: transparent; }
+QTabBar::tab { background: transparent; color: %(muted)s; padding: 9px 18px; margin-right: 4px; border: 1px solid transparent; border-bottom: none; border-top-left-radius: 9px; border-top-right-radius: 9px; }
+QTabBar::tab:selected { background: %(surface)s; color: %(bronze)s; border-color: %(border)s; }
+QTabBar::tab:hover { color: %(text)s; }
+QPushButton { background: %(surface)s; color: %(text)s; border: 1px solid %(border)s; border-radius: 8px; padding: 7px 14px; }
+QPushButton:hover { border-color: %(bronze)s; color: %(bronze)s; }
+QPushButton:disabled { color: %(muted)s; border-color: %(border)s; }
+QPushButton#primary { background: %(bronze)s; color: #0B0D10; font-weight: 700; border: none; }
+QPushButton#primary:hover { background: #C7A464; color: #0B0D10; }
+QPushButton#primary:disabled { background: %(border)s; color: %(muted)s; }
+QPushButton#danger { color: #D07070; }
+QPushButton#danger:hover { border-color: #D07070; color: #D07070; }
+QPushButton#preset { padding: 5px 12px; border-radius: 12px; }
+QLineEdit, QComboBox, QSpinBox, QTextEdit, QListWidget, QTableWidget { background: %(surface)s; color: %(text)s; border: 1px solid %(border)s; border-radius: 8px; padding: 6px 8px; selection-background-color: %(sel)s; selection-color: %(text)s; }
+QLineEdit, QComboBox, QSpinBox { min-height: 22px; }
+QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QTextEdit:focus { border-color: %(bronze)s; }
+QComboBox QAbstractItemView { background: %(surface)s; color: %(text)s; border: 1px solid %(border)s; selection-background-color: %(sel)s; selection-color: %(text)s; }
+QTableWidget { gridline-color: %(border)s; alternate-background-color: %(bg)s; }
+QTableWidget::item { padding: 4px 8px; }
+QTableWidget::item:selected { background: %(sel)s; color: %(text)s; }
+QTableCornerButton::section { background: %(surface)s; border: none; }
+QHeaderView { background: %(surface)s; }
+QHeaderView::section { background: %(surface)s; color: %(muted)s; border: none; border-bottom: 1px solid %(border)s; padding: 8px; font-weight: 600; }
+QGroupBox { border: 1px solid %(border)s; border-radius: 10px; margin-top: 14px; padding: 14px 10px 10px 10px; background: transparent; }
+QGroupBox::title { subcontrol-origin: margin; left: 12px; padding: 0 6px; color: %(bronze)s; font-weight: 600; }
+QScrollBar:vertical { background: transparent; width: 10px; margin: 0; }
+QScrollBar::handle:vertical { background: %(border)s; border-radius: 5px; min-height: 28px; }
+QScrollBar::handle:vertical:hover { background: %(muted)s; }
+QScrollBar:horizontal { background: transparent; height: 10px; margin: 0; }
+QScrollBar::handle:horizontal { background: %(border)s; border-radius: 5px; min-width: 28px; }
+QScrollBar::handle:horizontal:hover { background: %(muted)s; }
+QScrollBar::add-line, QScrollBar::sub-line { width: 0; height: 0; }
+QScrollBar::add-page, QScrollBar::sub-page { background: transparent; }
+QMenu { background: %(surface)s; color: %(text)s; border: 1px solid %(border)s; padding: 4px; }
+QMenu::item { padding: 7px 22px; border-radius: 6px; }
+QMenu::item:selected { background: %(sel)s; color: %(bronze)s; }
+QToolTip { background: %(surface)s; color: %(text)s; border: 1px solid %(border)s; padding: 4px 8px; }
 """
 
 
@@ -465,6 +544,40 @@ def save_theme(theme):
 
 def app_icon():
     return QIcon(ICON_PATH) if os.path.exists(ICON_PATH) else QIcon()
+
+
+def logo_pixmap(size):
+    p = os.path.join(sys._MEIPASS, 'logo.png') if hasattr(sys, '_MEIPASS') else os.path.join(BASE, 'logo.png')
+    if os.path.exists(p):
+        return QPixmap(p).scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+    return app_icon().pixmap(size, size)
+
+
+# Icon nét mảnh (stroke) cùng phong cách icon SVG trên web — vẽ bằng QtSvg, đổi màu theo nền sáng/tối.
+SVG_ICONS = {
+    'sun': '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" stroke-linecap="round"/>',
+    'moon': '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke-linecap="round" stroke-linejoin="round"/>',
+    'activity': '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke-linecap="round" stroke-linejoin="round"/>',
+    'cpu': '<rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3" stroke-linecap="round"/>',
+    'image': '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21" stroke-linecap="round" stroke-linejoin="round"/>',
+    'drop': '<path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" stroke-linecap="round" stroke-linejoin="round"/>',
+    'power': '<path d="M18.36 6.64a9 9 0 1 1-12.73 0" stroke-linecap="round"/><line x1="12" y1="2" x2="12" y2="12" stroke-linecap="round"/>',
+    'refresh': '<polyline points="23 4 23 10 17 10" stroke-linecap="round" stroke-linejoin="round"/><polyline points="1 20 1 14 7 14" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" stroke-linecap="round" stroke-linejoin="round"/>',
+}
+
+
+def svg_icon(name, color, size=18):
+    svg = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%s" stroke-width="1.6">%s</svg>'
+           % (color, SVG_ICONS[name]))
+    scale = 2  # nét sắc trên màn hình DPI cao
+    pm = QPixmap(size * scale, size * scale)
+    pm.fill(Qt.transparent)
+    painter = QPainter(pm)
+    painter.setRenderHint(QPainter.Antialiasing)
+    QSvgRenderer(QByteArray(svg.encode('utf-8'))).render(painter)
+    painter.end()
+    pm.setDevicePixelRatio(scale)
+    return QIcon(pm)
 
 
 class Shared:
@@ -548,10 +661,11 @@ class ActivityTab(QWidget):
         super().__init__(parent)
         self.shared = shared
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(16, 16, 16, 16)
+        lay.setContentsMargins(28, 24, 28, 24)
+        lay.setSpacing(10)
 
         head = QLabel('Kiểm soát dữ liệu thao tác')
-        head.setStyleSheet('font-size:17px;font-weight:700;')
+        head.setObjectName('h1')
         lay.addWidget(head)
         sub = QLabel('Ghi nhận tên ứng dụng và tiêu đề cửa sổ đang dùng trong giờ làm việc, không chụp màn hình hay ghi phím gõ. '
                      'Dữ liệu gửi lên Hub mỗi %d phút.' % shared.cfg['flushMinutes'])
@@ -577,6 +691,13 @@ class ActivityTab(QWidget):
         self.table.setHorizontalHeaderLabels(['Ứng dụng', 'Phút hôm nay'])
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setHighlightSections(False)
+        self.table.horizontalHeader().setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.table.verticalHeader().setVisible(False)
+        self.table.verticalHeader().setDefaultSectionSize(34)
+        self.table.setAlternatingRowColors(True)
+        self.table.setShowGrid(False)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         lay.addWidget(self.table, 1)
 
@@ -662,10 +783,11 @@ class HardwareTab(QWidget):
         self.shared = shared
         self.hw = None
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(16, 16, 16, 16)
+        lay.setContentsMargins(28, 24, 28, 24)
+        lay.setSpacing(10)
 
         head = QLabel('Thông số linh kiện máy tính')
-        head.setStyleSheet('font-size:17px;font-weight:700;')
+        head.setObjectName('h1')
         lay.addWidget(head)
         sub = QLabel('Quét CPU, mainboard, RAM, ổ cứng, card đồ họa, màn hình, pin, bảo mật... của chính máy này. '
                      'Bấm "Cập nhật lên web" để đẩy ngay lên trang Thiết bị (bình thường app tự gửi mỗi %d giờ).' % shared.cfg['hardwareHours'])
@@ -692,12 +814,20 @@ class HardwareTab(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+        self.table.horizontalHeader().setHighlightSections(False)
+        self.table.horizontalHeader().setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.table.verticalHeader().setVisible(False)
+        self.table.setAlternatingRowColors(True)
+        self.table.setShowGrid(False)
+        self.table.setWordWrap(True)
+        self.table.setTextElideMode(Qt.ElideNone)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         lay.addWidget(self.table, 2)
 
         self.txtAlerts = QTextEdit()
         self.txtAlerts.setReadOnly(True)
-        self.txtAlerts.setMaximumHeight(90)
+        self.txtAlerts.setMaximumHeight(110)
         self.txtAlerts.setPlaceholderText('Không có cảnh báo.')
         lay.addWidget(self.txtAlerts)
 
@@ -727,6 +857,7 @@ class HardwareTab(QWidget):
             self.table.setItem(i, 0, QTableWidgetItem(t))
             self.table.setItem(i, 1, QTableWidgetItem(n))
             self.table.setItem(i, 2, QTableWidgetItem(s))
+        self.table.resizeRowsToContents()
         alerts = hw.get('alerts', [])
         live = hw.get('live', [])
         text = ''
@@ -750,45 +881,111 @@ class ShutdownTab(QWidget):
         super().__init__(parent)
         self.time_left = 0
         self.scheduled = False
-        lay = QVBoxLayout(self)
-        lay.setContentsMargins(16, 16, 16, 16)
-        lay.setAlignment(Qt.AlignTop)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(28, 24, 28, 24)
+        outer.setSpacing(6)
 
         head = QLabel('Hẹn giờ tắt máy')
-        head.setStyleSheet('font-size:17px;font-weight:700;')
-        lay.addWidget(head)
+        head.setObjectName('h1')
+        outer.addWidget(head)
+        sub = QLabel('Đặt thời gian đếm ngược, máy tính sẽ tự tắt khi hết giờ. Có thể hủy bất cứ lúc nào.')
+        sub.setProperty('muted', True)
+        sub.setWordWrap(True)
+        outer.addWidget(sub)
+        outer.addSpacing(14)
 
-        form = QHBoxLayout()
-        form.addWidget(QLabel('Giờ:'))
-        self.spinH = QSpinBox(); self.spinH.setRange(0, 47)
-        form.addWidget(self.spinH)
-        form.addWidget(QLabel('Phút:'))
-        self.spinM = QSpinBox(); self.spinM.setRange(0, 59)
-        form.addWidget(self.spinM)
-        form.addStretch(1)
-        lay.addLayout(form)
+        card = QFrame()
+        card.setObjectName('card')
+        card.setMaximumWidth(560)
+        cl = QVBoxLayout(card)
+        cl.setContentsMargins(32, 28, 32, 28)
+        cl.setSpacing(16)
+
+        self.lblCountdown = QLabel('00:00:00')
+        self.lblCountdown.setAlignment(Qt.AlignCenter)
+        self.lblCountdown.setStyleSheet('font-size:46px;font-weight:300;letter-spacing:2px;')
+        cl.addWidget(self.lblCountdown)
+        self.lblStatus = QLabel('Chưa có lịch hẹn')
+        self.lblStatus.setAlignment(Qt.AlignCenter)
+        self.lblStatus.setProperty('muted', True)
+        cl.addWidget(self.lblStatus)
+        self.lblExact = QLabel('')
+        self.lblExact.setAlignment(Qt.AlignCenter)
+        self.lblExact.setProperty('muted', True)
+        cl.addWidget(self.lblExact)
+
+        line = QFrame()
+        line.setFixedHeight(1)
+        line.setStyleSheet('background:rgba(128,128,128,0.25);')
+        cl.addWidget(line)
+
+        presets = QHBoxLayout()
+        presets.setSpacing(8)
+        presets.addStretch(1)
+        for label, mins in (('15 phút', 15), ('30 phút', 30), ('1 giờ', 60), ('2 giờ', 120), ('3 giờ', 180)):
+            b = QPushButton(label)
+            b.setObjectName('preset')
+            b.setCursor(Qt.PointingHandCursor)
+            b.clicked.connect(lambda _c=False, m=mins: self.set_preset(m))
+            presets.addWidget(b)
+        presets.addStretch(1)
+        cl.addLayout(presets)
+
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(14)
+        grid.setVerticalSpacing(4)
+        self.spinH = QSpinBox()
+        self.spinH.setRange(0, 47)
+        self.spinM = QSpinBox()
+        self.spinM.setRange(0, 59)
+        for sp in (self.spinH, self.spinM):
+            sp.setButtonSymbols(QSpinBox.NoButtons)
+            sp.setAlignment(Qt.AlignCenter)
+            sp.setFixedSize(110, 56)
+            sp.setStyleSheet('font-size:26px;font-weight:600;')
+        colon = QLabel(':')
+        colon.setAlignment(Qt.AlignCenter)
+        colon.setStyleSheet('font-size:26px;font-weight:600;')
+        lh = QLabel('Giờ')
+        lm = QLabel('Phút')
+        for lb in (lh, lm):
+            lb.setAlignment(Qt.AlignCenter)
+            lb.setProperty('muted', True)
+        grid.setColumnStretch(0, 1)
+        grid.addWidget(self.spinH, 0, 1)
+        grid.addWidget(colon, 0, 2)
+        grid.addWidget(self.spinM, 0, 3)
+        grid.setColumnStretch(4, 1)
+        grid.addWidget(lh, 1, 1)
+        grid.addWidget(lm, 1, 3)
+        cl.addLayout(grid)
 
         btnRow = QHBoxLayout()
+        btnRow.setSpacing(10)
         btnSet = QPushButton('Hẹn giờ tắt')
         btnSet.setObjectName('primary')
+        btnSet.setMinimumHeight(44)
+        btnSet.setCursor(Qt.PointingHandCursor)
         btnSet.clicked.connect(self.schedule)
-        btnRow.addWidget(btnSet)
-        btnCancel = QPushButton('Hủy shutdown')
+        btnRow.addWidget(btnSet, 2)
+        btnCancel = QPushButton('Hủy hẹn giờ')
         btnCancel.setObjectName('danger')
+        btnCancel.setMinimumHeight(44)
+        btnCancel.setCursor(Qt.PointingHandCursor)
         btnCancel.clicked.connect(self.cancel)
-        btnRow.addWidget(btnCancel)
-        btnRow.addStretch(1)
-        lay.addLayout(btnRow)
+        btnRow.addWidget(btnCancel, 1)
+        cl.addLayout(btnRow)
 
-        self.lblStatus = QLabel('Trạng thái: Chưa có lịch hẹn')
-        lay.addWidget(self.lblStatus)
-        self.lblExact = QLabel('')
-        self.lblExact.setProperty('muted', True)
-        lay.addWidget(self.lblExact)
+        outer.addWidget(card, 0, Qt.AlignHCenter | Qt.AlignTop)
+        outer.addStretch(1)
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.tick)
         self.check_existing()
+
+    def set_preset(self, minutes):
+        self.spinH.setValue(minutes // 60)
+        self.spinM.setValue(minutes % 60)
 
     def check_existing(self):
         if os.path.exists(SHUTDOWN_STATE_FILE):
@@ -799,6 +996,7 @@ class ShutdownTab(QWidget):
                     self.time_left = int(remain)
                     self.scheduled = True
                     self.show_exact(target)
+                    self.tick()
                     self.timer.start(1000)
                 else:
                     os.remove(SHUTDOWN_STATE_FILE)
@@ -806,7 +1004,7 @@ class ShutdownTab(QWidget):
                 pass
 
     def show_exact(self, target_time):
-        self.lblExact.setText('(Tắt lúc: %s)' % time.strftime('%H:%M:%S - %d/%m/%Y', time.localtime(target_time)))
+        self.lblExact.setText('Tắt lúc %s' % time.strftime('%H:%M:%S — %d/%m/%Y', time.localtime(target_time)))
 
     def schedule(self):
         total = self.spinH.value() * 3600 + self.spinM.value() * 60
@@ -820,6 +1018,7 @@ class ShutdownTab(QWidget):
         self.time_left = total
         self.scheduled = True
         self.show_exact(target)
+        self.tick()
         self.timer.start(1000)
 
     def cancel(self):
@@ -828,7 +1027,8 @@ class ShutdownTab(QWidget):
         self.timer.stop()
         if os.path.exists(SHUTDOWN_STATE_FILE):
             os.remove(SHUTDOWN_STATE_FILE)
-        self.lblStatus.setText('Trạng thái: Đã gửi lệnh hủy tắt máy!')
+        self.lblCountdown.setText('00:00:00')
+        self.lblStatus.setText('Đã hủy lịch tắt máy')
         self.lblStatus.setStyleSheet('color:#D07070;')
         self.lblExact.setText('')
 
@@ -836,11 +1036,13 @@ class ShutdownTab(QWidget):
         if self.scheduled and self.time_left > 0:
             h, rem = divmod(self.time_left, 3600)
             m, s = divmod(rem, 60)
-            self.lblStatus.setText('Trạng thái: Sẽ tắt máy sau %02d:%02d:%02d' % (h, m, s))
-            self.lblStatus.setStyleSheet('color:#4F6F52;')
+            self.lblCountdown.setText('%02d:%02d:%02d' % (h, m, s))
+            self.lblStatus.setText('Máy sẽ tự tắt sau khi đếm ngược kết thúc')
+            self.lblStatus.setStyleSheet('color:#4F6F52;font-weight:600;')
             self.time_left -= 1
         elif self.scheduled:
-            self.lblStatus.setText('Trạng thái: Đang tắt máy...')
+            self.lblCountdown.setText('00:00:00')
+            self.lblStatus.setText('Đang tắt máy…')
             self.lblExact.setText('')
             self.scheduled = False
             self.timer.stop()
@@ -1058,6 +1260,16 @@ def skm_update_thumbnail(skm_path, output_dir=None, overwrite=False, thumb_size=
     return out_path
 
 
+def wrap_scroll(widget):
+    """Bọc 1 màn hình trong khung cuộn — cửa sổ thấp thì cuộn xuống, không ép các ô nhập bị dẹt/đè chữ."""
+    sc = QScrollArea()
+    sc.setWidgetResizable(True)
+    sc.setFrameShape(QFrame.NoFrame)
+    sc.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+    sc.setWidget(widget)
+    return sc
+
+
 class DropListWidget(QListWidget):
     """QListWidget nhận kéo-thả file/thư mục (lọc theo phần mở rộng), thay cho tkinterdnd2."""
     def __init__(self, accepted_exts=None, parent=None):
@@ -1065,6 +1277,7 @@ class DropListWidget(QListWidget):
         self.accepted_exts = accepted_exts
         self.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.setAcceptDrops(True)
+        self.setMinimumHeight(110)
         self.paths = []
 
     def dragEnterEvent(self, e):
@@ -1109,6 +1322,8 @@ class DropListWidget(QListWidget):
 
 class SkmToTab(QWidget):
     """Ảnh → .skm"""
+    logLine = pyqtSignal(str)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         lay = QVBoxLayout(self)
@@ -1154,7 +1369,8 @@ class SkmToTab(QWidget):
         btnRun.clicked.connect(self.run_convert)
         lay.addWidget(btnRun)
 
-        self.log = QTextEdit(); self.log.setReadOnly(True)
+        self.log = QTextEdit(); self.log.setReadOnly(True); self.log.setMinimumHeight(90)
+        self.logLine.connect(self.log.append)
         lay.addWidget(self.log, 1)
 
     def on_preset(self, name):
@@ -1194,15 +1410,17 @@ class SkmToTab(QWidget):
                 try:
                     name = custom_name if (custom_name and len(files) == 1) else None
                     out = skm_convert_image_to_skm(path, out_dir, material_name=name, width_mm=w, height_mm=h)
-                    self.log.append('OK  : %s  ->  %s' % (os.path.basename(path), out)); ok += 1
+                    self.logLine.emit('OK  : %s  ->  %s' % (os.path.basename(path), out)); ok += 1
                 except Exception as e:
-                    self.log.append('LỖI : %s  ->  %s' % (os.path.basename(path), e)); fail += 1
-            self.log.append('--- Hoàn tất: %d thành công, %d lỗi ---' % (ok, fail))
+                    self.logLine.emit('LỖI : %s  ->  %s' % (os.path.basename(path), e)); fail += 1
+            self.logLine.emit('--- Hoàn tất: %d thành công, %d lỗi ---' % (ok, fail))
         threading.Thread(target=worker, daemon=True).start()
 
 
 class SkmFromTab(QWidget):
     """.skm → Ảnh"""
+    logLine = pyqtSignal(str)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         lay = QVBoxLayout(self)
@@ -1228,7 +1446,8 @@ class SkmFromTab(QWidget):
         btnRun.clicked.connect(self.run_convert)
         lay.addWidget(btnRun)
 
-        self.log = QTextEdit(); self.log.setReadOnly(True)
+        self.log = QTextEdit(); self.log.setReadOnly(True); self.log.setMinimumHeight(90)
+        self.logLine.connect(self.log.append)
         lay.addWidget(self.log, 1)
 
     def add_files(self):
@@ -1256,15 +1475,17 @@ class SkmFromTab(QWidget):
             for path in files:
                 try:
                     out = skm_convert_skm_to_image(path, out_dir)
-                    self.log.append('OK  : %s  ->  %s' % (os.path.basename(path), out)); ok += 1
+                    self.logLine.emit('OK  : %s  ->  %s' % (os.path.basename(path), out)); ok += 1
                 except Exception as e:
-                    self.log.append('LỖI : %s  ->  %s' % (os.path.basename(path), e)); fail += 1
-            self.log.append('--- Hoàn tất: %d thành công, %d lỗi ---' % (ok, fail))
+                    self.logLine.emit('LỖI : %s  ->  %s' % (os.path.basename(path), e)); fail += 1
+            self.logLine.emit('--- Hoàn tất: %d thành công, %d lỗi ---' % (ok, fail))
         threading.Thread(target=worker, daemon=True).start()
 
 
 class SkmThumbTab(QWidget):
     """Cập nhật thumbnail cho .skm có sẵn"""
+    logLine = pyqtSignal(str)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         lay = QVBoxLayout(self)
@@ -1312,7 +1533,8 @@ class SkmThumbTab(QWidget):
         btnRun.clicked.connect(self.run_update)
         lay.addWidget(btnRun)
 
-        self.log = QTextEdit(); self.log.setReadOnly(True)
+        self.log = QTextEdit(); self.log.setReadOnly(True); self.log.setMinimumHeight(90)
+        self.logLine.connect(self.log.append)
         lay.addWidget(self.log, 1)
 
     def on_mode(self, checked_overwrite):
@@ -1359,10 +1581,10 @@ class SkmThumbTab(QWidget):
             for path in files:
                 try:
                     out = skm_update_thumbnail(path, output_dir=out_dir, overwrite=overwrite, thumb_size=thumb_size)
-                    self.log.append('OK  : %s  ->  %s' % (os.path.basename(path), out)); ok += 1
+                    self.logLine.emit('OK  : %s  ->  %s' % (os.path.basename(path), out)); ok += 1
                 except Exception as e:
-                    self.log.append('LỖI : %s  ->  %s' % (os.path.basename(path), e)); fail += 1
-            self.log.append('--- Hoàn tất: %d thành công, %d lỗi ---' % (ok, fail))
+                    self.logLine.emit('LỖI : %s  ->  %s' % (os.path.basename(path), e)); fail += 1
+            self.logLine.emit('--- Hoàn tất: %d thành công, %d lỗi ---' % (ok, fail))
         threading.Thread(target=worker, daemon=True).start()
 
 
@@ -1370,14 +1592,17 @@ class SkmConverterTab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(16, 16, 16, 16)
+        lay.setContentsMargins(28, 24, 28, 24)
+        lay.setSpacing(10)
         head = QLabel('Chuyển đổi Ảnh ↔ SketchUp Material (.skm)')
-        head.setStyleSheet('font-size:17px;font-weight:700;')
+        head.setObjectName('h1')
         lay.addWidget(head)
         inner = QTabWidget()
-        inner.addTab(SkmToTab(), 'Ảnh → SKM (chính)')
-        inner.addTab(SkmFromTab(), 'SKM → Ảnh')
-        inner.addTab(SkmThumbTab(), 'Cập nhật Thumbnail SKM')
+        inner.tabBar().setExpanding(False)
+        inner.tabBar().setElideMode(Qt.ElideNone)
+        inner.addTab(wrap_scroll(SkmToTab()), 'Ảnh → SKM (chính)')
+        inner.addTab(wrap_scroll(SkmFromTab()), 'SKM → Ảnh')
+        inner.addTab(wrap_scroll(SkmThumbTab()), 'Cập nhật Thumbnail SKM')
         lay.addWidget(inner, 1)
 
 
@@ -2138,12 +2363,13 @@ class ColorPickerPanel(QWidget):
         self._last_hsl_str = ''
 
         main_layout = QHBoxLayout(self)
+        main_layout.setContentsMargins(24, 20, 24, 20)
+        main_layout.setSpacing(16)
 
         left_container = QWidget()
-        left_container.setMaximumWidth(360)
         left_layout = QVBoxLayout(left_container)
-        left_layout.setContentsMargins(0, 0, 5, 0)
-        left_layout.setSpacing(8)
+        left_layout.setContentsMargins(0, 0, 8, 0)
+        left_layout.setSpacing(10)
 
         self.btn_color_list = QPushButton('Danh sách màu')
         self.btn_color_list.setMinimumHeight(40)
@@ -2201,7 +2427,7 @@ class ColorPickerPanel(QWidget):
         self.custom_keys = []
         self.scroll_custom = QScrollArea()
         self.scroll_custom.setWidgetResizable(True)
-        self.scroll_custom.setFixedHeight(80)
+        self.scroll_custom.setFixedHeight(96)
         self.custom_chk_container = QWidget()
         self.custom_chk_layout = QVBoxLayout(self.custom_chk_container)
         self.custom_chk_layout.setContentsMargins(5, 5, 5, 5)
@@ -2225,6 +2451,8 @@ class ColorPickerPanel(QWidget):
 
         edit_layout = QFormLayout()
         edit_layout.setContentsMargins(0, 5, 0, 0)
+        edit_layout.setVerticalSpacing(8)
+        edit_layout.setFieldGrowthPolicy(QFormLayout.ExpandingFieldsGrow)
         self.input_rgb = QLineEdit(); self.input_hex = QLineEdit(); self.input_hsl = QLineEdit()
         self.input_rgb.editingFinished.connect(self.on_rgb_edited)
         self.input_hex.editingFinished.connect(self.on_hex_edited)
@@ -2255,6 +2483,7 @@ class ColorPickerPanel(QWidget):
         self.lbl_batch_status.setProperty('muted', True)
         batch_layout.addWidget(self.lbl_batch_status)
         self.list_widget = QListWidget()
+        self.list_widget.setMinimumHeight(130)
         self.list_widget.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.list_widget.itemClicked.connect(self.preview_from_batch)
         self.list_widget.itemSelectionChanged.connect(self.update_batch_status)
@@ -2288,7 +2517,13 @@ class ColorPickerPanel(QWidget):
         batch_group.setLayout(batch_layout)
         left_layout.addWidget(batch_group)
 
-        main_layout.addWidget(left_container)
+        left_scroll = QScrollArea()
+        left_scroll.setWidgetResizable(True)
+        left_scroll.setFrameShape(QFrame.NoFrame)
+        left_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        left_scroll.setFixedWidth(480)
+        left_scroll.setWidget(left_container)
+        main_layout.addWidget(left_scroll)
 
         self.scene = QGraphicsScene()
         self.view = CpCanvasView(self.scene)
@@ -2752,13 +2987,32 @@ class ColorPickerPanel(QWidget):
 # ==============================================================================
 class UpdateCheckThread(QThread):
     done = pyqtSignal(str)
+    progress = pyqtSignal(str)
 
     def __init__(self, cfg):
         super().__init__()
         self.cfg = cfg
 
     def run(self):
-        self.done.emit(check_update(self.cfg))
+        # restart=False: thread chỉ tải + ghi đè file; việc đóng app và mở lại do cửa sổ chính làm (sạch khay, đúng luồng Qt)
+        self.done.emit(check_update(self.cfg, progress=self.progress.emit, restart=False))
+
+
+NAV_ITEMS = [
+    ('activity', 'Kiểm soát dữ liệu thao tác'),
+    ('cpu', 'Thông số linh kiện máy tính'),
+    ('image', 'Convert Ảnh ↔ SKM'),
+    ('drop', 'Lấy màu (Pick Color)'),
+    ('power', 'Hẹn giờ tắt máy'),
+]
+
+
+def refresh_windows_icon_cache():
+    """Báo Windows vẽ lại icon (icon Desktop/Start sau khi app tự cập nhật sang icon mới)."""
+    try:
+        subprocess.Popen(['ie4uinit.exe', '-show'], creationflags=0x08000000)
+    except Exception:
+        pass
 
 
 class MainWindow(QMainWindow):
@@ -2766,54 +3020,115 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle('HICONIQUE Agent %s' % VERSION)
         self.setWindowIcon(app_icon())
-        self.resize(1300, 820)
+        self.resize(1240, 800)
+        self.setMinimumSize(980, 640)
 
         self.shared = Shared(cfg)
         self.worker = BackgroundWorker(self.shared)
         self.worker.start()
+        self.theme = load_theme()
 
         central = QWidget()
-        lay = QVBoxLayout(central)
-        lay.setContentsMargins(0, 0, 0, 0)
-        head = QWidget()
-        headLay = QHBoxLayout(head)
-        headLay.setContentsMargins(14, 10, 14, 6)
+        root = QVBoxLayout(central)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
+
+        # ---- Thanh tiêu đề: logo + tên + phiên bản | trạng thái cập nhật, nút kiểm tra cập nhật, nút sáng/tối ----
+        header = QWidget()
+        header.setObjectName('header')
+        header.setFixedHeight(62)
+        hl = QHBoxLayout(header)
+        hl.setContentsMargins(18, 0, 16, 0)
+        hl.setSpacing(12)
+        self.logo = QLabel()
+        self.logo.setPixmap(logo_pixmap(36))
+        self.logo.setFixedSize(36, 36)
+        hl.addWidget(self.logo)
         title = QLabel('HICONIQUE Agent')
-        title.setStyleSheet('font-size:15px;font-weight:800;color:%s;' % BRONZE)
-        headLay.addWidget(title)
+        title.setStyleSheet('font-size:16px;font-weight:700;color:%s;' % BRONZE)
+        hl.addWidget(title)
         ver = QLabel('v%s' % VERSION)
         ver.setProperty('muted', True)
-        headLay.addWidget(ver)
-        headLay.addStretch(1)
+        hl.addWidget(ver)
+        hl.addStretch(1)
         self.lblUpdate = QLabel('')
         self.lblUpdate.setProperty('muted', True)
-        headLay.addWidget(self.lblUpdate)
-        self.btnCheckUpdate = QPushButton('Kiểm tra cập nhật')
+        hl.addWidget(self.lblUpdate)
+        self.btnCheckUpdate = QPushButton(' Kiểm tra cập nhật')
+        self.btnCheckUpdate.setCursor(Qt.PointingHandCursor)
+        self.btnCheckUpdate.setToolTip('Kiểm tra bản mới — nếu có sẽ tự tải về, ghi đè và mở lại')
+        self.btnCheckUpdate.setFixedHeight(38)
         self.btnCheckUpdate.clicked.connect(self.check_update_now)
-        headLay.addWidget(self.btnCheckUpdate)
-        self.theme = load_theme()
+        hl.addWidget(self.btnCheckUpdate)
         self.btnTheme = QPushButton()
-        self.btnTheme.setFixedWidth(36)
-        self.btnTheme.setToolTip('Đổi nền sáng/tối')
+        self.btnTheme.setObjectName('iconbtn')
+        self.btnTheme.setFixedSize(38, 38)
+        self.btnTheme.setIconSize(QSize(20, 20))
+        self.btnTheme.setCursor(Qt.PointingHandCursor)
+        self.btnTheme.setToolTip('Chuyển đổi sáng/tối')
         self.btnTheme.clicked.connect(self.toggle_theme)
-        self._update_theme_button()
-        headLay.addWidget(self.btnTheme)
-        lay.addWidget(head)
+        hl.addWidget(self.btnTheme)
+        root.addWidget(header)
 
-        self.tabs = QTabWidget()
-        self.tabs.addTab(ActivityTab(self.shared), 'Kiểm soát dữ liệu thao tác')
-        self.tabs.addTab(HardwareTab(self.shared), 'Thông số linh kiện máy tính')
-        self.tabs.addTab(SkmConverterTab(), 'Convert Ảnh ↔ SKM')
-        self.tabs.addTab(ColorPickerPanel(), 'Lấy màu (Pick Color)')
-        self.tabs.addTab(ShutdownTab(), 'Hẹn giờ tắt máy')
-        lay.addWidget(self.tabs, 1)
+        # ---- Thân: thanh điều hướng bên trái + nội dung (co giãn theo cửa sổ) ----
+        body = QHBoxLayout()
+        body.setContentsMargins(0, 0, 0, 0)
+        body.setSpacing(0)
+        sidebar = QWidget()
+        sidebar.setObjectName('sidebar')
+        sidebar.setFixedWidth(258)
+        sl = QVBoxLayout(sidebar)
+        sl.setContentsMargins(12, 14, 12, 14)
+        sl.setSpacing(4)
+        self.navButtons = []
+        for i, (icon_name, text) in enumerate(NAV_ITEMS):
+            b = QPushButton(' ' + text)
+            b.setObjectName('nav')
+            b.setCheckable(True)
+            b.setCursor(Qt.PointingHandCursor)
+            b.setIconSize(QSize(18, 18))
+            b.setMinimumHeight(42)
+            b.clicked.connect(lambda _checked=False, idx=i: self.select_page(idx))
+            sl.addWidget(b)
+            self.navButtons.append(b)
+        sl.addStretch(1)
+        note = QLabel('Đóng cửa sổ (X) = chạy nền ở khay hệ thống.\nChuột phải icon khay > Thoát để tắt hẳn.')
+        note.setProperty('muted', True)
+        note.setWordWrap(True)
+        note.setStyleSheet('font-size:11px;')
+        sl.addWidget(note)
+        body.addWidget(sidebar)
+
+        self.stack = QStackedWidget()
+        self.stack.addWidget(ActivityTab(self.shared))
+        self.stack.addWidget(HardwareTab(self.shared))
+        self.stack.addWidget(SkmConverterTab())
+        self.stack.addWidget(ColorPickerPanel())
+        self.stack.addWidget(ShutdownTab())
+        body.addWidget(self.stack, 1)
+        root.addLayout(body, 1)
         self.setCentralWidget(central)
+
+        self.select_page(0)
+        self._update_theme_button()
 
         self._build_tray()
         self._build_ipc_server()
 
         if not start_hidden:
             self.show()
+
+    def select_page(self, idx):
+        self.stack.setCurrentIndex(idx)
+        for i, b in enumerate(self.navButtons):
+            b.setChecked(i == idx)
+        self._refresh_icons()
+
+    def _refresh_icons(self):
+        c = THEME_COLORS.get(self.theme, THEME_COLORS['dark'])
+        for i, b in enumerate(self.navButtons):
+            b.setIcon(svg_icon(NAV_ITEMS[i][0], c['bronze'] if b.isChecked() else c['muted'], 18))
+        self.btnCheckUpdate.setIcon(svg_icon('refresh', c['muted'], 16))
 
     def _build_tray(self):
         self.tray = QSystemTrayIcon(app_icon(), self)
@@ -2876,7 +3191,12 @@ class MainWindow(QMainWindow):
         QApplication.quit()
 
     def _update_theme_button(self):
-        self.btnTheme.setText('☀' if self.theme == 'dark' else '🌙')  # hiện icon của chế độ SẼ chuyển sang
+        # Giống web: nền tối hiện mặt trời (vàng đồng), nền sáng hiện mặt trăng (xanh) — icon của chế độ SẼ chuyển sang
+        if self.theme == 'dark':
+            self.btnTheme.setIcon(svg_icon('sun', SUN_COLOR, 20))
+        else:
+            self.btnTheme.setIcon(svg_icon('moon', MOON_COLOR, 20))
+        self._refresh_icons()
 
     def toggle_theme(self):
         self.theme = 'light' if self.theme == 'dark' else 'dark'
@@ -2888,6 +3208,7 @@ class MainWindow(QMainWindow):
         self.btnCheckUpdate.setEnabled(False)
         self.lblUpdate.setText('Đang kiểm tra…')
         self.updateThread = UpdateCheckThread(self.shared.cfg)
+        self.updateThread.progress.connect(self.lblUpdate.setText)
         self.updateThread.done.connect(self.on_update_checked)
         self.updateThread.start()
 
@@ -2904,8 +3225,17 @@ class MainWindow(QMainWindow):
         elif status in ('bad_url', 'bad_sha'):
             self.lblUpdate.setText('Kiểm tra lúc %s — bản trên máy chủ không hợp lệ, đã hủy' % now)
             QMessageBox.warning(self, 'HICONIQUE Agent', 'Dữ liệu bản cập nhật không hợp lệ (%s) — đã hủy, không cài.' % status)
-        # 'updating': tiến trình tự thoát trong check_update() trước khi kịp phát tín hiệu này, nên
-        # không có nhánh xử lý ở đây — cửa sổ đơn giản biến mất và bản mới tự mở lại.
+        elif status.startswith('updated:'):
+            self.lblUpdate.setText('Đã cài bản %s — đang khởi động lại…' % status[8:])
+            self.btnCheckUpdate.setEnabled(False)
+            QTimer.singleShot(1200, self.restart_after_update)
+
+    def restart_after_update(self):
+        """File exe đã được ghi đè bản mới — đóng app này sạch sẽ rồi mở lại bằng file mới."""
+        self.worker.stop()
+        self.tray.hide()
+        relaunch_after_exit(sys.executable)
+        QTimer.singleShot(300, lambda: os._exit(0))   # thoát cứng: trạng thái ghi nhận đã lưu mỗi lần lấy mẫu
 
 
 def try_activate_existing_instance():
@@ -3054,6 +3384,15 @@ def main():
     if '--uninstall' in args:
         do_uninstall()
         return
+
+    if '--after-update' in args and FROZEN and os.path.abspath(sys.executable).lower() == INSTALL_EXE.lower():
+        # Vừa tự cập nhật xong: làm mới thông tin phiên bản trong Cài đặt Windows + icon Desktop (icon có thể đã đổi)
+        try:
+            register_windows()
+            create_desktop_shortcut()
+            refresh_windows_icon_cache()
+        except Exception as e:
+            log('Làm mới đăng ký sau cập nhật lỗi:', e)
 
     if '--run' in args or ('--once' not in args and FROZEN and os.path.abspath(sys.executable).lower() == INSTALL_EXE.lower()):
         # Khởi động bình thường (Windows tự gọi khi đăng nhập với --run, hoặc bấm icon Desktop/Start)

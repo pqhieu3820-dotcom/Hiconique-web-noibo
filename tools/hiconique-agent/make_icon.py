@@ -1,28 +1,20 @@
-"""Tạo icon.ico đơn giản cho HICONIQUE Agent (chữ H trên nền đồng — tông màu thương hiệu). Cần Pillow: pip install pillow."""
-from PIL import Image, ImageDraw, ImageFont
+"""Tạo icon.ico cho HICONIQUE Agent từ đúng icon app đang dùng trên điện thoại (public/icon-512.png —
+logo trắng trên nền gradient đen-xám-xanh), bo góc như icon app. Cần Pillow: pip install pillow."""
+from PIL import Image, ImageDraw
 import os
 
-BRONZE = (176, 141, 87)
-DARK = (11, 13, 16)
+HERE = os.path.dirname(os.path.abspath(__file__))
+SRC = os.path.normpath(os.path.join(HERE, '..', '..', 'public', 'icon-512.png'))
 SIZES = [16, 24, 32, 48, 64, 128, 256]
+RADIUS_RATIO = 0.22  # độ bo góc so với cạnh (giống icon app trên điện thoại)
 
-img = Image.new('RGBA', (256, 256), (0, 0, 0, 0))
-d = ImageDraw.Draw(img)
-d.rounded_rectangle([8, 8, 248, 248], radius=56, fill=BRONZE)
-font = None
-for name in ('segoeuib.ttf', 'arialbd.ttf', 'Arial Bold.ttf'):
-    try:
-        font = ImageFont.truetype(name, 150)
-        break
-    except Exception:
-        continue
-if not font:
-    font = ImageFont.load_default()
-text = 'H'
-bbox = d.textbbox((0, 0), text, font=font)
-w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]
-d.text(((256 - w) / 2 - bbox[0], (256 - h) / 2 - bbox[1] - 6), text, fill=DARK, font=font)
+src = Image.open(SRC).convert('RGBA').resize((1024, 1024), Image.LANCZOS)
+mask = Image.new('L', (1024, 1024), 0)
+ImageDraw.Draw(mask).rounded_rectangle([0, 0, 1023, 1023], radius=int(1024 * RADIUS_RATIO), fill=255)
+src.putalpha(mask)
 
-out = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icon.ico')
-img.save(out, sizes=[(s, s) for s in SIZES])
+out = os.path.join(HERE, 'icon.ico')
+src.resize((256, 256), Image.LANCZOS).save(out, sizes=[(s, s) for s in SIZES])
+# bản PNG dùng làm logo trên thanh tiêu đề trong app (nạp qua QPixmap, không cần đọc .ico)
+src.resize((128, 128), Image.LANCZOS).save(os.path.join(HERE, 'logo.png'))
 print('OK', out)

@@ -1,5 +1,10 @@
 [
   {
+    "version": "2.0.2",
+    "date": "2026-09-29",
+    "notes": "Sửa lỗi TỰ CẬP NHẬT không hoạt động (máy chủ web chặn yêu cầu không có User-Agent nên nút 'Kiểm tra cập nhật' luôn báo lỗi mạng) — giờ có bản mới thì tự tải về, kiểm SHA-256, ghi đè và khởi động lại, hiện % tiến trình. Giao diện mới: icon ứng dụng đổi sang logo giống icon trên điện thoại, cửa sổ co kéo được với thanh điều hướng bên trái, sửa chữ bị cắt/đè ở các tab (thanh tab, ô nhập, tab Lấy màu, tab Convert), làm lại tab Hẹn giờ tắt máy (đồng hồ đếm ngược lớn + nút chọn nhanh), icon sáng/tối giống trên web. Sửa lỗi ghi log từ luồng phụ ở tab Convert SKM."
+  },
+  {
     "version": "2.0.1",
     "date": "2026-09-28",
     "notes": "Thêm nút 'Kiểm tra cập nhật' và nút đổi nền sáng/tối ngay trên cửa sổ chính (nhớ lựa chọn cho lần sau). Quét phần cứng giờ nhận diện thêm bàn phím và chuột (tên thiết bị theo Windows, có thể chung chung với USB thường)."

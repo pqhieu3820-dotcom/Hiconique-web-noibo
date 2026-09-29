@@ -84,7 +84,8 @@ def publish_release(version, exe_path, notes):
 src = open(ENTRY, encoding='utf-8').read()
 version = re.search(r"^VERSION = '([^']+)'", src, re.M).group(1)
 
-if not os.path.exists(ICON):
+LOGO = os.path.join(HERE, 'logo.png')  # logo hiện trên thanh tiêu đề của app (cùng do make_icon.py tạo)
+if not os.path.exists(ICON) or not os.path.exists(LOGO):
     subprocess.check_call([sys.executable, os.path.join(HERE, 'make_icon.py')])
 
 subprocess.check_call([
@@ -92,6 +93,8 @@ subprocess.check_call([
     '--name', 'HiconiqueAgent',
     '--icon', ICON,
     '--add-data', '%s%s.' % (ICON, os.pathsep),   # nhúng icon.ico vào trong exe để cửa sổ app cũng dùng đúng icon
+    '--add-data', '%s%s.' % (LOGO, os.pathsep),
+    '--hidden-import', 'PyQt5.QtSvg',
     '--hidden-import', 'PyQt5.QtNetwork',
     '--hidden-import', 'pandas', '--hidden-import', 'openpyxl',
     '--exclude-module', 'matplotlib', '--exclude-module', 'pandas.tests', '--exclude-module', 'tkinter',
