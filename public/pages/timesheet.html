@@ -338,6 +338,7 @@
       margin-bottom: 16px;
     }
 
+    .ts-checkin-btn .ts-btn-main { display: block; font-family: 'Cormorant Garamond', 'Times New Roman', Georgia, serif; font-size: 1.75rem; font-weight: 700; letter-spacing: 0.02em; line-height: 1.1; }
     .ts-checkin-btn .ts-btn-sub { display: block; margin-top: 2px; font-size: 0.6875rem; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.85; }
     .ts-checkin-btn.in { background: var(--ts-bronze); color: #0B0D10; }
     .ts-checkin-btn.in:hover { background: #C7A464; transform: translateY(-1px); }
@@ -1217,7 +1218,7 @@
              công hôm nay + giờ hiện tại so với "Setup thời gian làm việc".
              Logic ghi thật vẫn giữ nguyên shiftCheckIn()/shiftCheckOut()
              trong task-data.js. -->
-        <button class="ts-checkin-btn in" id="tsCheckinBtn">Chấm công<span class="ts-btn-sub">Check in</span></button>
+        <button class="ts-checkin-btn in" id="tsCheckinBtn"><span class="ts-btn-main">Chấm công</span><span class="ts-btn-sub">Check in</span></button>
         <div class="ts-checkin-status idle" id="tsCheckinStatus">Đang tải...</div>
 
         <div class="ts-device-table" id="tsDeviceTable"></div>
@@ -2160,7 +2161,7 @@
         // check-out — giữ lại tín hiệu màu để không phải đọc chữ mới biết.
         // 2026-09-29: thêm chữ nhỏ Check in / Check out dưới chữ "Chấm công" để
         // mọi người phân biệt được hành động sắp làm (màu nút giữ nguyên).
-        btn.innerHTML = 'Chấm công<span class="ts-btn-sub">' + (inTime ? 'Check out' : 'Check in') + '</span>';
+        btn.innerHTML = '<span class="ts-btn-main">Chấm công</span><span class="ts-btn-sub">' + (inTime ? 'Check out' : 'Check in') + '</span>';
         if (inTime) {
           btn.className = 'ts-checkin-btn out';
           btn.disabled = false;
