@@ -1,11 +1,16 @@
 {
-  "version": "2.0.2",
+  "version": "2.0.3",
   "url": "https://github.com/pqhieu3820-dotcom/Hiconique-web-noibo/releases/latest/download/HiconiqueAgentSetup.exe",
-  "sha256": "9d936510c62e820599816001e7b0c5832387b7e0fd52643abba30a47c2790628",
-  "size": 69633618,
-  "releasedAt": "2026-09-29T11:30:52Z",
-  "notes": "Sửa lỗi TỰ CẬP NHẬT không hoạt động (máy chủ web chặn yêu cầu không có User-Agent nên nút 'Kiểm tra cập nhật' luôn báo lỗi mạng) — giờ có bản mới thì tự tải về, kiểm SHA-256, ghi đè và khởi động lại, hiện % tiến trình. Giao diện mới: icon ứng dụng đổi sang logo giống icon trên điện thoại, cửa sổ co kéo được với thanh điều hướng bên trái, sửa chữ bị cắt/đè ở các tab (thanh tab, ô nhập, tab Lấy màu, tab Convert), làm lại tab Hẹn giờ tắt máy (đồng hồ đếm ngược lớn + nút chọn nhanh), icon sáng/tối giống trên web. Sửa lỗi ghi log từ luồng phụ ở tab Convert SKM. Tab Thông số linh kiện: nhấp đúp vào ô để sửa nội dung rồi bấm 'Lưu chỉnh sửa' — phần đã sửa được giữ nguyên (kể cả sau khi mở lại app, kể cả khi app tự báo lên web mỗi 24 giờ) cho tới khi bấm 'Quét lại phần cứng'; 'Cập nhật lên web' gửi đúng nội dung đang hiển thị. Quét ổ cứng chỉ đọc ổ gắn TRONG máy: bỏ ổ USB/ổ rời/thẻ nhớ/ổ ảo và cả phân vùng của chúng.",
+  "sha256": "395222cfa4121a13055ac181a79d31296bf857488c53a2b79f58543d94a52459",
+  "size": 69636174,
+  "releasedAt": "2026-09-29T14:17:16Z",
+  "notes": "Sửa trình cài đặt: ô 'Chọn tên của bạn' trước đây trống trơn khi mạng/máy chủ chậm (chỉ chờ 25 giây rồi im lặng và đứng hình). Nay tải danh sách ở nền không đứng hình, chờ tối đa 60 giây/lần và tự thử lại 4 lần, hiện tiến trình và báo lỗi rõ ràng, có nút 'Tải lại', nhớ danh sách lần trước, và cho gõ thẳng mã thành viên.",
   "history": [
+    {
+      "version": "2.0.3",
+      "date": "2026-09-29",
+      "notes": "Sửa trình cài đặt: ô 'Chọn tên của bạn' trước đây trống trơn khi mạng/máy chủ chậm (chỉ chờ 25 giây rồi im lặng và đứng hình). Nay tải danh sách ở nền không đứng hình, chờ tối đa 60 giây/lần và tự thử lại 4 lần, hiện tiến trình và báo lỗi rõ ràng, có nút 'Tải lại', nhớ danh sách lần trước, và cho gõ thẳng mã thành viên."
+    },
     {
       "version": "2.0.2",
       "date": "2026-09-29",
