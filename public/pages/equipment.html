@@ -105,7 +105,7 @@
     .eq-alert { color: #D07070; font-size: 0.75rem; margin-top: 6px; line-height: 1.5; }
     .eq-diff { color: var(--eq-warn); font-size: 0.75rem; margin-top: 6px; }
     .eq-live { font-size: 0.6875rem; color: var(--eq-muted); margin-top: 6px; line-height: 1.5; }
-    .eq-stock-row { display: grid; grid-template-columns: 1fr 90px 26px; gap: 6px; align-items: center; }
+    .eq-stock-row { display: grid; grid-template-columns: minmax(0, 1fr) 90px 26px; gap: 6px; align-items: center; }
     .eq-move-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
     .eq-move-row .eq-input, .eq-move-row .eq-select { padding: 7px 8px; font-size: 0.75rem; }
     .eq-move-row #emNote, .eq-move-row #eqMoveBtn { grid-column: 1 / -1; }
@@ -114,8 +114,32 @@
     .eq-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--eq-surface); border: 1px solid var(--eq-border); padding: 10px 18px; border-radius: 10px; font-size: 0.8125rem; z-index: 9500; box-shadow: 0 6px 24px rgba(0,0,0,.25); }
     .eq-toast.bad { border-color: var(--eq-bad); }
 
-    @media (max-width: 1100px) { .eq-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-    @media (max-width: 860px) { .eq-modal-body { grid-template-columns: 1fr; } .eq-modal-body > div + div { border-left: none; border-top: 1px solid var(--eq-border); } .eq-form-grid { grid-template-columns: 1fr; } .eq-spec-row, .eq-spec-cols { grid-template-columns: 1fr 1fr; } .eq-spec-cols { display: none; } }
+    @media (max-width: 1100px) { .eq-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .eq-kpi:last-child:nth-child(odd) { grid-column: 1 / -1; } }
+    /* Chống tràn ngang: mọi ô lưới/flex phải được phép co (min-width:0) và chữ dài phải xuống hàng */
+    .eq-modal, .eq-modal form { min-width: 0; }
+    .eq-modal-body > div, .eq-field, .eq-pc { min-width: 0; }
+    .eq-input, .eq-select, .eq-textarea { min-width: 0; }
+    .eq-live, .eq-sub, .eq-alert, .eq-diff, .eq-hist-row, .eq-banner { overflow-wrap: anywhere; word-break: break-word; }
+    @media (max-width: 860px) {
+      .eq-overlay { padding: 10px 6px; }
+      .eq-modal { border-radius: 14px; overflow-x: hidden; }
+      .eq-modal-head, .eq-actions { padding: 12px 14px; }
+      .eq-modal-body { grid-template-columns: minmax(0, 1fr); }
+      .eq-modal-body > div { padding: 14px; }
+      .eq-modal-body > div + div { border-left: none; border-top: 1px solid var(--eq-border); }
+      .eq-form-grid { grid-template-columns: minmax(0, 1fr); }
+      .eq-spec-cols { display: none; }
+      /* mỗi dòng linh kiện thành 1 thẻ nhỏ: Loại + Tên / Thông số + SL, nút xoá góc phải */
+      .eq-spec-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); padding: 8px; border: 1px solid var(--eq-border); border-radius: 10px; background: var(--eq-bg); }
+      .eq-spec-row [data-f="spec"] { grid-column: 1 / -1; }
+      .eq-spec-row [data-f="qty"] { max-width: 110px; }
+      .eq-spec-row .eq-spec-del { justify-self: end; padding: 2px 8px; }
+      .eq-stock-row { grid-template-columns: minmax(0, 1fr) 84px 26px; }
+      .eq-move-row { grid-template-columns: minmax(0, 1fr); }
+      .eq-toolbar { gap: 8px; }
+      .eq-toolbar .eq-select, .eq-toolbar .eq-seg, .eq-toolbar .eq-btn { flex: 1 1 auto; }
+      .eq-seg button { padding: 8px 10px; }
+    }
   </style>
 </head>
 <body>

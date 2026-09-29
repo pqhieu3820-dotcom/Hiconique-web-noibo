@@ -637,6 +637,21 @@ main { flex: 1; }
   font-size: 0.875rem;
 }
 
+/* 2026-09-29: tìm kiếm thông minh — nhóm lọc, mục đang chọn (phím mũi tên), gợi ý phím */
+.search-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 20px 4px; }
+.search-chip {
+  padding: 4px 10px; border-radius: 999px; border: 1px solid var(--color-border); background: transparent;
+  color: var(--color-text-muted); font-family: inherit; font-size: 0.75rem; cursor: pointer;
+}
+.search-chip b { font-weight: 600; color: var(--color-text); margin-left: 2px; }
+.search-chip:hover { border-color: var(--color-bronze); color: var(--color-bronze); }
+.search-chip.active { background: rgba(176, 141, 87, 0.16); border-color: var(--color-bronze); color: var(--color-bronze); }
+.search-result-item.active { background: rgba(176, 141, 87, 0.14); }
+.search-result-text { min-width: 0; }
+.search-result-text strong, .search-result-text small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.search-hint { padding: 8px 20px 12px; font-size: 0.6875rem; color: var(--color-text-faint); }
+.search-results { max-height: 70vh; }
+
 @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
 
 /* ---------- Hero ---------- */

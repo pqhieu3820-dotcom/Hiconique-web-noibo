@@ -274,82 +274,98 @@
   var input = overlay.querySelector('[data-search-input]');
   var resultsBox = overlay.querySelector('[data-search-results]');
 
+  // 2026-09-29: tìm kiếm thông minh toàn hệ thống (mức 1, không AI) — logic nằm ở /js/global-search.js
+  // (bỏ dấu, chịu sai chính tả, xếp theo độ liên quan, lọc theo quyền). portal.js chỉ lo giao diện ô tìm kiếm và
+  // tự nạp module này (portal.js load ở MỌI trang nên không phải thêm thẻ script vào từng trang).
   var SEARCH_PAGES = [
-    { title: 'Trang chủ', sub: 'Không gian làm việc', url: '/', group: 'Trang' },
-    { title: 'Task Manager', sub: 'Quản lý công việc, Kanban', url: '/pages/tasks-manager.html', group: 'Công cụ' },
-    { title: 'Dự án', sub: 'Board / List / Timeline / Gantt', url: '/pages/projects.html', group: 'Công cụ' },
-    { title: 'Bảng tiến độ', sub: 'Theo dõi tiến độ công việc', url: '/pages/progress-board.html', group: 'Công cụ' },
-    { title: 'Chấm công', sub: 'Check-in / Check-out hàng ngày', url: '/pages/timesheet.html', group: 'Công cụ' },
-    { title: 'Phiếu lương', sub: 'Đề xuất thanh toán lương hàng tháng', url: '/pages/payslip.html', group: 'Công cụ' },
-    { title: 'Hoa hồng dự án', sub: 'Cấu hình và tính hoa hồng theo dự án', url: '/pages/commission.html', group: 'Công cụ' },
-    { title: 'Bảng giá dịch vụ', sub: 'Soạn báo giá, xuất Excel/PDF cho khách', url: '/pages/pricing.html', group: 'Công cụ' },
-    { title: 'Tài chính công ty', sub: 'Lãi/lỗ, dòng tiền, vay nợ — CEO-only', url: '/pages/finance.html', group: 'Công cụ' },
-    { title: 'Tài liệu / Wiki', sub: 'Quy trình, biểu mẫu, hướng dẫn', url: '/pages/wiki.html', group: 'Tài liệu' },
-    { title: 'SPC', sub: 'Kiểm soát chất lượng', url: '/pages/spc.html', group: 'Tài liệu' },
-    { title: 'Thông báo', sub: 'Tin tức và thông báo nội bộ', url: '/pages/notices.html', group: 'Trang' },
-    { title: 'Team', sub: 'Danh bạ nhân sự', url: '/pages/team.html', group: 'Trang' },
-    { title: 'Thông tin cá nhân', sub: 'Hồ sơ, đổi mật khẩu', url: '/pages/profile.html', group: 'Trang' },
-    { title: 'Dashboard của tôi', sub: 'Tổng quan công việc cá nhân', url: '/pages/my-dashboard.html', group: 'Trang' }
+    { title: 'Trang chủ', sub: 'Không gian làm việc', url: '/', keywords: 'home portal' },
+    { title: 'Task Manager', sub: 'Quản lý công việc, Kanban', url: '/pages/tasks-manager.html', keywords: 'task cong viec giao viec kanban' },
+    { title: 'Dự án', sub: 'Board / List / Timeline / Gantt', url: '/pages/projects.html', keywords: 'du an cong trinh gantt' },
+    { title: 'Bảng tiến độ', sub: 'Theo dõi tiến độ công việc', url: '/pages/progress-board.html', keywords: 'tien do' },
+    { title: 'Chấm công', sub: 'Check-in / Check-out hàng ngày', url: '/pages/timesheet.html', keywords: 'cham cong checkin checkout diem danh' },
+    { title: 'Phiếu lương', sub: 'Đề xuất thanh toán lương hàng tháng', url: '/pages/payslip.html', keywords: 'luong' },
+    { title: 'Hoa hồng dự án', sub: 'Cấu hình và tính hoa hồng theo dự án', url: '/pages/commission.html', keywords: 'hoa hong' },
+    { title: 'Bảng giá dịch vụ', sub: 'Soạn báo giá, xuất Excel/PDF cho khách', url: '/pages/pricing.html', keywords: 'bao gia don gia du toan' },
+    { title: 'Khái toán nhanh', sub: 'Khái toán chi phí và kế hoạch tiến độ thi công', url: '/pages/khai-toan.html', keywords: 'khai toan du toan chi phi' },
+    { title: 'Tính toán chiếu sáng', sub: 'Số lượng đèn theo TCVN, độ rọi', url: '/pages/lighting.html', keywords: 'chieu sang den lux' },
+    { title: 'Đơn hàng & hóa đơn', sub: 'Đơn hàng, hóa đơn, công nợ khách', url: '/pages/orders.html', keywords: 'don hang hoa don cong no' },
+    { title: 'Quản lý khách hàng (CRM)', sub: 'Khách hàng, chăm sóc, nhắc liên hệ', url: '/pages/crm.html', keywords: 'crm khach hang cham soc' },
+    { title: 'Tài sản & vật tư', sub: 'Máy tính, văn phòng phẩm, dụng cụ đo đạc, giàn giáo, ván khuôn…', url: '/pages/equipment.html', keywords: 'thiet bi tai san vat tu kho gian giao van khuon but bi may thuy binh laser' },
+    { title: 'Theo dõi hiệu suất', sub: 'Hoạt động Hub và ứng dụng đang dùng', url: '/pages/staff-monitor.html', keywords: 'hieu suat agent' },
+    { title: 'HICON-BIM', sub: 'Mô hình BIM, vật liệu, BOQ', url: '/pages/hicon-bim.html', keywords: 'bim boq vat lieu sketchup' },
+    { title: 'Tài chính công ty', sub: 'Lãi/lỗ, dòng tiền, vay nợ — CEO-only', url: '/pages/finance.html', keywords: 'tai chinh loi nhuan' },
+    { title: 'Tài liệu / Wiki', sub: 'Quy trình, biểu mẫu, hướng dẫn', url: '/pages/wiki.html', keywords: 'wiki quy trinh bieu mau' },
+    { title: 'SPC', sub: 'Kiểm soát chất lượng', url: '/pages/spc.html', keywords: 'chat luong quy chuan ky thuat' },
+    { title: 'Thông báo', sub: 'Tin tức và thông báo nội bộ', url: '/pages/notices.html', keywords: 'bang tin' },
+    { title: 'Team', sub: 'Danh bạ nhân sự', url: '/pages/team.html', keywords: 'nhan su nhan vien' },
+    { title: 'Thông tin cá nhân', sub: 'Hồ sơ, đổi mật khẩu', url: '/pages/profile.html', keywords: 'ho so mat khau' },
+    { title: 'Dashboard của tôi', sub: 'Tổng quan công việc cá nhân', url: '/pages/my-dashboard.html', keywords: 'tong quan' }
   ];
 
-  function searchMembers() {
-    if (typeof TaskManager === 'undefined' || !TaskManager.getMembers) return [];
-    return TaskManager.getMembers().map(function (m) {
-      return {
-        title: m.name || '—',
-        sub: (m.role || m.position || 'Nhân sự') + (m.email ? ' · ' + m.email : ''),
-        url: '/pages/team.html',
-        group: 'Đồng nghiệp'
-      };
-    });
+  var SEARCH_ICON_ARROW = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>';
+  var searchFilter = '';   // nhóm đang lọc ('' = tất cả)
+
+  function withSearchModule(cb) {
+    if (window.HiconiqueSearch) { window.HiconiqueSearch.setPages(SEARCH_PAGES); cb && cb(); return; }
+    if (document.querySelector('script[data-global-search]')) { setTimeout(function () { withSearchModule(cb); }, 60); return; }
+    var sc = document.createElement('script');
+    sc.src = '/js/global-search.js';
+    sc.setAttribute('data-global-search', '');
+    sc.onload = function () { window.HiconiqueSearch.setPages(SEARCH_PAGES); cb && cb(); };
+    document.head.appendChild(sc);
   }
 
-  var SEARCH_ICON_ARROW = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>';
+  function drawSearchResults(query) {
+    var r = window.HiconiqueSearch.search(query, { group: searchFilter });
+    resultsBox.hidden = false;
+    if (!r.total) {
+      resultsBox.innerHTML = '<p class="search-empty">Không tìm thấy kết quả cho "' + escapeHtml(query) + '"<br><small>Thử gõ ít từ hơn — không cần gõ dấu, sai chính tả nhẹ vẫn tìm được.</small></p>';
+      return;
+    }
+    var html = '<div class="search-chips">' +
+      '<button type="button" class="search-chip' + (searchFilter ? '' : ' active') + '" data-search-group="">Tất cả <b>' + r.total + '</b></button>' +
+      r.groups.map(function (g) {
+        return '<button type="button" class="search-chip' + (searchFilter === g.name ? ' active' : '') + '" data-search-group="' + escapeHtml(g.name) + '">' + escapeHtml(g.name) + ' <b>' + g.count + '</b></button>';
+      }).join('') + '</div>';
+    var lastGroup = null;
+    r.items.forEach(function (item) {
+      if (!searchFilter && item.group !== lastGroup) { html += '<p class="search-result-group">' + escapeHtml(item.group) + '</p>'; lastGroup = item.group; }
+      html += '<a class="search-result-item" href="' + escapeHtml(item.url) + '">' + SEARCH_ICON_ARROW +
+        '<span class="search-result-text"><strong>' + escapeHtml(item.title) + '</strong><small>' + escapeHtml(item.sub) + '</small></span></a>';
+    });
+    html += '<p class="search-hint">↑ ↓ để chọn · Enter để mở · Esc để đóng · phím tắt: / hoặc Ctrl+K</p>';
+    resultsBox.innerHTML = html;
+    var first = resultsBox.querySelector('.search-result-item');
+    if (first) first.classList.add('active');
+  }
 
   function renderSearchResults(query) {
     if (!resultsBox) return;
-    var q = query.trim().toLowerCase();
-    if (!q) {
-      resultsBox.hidden = true;
-      resultsBox.innerHTML = '';
-      return;
-    }
+    var q = query.trim();
+    if (!q) { resultsBox.hidden = true; resultsBox.innerHTML = ''; return; }
+    withSearchModule(function () { drawSearchResults(q); });
+  }
 
-    var pool = SEARCH_PAGES.concat(searchMembers());
-    var matches = pool.filter(function (item) {
-      return (item.title + ' ' + item.sub).toLowerCase().indexOf(q) !== -1;
-    }).slice(0, 8);
-
-    resultsBox.hidden = false;
-
-    if (matches.length === 0) {
-      resultsBox.innerHTML = '<p class="search-empty">Không tìm thấy kết quả cho "' + escapeHtml(query) + '"</p>';
-      return;
-    }
-
-    var groups = [];
-    var byGroup = {};
-    matches.forEach(function (m) {
-      if (!byGroup[m.group]) { byGroup[m.group] = []; groups.push(m.group); }
-      byGroup[m.group].push(m);
-    });
-
-    resultsBox.innerHTML = groups.map(function (g) {
-      return '<p class="search-result-group">' + escapeHtml(g) + '</p>' + byGroup[g].map(function (item) {
-        return '<a class="search-result-item" href="' + item.url + '">' +
-          SEARCH_ICON_ARROW +
-          '<span><strong>' + escapeHtml(item.title) + '</strong><br><small>' + escapeHtml(item.sub) + '</small></span>' +
-        '</a>';
-      }).join('');
-    }).join('');
+  function moveActive(delta) {
+    var items = resultsBox ? resultsBox.querySelectorAll('.search-result-item') : [];
+    if (!items.length) return;
+    var cur = -1;
+    Array.prototype.forEach.call(items, function (n, i) { if (n.classList.contains('active')) cur = i; });
+    var next = (cur + delta + items.length) % items.length;
+    Array.prototype.forEach.call(items, function (n) { n.classList.remove('active'); });
+    items[next].classList.add('active');
+    items[next].scrollIntoView({ block: 'nearest' });
   }
 
   function openSearch() {
     if (!overlay) return;
     overlay.hidden = false;
-    if (input) { input.value = ''; }
+    searchFilter = '';
+    if (input) { input.value = ''; input.placeholder = 'Tìm tài sản, dự án, công việc, khách hàng, tài liệu, đồng nghiệp…'; }
     if (resultsBox) { resultsBox.hidden = true; resultsBox.innerHTML = ''; }
     setTimeout(function () { input && input.focus(); }, 30);
+    // nạp nền các nguồn chưa có trong máy (tài sản, khách hàng), xong thì vẽ lại nếu người dùng đã gõ
+    withSearchModule(function () { window.HiconiqueSearch.warm(function () { if (input && input.value.trim()) drawSearchResults(input.value.trim()); }); });
   }
   function closeSearch() {
     if (!overlay) return;
@@ -360,16 +376,26 @@
   overlay.addEventListener('click', function (e) {
     if (e.target === overlay) closeSearch();
   });
-  input && input.addEventListener('input', function () { renderSearchResults(input.value); });
+  resultsBox && resultsBox.addEventListener('click', function (e) {
+    var chip = e.target.closest('[data-search-group]');
+    if (!chip) return;
+    searchFilter = chip.getAttribute('data-search-group') || '';
+    renderSearchResults(input.value);
+    input && input.focus();
+  });
+  input && input.addEventListener('input', function () { searchFilter = searchFilter; renderSearchResults(input.value); });
   input && input.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') {
-      var first = resultsBox && resultsBox.querySelector('.search-result-item');
-      if (first) window.location.href = first.getAttribute('href');
+    if (e.key === 'ArrowDown') { e.preventDefault(); moveActive(1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); moveActive(-1); }
+    else if (e.key === 'Enter') {
+      var pick = resultsBox && (resultsBox.querySelector('.search-result-item.active') || resultsBox.querySelector('.search-result-item'));
+      if (pick) window.location.href = pick.getAttribute('href');
     }
   });
   document.addEventListener('keydown', function (e) {
     var tag = document.activeElement && document.activeElement.tagName;
     if (e.key === '/' && overlay.hidden && tag !== 'INPUT' && tag !== 'TEXTAREA') { e.preventDefault(); openSearch(); }
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); if (overlay.hidden) openSearch(); else closeSearch(); }
     if (e.key === 'Escape') closeSearch();
   });
 

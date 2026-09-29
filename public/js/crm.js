@@ -156,6 +156,8 @@
 
   function bind() {
     $('crSearch').addEventListener('input', function () { state.q = this.value; render(); });
+    // Mở từ kết quả tìm kiếm chung: /pages/crm.html?q=<tên hoặc số điện thoại>
+    try { var qp = new URLSearchParams(location.search).get('q'); if (qp) { state.q = qp; $('crSearch').value = qp; } } catch (x) { /* bỏ qua */ }
     $('crOwner').addEventListener('change', function () { state.owner = this.value; render(); });
     $('crFilter').addEventListener('change', function () { state.filter = this.value; render(); });
     $('crView').addEventListener('click', function (e) {

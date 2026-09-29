@@ -553,7 +553,10 @@
 
   function init() {
     if (!TM || !TM.loadEquipment) { $('eqGroups').innerHTML = '<p class="eq-empty">Không tải được dữ liệu.</p>'; return; }
-    fillSelects(); bind(); render();
+    fillSelects(); bind();
+    // Mở từ kết quả tìm kiếm chung: /pages/equipment.html?q=<mã hoặc tên>
+    try { var qp = new URLSearchParams(location.search).get('q'); if (qp) { state.q = qp; $('eqSearch').value = qp; } } catch (x) { /* bỏ qua */ }
+    render();
     TM.loadEquipment(function () { fillSelects(); render(); });
     if (TM.loadPcReports) TM.loadPcReports(function () { if (!$('eqModal').classList.contains('active')) render(); });
     window.addEventListener('hiconique:data-refreshed', function () { if (!$('eqModal').classList.contains('active')) render(); });
