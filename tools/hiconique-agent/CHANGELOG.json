@@ -1,5 +1,10 @@
 [
   {
+    "version": "2.1.2",
+    "date": "2026-09-30",
+    "notes": "Mỗi người mặc định dùng 1 máy: khi bấm 'Cập nhật lên web' mà web đã có máy KHÁC của tài khoản này, app hiện bảng xác nhận 'Ghi đè máy cũ' / 'Tạo mới (giữ cả hai)' / 'Hủy'. Gửi tự động nền không tự ghi đè máy khác."
+  },
+  {
     "version": "2.1.1",
     "date": "2026-09-30",
     "notes": "Sửa tên máy bị thiếu (VD 'PC-PHAM-QUANG-H' → 'PC-Pham-Quang-Hieu'): lấy đúng tên đầy đủ như Windows hiển thị ở mọi nơi (thanh thông tin, dữ liệu gửi web, thông số linh kiện). Đồng hồ hẹn giờ tắt máy đổi font hiện đại (Bahnschrift) đậm, to hơn."

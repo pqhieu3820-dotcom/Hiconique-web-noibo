@@ -1,11 +1,16 @@
 {
-  "version": "2.1.1",
-  "url": "https://github.com/pqhieu3820-dotcom/Hiconique-web-noibo/releases/download/agent-v2.1.1/HiconiqueAgentSetup-v2.1.1.exe",
-  "sha256": "5522c223155733cb359a4722bec6d636477e59fcd9aa7ca077428be9f64b3a3f",
-  "size": 69659047,
-  "releasedAt": "2026-09-30T09:27:36Z",
-  "notes": "Sửa tên máy bị thiếu (VD 'PC-PHAM-QUANG-H' → 'PC-Pham-Quang-Hieu'): lấy đúng tên đầy đủ như Windows hiển thị ở mọi nơi (thanh thông tin, dữ liệu gửi web, thông số linh kiện). Đồng hồ hẹn giờ tắt máy đổi font hiện đại (Bahnschrift) đậm, to hơn.",
+  "version": "2.1.2",
+  "url": "https://github.com/pqhieu3820-dotcom/Hiconique-web-noibo/releases/download/agent-v2.1.2/HiconiqueAgentSetup-v2.1.2.exe",
+  "sha256": "b380762c52ef815a1e01cf5110f57eebea870df65250a44cde28e5d7ff9bcac6",
+  "size": 69659066,
+  "releasedAt": "2026-09-30T09:33:18Z",
+  "notes": "Mỗi người mặc định dùng 1 máy: khi bấm 'Cập nhật lên web' mà web đã có máy KHÁC của tài khoản này, app hiện bảng xác nhận 'Ghi đè máy cũ' / 'Tạo mới (giữ cả hai)' / 'Hủy'. Gửi tự động nền không tự ghi đè máy khác.",
   "history": [
+    {
+      "version": "2.1.2",
+      "date": "2026-09-30",
+      "notes": "Mỗi người mặc định dùng 1 máy: khi bấm 'Cập nhật lên web' mà web đã có máy KHÁC của tài khoản này, app hiện bảng xác nhận 'Ghi đè máy cũ' / 'Tạo mới (giữ cả hai)' / 'Hủy'. Gửi tự động nền không tự ghi đè máy khác."
+    },
     {
       "version": "2.1.1",
       "date": "2026-09-30",
@@ -50,11 +55,6 @@
       "version": "2.0.3",
       "date": "2026-09-29",
       "notes": "Sửa trình cài đặt: ô 'Chọn tên của bạn' trước đây trống trơn khi mạng/máy chủ chậm (chỉ chờ 25 giây rồi im lặng và đứng hình). Nay tải danh sách ở nền không đứng hình, chờ tối đa 60 giây/lần và tự thử lại 4 lần, hiện tiến trình và báo lỗi rõ ràng, có nút 'Tải lại', nhớ danh sách lần trước, và cho gõ thẳng mã thành viên."
-    },
-    {
-      "version": "2.0.2",
-      "date": "2026-09-29",
-      "notes": "Sửa lỗi TỰ CẬP NHẬT không hoạt động (máy chủ web chặn yêu cầu không có User-Agent nên nút 'Kiểm tra cập nhật' luôn báo lỗi mạng) — giờ có bản mới thì tự tải về, kiểm SHA-256, ghi đè và khởi động lại, hiện % tiến trình. Giao diện mới: icon ứng dụng đổi sang logo giống icon trên điện thoại, cửa sổ co kéo được với thanh điều hướng bên trái, sửa chữ bị cắt/đè ở các tab (thanh tab, ô nhập, tab Lấy màu, tab Convert), làm lại tab Hẹn giờ tắt máy (đồng hồ đếm ngược lớn + nút chọn nhanh), icon sáng/tối giống trên web. Sửa lỗi ghi log từ luồng phụ ở tab Convert SKM. Tab Thông số linh kiện: nhấp đúp vào ô để sửa nội dung rồi bấm 'Lưu chỉnh sửa' — phần đã sửa được giữ nguyên (kể cả sau khi mở lại app, kể cả khi app tự báo lên web mỗi 24 giờ) cho tới khi bấm 'Quét lại phần cứng'; 'Cập nhật lên web' gửi đúng nội dung đang hiển thị. Quét ổ cứng chỉ đọc ổ gắn TRONG máy: bỏ ổ USB/ổ rời/thẻ nhớ/ổ ảo và cả phân vùng của chúng."
     }
   ]
 }

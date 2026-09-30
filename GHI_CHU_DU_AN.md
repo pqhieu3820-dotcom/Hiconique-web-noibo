@@ -1794,3 +1794,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 ### 2026-09-30 (ae) Agent 2.1.1 — tên máy đầy đủ + đồng hồ hẹn giờ
 - Nguyên nhân tên máy thiếu: `socket.gethostname()` / `%COMPUTERNAME%` là tên NetBIOS bị cắt 15 ký tự + viết HOA. Nay dùng `full_hostname()` (GetComputerNameExW) trong app.py; hardware.py dùng `[System.Net.Dns]::GetHostName()`. Mã bản ghi trên Sheet (id) vẫn theo tên cũ cắt 15 ký tự (`.upper()[:15]`) để không sinh dòng trùng.
 - Đồng hồ đếm ngược hẹn giờ tắt máy: font Bahnschrift đậm 56px.
+
+### 2026-09-30 (af) Agent 2.1.2 — mỗi người 1 máy, xác nhận ghi đè/tạo mới
+- `report_hardware(cfg, hw, mode)`: 'auto' (nền, bỏ qua nếu web đã có máy khác của người này), 'ask' (bấm tay → trả conflict → `HardwareTab.ask_overwrite` hỏi Ghi đè / Tạo mới / Hủy), 'overwrite' (gọi `deletePcReport` các máy cũ rồi ghi máy này), 'new'. Danh sách máy lấy qua `getPcReports` (`other_machines_of_member`).

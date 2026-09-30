@@ -35,7 +35,7 @@ import zipfile
 from ctypes import wintypes
 from datetime import datetime, timezone
 
-VERSION = '2.1.1'
+VERSION = '2.1.2'
 
 COMPANY_NAME = 'CÔNG TY TNHH THIẾT KẾ VÀ XÂY DỰNG HICONIQUE'
 
@@ -689,8 +689,17 @@ def save_hardware(hw):
         log('Lưu cấu hình máy lỗi:', e)
 
 
-def report_hardware(cfg, hw=None):
-    """Đọc cấu hình máy (hardware.py) và gửi lên sheet TB-Máy đã báo. Trả về (ok, hw|error_str)."""
+def other_machines_of_member(cfg, my_id):
+    """Các máy KHÁC của cùng thành viên đã có trên web (sheet TB-Máy đã báo). Mỗi người mặc định dùng 1 máy."""
+    with http_open(cfg['apiUrl'] + '?action=getPcReports', timeout=30) as r:
+        items = json.loads(r.read().decode('utf-8'))
+    return [x for x in items if isinstance(x, dict) and x.get('memberId') == cfg['memberId'] and x.get('id') != my_id]
+
+
+def report_hardware(cfg, hw=None, mode='auto'):
+    """Đọc cấu hình máy (hardware.py) và gửi lên sheet TB-Máy đã báo. Trả về (ok, hw|error_str|{'conflict':[...]}).
+    mode: 'auto' (nền — nếu web đã có máy khác của người này thì KHÔNG tự ghi đè), 'ask' (bấm tay — trả về conflict để hỏi),
+    'overwrite' (xóa máy cũ của người này rồi ghi máy hiện tại), 'new' (giữ máy cũ, thêm máy này)."""
     try:
         import hardware
         if hw is None:
@@ -710,6 +719,18 @@ def report_hardware(cfg, hw=None):
             'alerts': json.dumps(hw['alerts'], ensure_ascii=False), 'bootedAt': hw['bootedAt'],
             'reportedAt': datetime.now().strftime('%Y-%m-%d %H:%M'),
         }
+        if mode != 'new':
+            others = other_machines_of_member(cfg, rec['id'])
+            if others and mode == 'auto':
+                log('Web đã có máy khác của', cfg['memberId'], '— bỏ qua gửi tự động, chờ người dùng xác nhận ghi đè/tạo mới')
+                return True, hw
+            if others and mode == 'ask':
+                return False, {'conflict': others, 'hw': hw}
+            if others and mode == 'overwrite':
+                for o in others:
+                    dbody = urllib.parse.urlencode({'action': 'deletePcReport', 'id': o.get('id')}).encode('utf-8')
+                    with urllib.request.urlopen(urllib.request.Request(cfg['apiUrl'], data=dbody, method='POST'), timeout=60) as r:
+                        r.read()
         body = urllib.parse.urlencode({'action': 'upsertPcReport', 'data': json.dumps(rec, ensure_ascii=False)}).encode('utf-8')
         with urllib.request.urlopen(urllib.request.Request(cfg['apiUrl'], data=body, method='POST'), timeout=60) as r:
             r.read()
@@ -1438,8 +1459,9 @@ class ActivityTab(QWidget):
 class HardwareScanThread(QThread):
     done = pyqtSignal(bool, object)
 
-    def __init__(self, cfg, upload=False, hw=None):
+    def __init__(self, cfg, upload=False, hw=None, mode='ask'):
         super().__init__()
+        self.mode = mode
         self.cfg = cfg
         self.upload = upload
         self.hw = hw          # có sẵn dữ liệu (đã chỉnh sửa) -> chỉ gửi lên web, KHÔNG quét lại
@@ -1455,8 +1477,8 @@ class HardwareScanThread(QThread):
                 hw['savedAt'] = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
                 save_hardware(hw)
             if self.upload:
-                ok, _ = report_hardware(self.cfg, hw=hw)
-                self.done.emit(ok, hw)
+                ok, res = report_hardware(self.cfg, hw=hw, mode=self.mode)
+                self.done.emit(ok, res if isinstance(res, dict) and res.get('conflict') else hw)
             else:
                 self.done.emit(True, hw)
         except Exception as e:
@@ -1635,20 +1657,49 @@ class HardwareTab(QWidget):
             self.save_edits()
         self._start_thread(upload=True, hw=self.hw, msg='Đang gửi lên web…')
 
+
     def scan(self, upload):
         self._start_thread(upload=upload, hw=None, msg='Đang quét… (có thể mất 10–20 giây)')
 
-    def _start_thread(self, upload, hw, msg):
+    def _start_thread(self, upload, hw, msg, mode='ask'):
         for b in (self.btnScan, self.btnUpload):
             b.setEnabled(False)
         self.lblStatus.setText(msg)
-        self.hwThread = HardwareScanThread(self.shared.cfg, upload=upload, hw=hw)
+        self.hwThread = HardwareScanThread(self.shared.cfg, upload=upload, hw=hw, mode=mode)
         self.hwThread.done.connect(lambda ok, res: self.on_done(ok, res, upload, hw is not None))
         self.hwThread.start()
+
+    def ask_overwrite(self, others, hw):
+        names = ', '.join(sorted({str(o.get('hostname') or o.get('id')) for o in others}))
+        box = QMessageBox(self)
+        box.setWindowTitle('Đã có máy khác trên web')
+        box.setIcon(QMessageBox.Question)
+        box.setText('Tài khoản %s đã có máy khác trên web: %s.\nMáy này: %s.' % (self.shared.cfg.get('memberId'), names, hw.get('hostname', '')))
+        box.setInformativeText('Mỗi người thường dùng 1 máy. Bạn muốn làm gì?')
+        b_over = box.addButton('Ghi đè máy cũ', QMessageBox.AcceptRole)
+        b_new = box.addButton('Tạo mới (giữ cả hai)', QMessageBox.ActionRole)
+        box.addButton('Hủy', QMessageBox.RejectRole)
+        box.setDefaultButton(b_over)
+        box.exec_()
+        clicked = box.clickedButton()
+        if clicked is b_over:
+            return 'overwrite'
+        if clicked is b_new:
+            return 'new'
+        return None
 
     def on_done(self, ok, hw, upload, was_resend):
         self.btnScan.setEnabled(True)
         self.btnUpload.setEnabled(True)
+        if isinstance(hw, dict) and hw.get('conflict'):
+            self.hw = hw['hw']
+            self.render(self.hw)
+            choice = self.ask_overwrite(hw['conflict'], self.hw)
+            if choice:
+                self._start_thread(upload=True, hw=self.hw, msg='Đang gửi lên web…', mode=choice)
+            else:
+                self.lblStatus.setText('Đã hủy — web giữ nguyên máy cũ')
+            return
         if not ok or isinstance(hw, str):
             self.lblStatus.setText('Lỗi: %s' % hw if isinstance(hw, str) else ('Gửi lên web thất bại, thử lại sau' if upload else 'Lỗi quét'))
             return
