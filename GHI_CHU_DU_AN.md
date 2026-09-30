@@ -1783,3 +1783,7 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 ### 2026-09-30 (ab) Tên công ty chuẩn + Agent 2.0.8
 - Tên công ty trên mọi tiêu đề file: **CÔNG TY TNHH THIẾT KẾ VÀ XÂY DỰNG HICONIQUE** (web: excel-standard.js, finance-export.js). Web không có chỗ tạo .docx; Excel dữ liệu Lighting giữ nguyên (dùng để nhập lại).
 - Agent 2.0.8: `write_excel_with_heading()` trong app.py — Excel xuất từ app (Danh_sach_mau, Batch_Colors) có cùng tiêu đề chuẩn + kẻ bảng + in A4.
+
+### 2026-09-30 (ac) Agent 2.0.9 — icon chip + giữ dữ liệu khi cài bản mới
+- Chip (mã NV / giờ làm việc / tên máy) dùng icon SVG nét mảnh màu đồng (`make_chip`, `line_icon`) thay emoji.
+- Dữ liệu ghi nhận nằm ở `%LOCALAPPDATA%\HiconiqueAgent` (không bị cài đè xóa). Thêm `migrate_state()` + `STATE_SCHEMA` (nâng cấp file cũ lên cấu trúc mới, giữ trường lạ), nhập `state-<ngày>.json` dạng cũ, bản sao `.bak` tự khôi phục (`read_secure_with_backup`). Khi đổi cấu trúc file: tăng STATE_SCHEMA và bổ sung xử lý trong migrate_state. Gỡ cài đặt KHÔNG còn xóa thư mục dữ liệu.

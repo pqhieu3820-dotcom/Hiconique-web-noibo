@@ -35,7 +35,7 @@ import zipfile
 from ctypes import wintypes
 from datetime import datetime, timezone
 
-VERSION = '2.0.8'
+VERSION = '2.0.9'
 
 COMPANY_NAME = 'CÔNG TY TNHH THIẾT KẾ VÀ XÂY DỰNG HICONIQUE'
 
@@ -179,6 +179,11 @@ def write_secure(path, obj):
     tmp = path + '.tmp'
     with open(tmp, 'wb') as f:
         f.write(_SEC_MAGIC + enc)
+    try:
+        if os.path.exists(path):
+            shutil.copy2(path, path + '.bak')       # giữ bản trước để khôi phục nếu file chính hỏng
+    except Exception:
+        pass
     os.replace(tmp, path)
 
 
@@ -198,6 +203,15 @@ def read_secure(path, default=None):
     except Exception as e:
         log('Đọc dữ liệu mã hóa lỗi:', os.path.basename(path), e)
         return default
+
+
+def read_secure_with_backup(path, default=None):
+    v = read_secure(path, None)
+    if v is None and os.path.exists(path + '.bak'):
+        v = read_secure(path + '.bak', None)
+        if v is not None:
+            log('Đã khôi phục dữ liệu từ bản sao:', os.path.basename(path))
+    return default if v is None else v
 
 
 CONFIG_SECURE = os.path.join(DATA_DIR, 'config.dat')
@@ -221,6 +235,8 @@ def load_config():
             except Exception as e:
                 log('Chuyển cấu hình lỗi:', e)
                 saved = None
+    if saved is None:
+        saved = read_secure_with_backup(CONFIG_SECURE)
     if isinstance(saved, dict):
         cfg.update({k: v for k, v in saved.items() if k in ('memberId', 'workHours', 'workDays', 'sendTitles')})
     return cfg
@@ -373,11 +389,46 @@ def purge_legacy_plaintext():
         pass
 
 
+STATE_SCHEMA = 2      # tăng khi đổi cấu trúc file dữ liệu; migrate_state() nâng cấp file cũ lên cấu trúc mới, KHÔNG xóa dữ liệu
+
+
+def migrate_state(st):
+    """Đưa dữ liệu của MỌI bản cũ về cấu trúc hiện tại (thiếu trường thì bổ sung, sai kiểu thì ép lại) để cài bản mới vẫn ghi tiếp được."""
+    if not isinstance(st, dict):
+        return {'schema': STATE_SCHEMA, 'apps': {}, 'idleSec': 0}
+    apps = st.get('apps') if isinstance(st.get('apps'), dict) else {}
+    clean = {}
+    for name, v in apps.items():
+        if isinstance(v, (int, float)):                      # dạng rất cũ: chỉ có số giây
+            v = {'sec': v}
+        if not isinstance(v, dict):
+            continue
+        titles = v.get('titles') if isinstance(v.get('titles'), dict) else {}
+        try:
+            sec = float(v.get('sec', 0) or 0)
+        except (TypeError, ValueError):
+            sec = 0.0
+        clean[str(name)] = {'sec': sec, 'titles': {str(k): float(s) for k, s in titles.items() if isinstance(s, (int, float))}}
+    try:
+        idle = float(st.get('idleSec', 0) or 0)
+    except (TypeError, ValueError):
+        idle = 0.0
+    out = {k: v for k, v in st.items() if k not in ('apps', 'idleSec', 'schema')}     # giữ nguyên các trường lạ của bản khác
+    out.update({'schema': STATE_SCHEMA, 'apps': clean, 'idleSec': idle})
+    return out
+
+
 def load_state(day):
-    st = read_secure(state_path(day))
-    if isinstance(st, dict) and isinstance(st.get('apps'), dict):
-        return st
-    return {'apps': {}, 'idleSec': 0}
+    st = read_secure_with_backup(state_path(day))
+    if st is None:
+        legacy = os.path.join(DATA_DIR, 'state-%s.json' % day)      # dữ liệu văn bản của bản cũ → nhập vào, không mất số đã ghi
+        try:
+            with open(legacy, encoding='utf-8-sig') as f:
+                st = json.load(f)
+            log('Đã nhập dữ liệu trong ngày từ bản cũ')
+        except Exception:
+            st = None
+    return migrate_state(st)
 
 
 def save_state(day, st):
@@ -867,6 +918,8 @@ QLabel#kpiSub { color: %(muted)s; font-size: 11px; }
 QLabel#pillOk { background: rgba(79,111,82,0.20); color: #6FA274; border: 1px solid rgba(79,111,82,0.55); border-radius: 12px; padding: 4px 12px; font-weight: 700; }
 QLabel#pillBad { background: rgba(208,112,112,0.16); color: #D07070; border: 1px solid rgba(208,112,112,0.5); border-radius: 12px; padding: 4px 12px; font-weight: 700; }
 QLabel#chip { background: %(surface)s; border: 1px solid %(border)s; border-radius: 10px; padding: 3px 10px; color: %(muted)s; }
+QFrame#chipBox { background: %(surface)s; border: 1px solid %(border)s; border-radius: 14px; }
+QFrame#chipBox QLabel { background: transparent; color: %(text)s; }
 QFrame#hero { background: %(surface)s; border: 1px solid %(border)s; border-radius: 16px; }
 QFrame#hero QLabel, QFrame#note QLabel { background: transparent; }
 QFrame#note { background: %(surface)s; border: 1px solid %(border)s; border-radius: 12px; }
@@ -879,6 +932,40 @@ def qss_for(theme):
 
 
 APP_QSS = qss_for('dark')  # giữ tên cũ để tương thích — mặc định khởi động là nền tối
+
+
+CHIP_ICONS = {
+    'user': '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.2 3.6-7 8-7s8 2.8 8 7"/>',
+    'clock': '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
+    'pc': '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
+}
+
+
+def line_icon(kind, color=BRONZE, size=18):
+    """Icon nét mảnh (kiểu Lucide) vẽ từ SVG, nét màu đồng — sắc nét ở mọi tỉ lệ màn hình."""
+    svg = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%s" stroke-width="1.8" '
+           'stroke-linecap="round" stroke-linejoin="round">%s</svg>') % (color, CHIP_ICONS[kind])
+    px = QPixmap(size * 2, size * 2)
+    px.fill(Qt.transparent)
+    p = QPainter(px)
+    QSvgRenderer(QByteArray(svg.encode('utf-8'))).render(p)
+    p.end()
+    px.setDevicePixelRatio(2)
+    return px
+
+
+def make_chip(kind, text):
+    box = QFrame()
+    box.setObjectName('chipBox')
+    h = QHBoxLayout(box)
+    h.setContentsMargins(12, 6, 14, 6)
+    h.setSpacing(8)
+    ic = QLabel()
+    ic.setPixmap(line_icon(kind))
+    ic.setFixedSize(18, 18)
+    h.addWidget(ic)
+    h.addWidget(QLabel(text))
+    return box
 
 
 PREFS_FILE = os.path.join(DATA_DIR, 'prefs.dat')
@@ -1073,12 +1160,10 @@ class ActivityTab(QWidget):
 
         chips = QHBoxLayout()
         chips.setSpacing(8)
-        for txt in ('👤  %s' % (shared.cfg.get('memberId') or '(chưa cấu hình)'),
-                    '🕒  Giờ làm việc %s' % shared.cfg.get('workHours'),
-                    '💻  %s' % socket.gethostname()):
-            c = QLabel(txt)
-            c.setObjectName('chip')
-            chips.addWidget(c)
+        for kind, txt in (('user', shared.cfg.get('memberId') or '(chưa cấu hình)'),
+                          ('clock', 'Giờ làm việc %s' % shared.cfg.get('workHours')),
+                          ('pc', socket.gethostname())):
+            chips.addWidget(make_chip(kind, txt))
         chips.addStretch(1)
         lay.addLayout(chips)
 
@@ -4114,7 +4199,7 @@ class InstallDialog(QDialog):
 
 
 def do_uninstall():
-    if QMessageBox.question(None, 'Gỡ HICONIQUE Agent', 'Gỡ HICONIQUE Agent khỏi máy này và xóa dữ liệu ghi nhận trên máy?',
+    if QMessageBox.question(None, 'Gỡ HICONIQUE Agent', 'Gỡ HICONIQUE Agent khỏi máy này? (Dữ liệu ghi nhận trong ngày được giữ lại để tiếp tục khi bạn cài lại.)',
                             QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
         return
     unregister_windows()
@@ -4123,7 +4208,7 @@ def do_uninstall():
                    capture_output=True, creationflags=0x08000000)
     bat = os.path.join(tempfile.gettempdir(), 'hiconique_uninstall.bat')
     with open(bat, 'w', encoding='utf-8') as f:
-        f.write('@echo off\nping -n 4 127.0.0.1 >nul\nrmdir /s /q "%s"\nrmdir /s /q "%s"\ndel "%%~f0"\n' % (INSTALL_DIR, DATA_DIR))
+        f.write('@echo off\nping -n 4 127.0.0.1 >nul\nrmdir /s /q "%s"\ndel "%%~f0"\n' % INSTALL_DIR)
     subprocess.Popen(['cmd', '/c', bat], creationflags=0x08000000 | 0x00000008, close_fds=True)
     QMessageBox.information(None, 'HICONIQUE Agent', 'Đã gỡ cài đặt HICONIQUE Agent.')
 

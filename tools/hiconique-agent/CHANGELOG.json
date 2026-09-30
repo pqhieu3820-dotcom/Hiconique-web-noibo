@@ -1,5 +1,10 @@
 [
   {
+    "version": "2.0.9",
+    "date": "2026-09-30",
+    "notes": "Icon thanh thông tin (mã NV, giờ làm việc, tên máy) vẽ lại dạng nét mảnh màu đồng, sắc nét. Cài bản mới KHÔNG mất dữ liệu: dữ liệu đã ghi được giữ, tự nâng cấp lên cấu trúc mới (kể cả file cũ dạng văn bản), có bản sao dự phòng tự khôi phục; gỡ cài đặt giữ lại dữ liệu ghi nhận."
+  },
+  {
     "version": "2.0.8",
     "date": "2026-09-30",
     "notes": "File Excel xuất từ app (danh sách màu) dùng tiêu đề văn bản chuẩn: CÔNG TY TNHH THIẾT KẾ VÀ XÂY DỰNG HICONIQUE, Quốc hiệu, Tiêu ngữ, địa danh ngày tháng; định dạng bảng và in A4."
