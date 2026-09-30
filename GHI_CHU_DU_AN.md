@@ -1904,3 +1904,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (bj) Chip đồng bộ: đục hơn + quầng sáng (glow) chuyển động theo trạng thái
 - offline.js: nền chip đục ~55–70% (sáng: trắng .46–.72, tối: xám .55–.72), blur 16–18px cho chữ rõ trên mọi nền. Thêm quầng sáng `hqGlow` nhịp thở 2.4s (box-shadow lan rộng/thu hẹp) đổi màu theo `data-st`: xanh (ok) / đỏ (bad) / vàng đồng (busy) qua biến `--gl`. Giảm chuyển động → tắt. sw v80.
+
+### 2026-09-30 (bk) Quầng sáng chip mềm + fade dài hơn
+- offline.js `hqGlow`: 3 lớp bóng mờ rộng (blur 26–170px, spread tới 50px, alpha 5–34%) thay 2 lớp gắt, chu kỳ 3.4s → quầng lan mềm, tan dần xa hơn. sw v81.

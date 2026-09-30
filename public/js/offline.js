@@ -427,9 +427,9 @@ var Offline = (function () {
         '-webkit-backdrop-filter:blur(16px) saturate(170%);backdrop-filter:blur(16px) saturate(170%);--gl:63,190,110;' +
         'background:linear-gradient(140deg,rgba(255,255,255,.72) 0%,rgba(255,255,255,.46) 50%,rgba(255,255,255,.6) 100%);color:#12110F;' +
         'box-shadow:0 1px 1px rgba(255,255,255,.5) inset,0 -1px 1px rgba(255,255,255,.12) inset,0 12px 30px -10px rgba(20,24,40,.22),0 0 0 1px rgba(20,24,40,.06),0 4px 12px rgba(20,24,40,.08);' +
-        'animation:hqGlassIn .42s cubic-bezier(.2,.9,.25,1.15) both,hqGlow 2.4s .45s ease-in-out infinite alternate;}' +
+        'animation:hqGlassIn .42s cubic-bezier(.2,.9,.25,1.15) both,hqGlow 3.4s .45s ease-in-out infinite alternate;}' +
         '#hqSyncChip[data-st="bad"]{--gl:224,80,50}#hqSyncChip[data-st="busy"]{--gl:200,160,90}#hqSyncChip[data-st="ok"]{--gl:63,190,110}' +
-        '@keyframes hqGlow{0%{box-shadow:0 1px 1px rgba(255,255,255,.7) inset,0 0 14px 1px rgba(var(--gl),.28),0 0 34px 6px rgba(var(--gl),.14),0 10px 26px -10px rgba(20,24,40,.25)}100%{box-shadow:0 1px 1px rgba(255,255,255,.7) inset,0 0 26px 5px rgba(var(--gl),.5),0 0 60px 16px rgba(var(--gl),.26),0 10px 26px -10px rgba(20,24,40,.25)}}' +
+        '@keyframes hqGlow{0%{box-shadow:0 1px 1px rgba(255,255,255,.7) inset,0 0 26px 2px rgba(var(--gl),.2),0 0 64px 12px rgba(var(--gl),.11),0 0 120px 26px rgba(var(--gl),.05),0 10px 26px -10px rgba(20,24,40,.22)}100%{box-shadow:0 1px 1px rgba(255,255,255,.7) inset,0 0 44px 8px rgba(var(--gl),.34),0 0 96px 28px rgba(var(--gl),.19),0 0 170px 50px rgba(var(--gl),.09),0 10px 26px -10px rgba(20,24,40,.22)}}' +
         '#hqSyncChip::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1.2px;pointer-events:none;' +
         'background:linear-gradient(135deg,rgba(255,255,255,.95),rgba(255,255,255,.15) 38%,rgba(255,255,255,.08) 62%,rgba(255,255,255,.7));' +
         '-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);}' +
