@@ -66,28 +66,6 @@
   function fmtDate(d) { if (!d) return ''; var p = String(d).slice(0, 10).split('-'); return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : d; }
   function user() { try { return window.Auth && Auth.getCurrentUser ? Auth.getCurrentUser() : null; } catch (e) { return null; } }
   function canManage() { return !!(TM && TM.canManageEquipment && TM.canManageEquipment(user())); }
-  // Trạng thái đồng bộ Google Sheet: hàng đợi ghi, tốc độ ghi/đọc, đếm ngược (cập nhật mỗi giây)
-  (function () {
-    var last = { event: '', reason: '', tries: 0 }, failed = false;
-    function sec(ms) { return (ms / 1000).toFixed(1).replace('.', ',') + 's'; }
-    function dur(ms) { var s = Math.max(0, Math.round(ms / 1000)); return s >= 60 ? Math.floor(s / 60) + 'p' + (s % 60 < 10 ? '0' : '') + (s % 60) + 's' : s + 's'; }
-    function avgW() { var a = (window.HiconiqueMetrics || {}).writeMs || []; return a.length ? a.reduce(function (x, y) { return x + y; }, 0) / a.length : 0; }
-    function render() {
-      var el = $('eqSyncStatus'); if (!el) return;
-      var M = window.HiconiqueMetrics || {}, q = (typeof readWriteQueue_ === 'function') ? readWriteQueue_() : [], n = q.length, aw = avgW(), now = Date.now();
-      var top = ''; if (n > 3) { var c = {}; q.forEach(function (o) { c[o.action] = (c[o.action] || 0) + 1; }); var k = Object.keys(c).sort(function (a, b) { return c[b] - c[a]; })[0]; top = ' · nhiều nhất: ' + k + ' ×' + c[k]; }
-      var l1, color = '';
-      if (failed) { l1 = '⚠ Có thao tác KHÔNG lưu được lên Google Sheet — hãy chụp màn hình báo lại.'; color = '#C0644A'; }
-      else if (n > 0 && last.event === 'retry') { l1 = '⚠ Chưa lưu được' + (last.reason ? ' (' + last.reason + ')' : '') + ' — thử lại lần ' + last.tries + (M.nextWriteAt > now ? ' sau ' + dur(M.nextWriteAt - now) : '') + '. ĐỪNG đóng trang.'; color = '#C0644A'; }
-      else if (n > 0) l1 = 'Đang lưu lên Google Sheet… ' + n + ' thao tác' + (aw ? ' · còn khoảng ' + dur(n * aw) : '') + top;
-      else { l1 = '✓ Đã đồng bộ Google Sheet'; color = '#4E9A63'; }
-      var l2 = 'Ghi ' + (aw ? sec(aw) + '/lệnh' : '—') + ' · Đọc ' + (M.readMs != null ? sec(M.readMs) : '—') + ' · làm mới sau ' + (M.nextRefreshAt > now ? dur(M.nextRefreshAt - now) : '…');
-      el.hidden = false; el.innerHTML = '<div style="color:' + (color || 'inherit') + ';font-weight:600;">' + l1 + '</div><div style="opacity:.75;font-size:0.75rem;margin-top:2px;">' + l2 + '</div>';
-    }
-    window.addEventListener('hiconique:sync-state', function (e) { var d = e.detail || {}; if (d.event) { last = { event: d.event, reason: d.reason || '', tries: d.tries || 0 }; if (d.event === 'ok' || d.event === 'queued') failed = false; } render(); });
-    window.addEventListener('hiconique:sync-failed', function () { failed = true; render(); });
-    document.addEventListener('DOMContentLoaded', render); setInterval(render, 1000);
-  })();
   function toast(msg, bad) { var t = document.createElement('div'); t.className = 'eq-toast' + (bad ? ' bad' : ''); t.textContent = msg; document.body.appendChild(t); setTimeout(function () { t.remove(); }, 2600); }
   function memberName(id) { var m = TM.getMember ? TM.getMember(id) : null; return m ? (m.name || id) : (id || ''); }
   function formCat(name) { return name ? catOf(name) : EMPTY_CAT; }

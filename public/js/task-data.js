@@ -78,6 +78,12 @@ var HiconiqueMetrics = window.HiconiqueMetrics = { writeMs: [], readMs: null, re
 function callGSheetsAPI(action, data, id) {
   if (!isUsingGSheets() || !GSHEETS_CONFIG.API_URL) return;
   var q = readWriteQueue_();
+  // Nhịp "đang online" (chỉ đổi lastActiveAt, mỗi ~60s/tab) KHÔNG đi qua hàng đợi bền vững: gửi thẳng, rớt thì thôi. Trước đây mỗi nhịp là 1 lệnh
+  // trong hàng đợi tuần tự (~3-5s/lệnh) nên hàng đợi phình lên ~100 lệnh updateMember, chèn ngang mọi thao tác Lưu thật.
+  if (action === 'updateMember' && id && data && Object.keys(data).every(function (k) { return k === 'lastActiveAt' || k === 'updatedAt'; })) {
+    try { fetch(GSHEETS_CONFIG.API_URL + '?action=updateMember&id=' + encodeURIComponent(id) + '&data=' + encodeURIComponent(JSON.stringify(data)), { redirect: 'follow', keepalive: true }).catch(function () {}); } catch (e) { /* bỏ qua */ }
+    return;
+  }
   // GỘP các lệnh sửa cùng 1 dòng chưa gửi (VD sửa liên tiếp / đánh dấu đọc nhiều lần): chỉ giữ 1 lệnh với dữ liệu mới nhất
   // → hàng đợi không phình to (từng có 136 thao tác chờ). Không gộp lệnh đang gửi dở (phần tử đầu khi writeQueueBusy).
   if (id && /^(update|upsert)/i.test(action)) {
@@ -95,8 +101,25 @@ function callGSheetsAPI(action, data, id) {
   processWriteQueue_();
 }
 
+// Dọn hàng đợi tồn từ trước: gộp lệnh update*/upsert* trùng (action+id) chưa gửi; bỏ nhịp online lastActiveAt cũ
+function compactWriteQueue_() {
+  var q = readWriteQueue_(); if (q.length < 2) return;
+  var out = [], seen = {}, changed = false;
+  q.forEach(function (op, i) {
+    var only = op.data && Object.keys(op.data).every(function (k) { return k === 'lastActiveAt' || k === 'updatedAt'; });
+    if (op.action === 'updateMember' && only && !(i === 0 && writeQueueBusy)) { changed = true; return; }
+    var key = op.action + '|' + op.id;
+    if (op.id && /^(update|upsert)/i.test(op.action) && !op.tries && !(i === 0 && writeQueueBusy) && seen[key]) {
+      seen[key].data = Object.assign({}, seen[key].data, op.data || {}); changed = true; return;
+    }
+    if (op.id && /^(update|upsert)/i.test(op.action) && !op.tries && !(i === 0 && writeQueueBusy)) seen[key] = op;
+    out.push(op);
+  });
+  if (changed) saveWriteQueue_(out);
+}
 function processWriteQueue_() {
   if (writeQueueBusy) return;
+  compactWriteQueue_();
   var q = readWriteQueue_();
   if (!q.length) { emitSyncState_(); return; }
   // Mất mạng → giữ nguyên trong hàng đợi, tự gửi khi có mạng lại (không bỏ lệnh như trước).
@@ -192,6 +215,44 @@ if (typeof window !== 'undefined') {
   setInterval(function () { if (!writeQueueBusy && readWriteQueue_().length) processWriteQueue_(); }, 10000);
   setTimeout(processWriteQueue_, 1500);
 }
+
+// ===== Khung trạng thái đồng bộ TOÀN WEB (2026-09-30): chỉ hiện khi có thao tác ghi; xong thì hiện "✓ Đã đồng bộ" rồi tự ẩn sau 5s; nền trong suốt ~78% =====
+(function () {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  if (/\/timesheet(\.html)?$/i.test(location.pathname)) return;   // trang Chấm công đã có khung trạng thái riêng
+  var last = { event: '', reason: '', tries: 0 }, failed = false, doneUntil = 0, el = null;
+  function sec(ms) { return (ms / 1000).toFixed(1).replace('.', ',') + 's'; }
+  function dur(ms) { var s = Math.max(0, Math.round(ms / 1000)); return s >= 60 ? Math.floor(s / 60) + 'p' + (s % 60 < 10 ? '0' : '') + (s % 60) + 's' : s + 's'; }
+  function ensure() {
+    if (el || !document.body) return el;
+    el = document.createElement('div'); el.id = 'hqSyncChip'; el.hidden = true;
+    el.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:9500;max-width:min(420px,calc(100vw - 32px));padding:10px 14px;border-radius:12px;font:500 13px/1.45 "Plus Jakarta Sans",Inter,system-ui,sans-serif;background:rgba(30,28,26,.78);color:#F3EFE8;border:1px solid rgba(255,255,255,.12);box-shadow:0 6px 24px rgba(0,0,0,.22);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);pointer-events:none;';
+    document.body.appendChild(el); return el;
+  }
+  function render() {
+    var q = readWriteQueue_(), n = q.length, now = Date.now(), M = window.HiconiqueMetrics || {};
+    var w = M.writeMs || [], aw = w.length ? w.reduce(function (a, b) { return a + b; }, 0) / w.length : 0;
+    if (!failed && n === 0 && now > doneUntil) { if (el) el.hidden = true; return; }
+    if (!ensure()) return;
+    var top = ''; if (n > 3) { var c = {}; q.forEach(function (o) { c[o.action] = (c[o.action] || 0) + 1; }); var k = Object.keys(c).sort(function (a, b) { return c[b] - c[a]; })[0]; top = ' · nhiều nhất: ' + k + ' ×' + c[k]; }
+    var l1, color = '#F3EFE8';
+    if (failed) { l1 = '⚠ Có thao tác KHÔNG lưu được lên Google Sheet — hãy chụp màn hình báo lại.'; color = '#F0A08C'; }
+    else if (n > 0 && last.event === 'retry') { l1 = '⚠ Chưa lưu được' + (last.reason ? ' (' + last.reason + ')' : '') + ' — thử lại lần ' + last.tries + (M.nextWriteAt > now ? ' sau ' + dur(M.nextWriteAt - now) : '') + '. ĐỪNG đóng trang.'; color = '#F0A08C'; }
+    else if (n > 0) l1 = 'Đang lưu lên Google Sheet… ' + n + ' thao tác' + (aw ? ' · còn khoảng ' + dur(n * aw) : '') + top;
+    else { l1 = '✓ Đã đồng bộ Google Sheet'; color = '#8FD4A0'; }
+    var l2 = 'Ghi ' + (aw ? sec(aw) + '/lệnh' : '—') + ' · Đọc ' + (M.readMs != null ? sec(M.readMs) : '—') + ' · làm mới sau ' + (M.nextRefreshAt > now ? dur(M.nextRefreshAt - now) : '…');
+    el.hidden = false;
+    el.innerHTML = '<div style="color:' + color + ';font-weight:600;">' + l1 + '</div><div style="opacity:.7;font-size:12px;margin-top:2px;">' + l2 + '</div>';
+  }
+  window.addEventListener('hiconique:sync-state', function (e) {
+    var d = e.detail || {};
+    if (d.event) { last = { event: d.event, reason: d.reason || '', tries: d.tries || 0 }; if (d.event === 'ok' || d.event === 'queued') failed = false; }
+    if (d.pending === 0 && d.event === 'ok') doneUntil = Date.now() + 5000;   // hiện "Đã đồng bộ" 5s rồi ẩn
+    render();
+  });
+  window.addEventListener('hiconique:sync-failed', function () { failed = true; render(); });
+  setInterval(render, 1000);
+})();
 
 function syncToGSheets(type, action, data, id) {
   var actionMap = {

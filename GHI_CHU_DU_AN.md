@@ -37,6 +37,12 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
 - (2026-09-30) Viết lại đoạn mô tả đầu trang Tài sản & vật tư (`equipment.html`, `.subpage-lede`) gọn hơn, 2 câu, gom nhóm tài sản.
 
+### Phiên 2026-09-30 (o) — TÌM RA nguyên nhân hàng đợi 100+ lệnh: nhịp "đang online" (`updateMember` lastActiveAt); khung trạng thái toàn web
+
+- Ảnh khung của người dùng: "108 thao tác · nhiều nhất: **updateMember ×93** · ghi 3,8s/lệnh" ⇒ **`portal.js` `pingPresence()` (mỗi ~60s/tab + mỗi lần đổi tab/mở trang) gọi `TaskManager.updateMember(id,{lastActiveAt})` → mỗi nhịp là 1 lệnh trong hàng đợi ghi TUẦN TỰ**; máy chủ ~3–5s/lệnh nên hàng đợi phình mãi và mọi thao tác Lưu thật (tài sản, chấm công…) phải xếp sau → "lâu", "Sheet chưa thấy".
+- Sửa (`task-data.js`): (1) `callGSheetsAPI` gửi thẳng, KHÔNG qua hàng đợi, các lệnh `updateMember` chỉ chứa `lastActiveAt`/`updatedAt` (fire-and-forget `keepalive`, rớt thì thôi); (2) `compactWriteQueue_()` chạy đầu mỗi lần xả hàng đợi: bỏ nhịp online cũ và gộp mọi lệnh `update*/upsert*` trùng (action+id) chưa gửi — thử hàng đợi 99 lệnh giả → chỉ còn 2 lệnh gửi đi; (3) đã có sẵn gộp khi thêm lệnh mới.
+- **Khung trạng thái nay áp dụng TOÀN WEB** (`#hqSyncChip`, tự tạo trong `task-data.js`; trừ trang Chấm công có khung riêng): chỉ hiện khi có thao tác ghi, xong hiện "✓ Đã đồng bộ" 5s rồi tự ẩn, nền trong suốt ~78% (`rgba(30,28,26,.78)` + blur). Bỏ khung riêng ở trang Tài sản. sw v34.
+
 ### Phiên 2026-09-30 (n) — Khung trạng thái đồng bộ: tốc độ ghi/đọc + đếm ngược; GỘP lệnh ghi
 
 - Người dùng chụp khung: **"Đang lưu… (136 thao tác)"** → hàng đợi ghi phình to (mỗi lệnh gửi tuần tự ~3–5s ⇒ hàng chục phút mới xong, đó là lý do "Lưu mà Sheet chưa thấy"). Nay `callGSheetsAPI` **gộp** các lệnh `update*/upsert*` cùng `id` chưa gửi thành 1 lệnh (dữ liệu mới nhất đè lên; không gộp lệnh đang gửi dở) — thử: 6 lần sửa liên tiếp + 1 thêm → chỉ 3 lệnh.
