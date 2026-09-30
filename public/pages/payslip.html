@@ -78,8 +78,11 @@
     .pl-field-value.muted { color: var(--pl-muted); font-family: inherit; }
     /* Ô dữ liệu tự động (không nhập tay được) — viền đỏ để phân biệt với ô nhập */
     .pl-form-card .pl-field-value { border: 1px solid #C75B5B !important; }
-    .pl-docx-btns { display: inline-flex; gap: 8px; margin-left: 8px; flex-wrap: wrap; }
-    .pl-docx-btn { display: inline-flex; align-items: center; gap: 7px; height: 38px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--pl-bronze); background: var(--pl-bronze); color: #fff; font: 600 0.8125rem inherit; cursor: pointer; white-space: nowrap; transition: opacity .15s, background .15s; }
+    .pl-docx-btns { display: inline-flex; gap: 8px; margin-left: 8px; flex-wrap: wrap; align-items: center; }
+    /* 3 nút (Hôm nay · Xem nhanh Docx · Xuất Docx) cùng cỡ, thẳng hàng */
+    .hq-month-nav-today, .pl-docx-btn { box-sizing: border-box; width: 156px; height: 38px; margin: 0; padding: 0 14px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border-radius: 10px; font: 600 0.8125rem inherit; line-height: 1; }
+    .hq-month-nav-today { margin-left: 8px; }
+    .pl-docx-btn { border: 1px solid var(--pl-bronze); background: var(--pl-bronze); color: #fff; font: 600 0.8125rem inherit; cursor: pointer; white-space: nowrap; transition: opacity .15s, background .15s; }
     .pl-docx-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
     .pl-docx-btn.ghost { background: transparent; color: var(--pl-bronze); }
     .pl-docx-btn.ghost:hover { background: color-mix(in srgb, var(--pl-bronze) 10%, transparent); }
@@ -274,7 +277,7 @@
       var nav = monthInput.closest('.hq-month-nav') || (monthInput.parentNode && monthInput.parentNode.querySelector('.hq-month-nav')) || document.querySelector('.hq-month-nav');
       if (!nav) return;
       var wrap = document.createElement('span'); wrap.className = 'pl-docx-btns';
-      wrap.innerHTML = '<button type="button" class="pl-docx-btn" id="plDocxBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>Xuất Docx</button><button type="button" class="pl-docx-btn ghost" id="plDocxPreviewBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>Xem nhanh Docx</button>';
+      wrap.innerHTML = '<button type="button" class="pl-docx-btn ghost" id="plDocxPreviewBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>Xem nhanh Docx</button><button type="button" class="pl-docx-btn" id="plDocxBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>Xuất Docx</button>';
       nav.appendChild(wrap);
       function run(kind) {
         if (typeof PayslipDocx === 'undefined') { alert('Chưa tải xong bộ tạo file Word. Thử lại sau vài giây.'); return; }

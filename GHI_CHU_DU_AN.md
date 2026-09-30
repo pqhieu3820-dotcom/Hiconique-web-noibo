@@ -1991,3 +1991,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (cj) Giấy đề nghị thanh toán lương: chỉnh đầu văn bản
 - payslip-docx.js: bỏ dòng "Địa chỉ" và "Bộ phận" ở đầu; tên công ty căn giữa ô bên trái (cả ngang lẫn dọc, cùng tầm khối "Mẫu số 05 - TT" bên phải). Mục "Bộ phận / Chức vụ" trong phần thông tin người đề nghị vẫn giữ. sw v105.
+
+### 2026-09-30 (ck) Phiếu lương: 3 nút Hôm nay / Xem nhanh Docx / Xuất Docx
+- payslip.html: thứ tự Hôm nay → **Xem nhanh Docx** → **Xuất Docx**; cả 3 nút cùng cỡ 156×38px, bo 10px, thẳng hàng (đã đo cùng `top`). sw v106.
