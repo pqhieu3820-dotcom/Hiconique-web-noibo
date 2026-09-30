@@ -1811,3 +1811,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 ### 2026-09-30 (ai) UI Sổ tài chính + bỏ mũi tên nhãn tháng
 - finance.html: ô Danh mục đổi từ datalist gốc trình duyệt sang combobox tự dựng (`.fn-combo`, lọc theo chữ gõ, danh sách bo tròn nằm sát dưới ô); trang Phân quyền sửa dòng ghi chú bị đè mép thẻ (`.fn-access-note`).
 - Bỏ mũi tên sổ xuống cạnh nhãn tháng ở TOÀN WEB: month-nav.js không còn vẽ svg + CSS `.timeline-title-btn svg{display:none}` (gantt.css, projects.css, timesheet.html) cho các nơi tự dựng markup. sw v53.
+
+### 2026-09-30 (aj) Chip đồng bộ — Liquid Glass kiểu iOS 26
+- offline.js (`#hqSyncChip`): nền gần trong suốt + blur 26px/saturate 210%, viền specular gradient (mask), ánh sáng bên trong, bóng mềm dài, bo 24px; icon tròn trạng thái (✓ xanh / ! đỏ / vòng xoay đồng khi đang lưu); hiện có animation trượt-lên, tôn trọng prefers-reduced-motion; chỉ cập nhật dòng số liệu mỗi giây để vòng xoay không bị nháy. sw v54.

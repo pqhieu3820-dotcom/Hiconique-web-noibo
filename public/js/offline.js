@@ -419,14 +419,33 @@ var Offline = (function () {
     if (!document.getElementById('hqSyncChipCss')) {
       var st = document.createElement('style'); st.id = 'hqSyncChipCss';
       // Kính lỏng (Liquid Glass): nền mờ trong suốt + blur/saturate, viền sáng phía trên, đổ bóng mềm; sáng/tối theo data-theme của web
-      st.textContent = '#hqSyncChip{position:fixed;right:16px;bottom:16px;z-index:9500;max-width:min(420px,calc(100vw - 32px));padding:11px 16px;border-radius:18px;font:500 13px/1.45 "Plus Jakarta Sans",Inter,system-ui,sans-serif;pointer-events:none;' +
-        '-webkit-backdrop-filter:blur(16px) saturate(190%);backdrop-filter:blur(16px) saturate(190%);' +
-        'background:linear-gradient(135deg,rgba(255,255,255,.34),rgba(255,255,255,.10));color:#1E1C1A;border:1px solid rgba(255,255,255,.55);text-shadow:0 0 8px rgba(255,255,255,.55);' +
-        'box-shadow:0 8px 32px rgba(31,38,135,.14),inset 0 1px 0 rgba(255,255,255,.7),inset 0 -1px 0 rgba(255,255,255,.18);}' +
-        'html[data-theme="dark"] #hqSyncChip{background:linear-gradient(135deg,rgba(255,255,255,.09),rgba(255,255,255,.02));color:#F3EFE8;border:1px solid rgba(255,255,255,.18);text-shadow:0 1px 6px rgba(0,0,0,.55);' +
-        'box-shadow:0 8px 32px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.28),inset 0 -1px 0 rgba(255,255,255,.05);}' +
-        '#hqSyncChip .l2{opacity:.68;font-size:12px;margin-top:2px}#hqSyncChip .ok{color:#2E7D4A}#hqSyncChip .bad{color:#B5402A}' +
-        'html[data-theme="dark"] #hqSyncChip .ok{color:#8FD4A0}html[data-theme="dark"] #hqSyncChip .bad{color:#F0A08C}';
+      // 2026-09-30: Liquid Glass kiểu iOS 26 — nền gần như trong suốt (alpha ~10%), blur mạnh + tăng bão hòa/độ sáng nền phía sau,
+      // viền "specular" sáng ở góc trên-trái và tối dần ở góc dưới-phải (mask viền gradient), ánh sáng bên trong, bóng mềm dài, bo tròn kiểu viên thuốc.
+      st.textContent =
+        '#hqSyncChip{position:fixed;right:18px;bottom:18px;z-index:9500;max-width:min(400px,calc(100vw - 36px));padding:12px 18px 12px 14px;border-radius:24px;display:flex;align-items:center;gap:12px;' +
+        'font:500 13px/1.4 "Plus Jakarta Sans",Inter,system-ui,-apple-system,sans-serif;letter-spacing:.005em;pointer-events:none;isolation:isolate;' +
+        '-webkit-backdrop-filter:blur(26px) saturate(210%) brightness(1.06);backdrop-filter:blur(26px) saturate(210%) brightness(1.06);' +
+        'background:linear-gradient(140deg,rgba(255,255,255,.26) 0%,rgba(255,255,255,.07) 45%,rgba(255,255,255,.13) 100%);color:#1B1A18;' +
+        'box-shadow:0 1px 1px rgba(255,255,255,.55) inset,0 -1px 1px rgba(255,255,255,.18) inset,0 0 22px rgba(255,255,255,.16) inset,0 18px 40px -8px rgba(20,24,40,.22),0 4px 12px rgba(20,24,40,.08);' +
+        'animation:hqGlassIn .42s cubic-bezier(.2,.9,.25,1.15) both;}' +
+        '#hqSyncChip::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1.2px;pointer-events:none;' +
+        'background:linear-gradient(135deg,rgba(255,255,255,.95),rgba(255,255,255,.15) 38%,rgba(255,255,255,.08) 62%,rgba(255,255,255,.7));' +
+        '-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);}' +
+        '#hqSyncChip::after{content:"";position:absolute;left:12%;right:12%;top:1px;height:42%;border-radius:0 0 50% 50%/0 0 100% 100%;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.32),rgba(255,255,255,0));opacity:.7;}' +
+        'html[data-theme="dark"] #hqSyncChip{background:linear-gradient(140deg,rgba(255,255,255,.16) 0%,rgba(255,255,255,.03) 45%,rgba(255,255,255,.08) 100%);color:#F6F2EB;' +
+        '-webkit-backdrop-filter:blur(28px) saturate(190%) brightness(.95);backdrop-filter:blur(28px) saturate(190%) brightness(.95);' +
+        'box-shadow:0 1px 1px rgba(255,255,255,.35) inset,0 -1px 1px rgba(255,255,255,.06) inset,0 0 22px rgba(255,255,255,.06) inset,0 18px 44px -8px rgba(0,0,0,.55),0 4px 14px rgba(0,0,0,.3);}' +
+        'html[data-theme="dark"] #hqSyncChip::before{background:linear-gradient(135deg,rgba(255,255,255,.6),rgba(255,255,255,.06) 38%,rgba(255,255,255,.03) 62%,rgba(255,255,255,.4));}' +
+        'html[data-theme="dark"] #hqSyncChip::after{opacity:.35;}' +
+        '#hqSyncChip .ic{flex:0 0 auto;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;background:rgba(120,120,128,.55);box-shadow:0 0 0 1px rgba(255,255,255,.35) inset,0 2px 8px rgba(0,0,0,.16);}' +
+        '#hqSyncChip .ic.ok{background:linear-gradient(160deg,#5FD087,#2E9F58);box-shadow:0 0 0 1px rgba(255,255,255,.4) inset,0 2px 10px rgba(46,159,88,.45);}' +
+        '#hqSyncChip .ic.bad{background:linear-gradient(160deg,#FF8A72,#D9482C);box-shadow:0 0 0 1px rgba(255,255,255,.4) inset,0 2px 10px rgba(217,72,44,.45);}' +
+        '#hqSyncChip .ic.busy{background:linear-gradient(160deg,#E7C27F,#B08D57);box-shadow:0 0 0 1px rgba(255,255,255,.4) inset,0 2px 10px rgba(176,141,87,.45);}' +
+        '#hqSyncChip .ic.busy i{width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,.9);border-top-color:transparent;animation:hqSpin .8s linear infinite;}' +
+        '#hqSyncChip .tx{min-width:0}#hqSyncChip .l1{font-weight:650;font-size:13.5px}#hqSyncChip .l2{opacity:.62;font-size:11.5px;margin-top:2px;font-variant-numeric:tabular-nums}' +
+        '#hqSyncChip .l1.ok{color:#1F7A44}#hqSyncChip .l1.bad{color:#B5361F}html[data-theme="dark"] #hqSyncChip .l1.ok{color:#8FE0A8}html[data-theme="dark"] #hqSyncChip .l1.bad{color:#FFA793}' +
+        '@keyframes hqGlassIn{from{opacity:0;transform:translateY(14px) scale(.94);filter:blur(6px)}to{opacity:1;transform:none;filter:none}}@keyframes hqSpin{to{transform:rotate(360deg)}}' +
+        '@media (prefers-reduced-motion:reduce){#hqSyncChip{animation:none}#hqSyncChip .ic.busy i{animation:none}}';
       document.head.appendChild(st);
     }
     el.style.cssText = '';
@@ -438,14 +457,17 @@ var Offline = (function () {
     if (!failed && n === 0 && now > doneUntil) { if (el) el.hidden = true; return; }
     if (!ensure()) return;
     var top = ''; if (n > 3) { var c = {}; q.forEach(function (o) { c[o.action] = (c[o.action] || 0) + 1; }); var k = Object.keys(c).sort(function (a, b) { return c[b] - c[a]; })[0]; top = ' · nhiều nhất: ' + k + ' ×' + c[k]; }
-    var l1, cls = '';
-    if (failed) { l1 = '⚠ Có thao tác KHÔNG lưu được lên Google Sheet — hãy chụp màn hình báo lại.'; cls = 'bad'; }
-    else if (n > 0 && last.event === 'retry') { l1 = '⚠ Chưa lưu được' + (last.reason ? ' (' + last.reason + ')' : '') + ' — thử lại lần ' + last.tries + (M.nextWriteAt > now ? ' sau ' + dur(M.nextWriteAt - now) : '') + '. ĐỪNG đóng trang.'; cls = 'bad'; }
-    else if (n > 0) l1 = 'Đang lưu lên Google Sheet… ' + n + ' thao tác' + (aw ? ' · còn khoảng ' + dur(n * aw) : '') + top;
-    else { l1 = '✓ Đã đồng bộ Google Sheet'; cls = 'ok'; }
+    var l1, cls = '', icon = '';
+    if (failed) { l1 = 'Có thao tác KHÔNG lưu được lên Google Sheet — hãy chụp màn hình báo lại.'; cls = 'bad'; icon = '<span class="ic bad">!</span>'; }
+    else if (n > 0 && last.event === 'retry') { l1 = 'Chưa lưu được' + (last.reason ? ' (' + last.reason + ')' : '') + ' — thử lại lần ' + last.tries + (M.nextWriteAt > now ? ' sau ' + dur(M.nextWriteAt - now) : '') + '. ĐỪNG đóng trang.'; cls = 'bad'; icon = '<span class="ic bad">!</span>'; }
+    else if (n > 0) { icon = '<span class="ic busy"><i></i></span>'; l1 = 'Đang lưu lên Google Sheet… ' + n + ' thao tác' + (aw ? ' · còn khoảng ' + dur(n * aw) : '') + top; }
+    else { l1 = 'Đã đồng bộ Google Sheet'; cls = 'ok'; icon = '<span class="ic ok">✓</span>'; }
     var l2 = 'Ghi ' + (aw ? sec(aw) + '/lệnh' : '—') + ' · Đọc ' + (M.readMs != null ? sec(M.readMs) : '—') + ' · làm mới sau ' + (M.nextRefreshAt > now ? dur(M.nextRefreshAt - now) : '…');
     el.hidden = false;
-    el.innerHTML = '<div class="' + cls + '" style="font-weight:600;">' + l1 + '</div><div class="l2">' + l2 + '</div>';
+    var key = icon + '|' + cls + '|' + l1;
+    if (el._key === key && el.querySelector('.l2')) { el.querySelector('.l2').textContent = l2; return; }    // chỉ đổi dòng số liệu → giữ nguyên vòng xoay, không nháy
+    el._key = key;
+    el.innerHTML = icon + '<div class="tx"><div class="l1 ' + cls + '">' + l1 + '</div><div class="l2">' + l2 + '</div></div>';
   }
   window.addEventListener('hiconique:sync-state', function (e) {
     var d = e.detail || {};
