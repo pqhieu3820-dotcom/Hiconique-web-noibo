@@ -335,9 +335,11 @@
     if (!$('efSerial').value.trim() && r.serial && !/system serial|to be filled|default string/i.test(r.serial)) $('efSerial').value = r.serial;
     if (!$('efAssignee').value && r.memberId) $('efAssignee').value = r.memberId;
     var types = reportTypes(r);
-    state.specs = rSpecs(r).concat(state.specs.filter(function (s) { return !types[s.type] && (s.type || s.name || s.spec); }));
+    var oldPrice = {}; state.specs.forEach(function (s) { if (s.price) (oldPrice[s.type] = oldPrice[s.type] || []).push(s.price); });
+    var fresh = rSpecs(r).map(function (s) { var l = oldPrice[s.type]; if (l && l.length) s.price = l.shift(); return s; });
+    state.specs = fresh.concat(state.specs.filter(function (s) { return !types[s.type] && (s.type || s.name || s.spec); }));
     ensureDefaultParts('Máy tính');  // Agent không đọc được bàn phím/chuột — vẫn giữ dòng mặc định để điền tay
-    refreshTypeList(); renderSpecRows(); renderPcBox();
+    refreshTypeList(); renderSpecRows(); renderPcBox(); syncPriceFromSpecs();
   }
 
   function refreshTypeList() {
@@ -423,15 +425,24 @@
         '<textarea class="eq-input eq-ta" rows="1" data-f="name" placeholder="Tên / Model"' + ro + '>' + esc(s.name) + '</textarea>' +
         '<textarea class="eq-input eq-ta" rows="1" data-f="spec" placeholder="Thông số"' + ro + '>' + esc(s.spec) + '</textarea>' +
         '<input class="eq-input" data-f="qty" value="' + esc(s.qty) + '" inputmode="numeric"' + ro + '>' +
+        '<input class="eq-input" data-f="price" value="' + esc(fmtMoney(s.price)) + '" inputmode="numeric" placeholder="Đơn giá"' + ro + '>' +
         (canManage() ? '<button type="button" class="eq-spec-del" data-del="' + i + '" title="Xóa dòng" aria-label="Xóa dòng">×</button>' : '<span></span>') + '</div>';
     }).join('') : '<p class="eq-sub">Chưa có dòng nào. Bấm “Điền mẫu theo nhóm” để có sẵn các đầu mục, hoặc “+ Thêm dòng”.</p>';
-    autosizeSpecs(); setTimeout(autosizeSpecs, 60);
+    autosizeSpecs(); setTimeout(autosizeSpecs, 60); syncPriceFromSpecs(true);
   }
   // Ô Loại / Tên / Thông số tự xuống dòng và cao ra theo nội dung (không cắt chữ dài)
   function autosizeTa(t) { t.style.height = 'auto'; if (t.scrollHeight > 4) t.style.height = t.scrollHeight + 2 + 'px'; }
   function autosizeSpecs() { Array.prototype.forEach.call($('eqSpecRows').querySelectorAll('textarea.eq-ta'), autosizeTa); }
+  function fmtMoney(v) { var d = String(v == null ? '' : v).replace(/\D/g, '').replace(/^0+(?=\d)/, ''); return d ? d.replace(/\B(?=(\d{3})+(?!\d))/g, '.') : ''; }
+  // Tổng giá mua = Σ (đơn giá × SL) các dòng linh kiện; có ít nhất 1 đơn giá thì tự điền vào ô Giá mua
+  function specsTotal() { return state.specs.reduce(function (t, s) { return t + num(String(s.price || '').replace(/\D/g, '')) * (num(s.qty) || 1); }, 0); }
+  function syncPriceFromSpecs(labelOnly) {
+    if (formCat($('efCat').value).supply) return;
+    var t = specsTotal(); if (t > 0 && !labelOnly) $('efPrice').value = fmtMoney(t);
+    var el = $('eqSpecTotal'); if (el) el.textContent = t > 0 ? 'Tổng linh kiện: ' + money(t) : '';
+  }
   function readSpecs() {
-    return state.specs.filter(function (s) { return s.type || s.name || s.spec; }).map(function (s) { return { type: s.type.trim(), name: s.name.trim(), spec: s.spec.trim(), qty: String(s.qty || '1').trim() || '1' }; });
+    return state.specs.filter(function (s) { return s.type || s.name || s.spec; }).map(function (s) { return { type: s.type.trim(), name: s.name.trim(), spec: s.spec.trim(), qty: String(s.qty || '1').trim() || '1', price: String(s.price || '').replace(/\D/g, '') }; });
   }
   function openModal(id, cloneFrom, fromReport) {
     var e = id ? TM.getEquipment().filter(function (x) { return x.id === id; })[0] : null;
@@ -449,7 +460,7 @@
     $('efPrice').value = g('price') ? Number(String(g('price')).replace(/[^\d]/g, '')).toLocaleString('vi-VN') : ''; $('efSupplier').value = g('supplier');
     $('efQty').value = g('qty'); setUnit(g('unit')); $('efMin').value = g('minQty'); $('efNote').value = g('note');
     $('efCode').value = e ? g('code') : suggestCode();
-    state.specs = src ? parseSpecs(src).map(function (s) { return { type: s.type || '', name: s.name || '', spec: s.spec || '', qty: s.qty || '1' }; }) : [];
+    state.specs = src ? parseSpecs(src).map(function (s) { return { type: s.type || '', name: s.name || '', spec: s.spec || '', qty: s.qty || '1', price: s.price || '' }; }) : [];
     state.pcId = (src && !cloneFrom) ? (g('pcId') || '') : '';
     state.stock = src ? stockRows(src) : [];
     state.history = (src && !cloneFrom) ? historyOf(src) : [];
@@ -551,7 +562,7 @@
     });
     $('emType').addEventListener('change', function () { $('emTo').hidden = this.value !== 'move'; });
     $('eqMoveBtn').addEventListener('click', applyMovement);
-    $('eqAddSpec').addEventListener('click', function () { state.specs.push({ type: '', name: '', spec: '', qty: '1' }); renderSpecRows(); var r = $('eqSpecRows').lastElementChild; if (r) r.querySelector('input').focus(); });
+    $('eqAddSpec').addEventListener('click', function () { state.specs.push({ type: '', name: '', spec: '', qty: '1', price: '' }); renderSpecRows(); var r = $('eqSpecRows').lastElementChild; if (r) r.querySelector('input').focus(); });
     $('eqPreset').addEventListener('click', function () {
       var have = {}; state.specs.forEach(function (s) { have[s.type] = true; });
       formCat($('efCat').value).tpl.forEach(function (t) { if (!have[t[0]]) state.specs.push({ type: t[0], name: '', spec: '', qty: '1' }); });
@@ -559,14 +570,16 @@
     });
     $('eqSpecRows').addEventListener('input', function (e) {
       var row = e.target.closest('.eq-spec-row'); if (!row || !e.target.dataset.f) return;
+      if (e.target.dataset.f === 'price') e.target.value = fmtMoney(e.target.value);
       state.specs[Number(row.dataset.i)][e.target.dataset.f] = e.target.value;
+      if (e.target.dataset.f === 'price' || e.target.dataset.f === 'qty') syncPriceFromSpecs();
       if (e.target.tagName === 'TEXTAREA') autosizeTa(e.target);
     });
     $('eqSpecRows').addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.tagName === 'TEXTAREA') e.preventDefault(); });
     window.addEventListener('resize', autosizeSpecs);
     $('eqSpecRows').addEventListener('click', function (e) {
       var d = e.target.closest('[data-del]'); if (!d) return;
-      state.specs.splice(Number(d.dataset.del), 1); renderSpecRows();
+      state.specs.splice(Number(d.dataset.del), 1); renderSpecRows(); syncPriceFromSpecs();
     });
     $('eqPcApply').addEventListener('click', function () {
       var r = reportById($('eqPcPick').value);

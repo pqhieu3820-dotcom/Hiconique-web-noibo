@@ -37,6 +37,11 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
 - (2026-09-30) Viết lại đoạn mô tả đầu trang Tài sản & vật tư (`equipment.html`, `.subpage-lede`) gọn hơn, 2 câu, gom nhóm tài sản.
 
+### Phiên 2026-09-30 (k) — Cột "Đơn giá" cho từng linh kiện, tự cộng vào Giá mua
+
+- Bảng Linh kiện/Thông số (form tài sản) thêm cột **Đơn giá (₫)** sau cột SL (`data-f="price"`, gõ tự chấm hàng nghìn). Lưu trong cột JSON `specs` của sheet TB-Thiết bị (khóa `price` mỗi dòng) — không cần đổi cột Sheet/Apps Script.
+- **Giá mua = Σ (đơn giá × SL)** các dòng, tự điền vào ô Giá mua mỗi khi sửa đơn giá/SL/xóa dòng/nhập từ Agent (chỉ nhóm thiết bị, không áp cho vật tư); dòng "Tổng linh kiện" hiện dưới bảng. Mở lại tài sản cũ chỉ hiện tổng, không ghi đè Giá mua đã nhập tay cho tới khi sửa 1 dòng. Nhập cấu hình từ Agent giữ đơn giá đã nhập theo loại (theo thứ tự). sw v29.
+
 ### Phiên 2026-09-30 (j) — Bảng Linh kiện/Thông số trong form tài sản rộng hơn, tự xuống dòng
 
 - `equipment.html`: hộp thoại rộng tối đa `min(1320px, 96vw)` (trước 1000px), cột phải rộng hơn (`0.8fr / 1.5fr`), cột Tên/Thông số chiếm nhiều chỗ hơn.

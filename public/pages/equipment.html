@@ -92,12 +92,12 @@
     .eq-actions { display: flex; gap: 8px; padding: 14px 22px; border-top: 1px solid var(--eq-border); flex-wrap: wrap; }
     .eq-specs-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
     .eq-spec-rows { display: flex; flex-direction: column; gap: 8px; }
-    .eq-spec-row { display: grid; grid-template-columns: 1fr 1.7fr 2fr 54px 26px; align-items: start; gap: 6px;  }
+    .eq-spec-row { display: grid; grid-template-columns: 1fr 1.6fr 1.9fr 52px 1fr 26px; align-items: start; gap: 6px;  }
     .eq-spec-row .eq-input { padding: 7px 8px; font-size: 0.75rem; }
     .eq-ta { resize: none; overflow: hidden; line-height: 1.4; min-height: 32px; white-space: pre-wrap; word-break: break-word; font-family: inherit; }
     .eq-spec-del { background: none; border: none; color: var(--eq-muted); cursor: pointer; font-size: 1.1rem; line-height: 1; }
     .eq-spec-del:hover { color: var(--eq-bad); }
-    .eq-spec-cols { display: grid; grid-template-columns: 1fr 1.7fr 2fr 54px 26px; gap: 6px; font-size: 0.625rem; text-transform: uppercase; letter-spacing: .05em; color: var(--eq-muted); margin-bottom: 4px; }
+    .eq-spec-cols { display: grid; grid-template-columns: 1fr 1.6fr 1.9fr 52px 1fr 26px; gap: 6px; font-size: 0.625rem; text-transform: uppercase; letter-spacing: .05em; color: var(--eq-muted); margin-bottom: 4px; }
     .eq-banner { background: color-mix(in srgb, var(--eq-blue) 12%, var(--eq-surface)); border: 1px solid color-mix(in srgb, var(--eq-blue) 45%, var(--eq-border)); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; font-size: 0.8125rem; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
     .eq-banner b { color: var(--eq-text); }
     .eq-pc { background: var(--eq-bg); border: 1px solid var(--eq-border); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
@@ -135,6 +135,7 @@
       .eq-spec-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); padding: 8px; border: 1px solid var(--eq-border); border-radius: 10px; background: var(--eq-bg); }
       .eq-spec-row [data-f="spec"] { grid-column: 1 / -1; }
       .eq-spec-row [data-f="qty"] { max-width: 110px; }
+      .eq-spec-row [data-f="price"] { min-width: 0; }
       .eq-spec-row .eq-spec-del { justify-self: end; padding: 2px 8px; }
       .eq-stock-row { grid-template-columns: minmax(0, 1fr) 84px 26px; }
       .eq-move-row { grid-template-columns: minmax(0, 1fr); }
@@ -257,8 +258,9 @@
                 <button class="eq-btn eq-btn-sm" type="button" id="eqAddSpec">+ Thêm dòng</button>
               </div>
             </div>
-            <div class="eq-spec-cols" data-needcat><span>Loại</span><span>Tên / Model</span><span>Thông số</span><span>SL</span><span></span></div>
+            <div class="eq-spec-cols" data-needcat><span>Loại</span><span>Tên / Model</span><span>Thông số</span><span>SL</span><span>Đơn giá (₫)</span><span></span></div>
             <div class="eq-spec-rows" id="eqSpecRows" data-needcat></div>
+            <div class="eq-sub" id="eqSpecTotal" data-needcat style="text-align:right;font-weight:600;margin-top:8px;"></div>
             <datalist id="eqTypeList"></datalist>
             <datalist id="eqNameList"></datalist>
             <datalist id="eqBrandList"></datalist>
