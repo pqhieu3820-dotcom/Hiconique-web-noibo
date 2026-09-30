@@ -136,24 +136,45 @@ var PayslipDocx = (function () {
     });
   }
 
+  var PV_CSS = '#pdxOverlay{position:fixed;inset:0;z-index:600;display:flex;flex-direction:column;background:radial-gradient(1200px 600px at 50% -10%,#4a4f57,#2b2e33 70%);animation:pdxIn .22s ease}@keyframes pdxIn{from{opacity:0}to{opacity:1}}' +
+    '#pdxOverlay .pdx-bar{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 20px;background:rgba(255,255,255,.07);backdrop-filter:blur(16px) saturate(160%);-webkit-backdrop-filter:blur(16px) saturate(160%);border-bottom:1px solid rgba(255,255,255,.12);color:#f4f1ec;font-family:Inter,system-ui,sans-serif;flex-wrap:wrap}' +
+    '#pdxOverlay .pdx-ttl{display:flex;align-items:center;gap:12px;min-width:0}#pdxOverlay .pdx-ic{flex:0 0 auto;width:34px;height:34px;border-radius:9px;background:linear-gradient(160deg,#4A78C9,#2B579A);display:grid;place-items:center;box-shadow:0 2px 8px rgba(0,0,0,.3)}#pdxOverlay .pdx-ic svg{width:18px;height:18px;color:#fff}' +
+    '#pdxOverlay .pdx-ttl b{display:block;font-size:.875rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#pdxOverlay .pdx-ttl span{display:block;font-size:.75rem;opacity:.65;margin-top:1px}' +
+    '#pdxOverlay .pdx-zoom{display:flex;align-items:center;gap:2px;padding:3px;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1)}#pdxOverlay .pdx-zoom button{width:30px;height:28px;border:none;border-radius:7px;background:none;color:#f4f1ec;font-size:1.05rem;line-height:1;cursor:pointer}#pdxOverlay .pdx-zoom button:hover{background:rgba(255,255,255,.14)}#pdxOverlay .pdx-zoom output{min-width:50px;text-align:center;font-size:.75rem;font-weight:600;font-variant-numeric:tabular-nums}' +
+    '#pdxOverlay .pdx-act{display:flex;gap:8px}#pdxOverlay .pdx-btn{height:36px;padding:0 16px;border-radius:9px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.06);color:#fff;font-weight:600;font-size:.8125rem;font-family:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:background .15s}#pdxOverlay .pdx-btn:hover{background:rgba(255,255,255,.16)}#pdxOverlay .pdx-btn.pri{background:#B08D57;border-color:#B08D57}#pdxOverlay .pdx-btn.pri:hover{background:#c39d63}#pdxOverlay .pdx-btn svg{width:15px;height:15px}' +
+    '#pdxOverlay .pdx-scroll{flex:1 1 auto;overflow:auto;overscroll-behavior:contain;padding:28px 12px 60px}#pdxOverlay #pdxHost{margin:0 auto;width:max-content;max-width:none;transform-origin:top center}' +
+    '#pdxOverlay .pdx-wrapper{background:transparent!important;padding:0!important}#pdxOverlay .pdx-wrapper>section.pdx{box-shadow:0 10px 40px rgba(0,0,0,.45),0 0 0 1px rgba(0,0,0,.2)!important;margin-bottom:22px!important;border-radius:2px}' +
+    '#pdxOverlay .pdx-load{display:flex;flex-direction:column;align-items:center;gap:14px;padding:80px 0;color:#f4f1ec;font:500 .875rem Inter,system-ui,sans-serif}#pdxOverlay .pdx-load i{width:34px;height:34px;border-radius:50%;border:3px solid rgba(255,255,255,.2);border-top-color:#B08D57;animation:pdxSpin .8s linear infinite}@keyframes pdxSpin{to{transform:rotate(360deg)}}' +
+    '@media(max-width:700px){#pdxOverlay .pdx-bar{padding:8px 12px}#pdxOverlay .pdx-zoom{order:3}#pdxOverlay .pdx-btn span{display:none}}';
+
   function preview(data) {
     var old = document.getElementById('pdxOverlay'); if (old) old.remove();
+    if (!document.getElementById('pdxCss')) { var st = document.createElement('style'); st.id = 'pdxCss'; st.textContent = PV_CSS; document.head.appendChild(st); }
+    var m = data.member || {};
     var ov = document.createElement('div'); ov.id = 'pdxOverlay';
-    ov.style.cssText = 'position:fixed;inset:0;z-index:600;background:rgba(10,12,15,.6);backdrop-filter:blur(3px);display:flex;flex-direction:column;align-items:center;padding:3vh 12px;overflow:auto;overscroll-behavior:contain';
-    ov.innerHTML = '<div style="width:100%;max-width:900px;display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;color:#fff;font:600 .9375rem Inter,system-ui,sans-serif"><span>Xem nhanh — Giấy đề nghị thanh toán lương</span><span style="display:flex;gap:10px"><button type="button" data-dl style="padding:8px 16px;border-radius:8px;border:none;background:#B08D57;color:#fff;font:600 .8125rem inherit;cursor:pointer">Tải file .docx</button><button type="button" data-x style="padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.4);background:none;color:#fff;font:600 .8125rem inherit;cursor:pointer">Đóng</button></span></div><div id="pdxHost" style="width:100%;max-width:900px;min-height:200px;color:#fff">Đang tạo bản xem…</div>';
+    ov.innerHTML =
+      '<div class="pdx-bar"><div class="pdx-ttl"><div class="pdx-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></div><div><b>Giấy đề nghị thanh toán lương</b><span>Tháng ' + mmYYYY(data.month) + ' · ' + (m.name || '') + ' · ' + fileName(data) + '</span></div></div>' +
+      '<div class="pdx-zoom"><button type="button" data-z="-1" aria-label="Thu nhỏ">−</button><output id="pdxZ">100%</output><button type="button" data-z="1" aria-label="Phóng to">+</button><button type="button" data-z="0" aria-label="Vừa khung" title="Vừa khung" style="font-size:.7rem;font-weight:700;width:auto;padding:0 8px">Vừa</button></div>' +
+      '<div class="pdx-act"><button type="button" class="pdx-btn pri" data-dl><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg><span>Tải file .docx</span></button><button type="button" class="pdx-btn" data-x><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg><span>Đóng</span></button></div></div>' +
+      '<div class="pdx-scroll"><div id="pdxHost"><div class="pdx-load"><i></i>Đang tạo bản xem…</div></div></div>';
     document.body.appendChild(ov);
+    var zoom = 1, host = ov.querySelector('#pdxHost'), zEl = ov.querySelector('#pdxZ'), scroller = ov.querySelector('.pdx-scroll');
+    function applyZoom(z) { zoom = Math.max(0.4, Math.min(2.5, z)); host.style.zoom = zoom; zEl.textContent = Math.round(zoom * 100) + '%'; }
+    function fit() { var page = host.querySelector('section.pdx'); if (!page) return; host.style.zoom = 1; var w = page.offsetWidth || 794; applyZoom(Math.min(1.4, (scroller.clientWidth - 24) / w)); }
     function close() { ov.remove(); document.removeEventListener('keydown', onKey); }
-    function onKey(e) { if (e.key === 'Escape') close(); }
+    function onKey(e) { if (e.key === 'Escape') close(); else if ((e.key === '+' || e.key === '=') && e.ctrlKey) { e.preventDefault(); applyZoom(zoom + 0.1); } else if (e.key === '-' && e.ctrlKey) { e.preventDefault(); applyZoom(zoom - 0.1); } }
     document.addEventListener('keydown', onKey);
-    ov.addEventListener('mousedown', function (e) { if (e.target === ov) close(); });
     ov.querySelector('[data-x]').addEventListener('click', close);
     ov.querySelector('[data-dl]').addEventListener('click', function () { download(data); });
+    ov.querySelector('.pdx-zoom').addEventListener('click', function (e) { var b = e.target.closest('[data-z]'); if (!b) return; var d = Number(b.getAttribute('data-z')); if (d === 0) fit(); else applyZoom(zoom + d * 0.1); });
+    scroller.addEventListener('wheel', function (e) { if (!e.ctrlKey) return; e.preventDefault(); applyZoom(zoom * Math.exp(e.deltaY < 0 ? 0.1 : -0.1)); }, { passive: false });
+    scroller.addEventListener('mousedown', function (e) { if (e.target === scroller) close(); });
     return makeBlob(data).then(function (blob) {
       return ensurePreview().then(function (P) {
-        var host = ov.querySelector('#pdxHost'); host.innerHTML = '';
+        host.innerHTML = '';
         return P.renderAsync(blob, host, null, { className: 'pdx', inWrapper: true, ignoreWidth: false, ignoreHeight: false, breakPages: true });
       });
-    }).catch(function (err) { var h = ov.querySelector('#pdxHost'); if (h) h.innerHTML = '<div style="padding:20px;background:#fff;color:#a04848;border-radius:10px">Không tạo được bản xem: ' + String(err && err.message || err) + '</div>'; });
+    }).then(fit).catch(function (err) { host.innerHTML = '<div style="padding:20px;background:#fff;color:#a04848;border-radius:10px;max-width:560px">Không tạo được bản xem: ' + String(err && err.message || err) + '</div>'; });
   }
 
   return { download: download, preview: preview, moneyWords: moneyWords };
