@@ -830,12 +830,28 @@ def qss_for(theme):
 APP_QSS = qss_for('dark')  # giữ tên cũ để tương thích — mặc định khởi động là nền tối
 
 
+PREFS_FILE = os.path.join(DATA_DIR, 'prefs.dat')
+
+
 def load_theme():
-    return QSettings('HICONIQUE', 'HiconiqueAgent').value('theme', 'dark')
+    # Nhớ chế độ nền sáng/tối kể cả offline: lưu vào file trên máy (prefs.dat) VÀ registry (QSettings) — đọc file trước
+    p = read_secure(PREFS_FILE)
+    if isinstance(p, dict) and p.get('theme') in THEME_COLORS:
+        return p['theme']
+    v = QSettings('HICONIQUE', 'HiconiqueAgent').value('theme', 'dark')
+    return v if v in THEME_COLORS else 'dark'
 
 
 def save_theme(theme):
-    QSettings('HICONIQUE', 'HiconiqueAgent').setValue('theme', theme)
+    try:
+        prefs = read_secure(PREFS_FILE) or {}
+        prefs['theme'] = theme
+        write_secure(PREFS_FILE, prefs)
+    except Exception as e:
+        log('Lưu chế độ nền lỗi:', e)
+    st = QSettings('HICONIQUE', 'HiconiqueAgent')
+    st.setValue('theme', theme)
+    st.sync()
 
 
 def app_icon():
@@ -3676,11 +3692,14 @@ class MainWindow(QMainWindow):
             sl.addWidget(b)
             self.navButtons.append(b)
         sl.addStretch(1)
-        note = QLabel('Đóng cửa sổ (X) = chạy nền ở khay hệ thống.\nChuột phải icon khay > Thoát để tắt hẳn.')
-        note.setProperty('muted', True)
-        note.setWordWrap(True)
-        note.setStyleSheet('font-size:11px;')
-        sl.addWidget(note)
+        info = QLabel('i')
+        info.setAlignment(Qt.AlignCenter)
+        info.setFixedSize(24, 24)
+        info.setCursor(Qt.WhatsThisCursor)
+        info.setToolTip('Đóng cửa sổ (nút X) = ứng dụng chạy nền ở khay hệ thống.\nChuột phải vào icon ở khay hệ thống > Thoát để tắt hẳn.')
+        info.setStyleSheet('QLabel{border:1.5px solid %s;border-radius:12px;color:%s;font-weight:700;font-family:Georgia;font-style:italic;font-size:13px;background:transparent;}'
+                           'QLabel:hover{color:%s;border-color:%s;}' % (BORDER, MUTED, BRONZE, BRONZE))
+        sl.addWidget(info, 0, Qt.AlignLeft | Qt.AlignBottom)
         body.addWidget(sidebar)
 
         self.stack = QStackedWidget()

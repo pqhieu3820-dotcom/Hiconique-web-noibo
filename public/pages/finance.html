@@ -38,7 +38,7 @@
     .fn-locked h2 { font-size: 1.125rem; margin-bottom: 8px; }
     .fn-locked p { font-size: 0.875rem; color: var(--fn-muted); }
 
-    .fn-hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 22px; flex-wrap: wrap; }
+    .fn-hero { display: flex; align-items: center; justify-content: flex-end; gap: 20px; margin: 0 0 18px; flex-wrap: wrap; }   /* chỉ còn thanh chọn tháng + Xuất báo cáo, căn phải */
     .fn-hero-eyebrow { font-size: 0.6875rem; color: var(--fn-bronze); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; margin-bottom: 6px; }
     .fn-hero h1 { font-size: 1.625rem; font-weight: 700; margin-bottom: 6px; }
     .fn-hero p { font-size: 0.875rem; color: var(--fn-muted); max-width: 480px; }
@@ -374,11 +374,6 @@
 
       body.innerHTML =
         '<div class="fn-hero">' +
-          '<div>' +
-            '<div class="fn-hero-eyebrow">Sổ tài chính · HICONIQUE</div>' +
-            '<h1>Chào ' + greeting + ', ' + escapeHtml(firstName) + '</h1>' +
-            '<p>Theo dõi lãi/lỗ, dòng tiền, công nợ và sức khỏe tài chính của công ty thiết kế — thi công nội thất.</p>' +
-          '</div>' +
           '<div class="fn-overview-strip">' +
             '<input type="month" class="fn-month-input" id="fnMonthInput">' +
             '<button class="fn-btn fn-btn-ghost" id="fnExportBtn">' +
