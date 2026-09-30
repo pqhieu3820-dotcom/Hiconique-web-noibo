@@ -1839,3 +1839,7 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 - Sheet `TC-Tài chính công ty` thêm cột: `Người giao dịch`(actor), `Số phiếu`(voucherNo), `TK đối ứng`(counterAccount), `Tài khoản quỹ`(account 111|112, trống = 111), `Ngày chứng từ`(voucherDate, mặc định = Ngày hạch toán).
 - finance.html: form thêm giao dịch có Tài khoản quỹ, TK đối ứng (combobox 24 TK kèm tên + nút (i) giải thích cách dùng, tự gợi ý mặc định theo Loại: doanh thu→511, chi phí→6422, vay/trả nợ→341, thưởng→334, phạt→711), Số phiếu PT/PC tự sinh + chống trùng, Ngày chứng từ. Mục mới **Sổ quỹ / Sổ tiền gửi**: bảng như sổ MISA (Ngày HT, Ngày CT, số phiếu thu/chi, diễn giải, TK, TK đối ứng có tên, Nợ, Có, Số tồn cộng dồn, người nhận/nộp), số dư đầu kỳ/cuối kỳ + bảng tổng hợp theo TK đối ứng, lọc theo TK quỹ + khoảng ngày.
 - **Xuất Excel gộp vào "Xuất báo cáo"**: finance-export.js thêm 2 sheet `Sổ quỹ 111`, `Sổ TGNH 112` (bố cục MISA, Số tồn là công thức, tổng hợp theo TK đối ứng, khối ký Người ghi sổ/Kế toán trưởng/Giám đốc, in A4 ngang) + sheet `Giao dịch` thêm 4 cột Số phiếu/TK quỹ/TK đối ứng/Người GD. Nút "Xuất Excel" riêng ở Sổ quỹ đã bỏ. sw v60.
+
+### 2026-09-30 (aq) Biểu đồ dòng tiền hết đè chữ + thanh cuộn menu
+- finance.html: nhãn giá trị trên cột Thu/Chi tách hai phía (Thu lệch trái, Chi lệch phải), cột rộng 18px, khoảng cách 8px, cột nhóm tối thiểu 72px → "13 tr" không còn bị cột kế bên đè.
+- Menu ngang màn hẹp: thanh cuộn ngang mảnh màu đồng, cách viền dưới 16px (không dính viền), bo tròn. sw v61.

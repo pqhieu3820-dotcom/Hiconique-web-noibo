@@ -80,14 +80,16 @@
     .fn-dash-row.thirds { grid-template-columns: repeat(3, 1fr); }
 
     .fn-chart-wrap { display: flex; align-items: flex-end; gap: 12px; height: 220px; padding: 28px 20px 12px; overflow-x: auto; }
-    .fn-chart-col { flex: 1; min-width: 40px; display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; justify-content: flex-end; }
-    .fn-chart-bars { position: relative; display: flex; gap: 4px; align-items: flex-end; height: 100%; }
-    .fn-chart-bar { width: 14px; border-radius: 4px 4px 0 0; position: relative; transition: opacity 0.15s; }
+    .fn-chart-col { flex: 1; min-width: 72px; display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; justify-content: flex-end; }
+    .fn-chart-bars { position: relative; display: flex; gap: 8px; align-items: flex-end; height: 100%; }
+    .fn-chart-bar { width: 18px; border-radius: 4px 4px 0 0; position: relative; transition: opacity 0.15s; }
     .fn-chart-bar:hover { opacity: 0.75; }
     .fn-chart-bar.revenue { background: linear-gradient(180deg, var(--fn-green), color-mix(in srgb, var(--fn-green) 70%, black)); }
     .fn-chart-bar.expense { background: linear-gradient(180deg, var(--fn-red), color-mix(in srgb, var(--fn-red) 70%, black)); }
     .fn-chart-bar.forecast { opacity: 0.45; background-image: repeating-linear-gradient(135deg, var(--fn-bronze), var(--fn-bronze) 3px, transparent 3px, transparent 6px); }
     .fn-chart-bar-value { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); font-size: 0.625rem; font-family: 'JetBrains Mono', monospace; color: var(--fn-muted); white-space: nowrap; }
+    .fn-chart-bar.revenue .fn-chart-bar-value { left: auto; right: 50%; transform: none; padding-right: 3px; }
+    .fn-chart-bar.expense .fn-chart-bar-value { left: 50%; transform: none; padding-left: 3px; }
     .fn-chart-label { font-size: 0.75rem; color: var(--fn-muted); font-weight: 600; white-space: nowrap; }
     .fn-chart-label.is-forecast { color: var(--fn-bronze); }
     .fn-legend { display: flex; gap: 16px; padding: 0 24px 18px; font-size: 0.75rem; color: var(--fn-muted); flex-wrap: wrap; }
@@ -221,8 +223,11 @@
 
     @media (max-width: 1100px) {
       .fn-layout { flex-direction: column; }
-      .fn-sidebar { width: 100%; position: static; display: flex; overflow-x: auto; gap: 4px; padding: 8px 12px; scrollbar-width: none; -ms-overflow-style: none; scroll-snap-type: x proximity; -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 16px, #000 calc(100% - 28px), transparent 100%); mask-image: linear-gradient(90deg, transparent 0, #000 16px, #000 calc(100% - 28px), transparent 100%); }
-      .fn-sidebar::-webkit-scrollbar { display: none; }
+      .fn-sidebar { width: 100%; position: static; display: flex; overflow-x: auto; gap: 4px; padding: 8px 12px 16px; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--fn-bronze) 55%, transparent) transparent; scroll-snap-type: x proximity; }
+      .fn-sidebar::-webkit-scrollbar { height: 6px; }
+      .fn-sidebar::-webkit-scrollbar-track { background: var(--fn-bg); border-radius: 3px; margin: 0 14px; }
+      .fn-sidebar::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--fn-bronze) 55%, transparent); border-radius: 3px; }
+      .fn-sidebar::-webkit-scrollbar-thumb:hover { background: var(--fn-bronze); }
       .fn-nav-item { scroll-snap-align: center; margin-bottom: 0; width: auto; flex-shrink: 0; }
       .fn-sidebar-group { display: flex; gap: 4px; margin-bottom: 0; }
       .fn-sidebar-group-label { display: none; }
