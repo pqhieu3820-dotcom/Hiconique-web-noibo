@@ -1875,3 +1875,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 ### 2026-09-30 (ba) Tháng hiển thị MM/YYYY + thanh cuộn menu mảnh hơn
 - offline.js: bộ đổi chữ ngày nay đổi cả tháng đứng riêng `2026-09` → `09/2026` (không đổi khi dính `-`, `_`, `/` hoặc chữ đứng trước/sau, VD `TC-2026-09` giữ nguyên). Dữ liệu lưu vẫn `yyyy-mm`.
 - finance.html: thanh cuộn ngang menu mảnh 4px, màu nhạt hơn. sw v71.
+
+### 2026-09-30 (bb) Biểu đồ: khung hover bao trọn cột + nhãn số
+- finance.html: khung hover của mỗi tháng là `::before` phủ từ trên nhãn số tới dưới nhãn tháng (top -38px, bottom -8px), bo 14px, nền đồng nhạt dạng gradient + viền + bóng mềm, có hiệu ứng chuyển. sw v72.

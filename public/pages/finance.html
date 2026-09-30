@@ -145,7 +145,10 @@
     .fn-clickable { cursor: pointer; transition: transform .15s, box-shadow .15s, border-color .15s; }
     .fn-summary-card.fn-clickable:hover, .fn-card.fn-clickable:hover { transform: translateY(-2px); border-color: var(--fn-bronze); box-shadow: 0 10px 26px rgba(0,0,0,.08); }
     .fn-chart-col.fn-clickable:hover .fn-chart-label { color: var(--fn-bronze); }
-    .fn-chart-col.fn-clickable:hover { background: color-mix(in srgb, var(--fn-bronze) 8%, transparent); border-radius: 8px; }
+        .fn-chart-col { position: relative; }
+    .fn-chart-col.fn-clickable::before { content: ''; position: absolute; z-index: 0; left: -4px; right: -4px; top: -38px; bottom: -8px; border-radius: 14px; border: 1px solid transparent; background: transparent; transition: background .18s, border-color .18s, box-shadow .18s; pointer-events: none; }
+    .fn-chart-col.fn-clickable:hover::before { background: linear-gradient(180deg, color-mix(in srgb, var(--fn-bronze) 12%, transparent), color-mix(in srgb, var(--fn-bronze) 4%, transparent)); border-color: color-mix(in srgb, var(--fn-bronze) 30%, transparent); box-shadow: 0 6px 18px color-mix(in srgb, var(--fn-bronze) 14%, transparent); }
+    .fn-chart-col > * { position: relative; z-index: 1; }
     .fn-dt-overlay { position: fixed; inset: 0; z-index: 500; background: rgba(10,12,15,.5); backdrop-filter: blur(3px); display: flex; align-items: flex-start; justify-content: center; padding: 5vh 16px; overflow-y: auto; }
     .fn-dt-box { width: 100%; max-width: 980px; background: var(--fn-bg); border: 1px solid var(--fn-border); border-radius: 16px; box-shadow: 0 24px 60px rgba(0,0,0,.35); animation: fnDtIn .22s ease; }
     @keyframes fnDtIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
