@@ -1937,3 +1937,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (bs) Sửa nặng zoom biểu đồ: cột bị cắt đỉnh khi thu nhỏ
 - Nguyên nhân: chiều cao cột (`maxBarPx`) co theo tỉ lệ zoom (160×z) nhưng các phần cố định (đệm trên 44, đệm dưới 12, nhãn tháng ~26px) KHÔNG co → ở zoom 50% cột cao nhất + nhãn tràn khỏi vùng biểu đồ (overflow-y hidden) nên bị cắt đỉnh, mất nhãn số. Nay `maxBarPx = 240×z − 80` (chiều cao vùng trừ phần cố định) → cột cao nhất luôn nằm gọn ở mọi mức zoom; giới hạn zoom 60%–250%. Đã đo: nhãn số luôn cách mép trên vùng 13px, đỉnh cột 30px ở cả 60%/100%/250%. sw v89.
+
+### 2026-09-30 (bt) Báo cáo nhanh: rộng hơn trên máy tính + dạng thẻ trên điện thoại
+- finance-quick.js: khung `max-width: min(1500px, 97vw)` (trước 1180px) → cột sổ quỹ thoải mái (Diễn giải ~274px). Điện thoại (≤760px): khung toàn màn hình, chip/tab nhỏ, ttiêu đề cuộn ngang; bảng Sổ quỹ 111/112 chuyển sang **dạng thẻ** (mỗi dòng sổ là 1 thẻ 2 cột có nhãn nhỏ — Ngày HT/CT, Phiếu, Diễn giải, TK, Nợ/Có, Số tồn, Người; ô trống tự ẩn) nên KHÔNG cần kéo ngang (đã đo scrollWidth = clientWidth ở 375px). Các bảng khác trên điện thoại: chữ nhỏ, wrap, cuộn ngang trong khung. `data-l` trên ô giữ nhãn cho dạng thẻ. sw v90.
