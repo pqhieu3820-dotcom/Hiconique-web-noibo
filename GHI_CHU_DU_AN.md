@@ -1853,3 +1853,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (at) Thanh menu ngang Sổ tài chính: bỏ mũi tên, cùng màu thanh khác, lăn chuột cuộn ngang
 - finance.html: ẩn nút mũi tên < > hai đầu thanh cuộn (`::-webkit-scrollbar-button`), thumb xám #C9C4BA như các thanh cuộn khác; rê chuột vào menu ngang rồi lăn → cuộn ngang (dùng chung handler với bảng Sổ quỹ). sw v64.
+
+### 2026-09-30 (au) Sửa: mũi tên thanh cuộn ngang vẫn hiện
+- Nguyên nhân: Chrome mới bỏ qua `::-webkit-scrollbar-*` khi đã khai báo `scrollbar-width/scrollbar-color` → thanh cuộn gốc (có mũi tên) hiện lại. Đã bỏ 2 thuộc tính chuẩn đó khỏi `.fn-sidebar` (chỉ giữ cho Firefox qua `@supports not selector(::-webkit-scrollbar)`). Quy tắc chung: muốn tự vẽ thanh cuộn webkit thì KHÔNG đặt scrollbar-width/color. sw v65.
