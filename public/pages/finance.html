@@ -811,7 +811,7 @@
           if (lw.scrollWidth <= lw.clientWidth + 1 || e.ctrlKey) return;
           var d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY; if (!d) return;
           var max = lw.scrollWidth - lw.clientWidth, next = lw.scrollLeft + d;
-          if ((d < 0 && lw.scrollLeft <= 0) || (d > 0 && lw.scrollLeft >= max - 1)) return;
+          if ((d < 0 && lw.scrollLeft <= 0) || (d > 0 && lw.scrollLeft >= max - 1)) { e.preventDefault(); return; }
           e.preventDefault(); lw.scrollLeft = Math.max(0, Math.min(max, next));
         }, { passive: false });
         });
@@ -1020,7 +1020,7 @@
       if (!w || e.ctrlKey || w.scrollWidth <= w.clientWidth + 1) return;
       var d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY; if (!d) return;
       var max = w.scrollWidth - w.clientWidth;
-      if ((d < 0 && w.scrollLeft <= 0) || (d > 0 && w.scrollLeft >= max - 1)) return;
+      if ((d < 0 && w.scrollLeft <= 0) || (d > 0 && w.scrollLeft >= max - 1)) { e.preventDefault(); return; }
       e.preventDefault(); w.scrollLeft = Math.max(0, Math.min(max, w.scrollLeft + d));
     }, { passive: false });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') dtClose(); });

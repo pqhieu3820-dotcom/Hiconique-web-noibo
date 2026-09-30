@@ -1910,3 +1910,7 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (bl) Quầng sáng chip: nhạt 50%, chậm hơn
 - offline.js `hqGlow`: alpha các lớp bóng giảm một nửa (2.5–17%), chu kỳ 5.4s (chậm hơn 2s). sw v82.
+
+### 2026-09-30 (bm) Chống "lan" cuộn ra trang — toàn web
+- offline.js (nạp mọi trang): bộ xử lý `wheel` toàn cục — con trỏ đang trong vùng có thanh cuộn (overflow auto/scroll, còn nội dung cuộn được) mà vùng đã tới mép theo chiều lăn thì `preventDefault()` → trang phía sau KHÔNG cuộn theo. Ngoài vùng cuộn: trang cuộn bình thường. Ctrl+lăn (zoom) không ảnh hưởng. Áp dụng cả vùng tạo động (hộp thoại, danh sách, bảng…).
+- finance.html: bảng Sổ quỹ / menu ngang / biểu đồ (lăn dọc → cuộn ngang) khi tới mép cũng đứng yên, không trả cuộn cho trang nữa. sw v83.

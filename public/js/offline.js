@@ -527,3 +527,32 @@ var Offline = (function () {
   }
   if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
 })();
+
+/* ===== 2026-09-30: CHỐNG "LAN" CUỘN RA TRANG =====
+   Rê chuột vào vùng có thanh cuộn (bảng, danh sách, hộp thoại, biểu đồ…) rồi lăn: khi vùng đó đã tới mép (đầu/cuối) thì
+   KHÔNG cuộn tiếp cả trang phía sau. Áp dụng toàn web (mọi trang nạp offline.js), gồm cả vùng tạo sau này.
+   Chỉ chặn khi con trỏ đang ở TRONG vùng cuộn được; ngoài vùng đó trang cuộn bình thường. Ctrl+lăn (zoom) không bị ảnh hưởng. */
+(function () {
+  'use strict';
+  var SCROLLABLE = /(auto|scroll|overlay)/;
+  document.addEventListener('wheel', function (e) {
+    if (e.ctrlKey || e.defaultPrevented) return;
+    var el = e.target && e.target.nodeType === 1 ? e.target : (e.target && e.target.parentElement);
+    var vertical = Math.abs(e.deltaY) >= Math.abs(e.deltaX), d = vertical ? e.deltaY : e.deltaX;
+    if (!d) return;
+    for (; el && el !== document.body && el !== document.documentElement; el = el.parentElement) {
+      var cs = getComputedStyle(el);
+      if (vertical) {
+        if (SCROLLABLE.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 1) {
+          var top = el.scrollTop <= 0, bottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+          if ((d < 0 && top) || (d > 0 && bottom)) e.preventDefault();
+          return;
+        }
+      } else if (SCROLLABLE.test(cs.overflowX) && el.scrollWidth > el.clientWidth + 1) {
+        var left = el.scrollLeft <= 0, right = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1;
+        if ((d < 0 && left) || (d > 0 && right)) e.preventDefault();
+        return;
+      }
+    }
+  }, { passive: false });
+})();
