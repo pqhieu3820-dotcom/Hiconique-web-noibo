@@ -489,6 +489,12 @@
   // cần đọc thêm field nào khác qua API — tính lại y hệt logic server dùng
   // để quyết định có xoá hay không (deleteExpiredRejectedMembers()).
   var REJECTION_DELETE_AFTER_MS = 48 * 60 * 60 * 1000;
+  // Ngưng công tác cũng đếm ngược 48h tới lúc xoá (mốc inactiveAt) — xem stampMemberInactive_() phía server
+  function memberDeleteAt(m) {
+    if (m.status === 'rejected') return rejectionDeleteAt(m.rejectedAt);
+    if (m.status === 'inactive') return rejectionDeleteAt(m.inactiveAt);
+    return null;
+  }
   function rejectionDeleteAt(rejectedAt) {
     if (!rejectedAt) return null;
     var t = new Date(rejectedAt).getTime();
@@ -563,14 +569,13 @@
         : m.status === 'on-leave' ? '<span class="team-status-badge on-leave">Tạm nghỉ việc</span>'
         : '';
 
-      var deleteAt = m.status === 'rejected' ? rejectionDeleteAt(m.rejectedAt) : null;
+      var deleteAt = memberDeleteAt(m);
       var countdownRow = deleteAt
         ? '<div class="team-reject-countdown" title="Xoá lúc ' + formatAbsoluteDeleteTime(deleteAt) + '" data-reject-countdown="' + deleteAt + '">' + formatCountdown(deleteAt) + '</div>'
         : '';
 
       return ''
         + '<article class="team-card" data-idx="' + i + '" tabindex="0" role="button" aria-haspopup="dialog">'
-        +   (statusBadge ? '<div class="team-card-flag">' + statusBadge + '</div>' : '')
         +   '<div class="team-avatar" style="background:' + color + '">' + initials + '</div>'
         +   '<h3 class="team-name">' + (m.name || '—') + '</h3>'
         +   '<p class="team-role">' + role + '</p>'
@@ -579,6 +584,7 @@
         +     (joinDate ? '<span class="team-tenure" title="Gia nhập từ ' + joinDate + '">' + ICON.calendar + '<span>' + joinDate + (days !== null ? ' · ' + days + ' ngày' : '') + '</span></span>' : '')
         +   '</div>'
         +   countdownRow
+        +   (statusBadge ? '<div class="team-card-flag">' + statusBadge + '</div>' : '')
         + '</article>';
     }).join('');
 
@@ -702,8 +708,7 @@
         (joinDate ? '<div class="team-modal-row">' + ICON.calendar + '<span>Vào làm từ ' + joinDate + (days !== null ? ' · ' + days + ' ngày' : '') + '</span></div>' : '') +
         (statusLabel ? '<div class="team-modal-row team-modal-status-row">' + escapeHtml(statusLabel) + '</div>' : '') +
         (function () {
-          if (m.status !== 'rejected') return '';
-          var deleteAt = rejectionDeleteAt(m.rejectedAt);
+          var deleteAt = memberDeleteAt(m);
           if (!deleteAt) return '';
           return '<div class="team-modal-row team-reject-countdown" title="Xoá lúc ' + formatAbsoluteDeleteTime(deleteAt) + '" data-reject-countdown="' + deleteAt + '">' + formatCountdown(deleteAt) + '</div>';
         })() +

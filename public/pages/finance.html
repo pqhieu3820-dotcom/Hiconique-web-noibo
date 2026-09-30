@@ -327,6 +327,9 @@
         { id: 'health', label: 'Sức khỏe tài chính', icon: ICONS.health },
         { id: 'cfo', label: 'Báo cáo tài chính', icon: ICONS.cfo },
         { id: 'risk', label: 'Rủi ro', icon: ICONS.risk }
+      ] },
+      { label: 'Thiết lập', founderOnly: true, items: [
+        { id: 'access', label: 'Phân quyền truy cập', icon: ICONS.customers }
       ] }
     ];
 
@@ -334,8 +337,8 @@
       document.getElementById('fnBody').innerHTML =
         '<div class="fn-locked">' +
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' +
-          '<h2>Chỉ CEO xem được trang này</h2>' +
-          '<p>Sổ tài chính công ty chứa dữ liệu nhạy cảm (doanh thu, chi phí, vay nợ...) — chỉ tài khoản CEO/Admin mới xem và chỉnh sửa được.</p>' +
+          '<h2>Bạn chưa được cấp quyền xem trang này</h2>' +
+          '<p>Sổ tài chính công ty chứa dữ liệu nhạy cảm (doanh thu, chi phí, vay nợ...) — chỉ CEO/Admin và những người được Founder cấp quyền riêng mới xem và thao tác được. Cần truy cập, hãy liên hệ Founder.</p>' +
         '</div>';
     }
 
@@ -364,7 +367,7 @@
       var greeting = hour < 11 ? 'buổi sáng' : hour < 14 ? 'buổi trưa' : hour < 18 ? 'buổi chiều' : 'buổi tối';
       var firstName = (user.name || '').trim().split(/\s+/).pop() || 'CEO';
 
-      var navHtml = NAV_GROUPS.map(function (g) {
+      var navHtml = NAV_GROUPS.filter(function (g) { return !g.founderOnly || TaskManager.canGrantFinanceAccess(user); }).map(function (g) {
         return '<div class="fn-sidebar-group">' +
           '<div class="fn-sidebar-group-label">' + g.label + '</div>' +
           g.items.map(function (it) {
@@ -524,6 +527,16 @@
               '<div class="fn-card"><div class="fn-card-head"><div class="fn-card-title">Rủi ro phá sản — Altman Z-Score</div></div><table class="fn-table"><thead><tr><th>Rủi ro</th><th>Công thức</th><th>Giá trị hiện tại</th><th>Ngưỡng</th><th>Mức độ</th></tr></thead><tbody id="fnRiskZRows"></tbody></table></div>' +
             '</div>' +
 
+            '<div class="fn-section" id="sec-access">' +
+              '<div class="fn-section-head"><div class="fn-section-title">Phân quyền truy cập</div><div class="fn-section-desc">Chỉ Founder cấp / thu hồi. Người được cấp (VD Kế toán) xem được trang Sổ tài chính và thêm, sửa, xóa dữ liệu như CEO.</div></div>' +
+              '<div class="fn-card"><div class="fn-card-head"><div class="fn-card-title">Người được cấp quyền</div></div>' +
+                '<table class="fn-table"><thead><tr><th>Thành viên</th><th>Chức vụ</th><th>Người cấp</th><th>Ngày cấp</th><th></th></tr></thead><tbody id="fnAccessRows"></tbody></table></div>' +
+              '<div class="fn-card"><div class="fn-card-head"><div class="fn-card-title">Cấp quyền cho thành viên</div></div>' +
+                '<div class="fn-form-grid" style="grid-template-columns:2fr 1fr;"><div><span class="fn-field-label">Thành viên</span><select class="fn-select" id="fnAccessPick"></select></div>' +
+                '<div style="align-self:end;"><button class="fn-btn fn-btn-primary" id="fnAccessAdd" style="width:100%;">+ Cấp quyền</button></div></div>' +
+                '<p class="fn-section-desc" style="margin:10px 0 0;">CEO / Admin luôn có quyền sẵn nên không cần cấp. Cấp quyền có hiệu lực ngay ở lần tải lại trang của người đó.</p></div>' +
+            '</div>' +
+
           '</div>' +
         '</div>';
 
@@ -539,7 +552,7 @@
       function syncCategoryList() {
         var t = document.getElementById('fnType').value, arr = (window.FINANCE_CATEGORIES && FINANCE_CATEGORIES[t]) || [];
         document.getElementById('fnCatList').innerHTML = arr.map(function (c) { return '<option value="' + escapeHtml(c) + '"></option>'; }).join('');
-        document.getElementById('fnCategory').placeholder = arr.length ? 'VD: ' + arr[0] + ' — bấm để chọn hoặc gõ riêng' : 'Danh mục…';
+        document.getElementById('fnCategory').placeholder = 'Chọn hoặc gõ danh mục…';
       }
       document.getElementById('fnType').addEventListener('change', function () { document.getElementById('fnCategory').value = ''; syncCategoryList(); });
       syncCategoryList();
@@ -655,6 +668,7 @@
       renderHealth(all);
       renderCfoHandbook(all);
       renderRisk(all, monthEntries, month);
+      renderAccess();
     }
 
     function loadBsSnapshotIntoForm() {
@@ -867,6 +881,32 @@
           (it.count ? '<div class="fn-attention-count" style="color:var(--fn-' + it.cls + ');">' + it.count + '</div>' : '') +
         '</div>';
       }).join('');
+    }
+
+    // ============================== PHÂN QUYỀN (chỉ Founder) ==============================
+    function renderAccess() {
+      var rows = document.getElementById('fnAccessRows'), pick = document.getElementById('fnAccessPick');
+      if (!rows || !pick || !TaskManager.canGrantFinanceAccess(user)) return;
+      var list = TaskManager.getFinanceAccess();
+      rows.innerHTML = list.length ? list.map(function (a) {
+        var m = TaskManager.getMember(a.memberId) || {};
+        return '<tr><td>' + escapeHtml(a.memberName || m.name || a.memberId) + '</td><td>' + escapeHtml(m.role || '') + '</td><td>' + escapeHtml(a.grantedBy || '') + '</td><td>' + escapeHtml(a.createdAt || '') + '</td>' +
+          '<td><button class="fn-btn fn-btn-ghost fn-btn-sm" data-revoke-access="' + escapeHtml(a.id) + '">Xoá quyền</button></td></tr>';
+      }).join('') : '<tr><td colspan="5" class="fn-empty">Chưa cấp quyền riêng cho ai (CEO/Admin luôn có quyền sẵn).</td></tr>';
+      var granted = {}; list.forEach(function (a) { granted[a.memberId] = true; });
+      var cands = (TaskManager.getActiveMembers ? TaskManager.getActiveMembers() : TaskManager.getMembers()).filter(function (m) { return !granted[m.id] && m.roleLevel !== 'admin' && m.level !== 'founder'; });
+      pick.innerHTML = cands.length ? cands.map(function (m) { return '<option value="' + escapeHtml(m.id) + '">' + escapeHtml(m.name) + (m.role ? ' — ' + escapeHtml(m.role) : '') + '</option>'; }).join('') : '<option value="">(không còn thành viên để cấp)</option>';
+      rows.querySelectorAll('[data-revoke-access]').forEach(function (b) {
+        b.addEventListener('click', function () { if (!confirm('Thu hồi quyền truy cập Sổ tài chính của người này?')) return; TaskManager.revokeFinanceAccess(b.getAttribute('data-revoke-access'), user); renderAccess(); });
+      });
+      var addBtn = document.getElementById('fnAccessAdd');
+      if (addBtn && !addBtn.dataset.bound) {
+        addBtn.dataset.bound = '1';
+        addBtn.addEventListener('click', function () {
+          var id = pick.value; if (!id) return;
+          TaskManager.grantFinanceAccess(id, user); renderAccess();
+        });
+      }
     }
 
     // ============================== TRANSACTIONS ==============================
@@ -1485,6 +1525,7 @@
       if (typeof TaskManager === 'undefined' || typeof Auth === 'undefined') { setTimeout(boot, 150); return; }
       if (Auth.getCurrentUser && !Auth.getCurrentUser()) { Auth.showLoginModal(); return; }
       render();
+      if (TaskManager.loadFinanceAccess) TaskManager.loadFinanceAccess(function () { render(); });   // danh sách người được Founder cấp quyền (đọc từ Sheet)
       setTimeout(render, 1200); // re-render once the async Sheets fetch lands
     }
     boot();

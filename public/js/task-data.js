@@ -287,6 +287,7 @@ function syncToGSheets(type, action, data, id) {
     lightingPlans: { add: 'addLightingPlan', update: 'updateLightingPlan' },
     customers: { add: 'addCustomer', update: 'updateCustomer' },
     equipment: { add: 'addEquipment', update: 'updateEquipment' },
+    financeAccess: { add: 'addFinanceAccess', delete: 'deleteFinanceAccess' },
     pcReports: { delete: 'deletePcReport' },
     customerLogs: { add: 'addCustomerLog' },
     staffActivity: { update: 'upsertStaffActivity', add: 'upsertStaffActivity' },
@@ -487,6 +488,8 @@ var TaskManager = (function() {
     customers: 'hiconique_customers',
     equipment: 'hiconique_equipment',
     pcReports: 'hiconique_pc_reports',
+    archivedMembers: 'hiconique_members_archived',
+    financeAccess: 'hiconique_finance_access',
     customerLogs: 'hiconique_customer_logs',
     staffActivity: 'hiconique_staff_activity',
     appUsage: 'hiconique_app_usage',
@@ -882,7 +885,7 @@ var TaskManager = (function() {
       priceCatalog: 'getPriceCatalog', financeEntries: 'getFinanceEntries',
       lightingStandards: 'getLightingStandards', lightingLamps: 'getLightingLamps',
       lightingFactors: 'getLightingFactors', lightingPlans: 'getLightingPlans',
-      equipment: 'getEquipment', pcReports: 'getPcReports', customers: 'getCustomers', customerLogs: 'getCustomerLogs', staffActivity: 'getStaffActivity', appUsage: 'getAppUsage',
+      equipment: 'getEquipment', pcReports: 'getPcReports', archivedMembers: 'getArchivedMembers', financeAccess: 'getFinanceAccess', customers: 'getCustomers', customerLogs: 'getCustomerLogs', staffActivity: 'getStaffActivity', appUsage: 'getAppUsage',
       receivables: 'getReceivables', bsSnapshots: 'getBsSnapshots', orders: 'getOrders',
       attendanceLocations: 'getAttendanceLocations'
     };
@@ -1605,9 +1608,29 @@ var TaskManager = (function() {
     return sortMembersByLevel_(getAll(STORAGE_KEYS.members).filter(function (m) { return !m.status || m.status === 'active'; }));
   }
 
-  function getMember(id) {
-    return getById(STORAGE_KEYS.members, id);
+  // Thành viên đã bị XOÁ (từ chối/ngưng công tác quá 48h): server giữ bản chụp trong sheet 'NS-Thành viên cũ' — task/dự án cũ vẫn hiện đúng
+  // tên + avatar + ID, kèm chữ nhỏ "Đã ngưng công tác" (trả về object có status 'inactive', archived:true). Tải nền tối đa 1 lần/30 phút.
+  var archivedLoadedAt = 0;
+  function ensureArchivedLoaded_() {
+    var now = Date.now();
+    if (now - archivedLoadedAt < 30 * 60 * 1000) return;
+    archivedLoadedAt = now;
+    try {
+      getFromGSheets('archivedMembers', function (items) {
+        if (items && items.length) { try { localStorage.setItem(STORAGE_KEYS.archivedMembers, JSON.stringify(items)); } catch (e) { /* bỏ qua */ } }
+      });
+    } catch (e) { /* bỏ qua */ }
   }
+  function getMember(id) {
+    var m = getById(STORAGE_KEYS.members, id);
+    if (m || !id) return m;
+    ensureArchivedLoaded_();
+    var arch = null;
+    try { arch = (JSON.parse(localStorage.getItem(STORAGE_KEYS.archivedMembers) || '[]') || []).filter(function (x) { return x && x.id === id; })[0]; } catch (e) { /* bỏ qua */ }
+    return arch ? Object.assign({}, arch, { status: 'inactive', archived: true }) : null;
+  }
+  // Nhãn nhỏ đi kèm avatar/tên của người đã ngưng công tác (cả khi còn dòng thành viên lẫn khi đã bị xoá)
+  function memberInactiveNote(m) { return m && (m.status === 'inactive' || m.archived) ? 'Đã ngưng công tác' : ''; }
 
   // Trả về danh sách member object cho 1 task có nhiều người phụ trách
   // (task.assigneeIds là mảng id — tolerate task cũ/hỏng chưa có mảng).
@@ -1988,8 +2011,12 @@ var TaskManager = (function() {
     var isTerminateAction = status === 'inactive' || member.status === 'inactive';
     var allowed = isTerminateAction ? canTerminateMembers(user) : canManageMembers(user);
     if (!allowed) return null;
-    var updated = update(STORAGE_KEYS.members, id, { status: status });
-    if (updated) syncToGSheets('members', 'update', { status: status }, id);
+    // Ngưng công tác: ghi mốc để đếm ngược 48h trước khi xoá (khôi phục → xoá mốc). Từ chối vẫn do server tự stamp rejectedAt.
+    var patch = { status: status };
+    if (status === 'inactive' && member.status !== 'inactive') patch.inactiveAt = new Date().toISOString();
+    else if (member.status === 'inactive' && status !== 'inactive') patch.inactiveAt = '';
+    var updated = update(STORAGE_KEYS.members, id, patch);
+    if (updated) syncToGSheets('members', 'update', patch, id);
     return updated;
   }
 
@@ -2102,8 +2129,42 @@ var TaskManager = (function() {
   // thường như hầu hết các quyền khác trong file này. Đây vẫn chỉ là kiểm
   // tra phía client (giống mọi "phân quyền" khác trong app) — không phải
   // bảo mật server-side thật, xem GHI_CHU_DU_AN.md.
+  // 2026-09-30: ngoài cấp admin (Founder/CEO/GĐ), Founder có thể CẤP QUYỀN RIÊNG cho từng thành viên (VD Kế toán) vào trang này — người được cấp xem
+  // + thêm/sửa/xoá như CEO. Danh sách lưu trong sheet 'TC-Quyền truy cập' (cache localStorage), chỉ Founder cấp/thu hồi (grantFinanceAccess/revokeFinanceAccess).
+  function getFinanceAccess() { return getAll(STORAGE_KEYS.financeAccess); }
+  function loadFinanceAccess(callback) {
+    // Đọc trực tiếp (không qua getFromGSheets) để danh sách RỖNG hợp lệ (đã thu hồi hết quyền) vẫn ghi đè cache; lỗi mạng thì giữ cache cũ
+    if (!isUsingGSheets() || !GSHEETS_CONFIG.API_URL) { if (callback) callback(getFinanceAccess()); return; }
+    var c = new AbortController(), t = setTimeout(function () { c.abort(); }, 20000);
+    fetch(GSHEETS_CONFIG.API_URL + '?action=getFinanceAccess', { redirect: 'follow', signal: c.signal })
+      .then(function (r) { return r.json(); })
+      .then(function (arr) {
+        clearTimeout(t);
+        if (Array.isArray(arr)) { try { localStorage.setItem(STORAGE_KEYS.financeAccess, JSON.stringify(arr)); } catch (e) { /* bỏ qua */ } }
+        if (callback) callback(getFinanceAccess());
+      })
+      .catch(function () { clearTimeout(t); if (callback) callback(getFinanceAccess()); });
+  }
+  function hasFinanceAccess(user) {
+    return !!user && getFinanceAccess().some(function (a) { return a.memberId === user.id; });
+  }
   function canManageFinance(user) {
-    return !!user && user.roleLevel === 'admin';
+    return !!user && (user.roleLevel === 'admin' || hasFinanceAccess(user));
+  }
+  function canGrantFinanceAccess(user) { return !!user && user.level === 'founder'; }
+  function grantFinanceAccess(memberId, user) {
+    if (!canGrantFinanceAccess(user) || !memberId) return null;
+    if (getFinanceAccess().some(function (a) { return a.memberId === memberId; })) return null;
+    var m = getMember(memberId);
+    var rec = add(STORAGE_KEYS.financeAccess, { memberId: memberId, memberName: m ? m.name : memberId, grantedBy: user.name || user.id, createdAt: new Date().toISOString().slice(0, 10) });
+    syncToGSheets('financeAccess', 'add', rec);
+    return rec;
+  }
+  function revokeFinanceAccess(id, user) {
+    if (!canGrantFinanceAccess(user) || !id) return null;
+    var result = remove(STORAGE_KEYS.financeAccess, id);
+    syncToGSheets('financeAccess', 'delete', {}, id);
+    return result;
   }
 
   function canManageRecurringRules(user) {
@@ -3419,6 +3480,7 @@ var TaskManager = (function() {
     CRM_STAGES: CRM_STAGES,
     loadPcReports: loadPcReports,
     getPcReports: getPcReports,
+    memberInactiveNote: memberInactiveNote,
     deletePcReport: deletePcReport,
     loadEquipment: loadEquipment,
     getEquipment: getEquipment,
@@ -3446,6 +3508,11 @@ var TaskManager = (function() {
 
     // Tài chính công ty (CEO-only)
     canManageFinance: canManageFinance,
+    getFinanceAccess: getFinanceAccess,
+    loadFinanceAccess: loadFinanceAccess,
+    canGrantFinanceAccess: canGrantFinanceAccess,
+    grantFinanceAccess: grantFinanceAccess,
+    revokeFinanceAccess: revokeFinanceAccess,
     getFinanceEntries: getFinanceEntries,
     createFinanceEntry: createFinanceEntry,
     updateFinanceEntry: updateFinanceEntry,

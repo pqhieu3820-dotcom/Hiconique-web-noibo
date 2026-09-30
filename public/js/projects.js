@@ -66,7 +66,8 @@
   function assigneeChipsHtml(assignees, avatarClass) {
     if (!assignees.length) return '';
     return assignees.map(function (a) {
-      return '<span class="' + avatarClass + '" style="background:' + (a.color || '#6B7280') + '" title="' + escapeHtml(a.name || '') + '">' + escapeHtml(a.avatar || (a.name || '?').substring(0, 2).toUpperCase()) + '</span>';
+      var off = TaskManager.memberInactiveNote && TaskManager.memberInactiveNote(a);
+      return '<span class="' + avatarClass + (off ? ' avatar-inactive' : '') + '" style="background:' + (a.color || '#6B7280') + '" title="' + escapeHtml(a.name || '') + (off ? ' — Đã ngưng công tác' : '') + '">' + escapeHtml(a.avatar || (a.name || '?').substring(0, 2).toUpperCase()) + '</span>' + (off ? '<span class="inactive-note">Đã ngưng công tác</span>' : '');
     }).join('');
   }
 

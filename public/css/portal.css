@@ -2060,7 +2060,7 @@ main { flex: 1; }
 [data-theme="light"] .team-tenure { color: #475569; }
 
 /* ---------- Team card: nhãn trạng thái (Ngưng công tác…) nằm TRONG luồng, phía trên avatar — không còn đè lên ảnh đại diện ---------- */
-.team-card-flag { position: static; align-self: center; margin: -4px 0 12px; }
+.team-card-flag { position: static; align-self: center; margin: 10px 0 0; }   /* nhãn trạng thái nằm CUỐI thẻ */
 .team-card-flag .team-status-badge { white-space: nowrap; }
 
 /* ---------- Công cụ chính: 4 nhóm + lọc + tìm + ghim ---------- */
@@ -2126,3 +2126,7 @@ main { flex: 1; }
 .tool-hub .tool-card .tool-arrow { font-size: .8125rem; top: 12px; right: 14px; }
 .tool-pin { top: 9px; right: 34px; font-size: .9375rem; }
 @media (max-width: 480px) { .tool-hub .tool-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Người đã ngưng công tác (còn hoặc đã bị xoá dòng) trong task/dự án: avatar mờ + chữ nhỏ "Đã ngưng công tác" cạnh avatar */
+.inactive-note { font-size: 0.625rem; font-style: italic; color: var(--color-text-faint, #999); margin-left: 4px; white-space: nowrap; font-weight: 500; }
+.avatar-inactive { opacity: .55; filter: grayscale(.35); }

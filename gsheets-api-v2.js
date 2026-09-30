@@ -13,6 +13,8 @@ const SHEETS = {
   projects: 'DA-Dự án',
   tasks: 'DA-Công việc',
   members: 'NS-Thành viên',
+  financeAccess: 'TC-Quyền truy cập',   // danh sách người được Founder cấp quyền xem + thao tác Sổ tài chính
+  archivedMembers: 'NS-Thành viên cũ',   // bản chụp thành viên đã bị xoá (từ chối/ngưng công tác) để task cũ vẫn hiện đúng tên/avatar
   proposals: 'DA-Đề xuất',
   timesheet: 'TLCC-Chấm công',
   // Cạnh sheet Chấm công (2026-09-15) — danh sách địa điểm GPS + IP mạng
@@ -126,7 +128,15 @@ const FIELD_MAP = {
     // cột CHỈ để người xem trực tiếp trên Sheet biết, không cần map field vào
     // đây — client tự tính deleteAt = rejectedAt + 48h (xem portal.js), không
     // đọc lại 2 cột đó qua API.
-    ['Thời điểm từ chối', 'rejectedAt']
+    ['Thời điểm từ chối', 'rejectedAt'],
+    ['Thời điểm ngưng công tác', 'inactiveAt']
+  ],
+  financeAccess: [
+    ['Mã', 'id'], ['Mã NV', 'memberId'], ['Họ tên', 'memberName'], ['Người cấp quyền', 'grantedBy'], ['Ngày cấp', 'createdAt']
+  ],
+  archivedMembers: [
+    ['Mã NV', 'id'], ['Họ tên', 'name'], ['Avatar', 'avatar'], ['Màu', 'color'], ['Chức vụ', 'role'], ['Cấp bậc', 'level'],
+    ['Mã bộ phận', 'divisionCode'], ['Mã phòng ban', 'departmentCode'], ['Lý do xoá', 'reason'], ['Thời điểm xoá', 'deletedAt']
   ],
   // 2026-09-09: "Loại dự án" đổi nghĩa thành LOẠI CÔNG TRÌNH thật (Nhà phố,
   // Biệt thự, Căn hộ chung cư...), giá trị cũ (Thiết kế/Thi công/Nội thất...)
@@ -826,6 +836,14 @@ function handleRequestImpl_(e) {
       result = getAllData(ss, SHEETS.projects);
     } else if (action === 'getTasks') {
       result = getAllData(ss, SHEETS.tasks);
+    } else if (action === 'getFinanceAccess') {
+      result = getAllData(ss, SHEETS.financeAccess);
+    } else if (action === 'addFinanceAccess') {
+      result = addData(ss, SHEETS.financeAccess, JSON.parse(params.data));
+    } else if (action === 'deleteFinanceAccess') {
+      result = deleteData(ss, SHEETS.financeAccess, params.id);
+    } else if (action === 'getArchivedMembers') {
+      result = getAllData(ss, SHEETS.archivedMembers);
     } else if (action === 'getMembers') {
       result = getAllData(ss, SHEETS.members);
     } else if (action === 'getProposals') {
@@ -1653,6 +1671,11 @@ function updateData_impl(ss, sheetName, id, updates) {
     } else if (oldStatus === 'rejected' && newStatus !== 'rejected') {
       clearMemberRejection(sheet, headers, rowNum);
     }
+    if (newStatus === 'inactive' && oldStatus !== 'inactive') {
+      stampMemberInactive_(sheet, headers, rowNum, updates.inactiveAt);
+    } else if (oldStatus === 'inactive' && newStatus !== 'inactive') {
+      clearMemberInactive_(sheet, headers, rowNum);
+    }
   }
   return Object.assign({}, data[index], updates);
 }
@@ -1729,6 +1752,11 @@ function onEdit(e) {
         stampMemberRejection(ss, sheet, headers, row, memberId, memberName);
       } else if (oldStatusVi === 'Từ chối') {
         clearMemberRejection(sheet, headers, row);
+      }
+      if (newStatusVi === 'Ngưng công tác') {
+        stampMemberInactive_(sheet, headers, row, null);
+      } else if (oldStatusVi === 'Ngưng công tác') {
+        clearMemberInactive_(sheet, headers, row);
       }
       return;
     }
@@ -1838,16 +1866,74 @@ function deleteExpiredRejectedMembers() {
   const now = Date.now();
   const toDelete = [];
   data.forEach(function (m, i) {
-    if (m.status !== 'rejected' || !m.rejectedAt) return;
-    const t = new Date(m.rejectedAt).getTime();
-    if (!isNaN(t) && now - t >= 48 * 60 * 60 * 1000) toDelete.push({ id: m.id, name: m.name, rowIndex: i });
+    let stamp = null, reason = '';
+    if (m.status === 'rejected' && m.rejectedAt) { stamp = m.rejectedAt; reason = 'Đã từ chối'; }
+    else if (m.status === 'inactive' && m.inactiveAt) { stamp = m.inactiveAt; reason = 'Ngưng công tác'; }
+    if (!stamp) return;
+    const t = new Date(stamp).getTime();
+    if (!isNaN(t) && now - t >= 48 * 60 * 60 * 1000) toDelete.push({ id: m.id, name: m.name, rowIndex: i, m: m, reason: reason });
   });
+  toDelete.forEach(function (t) { archiveMemberSnapshot_(ss, t.m, t.reason); });   // lưu bản chụp TRƯỚC khi xoá
   toDelete.sort(function (a, b) { return b.rowIndex - a.rowIndex; });
   toDelete.forEach(function (t) { sheet.deleteRow(t.rowIndex + 2); });
-  const report = 'deleteExpiredRejectedMembers: đã xoá vĩnh viễn ' + toDelete.length + ' tài khoản bị từ chối quá 48h' +
+  const report = 'deleteExpiredRejectedMembers: đã xoá vĩnh viễn ' + toDelete.length + ' tài khoản bị từ chối / ngưng công tác quá 48h' +
     (toDelete.length ? ' (' + toDelete.map(function (t) { return t.name; }).join(', ') + ')' : '') + '.';
   Logger.log(report);
   return report;
+}
+// ===================== Ngưng công tác: đếm ngược 48h → xoá + lưu bản chụp (2026-09-30) =====================
+// Giống Từ chối: sau 48h kể từ 'Thời điểm ngưng công tác' hệ thống XOÁ dòng thành viên (deleteExpiredRejectedMembers, trigger 30 phút) nhưng TRƯỚC
+// ĐÓ lưu bản chụp (tên, avatar, màu, chức vụ…) vào sheet 'NS-Thành viên cũ' để task/dự án cũ vẫn hiện đúng tên + avatar + chữ "Đã ngưng công tác".
+// Khôi phục (đổi trạng thái khác 'Ngưng công tác') trước hạn → xoá mốc đếm ngược.
+function stampMemberInactive_(sheet, headers, row, atIso) {
+  const inCol = headers.indexOf('Thời điểm ngưng công tác');
+  if (inCol !== -1) {
+    const c = sheet.getRange(row, inCol + 1);
+    if (!c.getValue()) c.setValue(atIso || new Date().toISOString());
+  }
+  let base = inCol !== -1 ? new Date(sheet.getRange(row, inCol + 1).getValue()).getTime() : Date.now();
+  if (isNaN(base)) base = Date.now();
+  const deleteAt = new Date(base + 48 * 60 * 60 * 1000);
+  const delColIdx = headers.indexOf('Sẽ xoá lúc');
+  if (delColIdx !== -1) {
+    const delCell = sheet.getRange(row, delColIdx + 1);
+    delCell.setValue(deleteAt);
+    delCell.setNumberFormat('dd/mm/yyyy hh:mm');
+    const cdColIdx = headers.indexOf('Đếm ngược');
+    if (cdColIdx !== -1) {
+      const a1 = delCell.getA1Notation();
+      sheet.getRange(row, cdColIdx + 1).setFormula('=IF(' + a1 + '="";"";IF(' + a1 + '<=NOW();"Đã tới hạn — chờ hệ thống xoá";TEXT(' + a1 + '-NOW();"[h]:mm:ss")))');
+    }
+  }
+}
+function clearMemberInactive_(sheet, headers, row) {
+  ['Thời điểm ngưng công tác', 'Sẽ xoá lúc', 'Đếm ngược'].forEach(function (h) {
+    const i = headers.indexOf(h);
+    if (i !== -1) sheet.getRange(row, i + 1).clearContent();
+  });
+}
+// Chạy TAY 1 lần: bắt đầu đếm ngược 48h cho các thành viên ĐANG 'Ngưng công tác' mà chưa có mốc (VD ngưng từ trước khi có tính năng này).
+function stampExistingInactiveMembers() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = findSheet(ss, SHEETS.members);
+  const data = getAllData(ss, SHEETS.members);
+  const nowIso = new Date().toISOString();
+  let n = 0;
+  data.forEach(function (m, i) {
+    if (m.status === 'inactive' && !m.inactiveAt) {
+      updateData(ss, SHEETS.members, m.id, { inactiveAt: nowIso });
+      const headers = getHeaders(sheet);
+      stampMemberInactive_(sheet, headers, i + 2, nowIso);
+      n++;
+    }
+  });
+  return 'Đã bắt đầu đếm ngược 48h cho ' + n + ' thành viên ngưng công tác.';
+}
+function archiveMemberSnapshot_(ss, m, reason) {
+  try {
+    addData(ss, SHEETS.archivedMembers, { id: m.id, name: m.name, avatar: m.avatar || '', color: m.color || '', role: m.role || '', level: m.level || '',
+      divisionCode: m.divisionCode || '', departmentCode: m.departmentCode || '', reason: reason, deletedAt: new Date().toISOString() });
+  } catch (err) { Logger.log('archiveMemberSnapshot_ lỗi: ' + err); }
 }
 
 // Cài time-driven trigger chạy deleteExpiredRejectedMembers() mỗi 30 phút —

@@ -1286,7 +1286,7 @@
             <p>${project ? project.name + ' · ' : ''}${deadline}</p>
           </div>
           <span class="task-priority-badge ${priorityClass}">${priorityLabel}</span>
-          ${taskAssignees.map(a => `<span class="avatar-xs-tm" style="background:${a.color}" title="${a.name}">${a.avatar}</span>`).join('')}
+          ${taskAssignees.map(a => `<span class="avatar-xs-tm${TaskManager.memberInactiveNote(a) ? ' avatar-inactive' : ''}" style="background:${a.color}" title="${a.name}${TaskManager.memberInactiveNote(a) ? ' — Đã ngưng công tác' : ''}">${a.avatar}</span>${TaskManager.memberInactiveNote(a) ? '<span class="inactive-note">Đã ngưng công tác</span>' : ''}`).join('')}
         </li>
       `;
     }).join('');
@@ -1638,11 +1638,11 @@
       <div class="kanban-card" data-task-id="${task.id}" draggable="true">
         <div class="kanban-card-header">
           <span class="task-priority-badge ${priorityClass}">${priorityLabel}</span>
-          ${taskAssignees.map(a => `<span class="avatar-xs-tm" style="background:${a.color}" title="${a.name}">${a.avatar}</span>`).join('')}
+          ${taskAssignees.map(a => `<span class="avatar-xs-tm${TaskManager.memberInactiveNote(a) ? ' avatar-inactive' : ''}" style="background:${a.color}" title="${a.name}${TaskManager.memberInactiveNote(a) ? ' — Đã ngưng công tác' : ''}">${a.avatar}</span>${TaskManager.memberInactiveNote(a) ? '<span class="inactive-note">Đã ngưng công tác</span>' : ''}`).join('')}
         </div>
         <div class="kanban-card-title">${task.title}</div>
         ${project ? `<div class="kanban-card-project"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;vertical-align:-2px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg> ${project.name}</div>` : ''}
-        ${taskAssignees.length ? `<div class="kanban-card-people">${taskAssignees.map(a => `<div class="kanban-card-person"><span class="avatar-xs-tm" style="background:${a.color}">${a.avatar}</span><span>${a.name}</span></div>`).join('')}</div>` : ''}
+        ${taskAssignees.length ? `<div class="kanban-card-people">${taskAssignees.map(a => `<div class="kanban-card-person"><span class="avatar-xs-tm${TaskManager.memberInactiveNote(a) ? ' avatar-inactive' : ''}" style="background:${a.color}">${a.avatar}</span><span>${a.name}</span>${TaskManager.memberInactiveNote(a) ? '<span class="inactive-note">Đã ngưng công tác</span>' : ''}</div>`).join('')}</div>` : ''}
         ${deadline ? `<div class="kanban-card-deadline ${isOverdue ? 'overdue' : ''}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> ${deadline}</div>` : ''}
       </div>
     `;
@@ -1751,7 +1751,7 @@
             <p>${project ? project.name + ' · ' : ''}${deadline}</p>
           </div>
           <span class="task-priority-badge ${priorityClass}">${priorityLabel}</span>
-          ${taskAssignees.map(a => `<span class="avatar-xs-tm" style="background:${a.color}" title="${a.name}">${a.avatar}</span>`).join('')}
+          ${taskAssignees.map(a => `<span class="avatar-xs-tm${TaskManager.memberInactiveNote(a) ? ' avatar-inactive' : ''}" style="background:${a.color}" title="${a.name}${TaskManager.memberInactiveNote(a) ? ' — Đã ngưng công tác' : ''}">${a.avatar}</span>${TaskManager.memberInactiveNote(a) ? '<span class="inactive-note">Đã ngưng công tác</span>' : ''}`).join('')}
         </li>
       `;
     }).join('');
