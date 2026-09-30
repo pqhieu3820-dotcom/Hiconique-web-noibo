@@ -1946,3 +1946,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (bv) Báo cáo nhanh: thanh thẻ lăn chuột cuộn ngang + thanh cuộn lùi xuống
 - finance-quick.js: rê chuột vào thanh thẻ (13 thẻ) + lăn → cuộn ngang; thanh cuộn ẩn mũi tên, mảnh, màu xám như các thanh khác, thumb lùi xuống (viền 6px trên) nên không dính chữ tên thẻ. sw v92.
+
+### 2026-09-30 (bw) Thanh cuộn thẻ Báo cáo nhanh lùi thêm 5px
+- finance-quick.js: track cao 19px, thumb viền trên 11px (trước 14/6) → thanh trượt nằm thấp hơn 5px. sw v93.
