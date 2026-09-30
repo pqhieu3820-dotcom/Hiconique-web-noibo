@@ -1,5 +1,10 @@
 [
   {
+    "version": "2.1.0",
+    "date": "2026-09-30",
+    "notes": "Giao diện: mũi tên ô chọn (dropdown) và nút tăng/giảm số vẽ lại dạng chevron nét mảnh màu đồng, danh sách xổ xuống bo tròn; ô tích chọn và nút radio đồng bộ kiểu mới; áp dụng toàn bộ app cả nền sáng/tối, kể cả bước chọn tên khi cài đặt."
+  },
+  {
     "version": "2.0.9",
     "date": "2026-09-30",
     "notes": "Icon thanh thông tin (mã NV, giờ làm việc, tên máy) vẽ lại dạng nét mảnh màu đồng, sắc nét. Cài bản mới KHÔNG mất dữ liệu: dữ liệu đã ghi được giữ, tự nâng cấp lên cấu trúc mới (kể cả file cũ dạng văn bản), có bản sao dự phòng tự khôi phục; gỡ cài đặt giữ lại dữ liệu ghi nhận."

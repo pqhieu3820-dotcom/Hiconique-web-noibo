@@ -35,7 +35,7 @@ import zipfile
 from ctypes import wintypes
 from datetime import datetime, timezone
 
-VERSION = '2.0.9'
+VERSION = '2.1.0'
 
 COMPANY_NAME = 'CÔNG TY TNHH THIẾT KẾ VÀ XÂY DỰNG HICONIQUE'
 
@@ -924,11 +924,73 @@ QFrame#hero { background: %(surface)s; border: 1px solid %(border)s; border-radi
 QFrame#hero QLabel, QFrame#note QLabel { background: transparent; }
 QFrame#note { background: %(surface)s; border: 1px solid %(border)s; border-radius: 12px; }
 QToolTip { background: %(surface)s; color: %(text)s; border: 1px solid %(border)s; padding: 4px 8px; }
+QComboBox { padding-right: 32px; }
+QComboBox:on { border-color: %(bronze)s; }
+QComboBox::drop-down { subcontrol-origin: padding; subcontrol-position: center right; width: 30px; border: none; background: transparent; }
+QComboBox::down-arrow { image: url("%(ic_down)s"); width: 14px; height: 14px; }
+QComboBox::down-arrow:on { image: url("%(ic_up)s"); }
+QComboBox QAbstractItemView { outline: none; padding: 4px; border-radius: 8px; }
+QComboBox QAbstractItemView::item { min-height: 26px; padding: 2px 8px; border-radius: 6px; }
+QComboBox QAbstractItemView::item:selected { background: %(sel)s; color: %(bronze)s; }
+QSpinBox { padding-right: 26px; }
+QSpinBox::up-button { subcontrol-origin: border; subcontrol-position: top right; width: 22px; border: none; border-left: 1px solid %(border)s; border-top-right-radius: 8px; background: transparent; }
+QSpinBox::down-button { subcontrol-origin: border; subcontrol-position: bottom right; width: 22px; border: none; border-left: 1px solid %(border)s; border-bottom-right-radius: 8px; background: transparent; }
+QSpinBox::up-button:hover, QSpinBox::down-button:hover { background: %(sel)s; }
+QSpinBox::up-arrow { image: url("%(ic_up_s)s"); width: 10px; height: 10px; }
+QSpinBox::down-arrow { image: url("%(ic_down_s)s"); width: 10px; height: 10px; }
+QCheckBox::indicator { width: 16px; height: 16px; }
+QRadioButton::indicator { width: 18px; height: 18px; }
+QCheckBox::indicator { border: 1.5px solid %(muted)s; border-radius: 5px; background: %(surface)s; }
+QCheckBox::indicator:hover { border-color: %(bronze)s; }
+QCheckBox::indicator:checked { background: %(bronze)s; border-color: %(bronze)s; image: url("%(ic_check)s"); }
+QRadioButton::indicator { border: 1.5px solid %(muted)s; border-radius: 10px; background: %(surface)s; }
+QRadioButton::indicator:checked { border: 5px solid %(bronze)s; border-radius: 9px; background: %(surface)s; }
 """
 
 
+def _make_icon(path, kind, color, size):
+    """Vẽ mũi tên/dấu tích nét mảnh, bo đầu, thành PNG (QImage dùng được trước khi có QApplication)."""
+    from PyQt5.QtGui import QImage
+    s = size * 4
+    img = QImage(s, s, QImage.Format_ARGB32)
+    img.fill(Qt.transparent)
+    p = QPainter(img)
+    p.setRenderHint(QPainter.Antialiasing)
+    pen = QPen(QColor(color), s * 0.13)
+    pen.setCapStyle(Qt.RoundCap)
+    pen.setJoinStyle(Qt.RoundJoin)
+    p.setPen(pen)
+    pts = {'down': [(0.22, 0.38), (0.5, 0.66), (0.78, 0.38)], 'up': [(0.22, 0.62), (0.5, 0.34), (0.78, 0.62)],
+           'check': [(0.22, 0.52), (0.42, 0.72), (0.78, 0.30)]}[kind]
+    path_ = QPainterPath()
+    path_.moveTo(pts[0][0] * s, pts[0][1] * s)
+    for x, y in pts[1:]:
+        path_.lineTo(x * s, y * s)
+    p.drawPath(path_)
+    p.end()
+    img.save(path, 'PNG')
+
+
+def theme_icons(theme):
+    c = THEME_COLORS.get(theme, THEME_COLORS['dark'])
+    d = os.path.join(DATA_DIR, 'ui-icons')
+    os.makedirs(d, exist_ok=True)
+    out = {}
+    for key, kind, color, size in (('ic_down', 'down', c['bronze'], 14), ('ic_up', 'up', c['bronze'], 14),
+                                   ('ic_down_s', 'down', c['muted'], 10), ('ic_up_s', 'up', c['muted'], 10), ('ic_check', 'check', '#FFFFFF', 16)):
+        fp = os.path.join(d, '%s-%s.png' % (key, theme))
+        try:
+            _make_icon(fp, kind, color, size)
+        except Exception as e:
+            log('Tạo icon giao diện lỗi:', key, e)
+        out[key] = fp.replace(chr(92), '/')
+    return out
+
+
 def qss_for(theme):
-    return QSS_TEMPLATE % THEME_COLORS.get(theme, THEME_COLORS['dark'])
+    vals = dict(THEME_COLORS.get(theme, THEME_COLORS['dark']))
+    vals.update(theme_icons(theme))
+    return QSS_TEMPLATE % vals
 
 
 APP_QSS = qss_for('dark')  # giữ tên cũ để tương thích — mặc định khởi động là nền tối
@@ -1484,7 +1546,7 @@ class HardwareTab(QWidget):
         live = hw.get('live', [])
         text = ''
         if alerts:
-            text += 'CẢNH BÁO:\n' + '\n'.join('⚠ ' + a for a in alerts) + '\n\n'
+            text += 'CẢNH BÁO:\n' + '\n'.join('• ' + a for a in alerts) + '\n\n'
         if live:
             text += 'Tình trạng hiện tại: ' + ' · '.join(live)
         self.txtAlerts.setPlainText(text or 'Không có cảnh báo.')

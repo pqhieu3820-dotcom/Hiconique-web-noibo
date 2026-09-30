@@ -1787,3 +1787,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 ### 2026-09-30 (ac) Agent 2.0.9 — icon chip + giữ dữ liệu khi cài bản mới
 - Chip (mã NV / giờ làm việc / tên máy) dùng icon SVG nét mảnh màu đồng (`make_chip`, `line_icon`) thay emoji.
 - Dữ liệu ghi nhận nằm ở `%LOCALAPPDATA%\HiconiqueAgent` (không bị cài đè xóa). Thêm `migrate_state()` + `STATE_SCHEMA` (nâng cấp file cũ lên cấu trúc mới, giữ trường lạ), nhập `state-<ngày>.json` dạng cũ, bản sao `.bak` tự khôi phục (`read_secure_with_backup`). Khi đổi cấu trúc file: tăng STATE_SCHEMA và bổ sung xử lý trong migrate_state. Gỡ cài đặt KHÔNG còn xóa thư mục dữ liệu.
+
+### 2026-09-30 (ad) Agent 2.1.0 — UI dropdown/spinbox/checkbox
+- QSS_TEMPLATE thêm style cho QComboBox/QSpinBox/QCheckBox/QRadioButton; icon chevron/dấu tích tự vẽ thành PNG vào `%LOCALAPPDATA%\HiconiqueAgent\ui-icons` theo theme (`theme_icons`, `_make_icon`). Muốn đổi màu/kiểu mũi tên: sửa `theme_icons`.

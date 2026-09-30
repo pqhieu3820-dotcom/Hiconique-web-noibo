@@ -1,11 +1,16 @@
 {
-  "version": "2.0.9",
-  "url": "https://github.com/pqhieu3820-dotcom/Hiconique-web-noibo/releases/download/agent-v2.0.9/HiconiqueAgentSetup-v2.0.9.exe",
-  "sha256": "8acd7432515d4ddc2e9fee9baaa4f4b58b13def3f73771b8f50fee2a1295a323",
-  "size": 69657356,
-  "releasedAt": "2026-09-30T09:11:46Z",
-  "notes": "Icon thanh thông tin (mã NV, giờ làm việc, tên máy) vẽ lại dạng nét mảnh màu đồng, sắc nét. Cài bản mới KHÔNG mất dữ liệu: dữ liệu đã ghi được giữ, tự nâng cấp lên cấu trúc mới (kể cả file cũ dạng văn bản), có bản sao dự phòng tự khôi phục; gỡ cài đặt giữ lại dữ liệu ghi nhận.",
+  "version": "2.1.0",
+  "url": "https://github.com/pqhieu3820-dotcom/Hiconique-web-noibo/releases/download/agent-v2.1.0/HiconiqueAgentSetup-v2.1.0.exe",
+  "sha256": "498af2d47853bea0903316169f77beb406e48369c075803fae0ed6994ad48110",
+  "size": 69660077,
+  "releasedAt": "2026-09-30T09:23:03Z",
+  "notes": "Giao diện: mũi tên ô chọn (dropdown) và nút tăng/giảm số vẽ lại dạng chevron nét mảnh màu đồng, danh sách xổ xuống bo tròn; ô tích chọn và nút radio đồng bộ kiểu mới; áp dụng toàn bộ app cả nền sáng/tối, kể cả bước chọn tên khi cài đặt.",
   "history": [
+    {
+      "version": "2.1.0",
+      "date": "2026-09-30",
+      "notes": "Giao diện: mũi tên ô chọn (dropdown) và nút tăng/giảm số vẽ lại dạng chevron nét mảnh màu đồng, danh sách xổ xuống bo tròn; ô tích chọn và nút radio đồng bộ kiểu mới; áp dụng toàn bộ app cả nền sáng/tối, kể cả bước chọn tên khi cài đặt."
+    },
     {
       "version": "2.0.9",
       "date": "2026-09-30",
@@ -50,11 +55,6 @@
       "version": "2.0.1",
       "date": "2026-09-28",
       "notes": "Thêm nút 'Kiểm tra cập nhật' và nút đổi nền sáng/tối ngay trên cửa sổ chính (nhớ lựa chọn cho lần sau). Quét phần cứng giờ nhận diện thêm bàn phím và chuột (tên thiết bị theo Windows, có thể chung chung với USB thường)."
-    },
-    {
-      "version": "2.0.0",
-      "date": "2026-09-28",
-      "notes": "Viết lại toàn bộ bằng PyQt5, gộp thành 1 ứng dụng có 5 tab: Kiểm soát dữ liệu thao tác, Thông số linh kiện máy tính (quét + nút Cập nhật lên web), Convert Ảnh ↔ SketchUp Material, Lấy màu (Pick Color), Hẹn giờ tắt máy. Đóng cửa sổ (X) chỉ ẩn xuống khay hệ thống, app vẫn chạy nền — chuột phải icon khay > Thoát mới tắt hẳn. Icon riêng cho cửa sổ/taskbar (trước đây dùng icon mặc định). File cài đặt lớn hơn nhiều (~150-250MB) do đóng gói PyQt5/pandas/openpyxl."
     }
   ]
 }
