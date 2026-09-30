@@ -35,6 +35,8 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
 **Link production chính đã đổi sang Cloudflare Workers**: `https://hiconique-web-noibo.pqhieu3820.workers.dev` (link Netlify cũ `noibo.hiconique.com` bị lỗi DNS NXDOMAIN ngày 24/9, không liên quan code — người dùng đã chuyển hẳn sang dùng link Workers, vẫn giữ link cũ nhưng không phải link chính nữa). **Luôn dùng link Workers khi cần mở/test web live, không hỏi lại người dùng về việc này nữa.**
 
+- (2026-09-30) Viết lại đoạn mô tả đầu trang Tài sản & vật tư (`equipment.html`, `.subpage-lede`) gọn hơn, 2 câu, gom nhóm tài sản.
+
 ### Phiên 2026-09-30 (j) — Bảng Linh kiện/Thông số trong form tài sản rộng hơn, tự xuống dòng
 
 - `equipment.html`: hộp thoại rộng tối đa `min(1320px, 96vw)` (trước 1000px), cột phải rộng hơn (`0.8fr / 1.5fr`), cột Tên/Thông số chiếm nhiều chỗ hơn.
