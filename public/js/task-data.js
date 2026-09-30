@@ -124,7 +124,7 @@ function processWriteQueue_() {
       if (cur.length > 1 && cur[idx].tries >= 2) { var bad = cur.splice(idx, 1)[0]; cur.push(bad); }
       saveWriteQueue_(cur);
       var delay = WRITE_RETRY_DELAYS[Math.min(cur[idx].tries - 1, WRITE_RETRY_DELAYS.length - 1)];
-      emitSyncState_({ event: 'retry', tries: cur[idx].tries, action: op.action, id: op.id });
+      emitSyncState_({ event: 'retry', tries: cur[idx].tries, action: op.action, id: op.id, reason: String((reason && reason.message) || reason || '').slice(0, 160) });
       scheduleWriteQueue_(delay);
     }
   }

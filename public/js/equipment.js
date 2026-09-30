@@ -66,6 +66,24 @@
   function fmtDate(d) { if (!d) return ''; var p = String(d).slice(0, 10).split('-'); return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : d; }
   function user() { try { return window.Auth && Auth.getCurrentUser ? Auth.getCurrentUser() : null; } catch (e) { return null; } }
   function canManage() { return !!(TM && TM.canManageEquipment && TM.canManageEquipment(user())); }
+  // Trạng thái lưu lên Google Sheet (không còn im lặng khi lỗi)
+  (function () {
+    var everQueued = false, hideT = null;
+    function show(txt, color) { var el = $('eqSyncStatus'); if (!el) return; el.hidden = false; el.textContent = txt; el.style.color = color || ''; clearTimeout(hideT); }
+    window.addEventListener('hiconique:sync-state', function (e) {
+      var d = e.detail || {};
+      if (d.event === 'queued') everQueued = true;
+      if (d.pending > 0) {
+        everQueued = true;
+        if (d.event === 'retry') show('⚠ Chưa lưu được lên Google Sheet' + (d.reason ? ' (' + d.reason + ')' : '') + ' — đang tự thử lại lần ' + d.tries + '. ĐỪNG đóng trang.', '#C0644A');
+        else show('Đang lưu lên Google Sheet… (' + d.pending + ' thao tác)', '');
+      } else if (everQueued) {
+        show('✓ Đã lưu lên Google Sheet' + (d.lastOkAt ? ' lúc ' + new Date(d.lastOkAt).toLocaleTimeString('vi-VN') : ''), '#4E9A63');
+        hideT = setTimeout(function () { var el = $('eqSyncStatus'); if (el) el.hidden = true; }, 5000);
+      }
+    });
+    window.addEventListener('hiconique:sync-failed', function () { show('⚠ Có thao tác KHÔNG lưu được lên Google Sheet — hãy chụp màn hình báo lại.', '#C0644A'); });
+  })();
   function toast(msg, bad) { var t = document.createElement('div'); t.className = 'eq-toast' + (bad ? ' bad' : ''); t.textContent = msg; document.body.appendChild(t); setTimeout(function () { t.remove(); }, 2600); }
   function memberName(id) { var m = TM.getMember ? TM.getMember(id) : null; return m ? (m.name || id) : (id || ''); }
   function formCat(name) { return name ? catOf(name) : EMPTY_CAT; }

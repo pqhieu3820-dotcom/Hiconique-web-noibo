@@ -37,6 +37,12 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
 - (2026-09-30) Viết lại đoạn mô tả đầu trang Tài sản & vật tư (`equipment.html`, `.subpage-lede`) gọn hơn, 2 câu, gom nhóm tài sản.
 
+### Phiên 2026-09-30 (m) — Kiểm tra lại "Lưu không lên Sheet" + chip trạng thái lưu
+
+- Kiểm thử THẬT đầu-cuối bằng trình duyệt trên cả localhost và production (Workers): mở tài sản → sửa → Lưu → 1 lệnh `updateEquipment` (~4,8KB) → **HTTP 200 trong 3–4s, hàng đợi rỗng, Sheet ghi đúng** → luồng lưu chạy tốt ở máy sạch; lỗi của người dùng nằm ở trạng thái riêng của trình duyệt họ (hàng đợi/localStorage cũ hoặc mạng), không tái hiện được từ ngoài.
+- Thêm chip trạng thái ở góc dưới phải trang Tài sản & vật tư (`#eqSyncStatus`): "Đang lưu…", "✓ Đã lưu lên Google Sheet lúc hh:mm:ss" (tự ẩn 5s), hoặc "⚠ Chưa lưu được (lý do) — đang thử lại lần N. ĐỪNG đóng trang". Sự kiện retry nay mang `reason`. sw v31. Nếu người dùng còn báo lỗi: nhìn chip + F12 Console `GSheets API error`, `localStorage.hiconique_write_queue`.
+- Lưu ý test: dữ liệu thật PC-KETOAN-KHANH bị sửa trường `note` khi test (đã trả về rỗng).
+
 ### Phiên 2026-09-30 (l) — Sửa lỗi "Lưu rồi mà Google Sheet không ghi, tải lại là mất" (hàng đợi ghi)
 
 - Điều tra: server ghi bình thường (thử trực tiếp `updateEquipment` payload 4,6KB → 200 trong ~5s, không 404; giới hạn URL GET ~8–12KB). Lỗi nằm ở **client** `task-data.js`:
