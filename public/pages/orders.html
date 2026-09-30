@@ -22,6 +22,7 @@
   <script src="/js/auth.js"></script>
   <script src="/js/money-input.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js" defer></script>
+  <script src="/js/excel-standard.js" defer></script>
   <style>
     :root {
       --od-bg: var(--color-bg); --od-surface: var(--color-surface); --od-border: var(--color-border);
@@ -569,7 +570,7 @@
       ws.getColumn(1).width = 32; ws.getColumn(2).width = 10; ws.getColumn(3).width = 10;
       ws.getColumn(4).width = 16; ws.getColumn(5).width = 16;
 
-      wb.xlsx.writeBuffer().then(function (buffer) {
+      (window.HiconiqueExcel ? HiconiqueExcel.standardize(wb) : wb).xlsx.writeBuffer().then(function (buffer) {
         var blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         var url = URL.createObjectURL(blob);
         var a = document.createElement('a');

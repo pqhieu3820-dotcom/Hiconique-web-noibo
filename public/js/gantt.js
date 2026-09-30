@@ -582,7 +582,7 @@ var HiconiqueGantt = (function () {
 
     ws.getRow(headerRow).eachCell(function (cell) { cell.border = borderAll(); });
 
-    wb.xlsx.writeBuffer().then(function (buffer) {
+    (window.HiconiqueExcel ? HiconiqueExcel.standardize(wb) : wb).xlsx.writeBuffer().then(function (buffer) {
       var blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       var url = URL.createObjectURL(blob);
       var a = document.createElement('a');

@@ -3065,7 +3065,12 @@ var TaskManager = (function() {
   // các hàm này, nhưng vẫn kiểm tra lại ở đây cho chắc).
   function getFinanceEntries(filters) {
     filters = filters || {};
-    var list = getAll(STORAGE_KEYS.financeEntries);
+    var list = getAll(STORAGE_KEYS.financeEntries).map(function (e) {
+      // Sheets tự đổi '2026-09' thành ngày → API trả '2026-09-01': chuẩn hóa về yyyy-MM
+      var m = String(e.month || '');
+      var nm = /^\d{4}-\d{2}/.test(m) ? m.slice(0, 7) : String(e.date || '').slice(0, 7);
+      return nm && nm !== e.month ? Object.assign({}, e, { month: nm }) : e;
+    });
     if (filters.type) list = list.filter(function (e) { return e.type === filters.type; });
     if (filters.month) list = list.filter(function (e) { return e.month === filters.month; });
     return list.sort(function (a, b) { return new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0); });

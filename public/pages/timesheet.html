@@ -1366,6 +1366,7 @@
 
   <script src="/js/portal.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js" defer></script>
+  <script src="/js/excel-standard.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
   <script>
   (function() {
@@ -2798,7 +2799,7 @@
           }
         });
 
-        wb.xlsx.writeBuffer().then(function (buffer) {
+        (window.HiconiqueExcel ? HiconiqueExcel.standardize(wb) : wb).xlsx.writeBuffer().then(function (buffer) {
           var blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
           var url = URL.createObjectURL(blob);
           var a = document.createElement('a');

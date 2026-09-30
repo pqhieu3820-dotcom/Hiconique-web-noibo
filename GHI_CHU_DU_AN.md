@@ -1775,3 +1775,7 @@ pip install -r tools/hiconique-agent/requirements.txt
 Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (để Git Credential Manager có sẵn token) trước khi chạy `python tools/hiconique-agent/build.py` (script tự đăng bản mới lên GitHub Releases).
 
 **Không cần chuyển gì thủ công khác** — mọi dữ liệu nghiệp vụ nằm trên Google Sheet (không nằm trong repo), thiết bị end-user tự tải Agent qua link GitHub Releases khi cần.
+
+### 2026-09-30 (aa) Tiêu đề chuẩn cho mọi Excel + sửa giao dịch tài chính không hiện
+- `public/js/excel-standard.js` (`HiconiqueExcel.standardize(wb)`): chèn 5 dòng đầu mỗi sheet (CÔNG TY TNHH KIẾN TRÚC VÀ XÂY DỰNG HICONIQUE / Số / Quốc hiệu / Tiêu ngữ không gạch chân / Hải Phòng, ngày…), dời nội dung cũ xuống (merge, công thức, CF, freeze, filter) + in A4. Gọi trước `writeBuffer()` ở orders, pricing, timesheet, gantt. Sổ tài chính tự dựng bìa riêng (finance-export.js, đã đổi tên công ty + bỏ gạch dưới). Xuất Excel mới thêm sau này: nhớ nạp script này và gọi standardize.
+- Lỗi giao dịch 10tr không hiện: Sheets tự đổi cột Tháng '2026-09' thành ngày → API trả '2026-09-01' nên lọc theo tháng không khớp. Sửa: Apps Script `getAllData` format `yyyy-MM` cho key `month` + `FORCE_TEXT_FIELDS.month` (**cần dán lại gsheets-api-v2.js vào Apps Script và Deploy phiên bản mới**), client `getFinanceEntries` chuẩn hóa month (đã hiệu lực ngay không cần Apps Script). sw v50.

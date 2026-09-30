@@ -274,7 +274,7 @@ var FinanceExport = (function () {
     }
   }
   // Cài đặt in chuẩn A4: vùng in, tiêu đề lặp lại, căn giữa, lề, đầu trang (Quốc hiệu) + chân trang (số trang)
-  var HDR_LEFT = 'CÔNG TY HICONIQUE';
+  var HDR_LEFT = 'CÔNG TY TNHH KIẾN TRÚC VÀ XÂY DỰNG HICONIQUE';
   function printSetup(ws, area, landscape, titleRows) {
     ws.pageSetup = {
       paperSize: 9, orientation: landscape ? 'landscape' : 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0,
@@ -720,8 +720,7 @@ var FinanceExport = (function () {
       m(1, 4, 6, 'CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM', { bold: true, size: 12 });
       m(2, 1, 3, 'Số: ....../BC-TC', { size: 12 });
       m(2, 4, 6, 'Độc lập - Tự do - Hạnh phúc', { bold: true, size: 13 });
-      wsCv.getCell(2, 4).border = {}; ['D', 'E', 'F'].forEach(function (col) { wsCv.getCell(col + '3').border = { top: { style: 'thin', color: { argb: 'FF000000' } } }; });
-      wsCv.getRow(3).height = 6;
+            wsCv.getRow(3).height = 6;
       m(4, 4, 6, 'Hải Phòng, ngày ' + now.getDate() + ' tháng ' + (now.getMonth() + 1) + ' năm ' + now.getFullYear(), { italic: true, size: 12, h: 'right' });
       wsCv.getRow(6).height = 8;
       m(7, 1, 6, 'BÁO CÁO TÀI CHÍNH', { bold: true, size: 18 });

@@ -1287,7 +1287,7 @@ function getAllData(ss, sheetName) {
       // vì text thuần, format lại đúng ở đây là đủ khôi phục nguyên vẹn).
       if (Object.prototype.toString.call(val) === '[object Date]') {
         const TIME_ONLY_FIELDS = { checkinTime: true, checkoutTime: true, morningCheckin: true, morningCheckout: true, afternoonCheckin: true, afternoonCheckout: true };
-        const pattern = TIME_ONLY_FIELDS[key] ? 'HH:mm' : 'yyyy-MM-dd';
+        const pattern = TIME_ONLY_FIELDS[key] ? 'HH:mm' : (key === 'month' ? 'yyyy-MM' : 'yyyy-MM-dd');
         val = Utilities.formatDate(val, Session.getScriptTimeZone() || 'Asia/Ho_Chi_Minh', pattern);
       }
       if (typeof val === 'string' && val.startsWith('[')) {
@@ -1378,7 +1378,7 @@ function makeId(prefix) {
 // khoảng cách GPS ra sai lệch hàng nghìn km khiến chấm công báo "cách văn
 // phòng 9942450m", tưởng nhầm là lỗi định vị của thiết bị/trình duyệt trong
 // khi bản chất là toạ độ ĐÍCH lưu trên Sheet đã bị hỏng ngay từ lúc ghi.
-var FORCE_TEXT_FIELDS = { phone: true, cccd: true, bankAccount: true, lat: true, lng: true };
+var FORCE_TEXT_FIELDS = { month: true, phone: true, cccd: true, bankAccount: true, lat: true, lng: true };
 function forceTextIfDateLike(val, enKey) {
   if (typeof val === 'string' && /^\d{4}-\d{1,2}$/.test(val)) return "'" + val;
   if (enKey && FORCE_TEXT_FIELDS[enKey] && typeof val === 'string' && /^\d+$/.test(val)) return "'" + val;
