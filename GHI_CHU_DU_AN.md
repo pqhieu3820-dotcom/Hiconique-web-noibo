@@ -1988,3 +1988,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (ci) Đổi tên sheet tra cứu danh mục: `DM-Danh mục TC` → `TC-Danh mục TC`
 - Founder đã đổi tên tab thủ công trên Google Sheet. Code (`applyFinanceDropdowns` trong gsheets-api-v2.js, 3 chỗ) đã đổi theo; **Apps Script v110** đã deploy. Nhóm tiền tố `TC-` (Tài chính) gom cùng các sheet TC khác.
+
+### 2026-09-30 (cj) Giấy đề nghị thanh toán lương: chỉnh đầu văn bản
+- payslip-docx.js: bỏ dòng "Địa chỉ" và "Bộ phận" ở đầu; tên công ty căn giữa ô bên trái (cả ngang lẫn dọc, cùng tầm khối "Mẫu số 05 - TT" bên phải). Mục "Bộ phận / Chức vụ" trong phần thông tin người đề nghị vẫn giữ. sw v105.

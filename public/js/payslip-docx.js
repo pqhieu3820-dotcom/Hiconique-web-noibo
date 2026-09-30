@@ -64,8 +64,8 @@ var PayslipDocx = (function () {
     var head = new D.Table({
       width: { size: 100, type: W.PERCENTAGE }, borders: noBorders, columnWidths: [5200, 4200],
       rows: [new D.TableRow({ children: [
-        new D.TableCell({ borders: noBorders, width: { size: 55, type: W.PERCENTAGE }, children: [P(R(COMPANY, { bold: true, size: 24 }), { after: 20 }), P(R('Địa chỉ: ......................................................', { size: 24 }), { after: 20 }), P(R('Bộ phận: ' + (m.role || '.......................'), { size: 24 }), { after: 0 })] }),
-        new D.TableCell({ borders: noBorders, width: { size: 45, type: W.PERCENTAGE }, children: [P(R('Mẫu số 05 - TT', { bold: true, size: 24 }), { align: D.AlignmentType.CENTER, after: 20 }), P(R('(Ban hành theo Thông tư số 133/2016/TT-BTC ngày 26/08/2016 của Bộ Tài chính)', { italic: true, size: 20 }), { align: D.AlignmentType.CENTER, after: 0 })] })
+        new D.TableCell({ borders: noBorders, verticalAlign: D.VerticalAlign.CENTER, width: { size: 55, type: W.PERCENTAGE }, children: [P(R(COMPANY, { bold: true, size: 24 }), { align: D.AlignmentType.CENTER, after: 0 })] }),
+        new D.TableCell({ borders: noBorders, verticalAlign: D.VerticalAlign.CENTER, width: { size: 45, type: W.PERCENTAGE }, children: [P(R('Mẫu số 05 - TT', { bold: true, size: 24 }), { align: D.AlignmentType.CENTER, after: 20 }), P(R('(Ban hành theo Thông tư số 133/2016/TT-BTC ngày 26/08/2016 của Bộ Tài chính)', { italic: true, size: 20 }), { align: D.AlignmentType.CENTER, after: 0 })] })
       ] })]
     });
 
