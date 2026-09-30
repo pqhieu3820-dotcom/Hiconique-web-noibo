@@ -2001,3 +2001,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (cm) Xem nhanh Docx: thêm nút Xuất PDF
 - payslip-docx.js: nút **Xuất PDF** giữa "Tải file .docx" và "Đóng" (cùng cỡ chữ 13px/600, cao 36px). Cách làm: `window.print()` + CSS `@media print` chỉ in các trang giấy (ẩn thanh công cụ và toàn bộ trang phía sau, `@page A4 margin 0`, zoom về 100% trong lúc in) → chọn "Lưu dưới dạng PDF" ở hộp thoại in; tên file gợi ý theo tên tài liệu. PDF là vector, giữ đúng font/bố cục, không cần thư viện thêm. sw v108.
+
+### 2026-09-30 (cn) Xuất PDF tải thẳng về máy (không mở hộp thoại in)
+- payslip-docx.js: nút Xuất PDF nay tải file `.pdf` trực tiếp: chụp từng trang giấy đang xem bằng `html2canvas@1.4.1` (scale 2) rồi ghép vào PDF A4 bằng `jspdf@2.5.1` (cdnjs, nạp khi bấm), báo tiến độ "Trang x/y…" trên nút. PDF dạng ảnh (chữ không chọn/copy được, ~400KB cho 2 trang); cần PDF chữ vector/chọn được thì dùng "Tải file .docx" rồi Lưu thành PDF trong Word. Đã bỏ CSS in. sw v109.

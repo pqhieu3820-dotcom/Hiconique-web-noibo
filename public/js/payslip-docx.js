@@ -18,6 +18,10 @@ var PayslipDocx = (function () {
     if (LIB.docx) return Promise.resolve(LIB.docx);
     return loadScript('https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js').then(function () { LIB.docx = window.docx; return LIB.docx; });
   }
+  function loadPdfLibs() {
+    if (window.html2canvas && window.jspdf) return Promise.resolve();
+    return loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js').then(function () { return loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'); });
+  }
   function ensurePreview() {
     if (LIB.preview) return Promise.resolve(LIB.preview);
     // docx-preview cũng đặt tên global `docx` → chạy SAU khi đã giữ tham chiếu thư viện tạo file
@@ -145,7 +149,6 @@ var PayslipDocx = (function () {
     '#pdxOverlay .pdx-scroll{flex:1 1 auto;overflow:auto;overscroll-behavior:contain;padding:28px 12px 60px}#pdxOverlay #pdxHost{margin:0 auto;width:max-content;max-width:none;transform-origin:top center}' +
     '#pdxOverlay .pdx-wrapper{background:transparent!important;padding:0!important}#pdxOverlay .pdx-wrapper>section.pdx{box-shadow:0 10px 40px rgba(0,0,0,.45),0 0 0 1px rgba(0,0,0,.2)!important;margin-bottom:22px!important;border-radius:2px}' +
     '#pdxOverlay .pdx-load{display:flex;flex-direction:column;align-items:center;gap:14px;padding:80px 0;color:#f4f1ec;font:500 .875rem Inter,system-ui,sans-serif}#pdxOverlay .pdx-load i{width:34px;height:34px;border-radius:50%;border:3px solid rgba(255,255,255,.2);border-top-color:#B08D57;animation:pdxSpin .8s linear infinite}@keyframes pdxSpin{to{transform:rotate(360deg)}}' +
-    '@page{size:A4;margin:0}@media print{html,body{background:#fff!important;height:auto!important;overflow:visible!important}body>*:not(#pdxOverlay){display:none!important}#pdxOverlay{position:static!important;display:block!important;background:none!important;animation:none!important}#pdxOverlay .pdx-bar{display:none!important}#pdxOverlay .pdx-scroll{overflow:visible!important;padding:0!important}#pdxOverlay #pdxHost{zoom:1!important;width:auto!important}#pdxOverlay .pdx-wrapper{padding:0!important;background:none!important}#pdxOverlay .pdx-wrapper>section.pdx{box-shadow:none!important;margin:0!important;border-radius:0!important;page-break-after:always;break-after:page}}' +
     '@media(max-width:700px){#pdxOverlay .pdx-bar{padding:8px 12px}#pdxOverlay .pdx-zoom{order:3}#pdxOverlay .pdx-btn span{display:none}}';
 
   function preview(data) {
@@ -156,7 +159,7 @@ var PayslipDocx = (function () {
     ov.innerHTML =
       '<div class="pdx-bar"><div class="pdx-ttl"><div class="pdx-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></div><div><b>Giấy đề nghị thanh toán lương</b><span>Tháng ' + mmYYYY(data.month) + ' · ' + (m.name || '') + ' · ' + fileName(data) + '</span></div></div>' +
       '<div class="pdx-zoom"><button type="button" data-z="-1" aria-label="Thu nhỏ">−</button><output id="pdxZ">100%</output><button type="button" data-z="1" aria-label="Phóng to">+</button><button type="button" data-z="0" aria-label="Vừa khung" title="Vừa khung" style="font-size:.7rem;font-weight:700;width:auto;padding:0 8px">Vừa</button></div>' +
-      '<div class="pdx-act"><button type="button" class="pdx-btn pri" data-dl><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg><span>Tải file .docx</span></button><button type="button" class="pdx-btn" data-pdf title="Mở hộp thoại in — chọn máy in &quot;Lưu dưới dạng PDF&quot;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M8 14h1.5a1.5 1.5 0 0 1 0 3H8v-3zM8 17v2"/></svg><span>Xuất PDF</span></button><button type="button" class="pdx-btn" data-x><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg><span>Đóng</span></button></div></div>' +
+      '<div class="pdx-act"><button type="button" class="pdx-btn pri" data-dl><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg><span>Tải file .docx</span></button><button type="button" class="pdx-btn" data-pdf title="Tải file PDF về máy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M8 14h1.5a1.5 1.5 0 0 1 0 3H8v-3zM8 17v2"/></svg><span>Xuất PDF</span></button><button type="button" class="pdx-btn" data-x><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg><span>Đóng</span></button></div></div>' +
       '<div class="pdx-scroll"><div id="pdxHost"><div class="pdx-load"><i></i>Đang tạo bản xem…</div></div></div>';
     document.body.appendChild(ov);
     var zoom = 1, host = ov.querySelector('#pdxHost'), zEl = ov.querySelector('#pdxZ'), scroller = ov.querySelector('.pdx-scroll');
@@ -167,15 +170,26 @@ var PayslipDocx = (function () {
     document.addEventListener('keydown', onKey);
     ov.querySelector('[data-x]').addEventListener('click', close);
     ov.querySelector('[data-dl]').addEventListener('click', function () { download(data); });
-    // Xuất PDF: in RIÊNG các trang giấy (CSS @media print ẩn phần còn lại) → chọn "Lưu dưới dạng PDF" — PDF vector, giữ đúng font & bố cục
-    var prevZoom = 1;
-    function beforePrint() { prevZoom = zoom; host.style.zoom = 1; }
-    function afterPrint() { host.style.zoom = prevZoom; window.removeEventListener('beforeprint', beforePrint); window.removeEventListener('afterprint', afterPrint); }
+    // Xuất PDF: chụp từng trang giấy đang xem (html2canvas, 2x) rồi ghép vào file PDF A4 (jsPDF) và TẢI THẲNG về máy — không mở hộp thoại in
     ov.querySelector('[data-pdf]').addEventListener('click', function () {
-      if (!host.querySelector('section.pdx')) return;
-      window.addEventListener('beforeprint', beforePrint); window.addEventListener('afterprint', afterPrint);
-      var oldTitle = document.title; document.title = fileName(data).replace(/\.docx$/, '');
-      window.print(); document.title = oldTitle;
+      var btn = ov.querySelector('[data-pdf]'), label = btn.querySelector('span'), pages = host.querySelectorAll('section.pdx');
+      if (!pages.length || btn.disabled) return;
+      btn.disabled = true; var old = label.textContent; label.textContent = 'Đang tạo PDF…';
+      var z0 = zoom; host.style.zoom = 1;
+      loadPdfLibs().then(function () {
+        var jsPDF = window.jspdf.jsPDF, pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true }), i = 0;
+        function next() {
+          if (i >= pages.length) return Promise.resolve();
+          label.textContent = 'Trang ' + (i + 1) + '/' + pages.length + '…';
+          return window.html2canvas(pages[i], { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false }).then(function (canvas) {
+            if (i > 0) pdf.addPage('a4', 'portrait');
+            pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+            i++; return next();
+          });
+        }
+        return next().then(function () { pdf.setProperties({ title: fileName(data).replace(/\.docx$/, ''), creator: 'HICONIQUE Internal Hub' }); pdf.save(fileName(data).replace(/\.docx$/, '.pdf')); });
+      }).catch(function (err) { alert('Không tạo được PDF: ' + (err && err.message || err)); })
+        .then(function () { host.style.zoom = z0; btn.disabled = false; label.textContent = old; });
     });
     ov.querySelector('.pdx-zoom').addEventListener('click', function (e) { var b = e.target.closest('[data-z]'); if (!b) return; var d = Number(b.getAttribute('data-z')); if (d === 0) fit(); else applyZoom(zoom + d * 0.1); });
     scroller.addEventListener('wheel', function (e) { if (!e.ctrlKey) return; e.preventDefault(); applyZoom(zoom * Math.exp(e.deltaY < 0 ? 0.1 : -0.1)); }, { passive: false });
