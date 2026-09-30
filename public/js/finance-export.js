@@ -137,7 +137,7 @@ var FinanceExport = (function () {
           '<div class="fx-side">' +
             '<div class="fx-lbl">Chọn nhanh</div>' +
             '<div class="fx-chips" id="fxChips"></div>' +
-            '<div class="fx-lbl">Theo kỳ</div>' +
+            '<div class="fx-lbl">Theo kỳ <span style="text-transform:none;letter-spacing:0;font-weight:500;opacity:.7;">· lăn chuột để đổi</span></div>' +
             '<div class="fx-seg" id="fxSeg"></div>' +
             '<div class="fx-nav"><button class="fx-ar" data-prev aria-label="Kỳ trước">‹</button><b id="fxPeriod"></b><button class="fx-ar" data-next aria-label="Kỳ sau">›</button></div>' +
           '</div>' +
@@ -168,6 +168,19 @@ var FinanceExport = (function () {
       if (t.closest('#fxGo')) { doExport(); }
     });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') modal.classList.remove('on'); });
+    // Lăn chuột đổi kỳ: lăn xuống = kỳ sau, lăn lên = kỳ trước — trên ô tên kỳ (theo Tuần/Tháng/Quý/Năm đang chọn) và trên lịch (đổi tháng hiển thị)
+    var wheelAt = 0;
+    function wheelDir(e) { var now = Date.now(); if (now - wheelAt < 140) return 0; wheelAt = now; return e.deltaY > 0 ? 1 : -1; }
+    modal.querySelector('.fx-side .fx-nav').addEventListener('wheel', function (e) { e.preventDefault(); var d = wheelDir(e); if (d) shiftPeriod(d); }, { passive: false });
+    modal.querySelector('#fxSeg').addEventListener('wheel', function (e) {
+      e.preventDefault(); var d = wheelDir(e); if (!d) return;
+      var order = ['week', 'month', 'quarter', 'year'], i = Math.max(0, order.indexOf(mode)); setMode(order[Math.min(3, Math.max(0, i + d))]);   // lăn để đổi Tuần → Tháng → Quý → Năm
+    }, { passive: false });
+    modal.querySelector('.fx-cal').addEventListener('wheel', function (e) {
+      e.preventDefault(); var d = wheelDir(e); if (!d) return;
+      view.m += d; if (view.m > 11) { view.m = 0; view.y++; } if (view.m < 0) { view.m = 11; view.y--; } render();
+    }, { passive: false });
+    modal.querySelector('#fxChips').title = 'Mẹo: lăn chuột trên lịch để đổi tháng, trên ô kỳ để đổi kỳ';
   }
 
   function pickDay(day) {

@@ -1693,6 +1693,7 @@ function deleteData_impl(ss, sheetName, id) {
 function onEdit(e) {
   try {
     if (!e || !e.range) return;
+    try { financeOnEdit_(e); } catch (fe) { /* không chặn onEdit chính */ }
     const sheet = e.range.getSheet();
     if (normalizeName(sheet.getName()) !== normalizeName(SHEETS.members)) return;
     if (e.range.getRow() === 1) return; // header row itself
@@ -3951,6 +3952,57 @@ function cleanScheduleSheet_impl() {
 //   Người sử dụng = dropdown SỐNG lấy từ cột Mã NV của sheet Thành viên (thành viên mới tự có trong dropdown);
 //   Ngày mua / Hết bảo hành = ngày hợp lệ; Giá mua / Số lượng / Tồn tối thiểu = số >= 0.
 // 3 danh sách dưới PHẢI khớp CATS / STATUSES / UNITS trong public/js/equipment.js (đổi 1 bên thì đổi bên kia rồi chạy lại hàm này).
+// ===================== Danh mục giao dịch tài chính (2026-09-30) =====================
+// Khớp public/js/finance-categories.js. Chạy applyFinanceDropdowns() 1 lần để tạo dropdown cho cột Loại + Danh mục (phụ thuộc Loại) trên sheet 'TC-Tài chính công ty'.
+const FINANCE_TYPE_LABELS_ = {"revenue": "Doanh thu", "expense": "Chi phí", "loan": "Vay nợ (nhận)", "repayment": "Trả nợ", "bonus": "Thưởng nhân viên", "penalty": "Phạt nhân viên (thu về)", "idle": "Tiền ứ đọng", "undisbursed": "Chưa giải ngân"};
+const FINANCE_CATEGORIES_ = {"revenue": ["Thiết kế kiến trúc", "Thiết kế nội thất", "Thiết kế cảnh quan – sân vườn", "Giám sát tác giả", "Thi công nội thất", "Thi công xây dựng phần thô", "Thi công hoàn thiện", "Cải tạo – sửa chữa", "Thi công trọn gói (Turnkey)", "Cung cấp nội thất rời / đồ decor", "Cung cấp vật tư – thiết bị", "Tư vấn – khảo sát – đo đạc", "Bảo hành – bảo trì", "Thu tạm ứng / đặt cọc của khách", "Thu theo tiến độ nghiệm thu", "Thu quyết toán công trình", "Thu công nợ khách hàng", "Thanh lý vật tư – phế liệu", "Thu hoa hồng giới thiệu", "Doanh thu khác"], "expense": ["Vật liệu xây dựng", "Vật liệu nội thất (gỗ, tấm, đá, sơn…)", "Thiết bị – phụ kiện (điện, nước, đèn…)", "Nhân công thi công", "Thầu phụ / khoán gọn", "Lương nhân viên", "BHXH – BHYT – BHTN – KPCĐ", "Thuế – phí – lệ phí", "Thuê văn phòng / kho / mặt bằng", "Điện – nước – internet – điện thoại", "Vận chuyển – bốc xếp", "Máy móc – dụng cụ thi công", "Thuê máy / thiết bị / giàn giáo", "Marketing – quảng cáo – thương hiệu", "Tiếp khách – hội họp", "Công tác phí – đi lại – xăng xe", "Phần mềm – bản quyền – hosting", "Văn phòng phẩm – vật dụng", "Đào tạo – tuyển dụng", "Bảo hộ lao động – an toàn", "Bảo hiểm công trình / tài sản", "Sửa chữa – bảo trì tài sản", "Chi phí bảo hành công trình", "Phí ngân hàng – dịch vụ tài chính", "Pháp lý – kế toán – kiểm toán", "Hoa hồng môi giới / giới thiệu", "In ấn – hồ sơ – mô hình", "Chi phí phát sinh khác"], "loan": ["Vay ngân hàng", "Vay cá nhân / người thân", "Vay cổ đông / CEO", "Vay tín dụng / thẻ tín dụng", "Ứng vốn từ chủ đầu tư", "Góp vốn bổ sung", "Vay khác"], "repayment": ["Trả gốc vay ngân hàng", "Trả lãi vay ngân hàng", "Trả nợ vay cá nhân / người thân", "Hoàn trả cổ đông / CEO", "Thanh toán thẻ tín dụng", "Trả nợ nhà cung cấp vật tư", "Trả nợ thầu phụ / nhân công", "Hoàn ứng chủ đầu tư", "Trả nợ khác"], "bonus": ["Thưởng hoàn thành dự án", "Thưởng doanh số / hoa hồng", "Thưởng vượt tiến độ / KPI", "Thưởng chuyên cần", "Thưởng lễ – Tết", "Thưởng tháng 13", "Thưởng sáng kiến / tiết kiệm chi phí", "Thưởng nóng", "Thưởng khác"], "penalty": ["Phạt đi muộn / về sớm", "Phạt nghỉ không phép", "Phạt vi phạm quy trình", "Phạt trễ tiến độ", "Phạt làm hỏng / thất thoát vật tư", "Phạt vi phạm nội quy – an toàn", "Phạt khác"], "idle": ["Tiền mặt tồn két", "Tiền gửi không kỳ hạn", "Tiền tạm giữ / ký quỹ", "Vật tư tồn kho chưa dùng", "Tiền chờ đối soát", "Quỹ dự phòng", "Khác"], "undisbursed": ["Vốn vay chưa giải ngân", "Tiền chủ đầu tư chưa chuyển", "Tiền cọc dự án chờ giải ngân", "Ứng trước chờ quyết toán", "Hạn mức tín dụng chưa dùng", "Ngân sách dự án chưa chi", "Khác"]};
+function financeTypeKeyByLabel_(label) {
+  for (var k in FINANCE_TYPE_LABELS_) { if (FINANCE_TYPE_LABELS_[k] === String(label || '').trim()) return k; }
+  return '';
+}
+function financeCatRuleFor_(typeLabel) {
+  var key = financeTypeKeyByLabel_(typeLabel);
+  var list = key ? FINANCE_CATEGORIES_[key] : [].concat.apply([], Object.keys(FINANCE_CATEGORIES_).map(function (k) { return FINANCE_CATEGORIES_[k]; }));
+  var seen = {}; list = list.filter(function (x) { if (seen[x]) return false; seen[x] = true; return true; });
+  return SpreadsheetApp.newDataValidation().requireValueInList(list, true).setAllowInvalid(true).setHelpText('Chọn danh mục gợi ý theo Loại (được phép gõ riêng).').build();
+}
+function applyFinanceDropdowns() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = findSheet(ss, SHEETS.financeEntries);
+  if (!sheet) return 'Không tìm thấy sheet ' + SHEETS.financeEntries;
+  const headers = getHeaders(sheet);
+  const tCol = headers.indexOf(enToViHeader(SHEETS.financeEntries, 'type')) + 1;
+  const cCol = headers.indexOf(enToViHeader(SHEETS.financeEntries, 'category')) + 1;
+  if (!tCol || !cCol) return 'Chưa có cột Loại/Danh mục trên sheet';
+  const last = sheet.getLastRow(), extra = 300;
+  const maxRows = Math.min(sheet.getMaxRows() - 1, Math.max(last - 1, 0) + extra);
+  const typeRule = SpreadsheetApp.newDataValidation().requireValueInList(Object.keys(FINANCE_TYPE_LABELS_).map(function (k) { return FINANCE_TYPE_LABELS_[k]; }), true).setAllowInvalid(false).build();
+  sheet.getRange(2, tCol, maxRows, 1).clearDataValidations().setDataValidation(typeRule);
+  // Danh mục: dòng nào đã có Loại → dropdown riêng theo Loại; dòng trống → toàn bộ danh mục (onEdit sẽ chỉnh lại khi chọn Loại)
+  const types = last > 1 ? sheet.getRange(2, tCol, last - 1, 1).getValues() : [];
+  const unionRule = financeCatRuleFor_('');
+  sheet.getRange(2, cCol, maxRows, 1).clearDataValidations().setDataValidation(unionRule);
+  types.forEach(function (r, i) { if (r[0]) sheet.getRange(2 + i, cCol).setDataValidation(financeCatRuleFor_(r[0])); });
+  // Sheet tra cứu 'DM-Danh mục TC': mỗi Loại 1 cột (để xem/sửa danh sách)
+  var ref = ss.getSheetByName('DM-Danh mục TC') || ss.insertSheet('DM-Danh mục TC');
+  ref.clear();
+  var keys = Object.keys(FINANCE_TYPE_LABELS_), maxLen = 0;
+  keys.forEach(function (k, i) { ref.getRange(1, i + 1).setValue(FINANCE_TYPE_LABELS_[k]).setFontWeight('bold').setBackground('#22272E').setFontColor('#FFFFFF'); var arr = FINANCE_CATEGORIES_[k].map(function (x) { return [x]; }); ref.getRange(2, i + 1, arr.length, 1).setValues(arr); maxLen = Math.max(maxLen, arr.length); });
+  ref.setFrozenRows(1); ref.autoResizeColumns(1, keys.length);
+  return 'Đã tạo dropdown Loại + Danh mục (phụ thuộc Loại) cho ' + maxRows + ' dòng; sheet tra cứu DM-Danh mục TC.';
+}
+// Gọi từ onEdit: đổi cột Loại → cập nhật dropdown Danh mục của đúng dòng đó
+function financeOnEdit_(e) {
+  const sheet = e.range.getSheet();
+  if (normalizeName(sheet.getName()) !== normalizeName(SHEETS.financeEntries)) return;
+  const row = e.range.getRow(); if (row < 2) return;
+  const headers = getHeaders(sheet);
+  const tCol = headers.indexOf(enToViHeader(SHEETS.financeEntries, 'type')) + 1;
+  const cCol = headers.indexOf(enToViHeader(SHEETS.financeEntries, 'category')) + 1;
+  if (!tCol || !cCol || e.range.getColumn() !== tCol) return;
+  sheet.getRange(row, cCol).setDataValidation(financeCatRuleFor_(e.value));
+}
+
 const EQUIPMENT_CATEGORIES = ['Máy tính', 'Máy in – Photo', 'Vật tư', 'Thiết bị mạng', 'Màn hình & ngoại vi', 'Văn phòng phẩm', 'Dụng cụ đo đạc', 'Máy móc & dụng cụ thi công', 'Giàn giáo & cốp pha', 'Bảo hộ lao động', 'Nội thất văn phòng', 'Thiết bị khác'];
 const EQUIPMENT_STATUSES = ['Đang dùng', 'Dự phòng', 'Đang sửa', 'Hỏng', 'Thanh lý'];
 const EQUIPMENT_UNITS = ['cái', 'chiếc', 'bộ', 'cặp', 'đôi', 'hộp', 'thùng', 'cây', 'cuộn', 'ram', 'tờ', 'quyển', 'chai', 'lọ', 'gói', 'túi', 'bao', 'kg', 'lít', 'm', 'm²', 'm³', 'tấm', 'thanh', 'viên'];
