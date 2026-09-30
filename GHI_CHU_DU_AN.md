@@ -1898,3 +1898,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 ### 2026-09-30 (bh) Chip đồng bộ: icon lỗi "!" có animation + nền trong ~98%
 - offline.js: icon lỗi là SVG — vòng tròn bật lên, dấu "!" tự vẽ (nét dọc rồi chấm nảy), lắc nhẹ 1 lần, sau đó vòng sóng đỏ lan ra lặp lại để gây chú ý; nét dày 3.4, sắc nét ở mọi tỉ lệ. Giảm chuyển động → hiện tĩnh.
 - Nền chip gần như trong hoàn toàn (trắng 0–2%, blur 2px), chỉ còn viền/bóng để nhận ra khung. sw v78.
+
+### 2026-09-30 (bi) Chip đồng bộ: icon "đang lưu" vàng dạng vòng cung động
+- offline.js: icon đang lưu là SVG — vòng nền mờ + cung sáng nét tròn đầu tự co giãn khi quay (kiểu Material: cung dài ra – ngắn lại, quay 1.4s), vòng tròn vàng bật lên và có sóng vàng lan ra lặp lại; sắc nét ở mọi tỉ lệ. Giảm chuyển động → đứng yên. sw v79.
