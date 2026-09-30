@@ -266,31 +266,6 @@ def http_open(url, timeout=30):
     return urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'HiconiqueAgent/%s' % VERSION}), timeout=timeout)
 
 
-def xl_read_rows(file_path):
-    """Đọc sheet đầu của file .xlsx → danh sách dòng (list giá trị), BỎ dòng tiêu đề đầu (giống pandas.read_excel). Ô trống = None."""
-    from openpyxl import load_workbook
-    wb = load_workbook(file_path, read_only=True, data_only=True)
-    try:
-        ws = wb.worksheets[0]
-        rows = [list(r) for r in ws.iter_rows(values_only=True)]
-    finally:
-        wb.close()
-    return rows[1:]
-
-
-def xl_write_records(file_path, records, sort_keys, hidden_keys):
-    """Ghi danh sách dict ra .xlsx: sắp xếp theo sort_keys, cột hidden_keys chỉ để sắp xếp (không ghi ra file)."""
-    from openpyxl import Workbook
-    records = sorted(records, key=lambda d: tuple(d[k] for k in sort_keys))
-    cols = [k for k in records[0].keys() if k not in hidden_keys]
-    wb = Workbook()
-    ws = wb.active
-    ws.append(cols)
-    for d in records:
-        ws.append([d[k] for k in cols])
-    wb.save(file_path)
-
-
 def relaunch_after_exit(exe):
     """Mở lại exe SAU KHI tiến trình hiện tại đã thoát (tránh bản mới tưởng đã có cửa sổ đang chạy rồi tự thoát)."""
     bat = os.path.join(tempfile.gettempdir(), 'hiconique_relaunch.bat')
@@ -2539,18 +2514,18 @@ class CpColorListDialog(QDialog):
             QMessageBox.information(self, 'Thành công', 'Đã lưu và đồng bộ danh sách màu!')
 
     def import_excel(self):
+        import pandas as pd
         file_path, _ = QFileDialog.getOpenFileName(self, 'Mở file Excel', '', 'Excel Files (*.xlsx *.xls)')
         if file_path:
             try:
                 self.table.setSortingEnabled(False)
-                for row_data in xl_read_rows(file_path):
-                    def cell(i, default=''):
-                        return str(row_data[i]) if len(row_data) > i and row_data[i] is not None else default
-                    group = cell(0)
-                    name = cell(1, group)
-                    rgb = cell(2)
-                    hex_val = cell(3)
-                    hsl = cell(4)
+                df = pd.read_excel(file_path)
+                for _index, row_data in df.iterrows():
+                    group = str(row_data.iloc[0]) if len(row_data) > 0 and pd.notna(row_data.iloc[0]) else ''
+                    name = str(row_data.iloc[1]) if len(row_data) > 1 and pd.notna(row_data.iloc[1]) else group
+                    rgb = str(row_data.iloc[2]) if len(row_data) > 2 and pd.notna(row_data.iloc[2]) else ''
+                    hex_val = str(row_data.iloc[3]) if len(row_data) > 3 and pd.notna(row_data.iloc[3]) else ''
+                    hsl = str(row_data.iloc[4]) if len(row_data) > 4 and pd.notna(row_data.iloc[4]) else ''
                     if name and name != 'nan':
                         formatted_name = cp_format_color_name(name)
                         row = self.table.rowCount()
@@ -2566,6 +2541,7 @@ class CpColorListDialog(QDialog):
                 QMessageBox.warning(self, 'Lỗi', 'Không thể đọc file: %s' % e)
 
     def export_excel(self):
+        import pandas as pd
         file_path, _ = QFileDialog.getSaveFileName(self, 'Lưu file Excel', 'Danh_sach_mau.xlsx', 'Excel Files (*.xlsx)')
         if file_path:
             data = []
@@ -2583,8 +2559,10 @@ class CpColorListDialog(QDialog):
                     except Exception:
                         pass
                 data.append({'Nhóm màu': g, 'Tên màu': n, 'RGB': r, 'HEX': hx, 'HSL': hl, '_h': h_val, '_s': s_val, '_l': l_val})
-            if data:
-                xl_write_records(file_path, data, ['Nhóm màu', '_h', '_s', '_l'], ('_h', '_s', '_l'))
+            df = pd.DataFrame(data)
+            df.sort_values(by=['Nhóm màu', '_h', '_s', '_l'], inplace=True)
+            df.drop(columns=['_h', '_s', '_l'], inplace=True)
+            df.to_excel(file_path, index=False)
             QMessageBox.information(self, 'Thành công', 'Đã xuất file Excel thành công!')
 
 
@@ -3403,6 +3381,7 @@ class ColorPickerPanel(QWidget):
         image.save(file_path)
 
     def export_batch_to_excel(self):
+        import pandas as pd
         total_items = self.list_widget.count()
         if total_items == 0:
             QMessageBox.warning(self, 'Lỗi', 'Danh sách đang trống!')
@@ -3429,8 +3408,11 @@ class ColorPickerPanel(QWidget):
                     s_pct = int((s / 255) * 100); l_pct = int((l / 255) * 100)
                     data_list.append({'Nhóm màu': family, 'Tên màu': name, 'RGB': '%d, %d, %d' % (r, g, b),
                                        'HEX': hex_code, 'HSL': '%d, %d%%, %d%%' % (h, s_pct, l_pct), '_h': h, '_s': s_pct, '_l': l_pct})
-        if data_list:
-            xl_write_records(file_path, data_list, ['Nhóm màu', '_h', '_s', '_l'], ('_h', '_s', '_l'))
+        df = pd.DataFrame(data_list)
+        if not df.empty:
+            df.sort_values(by=['Nhóm màu', '_h', '_s', '_l'], inplace=True)
+            df.drop(columns=['_h', '_s', '_l'], inplace=True)
+            df.to_excel(file_path, index=False)
             QMessageBox.information(self, 'Thành công', 'Đã xuất thành công %d màu ra file Excel!' % len(items_to_export))
 
     def export_batch_images(self):

@@ -2,7 +2,7 @@
   {
     "version": "2.0.6",
     "date": "2026-09-30",
-    "notes": "Tự cập nhật hiện đủ tiến trình: dung lượng đã tải/tổng, tốc độ, thời gian còn lại; tải bằng 4 luồng song song. Giao diện tab Kiểm soát dữ liệu thao tác làm lại (thẻ tổng quan, bảng ứng dụng có tỉ lệ, chi tiết tiêu đề cửa sổ, đếm ngược lần gửi kế tiếp) và trình cài đặt đẹp hơn. Bỏ pandas/numpy khỏi ứng dụng (xuất/nhập Excel dùng openpyxl) để file nhỏ hơn, tải nhanh hơn. Tên file tải về có số phiên bản (HiconiqueAgentSetup-v2.0.6.exe)."
+    "notes": "Tự cập nhật hiện đủ tiến trình: dung lượng đã tải/tổng, tốc độ, thời gian còn lại; tải bằng 4 luồng song song. Giao diện tab Kiểm soát dữ liệu thao tác làm lại (thẻ tổng quan, bảng ứng dụng có tỉ lệ, chi tiết tiêu đề cửa sổ, đếm ngược lần gửi kế tiếp) và trình cài đặt đẹp hơn. Tên file tải về có số phiên bản (HiconiqueAgentSetup-v2.0.6.exe)."
   },
   {
     "version": "2.0.5",
