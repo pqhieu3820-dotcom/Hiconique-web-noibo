@@ -1846,3 +1846,7 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (ar) Sổ quỹ: lăn chuột cuộn ngang
 - finance.html: rê chuột vào bảng Sổ quỹ rồi lăn con lăn → cuộn ngang bảng; tới mép trái/phải thì trả lại cuộn dọc cho trang (Ctrl+lăn vẫn để zoom). sw v62.
+
+### 2026-09-30 (as) Tổng quan Sổ tài chính: bấm để xem chi tiết
+- finance.html: bấm 4 thẻ KPI (Lãi/lỗ tháng, Dòng tiền tồn, Vay nợ, Ứ đọng), từng tháng trên biểu đồ Dòng tiền, thẻ Cần chú ý, thẻ Cơ cấu chi phí / Top danh mục → mở bảng chi tiết (`showDetail`, `data-detail`): thống kê, phân tích theo loại/tháng/TK 111-112/danh mục và danh sách giao dịch (số phiếu, TK đối ứng, người GD). Esc/bấm nền để đóng.
+- Biểu đồ: hai cột Thu/Chi cách nhau 26px, cột nhóm tối thiểu 104px để nhãn giá trị không đè nhau. sw v63.

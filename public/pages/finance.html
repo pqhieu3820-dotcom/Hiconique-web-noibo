@@ -80,14 +80,14 @@
     .fn-dash-row.thirds { grid-template-columns: repeat(3, 1fr); }
 
     .fn-chart-wrap { display: flex; align-items: flex-end; gap: 12px; height: 220px; padding: 28px 20px 12px; overflow-x: auto; }
-    .fn-chart-col { flex: 1; min-width: 72px; display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; justify-content: flex-end; }
-    .fn-chart-bars { position: relative; display: flex; gap: 8px; align-items: flex-end; height: 100%; }
+    .fn-chart-col { flex: 1; min-width: 104px; display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; justify-content: flex-end; }
+    .fn-chart-bars { position: relative; display: flex; gap: 26px; align-items: flex-end; height: 100%; }
     .fn-chart-bar { width: 18px; border-radius: 4px 4px 0 0; position: relative; transition: opacity 0.15s; }
     .fn-chart-bar:hover { opacity: 0.75; }
     .fn-chart-bar.revenue { background: linear-gradient(180deg, var(--fn-green), color-mix(in srgb, var(--fn-green) 70%, black)); }
     .fn-chart-bar.expense { background: linear-gradient(180deg, var(--fn-red), color-mix(in srgb, var(--fn-red) 70%, black)); }
     .fn-chart-bar.forecast { opacity: 0.45; background-image: repeating-linear-gradient(135deg, var(--fn-bronze), var(--fn-bronze) 3px, transparent 3px, transparent 6px); }
-    .fn-chart-bar-value { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); font-size: 0.625rem; font-family: 'JetBrains Mono', monospace; color: var(--fn-muted); white-space: nowrap; }
+    .fn-chart-bar-value { z-index: 3; position: absolute; top: -18px; left: 50%; transform: translateX(-50%); font-size: 0.625rem; font-family: 'JetBrains Mono', monospace; color: var(--fn-muted); white-space: nowrap; }
     .fn-chart-bar.revenue .fn-chart-bar-value { left: auto; right: 50%; transform: none; padding-right: 3px; }
     .fn-chart-bar.expense .fn-chart-bar-value { left: 50%; transform: none; padding-left: 3px; }
     .fn-chart-label { font-size: 0.75rem; color: var(--fn-muted); font-weight: 600; white-space: nowrap; }
@@ -144,6 +144,27 @@
     .fn-counter-info[hidden] { display: none; }
     .fn-ci-ex { display: grid; gap: 4px; margin: 8px 0; color: var(--fn-text); }
     .fn-ledger-wrap { overflow-x: auto; } .fn-ledger { min-width: 1080px; } .fn-ledger td.num, .fn-ledger th.num { text-align: right; font-variant-numeric: tabular-nums; } .fn-ledger .neg { color: var(--fn-red); } .fn-ledger tfoot td { font-weight: 700; background: var(--fn-bg); }
+    .fn-clickable { cursor: pointer; transition: transform .15s, box-shadow .15s, border-color .15s; }
+    .fn-summary-card.fn-clickable:hover, .fn-card.fn-clickable:hover { transform: translateY(-2px); border-color: var(--fn-bronze); box-shadow: 0 10px 26px rgba(0,0,0,.08); }
+    .fn-chart-col.fn-clickable:hover .fn-chart-label { color: var(--fn-bronze); }
+    .fn-chart-col.fn-clickable:hover { background: color-mix(in srgb, var(--fn-bronze) 8%, transparent); border-radius: 8px; }
+    .fn-dt-overlay { position: fixed; inset: 0; z-index: 500; background: rgba(10,12,15,.5); backdrop-filter: blur(3px); display: flex; align-items: flex-start; justify-content: center; padding: 5vh 16px; overflow-y: auto; }
+    .fn-dt-box { width: 100%; max-width: 980px; background: var(--fn-bg); border: 1px solid var(--fn-border); border-radius: 16px; box-shadow: 0 24px 60px rgba(0,0,0,.35); animation: fnDtIn .22s ease; }
+    @keyframes fnDtIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+    .fn-dt-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 18px 24px 12px; border-bottom: 1px solid var(--fn-border); }
+    .fn-dt-title { font-size: 1.125rem; font-weight: 700; } .fn-dt-sub { font-size: 0.8125rem; color: var(--fn-muted); margin-top: 2px; }
+    .fn-dt-x { background: none; border: none; font-size: 1.6rem; line-height: 1; color: var(--fn-muted); cursor: pointer; }
+    .fn-dt-body { padding: 16px 24px 22px; }
+    .fn-dt-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .fn-dt-stat { background: var(--fn-surface); border: 1px solid var(--fn-border); border-radius: 12px; padding: 10px 14px; }
+    .fn-dt-stat b { display: block; font: 700 1.05rem 'JetBrains Mono', monospace; } .fn-dt-stat span { font-size: 0.6875rem; color: var(--fn-muted); text-transform: uppercase; letter-spacing: .04em; }
+    .fn-dt-stat.pos b { color: var(--fn-green); } .fn-dt-stat.neg b { color: var(--fn-red); }
+    .fn-dt-sec { margin-top: 16px; } .fn-dt-sec h4 { margin: 0 0 8px; font-size: 0.875rem; display: flex; justify-content: space-between; gap: 10px; }
+    .fn-dt-wrap { overflow-x: auto; border: 1px solid var(--fn-border); border-radius: 10px; background: var(--fn-surface); }
+    .fn-dt-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; min-width: 760px; } .fn-dt-table th { text-align: left; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: .04em; color: var(--fn-muted); padding: 8px 10px; border-bottom: 1px solid var(--fn-border); white-space: nowrap; }
+    .fn-dt-table td { padding: 8px 10px; border-bottom: 1px solid var(--fn-border); vertical-align: top; } .fn-dt-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .fn-dt-table .pos { color: var(--fn-green); } .fn-dt-table .neg { color: var(--fn-red); } .fn-dt-empty { padding: 18px; text-align: center; color: var(--fn-muted); font-size: 0.8125rem; }
+    .fn-dt-note { font-size: 0.75rem; color: var(--fn-muted); margin-top: 6px; }
     .fn-vmsg { min-height: 0; margin-top: 4px; font-size: 0.6875rem; color: var(--fn-muted); }
     .fn-vmsg.ok { color: var(--fn-green); } .fn-vmsg.bad { color: var(--fn-red); }
     .fn-hint { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--fn-bronze); }
@@ -426,12 +447,12 @@
             '<div class="fn-section" id="sec-overview">' +
               '<div class="fn-summary-grid" id="fnSummaryGrid"></div>' +
               '<div class="fn-dash-row">' +
-                '<div class="fn-card" style="margin-bottom:0;"><div class="fn-card-head"><div class="fn-card-title">Dòng tiền 6 tháng gần nhất</div></div><div class="fn-chart-wrap" id="fnChartWrap"></div><div class="fn-legend"><span><i style="background:var(--fn-green)"></i>Thu</span><span><i style="background:var(--fn-red)"></i>Chi</span></div></div>' +
-                '<div class="fn-card" style="margin-bottom:0;"><div class="fn-card-head"><div class="fn-card-title">Cần chú ý</div></div><div class="fn-attention-list" id="fnAttentionList"></div></div>' +
+                '<div class="fn-card" style="margin-bottom:0;"><div class="fn-card-head"><div class="fn-card-title">Dòng tiền 6 tháng gần nhất</div><div class="fn-card-desc" style="margin:0;">Bấm vào từng tháng để xem chi tiết</div></div><div class="fn-chart-wrap" id="fnChartWrap"></div><div class="fn-legend"><span><i style="background:var(--fn-green)"></i>Thu</span><span><i style="background:var(--fn-red)"></i>Chi</span></div></div>' +
+                '<div class="fn-card fn-clickable" data-detail="attention" style="margin-bottom:0;" title="Bấm để xem chi tiết"><div class="fn-card-head"><div class="fn-card-title">Cần chú ý</div></div><div class="fn-attention-list" id="fnAttentionList"></div></div>' +
               '</div>' +
               '<div class="fn-dash-row split">' +
-                '<div class="fn-card" style="margin-bottom:0;"><div class="fn-card-head"><div><div class="fn-card-title">Cơ cấu chi phí</div><div class="fn-card-desc">Theo danh mục, tháng đang chọn</div></div></div><div class="fn-donut-wrap" id="fnDonutWrap"></div></div>' +
-                '<div class="fn-card" style="margin-bottom:0;"><div class="fn-card-head"><div><div class="fn-card-title">Top danh mục chi phí</div><div class="fn-card-desc">Tháng đang chọn</div></div></div><div class="fn-rank-list" id="fnRankList"></div></div>' +
+                '<div class="fn-card fn-clickable" data-detail="costs" style="margin-bottom:0;" title="Bấm để xem chi tiết"><div class="fn-card-head"><div><div class="fn-card-title">Cơ cấu chi phí</div><div class="fn-card-desc">Theo danh mục, tháng đang chọn</div></div></div><div class="fn-donut-wrap" id="fnDonutWrap"></div></div>' +
+                '<div class="fn-card fn-clickable" data-detail="costs" style="margin-bottom:0;" title="Bấm để xem chi tiết"><div class="fn-card-head"><div><div class="fn-card-title">Top danh mục chi phí</div><div class="fn-card-desc">Tháng đang chọn</div></div></div><div class="fn-rank-list" id="fnRankList"></div></div>' +
               '</div>' +
             '</div>' +
 
@@ -943,10 +964,10 @@
       var idlePool = sumByType(all, 'idle') + sumByType(all, 'undisbursed');
 
       document.getElementById('fnSummaryGrid').innerHTML =
-        summaryCard('Lãi/Lỗ tháng ' + month, pnlMonth, pnlMonth >= 0 ? 'pos' : 'neg', ICONS.pnl, 'bronze', month) +
-        summaryCard('Dòng tiền tồn (luỹ kế)', cashFlowAllTime, cashFlowAllTime >= 0 ? 'pos' : 'neg', ICONS.cash, 'green', 'Tất cả thời gian') +
-        summaryCard('Vay nợ hiện tại', debtOutstanding, debtOutstanding > 0 ? 'neg' : 'pos', ICONS.debt, 'red', debtOutstanding > 0 ? 'Còn nợ' : 'Đã trả hết') +
-        summaryCard('Ứ đọng / chưa giải ngân', idlePool, 'neutral', ICONS.idle, 'bronze', 'Cần theo dõi');
+        summaryCard('Lãi/Lỗ tháng ' + month, pnlMonth, pnlMonth >= 0 ? 'pos' : 'neg', ICONS.pnl, 'bronze', month, 'pnl') +
+        summaryCard('Dòng tiền tồn (luỹ kế)', cashFlowAllTime, cashFlowAllTime >= 0 ? 'pos' : 'neg', ICONS.cash, 'green', 'Tất cả thời gian', 'cash') +
+        summaryCard('Vay nợ hiện tại', debtOutstanding, debtOutstanding > 0 ? 'neg' : 'pos', ICONS.debt, 'red', debtOutstanding > 0 ? 'Còn nợ' : 'Đã trả hết', 'debt') +
+        summaryCard('Ứ đọng / chưa giải ngân', idlePool, 'neutral', ICONS.idle, 'bronze', 'Cần theo dõi', 'idle');
 
       renderChart('fnChartWrap', all, 6, 0);
       renderAttention('fnAttentionList', { pnlMonth: pnlMonth, month: month, debtOutstanding: debtOutstanding, idlePool: idlePool, cashFlowAllTime: cashFlowAllTime });
@@ -954,8 +975,83 @@
       renderRankList(monthEntries);
     }
 
-    function summaryCard(label, value, cls, icon, iconCls, tag) {
-      return '<div class="fn-summary-card">' +
+    // ============================== CHI TIẾT KHI BẤM VÀO TỔNG QUAN ==============================
+    function dtClose() { var o = document.getElementById('fnDetail'); if (o) o.remove(); }
+    function dtOpen(title, sub, stats, bodyHtml) {
+      dtClose();
+      var ov = document.createElement('div'); ov.className = 'fn-dt-overlay'; ov.id = 'fnDetail';
+      ov.innerHTML = '<div class="fn-dt-box" role="dialog" aria-modal="true"><div class="fn-dt-head"><div><div class="fn-dt-title">' + title + '</div><div class="fn-dt-sub">' + sub + '</div></div><button type="button" class="fn-dt-x" aria-label="Đóng">&times;</button></div><div class="fn-dt-body">' +
+        (stats && stats.length ? '<div class="fn-dt-stats">' + stats.map(function (s) { return '<div class="fn-dt-stat ' + (s[2] || '') + '"><b>' + s[1] + '</b><span>' + s[0] + '</span></div>'; }).join('') + '</div>' : '') + bodyHtml + '</div></div>';
+      document.body.appendChild(ov);
+      ov.addEventListener('mousedown', function (e) { if (e.target === ov) dtClose(); });
+      ov.querySelector('.fn-dt-x').addEventListener('click', dtClose);
+    }
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') dtClose(); });
+    function dtSign(e) { var s = TYPES[e.type] ? TYPES[e.type].cashSign : 0; return s > 0 ? 'pos' : (s < 0 ? 'neg' : ''); }
+    function dtTable(list, withBalance, limit) {
+      if (!list.length) return '<div class="fn-dt-empty">Không có giao dịch nào.</div>';
+      var shown = limit ? list.slice(0, limit) : list, bal = 0;
+      var rows = shown.map(function (e) {
+        var t = TYPES[e.type] || { label: e.type }, amt = Number(e.amount) || 0;
+        return '<tr><td>' + escapeHtml(e.date || '') + '</td><td style="font-family:JetBrains Mono,monospace;font-size:.75rem;">' + escapeHtml(e.voucherNo || '—') + '</td><td>' + escapeHtml(t.label) + '</td><td>' + escapeHtml(e.category || '—') + '</td><td>' + (e.counterAccount ? escapeHtml((/^\d{3,4}/.exec(e.counterAccount) || [e.counterAccount])[0]) : '—') + '</td><td>' + escapeHtml(e.description || '') + '</td><td>' + escapeHtml(e.actor || '') + '</td><td class="num ' + dtSign(e) + '">' + fmt(amt) + '</td></tr>';
+      }).join('');
+      return '<div class="fn-dt-wrap"><table class="fn-dt-table"><thead><tr><th>Ngày</th><th>Số phiếu</th><th>Loại</th><th>Danh mục</th><th>TK đối ứng</th><th>Mô tả</th><th>Người GD</th><th class="num" style="text-align:right;">Số tiền</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+        (limit && list.length > limit ? '<div class="fn-dt-note">Hiển thị ' + limit + ' / ' + list.length + ' giao dịch mới nhất — xem đầy đủ ở mục Giao dịch.</div>' : '');
+    }
+    function dtByDate(list) { return list.slice().sort(function (a, b) { return String(b.date || '').localeCompare(String(a.date || '')); }); }
+    function dtSection(title, right, html) { return '<div class="fn-dt-sec"><h4><span>' + title + '</span><span style="font-weight:500;color:var(--fn-muted);">' + (right || '') + '</span></h4>' + html + '</div>'; }
+    function showDetail(kind) {
+      var all = TaskManager.getFinanceEntries(), month = monthInput.value || currentMonthStr();
+      var me = all.filter(function (e) { return e.month === month; });
+      var pos = function (n) { return n >= 0 ? 'pos' : 'neg'; };
+      if (kind === 'pnl') {
+        var rev = sumByType(me, 'revenue'), exp = sumByType(me, 'expense'), bon = sumByType(me, 'bonus'), pen = sumByType(me, 'penalty'), pnl = rev - exp - bon + pen;
+        var html = ['revenue', 'expense', 'bonus', 'penalty'].map(function (ty) {
+          var l = dtByDate(me.filter(function (e) { return e.type === ty; }));
+          return dtSection(TYPES[ty].label, fmt(sumByType(me, ty)) + ' ₫ · ' + l.length + ' giao dịch', dtTable(l, false, 60));
+        }).join('');
+        dtOpen('Lãi/Lỗ tháng ' + month, 'Lãi/lỗ = Doanh thu − Chi phí − Thưởng + Phạt thu về', [['Doanh thu', fmt(rev), 'pos'], ['Chi phí', fmt(exp), 'neg'], ['Thưởng nhân viên', fmt(bon), 'neg'], ['Phạt thu về', fmt(pen), 'pos'], ['Lãi/lỗ', fmt(pnl), pos(pnl)], ['Biên lãi', rev ? Math.round(pnl / rev * 100) + '%' : '—', pos(pnl)]], html);
+      } else if (kind === 'cash') {
+        var byM = {}, tot = 0, tin = 0, tout = 0, b111 = 0, b112 = 0;
+        all.forEach(function (e) { var s = TYPES[e.type] ? TYPES[e.type].cashSign : 0, a = (Number(e.amount) || 0) * s; tot += a; if (s > 0) tin += a; else tout -= a; if (String(e.account || '111') === '112') b112 += a; else b111 += a; var m = e.month || String(e.date || '').slice(0, 7); var o = byM[m] = byM[m] || { i: 0, o: 0 }; if (s > 0) o.i += a; else o.o -= a; });
+        var run = 0, mrows = Object.keys(byM).sort().map(function (m) { var o = byM[m]; run += o.i - o.o; return '<tr><td>' + m + '</td><td class="num pos">' + fmt(o.i) + '</td><td class="num neg">' + fmt(o.o) + '</td><td class="num ' + pos(o.i - o.o) + '">' + fmt(o.i - o.o) + '</td><td class="num ' + pos(run) + '">' + fmt(run) + '</td></tr>'; });
+        var cashList = dtByDate(all.filter(function (e) { return TYPES[e.type] && TYPES[e.type].cashSign !== 0; }));
+        dtOpen('Dòng tiền tồn (luỹ kế)', 'Tổng tiền vào − tổng tiền ra của mọi giao dịch có ảnh hưởng dòng tiền', [['Tồn quỹ hiện tại', fmt(tot), pos(tot)], ['TK 111 Tiền mặt', fmt(b111), pos(b111)], ['TK 112 Ngân hàng', fmt(b112), pos(b112)], ['Tổng thu', fmt(tin), 'pos'], ['Tổng chi', fmt(tout), 'neg']],
+          dtSection('Theo tháng', '', mrows.length ? '<div class="fn-dt-wrap"><table class="fn-dt-table" style="min-width:520px;"><thead><tr><th>Tháng</th><th class="num" style="text-align:right;">Thu</th><th class="num" style="text-align:right;">Chi</th><th class="num" style="text-align:right;">Chênh lệch</th><th class="num" style="text-align:right;">Tồn luỹ kế</th></tr></thead><tbody>' + mrows.join('') + '</tbody></table></div>' : '<div class="fn-dt-empty">Chưa có dữ liệu.</div>') +
+          dtSection('Giao dịch gần đây', '', dtTable(cashList, false, 30)));
+      } else if (kind === 'debt') {
+        var loans = all.filter(function (e) { return e.type === 'loan'; }), reps = all.filter(function (e) { return e.type === 'repayment'; });
+        var L = sumByType(all, 'loan'), R = sumByType(all, 'repayment');
+        dtOpen('Vay nợ hiện tại', 'Dư nợ = tổng vay nhận − tổng đã trả', [['Tổng đã vay', fmt(L), 'neg'], ['Đã trả', fmt(R), 'pos'], ['Còn nợ', fmt(L - R), L - R > 0 ? 'neg' : 'pos'], ['Số khoản vay', String(loans.length)], ['Số lần trả', String(reps.length)]],
+          dtSection('Các khoản vay nhận', fmt(L) + ' ₫', dtTable(dtByDate(loans), false, 60)) + dtSection('Các lần trả nợ', fmt(R) + ' ₫', dtTable(dtByDate(reps), false, 60)));
+      } else if (kind === 'idle') {
+        var idl = all.filter(function (e) { return e.type === 'idle'; }), und = all.filter(function (e) { return e.type === 'undisbursed'; });
+        dtOpen('Ứ đọng / chưa giải ngân', 'Tiền nằm chờ, chưa đưa vào hoạt động — cần theo dõi để không bị "chết" vốn', [['Tiền ứ đọng', fmt(sumByType(all, 'idle')), 'neutral'], ['Chưa giải ngân', fmt(sumByType(all, 'undisbursed')), 'neutral'], ['Tổng', fmt(sumByType(all, 'idle') + sumByType(all, 'undisbursed'))]],
+          dtSection('Tiền ứ đọng', '', dtTable(dtByDate(idl), false, 60)) + dtSection('Chưa giải ngân', '', dtTable(dtByDate(und), false, 60)));
+      } else if (kind.indexOf('month:') === 0) {
+        var m = kind.slice(6), ml = dtByDate(all.filter(function (e) { return e.month === m; })), rv = sumByType(ml, 'revenue'), ex = sumByType(ml, 'expense') + sumByType(ml, 'bonus');
+        dtOpen('Chi tiết tháng ' + m, ml.length + ' giao dịch', [['Doanh thu', fmt(rv), 'pos'], ['Chi (chi phí + thưởng)', fmt(ex), 'neg'], ['Chênh lệch', fmt(rv - ex), pos(rv - ex)]],
+          dtSection('Giao dịch trong tháng', '', dtTable(ml, false, 200)));
+      } else if (kind === 'costs') {
+        var ce = me.filter(function (e) { return e.type === 'expense'; }), total = sumByType(ce, 'expense'), cats = {};
+        ce.forEach(function (e) { var k = e.category || 'Khác'; (cats[k] = cats[k] || []).push(e); });
+        var keys = Object.keys(cats).sort(function (a, b) { return sumByType(cats[b], 'expense') - sumByType(cats[a], 'expense'); });
+        dtOpen('Chi phí theo danh mục — tháng ' + month, 'Danh mục lớn nhất xếp trước', [['Tổng chi phí', fmt(total), 'neg'], ['Số danh mục', String(keys.length)], ['Số giao dịch', String(ce.length)]],
+          keys.length ? keys.map(function (k) { var s = sumByType(cats[k], 'expense'); return dtSection(escapeHtml(k), fmt(s) + ' ₫ · ' + (total ? Math.round(s / total * 100) : 0) + '%', dtTable(dtByDate(cats[k]), false, 40)); }).join('') : '<div class="fn-dt-empty">Chưa có chi phí trong tháng này.</div>');
+      } else if (kind === 'attention') {
+        var pl = sumByType(me, 'revenue') - sumByType(me, 'expense') - sumByType(me, 'bonus') + sumByType(me, 'penalty'), dbt = sumByType(all, 'loan') - sumByType(all, 'repayment'), idp = sumByType(all, 'idle') + sumByType(all, 'undisbursed');
+        var cash = all.reduce(function (s, e) { return s + (TYPES[e.type] ? TYPES[e.type].cashSign : 0) * (Number(e.amount) || 0); }, 0);
+        var nodes = document.getElementById('fnAttentionList').innerHTML;
+        dtOpen('Cần chú ý', 'Các chỉ số hệ thống theo dõi và đưa lên cảnh báo', [['Lãi/lỗ tháng ' + month, fmt(pl), pos(pl)], ['Tồn quỹ', fmt(cash), pos(cash)], ['Dư nợ', fmt(dbt), dbt > 0 ? 'neg' : 'pos'], ['Ứ đọng', fmt(idp), 'neutral']],
+          dtSection('Cảnh báo hiện tại', '', '<div class="fn-attention-list">' + nodes + '</div>') +
+          dtSection('Hệ thống cảnh báo khi', '', '<div class="fn-dt-note" style="line-height:1.7;">• Lãi/lỗ tháng âm (chi nhiều hơn thu) · • Tồn quỹ âm (tiền mặt/ngân hàng không đủ chi) · • Còn dư nợ vay · • Có khoản ứ đọng / chưa giải ngân lớn. Xem thêm mục Sức khỏe tài chính và Rủi ro để có chỉ số chi tiết.</div>'));
+      }
+    }
+    document.addEventListener('click', function (e) { var el = e.target.closest('[data-detail]'); if (el && document.getElementById('fnBody')) showDetail(el.getAttribute('data-detail')); });
+    document.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[data-detail]')) { e.preventDefault(); showDetail(e.target.getAttribute('data-detail')); } });
+
+    function summaryCard(label, value, cls, icon, iconCls, tag, detail) {
+      return '<div class="fn-summary-card' + (detail ? ' fn-clickable' : '') + '"' + (detail ? ' data-detail="' + detail + '" tabindex="0" role="button" title="Bấm để xem chi tiết"' : '') + '>' +
         '<div class="fn-summary-top">' +
           '<div class="fn-summary-icon ' + iconCls + '">' + icon + '</div>' +
           (tag ? '<span class="fn-summary-tag">' + escapeHtml(tag) + '</span>' : '') +
@@ -997,7 +1093,7 @@
         var rH = Math.max(3, Math.round((d.revenue / max) * maxBarPx));
         var eH = Math.max(3, Math.round((d.expense / max) * maxBarPx));
         var fcls = d.forecast ? ' forecast' : '';
-        return '<div class="fn-chart-col">' +
+        return '<div class="fn-chart-col fn-clickable" data-detail="month:' + d.month + '" title="Bấm để xem chi tiết tháng ' + d.month + '">' +
           '<div class="fn-chart-bars">' +
             '<div class="fn-chart-bar revenue' + fcls + '" style="height:' + rH + 'px;" title="Thu: ' + fmt(d.revenue) + '">' +
               (d.revenue > 0 ? '<span class="fn-chart-bar-value">' + fmtShort(d.revenue) + '</span>' : '') +
