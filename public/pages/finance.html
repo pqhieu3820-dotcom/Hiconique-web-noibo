@@ -79,17 +79,15 @@
     .fn-dash-row.split { grid-template-columns: 1fr 1.3fr; }
     .fn-dash-row.thirds { grid-template-columns: repeat(3, 1fr); }
 
-    .fn-chart-wrap { display: flex; align-items: flex-end; gap: 12px; height: 220px; padding: 28px 20px 12px; overflow-x: auto; }
-    .fn-chart-col { flex: 1; min-width: 104px; display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; justify-content: flex-end; }
-    .fn-chart-bars { position: relative; display: flex; gap: 26px; align-items: flex-end; height: 100%; }
-    .fn-chart-bar { width: 18px; border-radius: 4px 4px 0 0; position: relative; transition: opacity 0.15s; }
+    .fn-chart-wrap { display: flex; align-items: flex-end; gap: 12px; height: 240px; padding: 44px 20px 12px; overflow-x: auto; overflow-y: hidden; }
+    .fn-chart-col { flex: 1; min-width: 96px; display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; justify-content: flex-end; }
+    .fn-chart-bars { position: relative; display: flex; gap: 8px; align-items: flex-end; height: 100%; }
+    .fn-chart-bar { width: 34px; border-radius: 4px 4px 0 0; position: relative; transition: opacity 0.15s; }
     .fn-chart-bar:hover { opacity: 0.75; }
     .fn-chart-bar.revenue { background: linear-gradient(180deg, var(--fn-green), color-mix(in srgb, var(--fn-green) 70%, black)); }
     .fn-chart-bar.expense { background: linear-gradient(180deg, var(--fn-red), color-mix(in srgb, var(--fn-red) 70%, black)); }
     .fn-chart-bar.forecast { opacity: 0.45; background-image: repeating-linear-gradient(135deg, var(--fn-bronze), var(--fn-bronze) 3px, transparent 3px, transparent 6px); }
-    .fn-chart-bar-value { z-index: 3; position: absolute; top: -18px; left: 50%; transform: translateX(-50%); font-size: 0.625rem; font-family: 'JetBrains Mono', monospace; color: var(--fn-muted); white-space: nowrap; }
-    .fn-chart-bar.revenue .fn-chart-bar-value { left: auto; right: 50%; transform: none; padding-right: 3px; }
-    .fn-chart-bar.expense .fn-chart-bar-value { left: 50%; transform: none; padding-left: 3px; }
+    .fn-chart-bar-value { z-index: 3; position: absolute; top: -17px; left: 50%; transform: translateX(-50%); font-size: 0.6875rem; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: var(--fn-muted); white-space: nowrap; }
     .fn-chart-label { font-size: 0.75rem; color: var(--fn-muted); font-weight: 600; white-space: nowrap; }
     .fn-chart-label.is-forecast { color: var(--fn-bronze); }
     .fn-legend { display: flex; gap: 16px; padding: 0 24px 18px; font-size: 0.75rem; color: var(--fn-muted); flex-wrap: wrap; }

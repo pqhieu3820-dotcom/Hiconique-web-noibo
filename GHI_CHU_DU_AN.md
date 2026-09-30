@@ -1856,3 +1856,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (au) Sửa: mũi tên thanh cuộn ngang vẫn hiện
 - Nguyên nhân: Chrome mới bỏ qua `::-webkit-scrollbar-*` khi đã khai báo `scrollbar-width/scrollbar-color` → thanh cuộn gốc (có mũi tên) hiện lại. Đã bỏ 2 thuộc tính chuẩn đó khỏi `.fn-sidebar` (chỉ giữ cho Firefox qua `@supports not selector(::-webkit-scrollbar)`). Quy tắc chung: muốn tự vẽ thanh cuộn webkit thì KHÔNG đặt scrollbar-width/color. sw v65.
+
+### 2026-09-30 (av) Biểu đồ dòng tiền: làm lại nhãn giá trị
+- finance.html: bỏ kiểu lệch trái/phải; cột rộng 34px, cách nhau 8px, nhãn số căn GIỮA ngay trên đầu mỗi cột (vừa bề rộng cột nên không đè nhau), vùng biểu đồ cao 240px + padding trên 44px để nhãn cột cao nhất không bị cắt. sw v66.
