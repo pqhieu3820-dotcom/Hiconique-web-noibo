@@ -75,6 +75,8 @@
       font-family: 'JetBrains Mono', monospace; font-size: 0.9375rem; color: var(--pl-text);
     }
     .pl-field-value.muted { color: var(--pl-muted); font-family: inherit; }
+    /* Ô dữ liệu tự động (không nhập tay được) — viền đỏ để phân biệt với ô nhập */
+    .pl-form-card .pl-field-value { border: 1px solid #C75B5B !important; }
     .pl-input {
       width: 100%; padding: 11px 14px; border-radius: 10px; border: 1px solid var(--pl-border);
       background: var(--pl-bg); color: var(--pl-text); font-family: 'JetBrains Mono', monospace; font-size: 0.9375rem;
@@ -312,11 +314,11 @@
           '</div>' +
           '<div class="pl-grid">' +
             '<div><span class="pl-field-label">Thưởng khác</span><input type="text" inputmode="numeric" class="pl-input" id="plOtherBonus" data-money-input value="0"></div>' +
-            '<div style="grid-column: span 2;"><span class="pl-field-label">Ghi chú thưởng khác</span><input type="text" class="pl-input pl-note-input" id="plOtherBonusNote" placeholder="Ví dụ: thưởng KPI quý…"></div>' +
+            '<div style="grid-column: span 2;"><span class="pl-field-label">Ghi chú thưởng khác</span><input type="text" class="pl-input pl-note-input" id="plOtherBonusNote"></div>' +
           '</div>' +
           '<div class="pl-grid">' +
             '<div><span class="pl-field-label">Khấu trừ</span><input type="text" inputmode="numeric" class="pl-input" id="plDeduction" data-money-input value="0"></div>' +
-            '<div style="grid-column: span 2;"><span class="pl-field-label">Ghi chú khấu trừ</span><input type="text" class="pl-input pl-note-input" id="plDeductionNote" placeholder="Ví dụ: tạm ứng, BHXH…"></div>' +
+            '<div style="grid-column: span 2;"><span class="pl-field-label">Ghi chú khấu trừ</span><input type="text" class="pl-input pl-note-input" id="plDeductionNote"></div>' +
           '</div>' +
           '<div class="pl-breakdown">' +
             '<div class="pl-breakdown-row"><span>Lương cơ bản</span><span id="bdBase">' + fmt(baseSalary) + '</span></div>' +

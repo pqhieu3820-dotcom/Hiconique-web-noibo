@@ -1978,3 +1978,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (cf) Đổi chữ trong Setup giờ làm việc
 - timesheet.html: "…chấm công trước 07:35 vẫn OK" → "…vẫn chấp nhận". sw v102.
+
+### 2026-09-30 (cg) Phiếu lương: ô tự động viền đỏ + bỏ placeholder ví dụ
+- payslip.html: các ô dữ liệu cố định không nhập tay (Ngày công, Tổng giờ làm, Giờ OT tự động, Đơn giá OT/giờ, Hoa hồng dự án tự động) có viền đỏ (`.pl-form-card .pl-field-value`) để phân biệt với ô nhập; bỏ chữ mờ ví dụ ở "Ghi chú thưởng khác" và "Ghi chú khấu trừ". sw v103.
