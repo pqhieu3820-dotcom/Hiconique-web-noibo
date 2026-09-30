@@ -481,3 +481,41 @@ var Offline = (function () {
   setInterval(render, 1000);
 })();
 
+
+/* ===== 2026-09-30: hiển thị NGÀY THÁNG toàn web dạng dd/mm/yyyy (30/09/2026) =====
+   Dữ liệu lưu/so sánh vẫn là yyyy-mm-dd; chỉ đổi CHỮ hiển thị (text node) — không đụng ô nhập, thuộc tính, script/style.
+   Muốn giữ nguyên 1 vùng: đặt thuộc tính data-raw-date trên phần tử đó. */
+(function () {
+  'use strict';
+  var RE = /\b(20\d{2}|19\d{2})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])\b(?![-_])/g;
+  var SKIP = { SCRIPT: 1, STYLE: 1, TEXTAREA: 1, INPUT: 1, NOSCRIPT: 1, CODE: 1, PRE: 1 };
+  function convert(text) { return text.replace(RE, function (m, y, mo, d) { return d + '/' + mo + '/' + y; }); }
+  function walk(root) {
+    if (!root) return;
+    if (root.nodeType === 3) { fix(root); return; }
+    if (root.nodeType !== 1 || SKIP[root.tagName] || (root.closest && root.closest('[data-raw-date]'))) return;
+    var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: function (n) {
+        var p = n.parentNode;
+        if (!p || SKIP[p.tagName] || (p.isContentEditable) || (p.closest && p.closest('[data-raw-date],script,style,textarea'))) return NodeFilter.FILTER_REJECT;
+        return RE.test(n.nodeValue) ? (RE.lastIndex = 0, NodeFilter.FILTER_ACCEPT) : (RE.lastIndex = 0, NodeFilter.FILTER_REJECT);
+      }
+    });
+    var list = [], n; while ((n = w.nextNode())) list.push(n);
+    list.forEach(fix);
+  }
+  function fix(n) { var v = n.nodeValue; RE.lastIndex = 0; if (RE.test(v)) { RE.lastIndex = 0; var nv = convert(v); if (nv !== v) n.nodeValue = nv; } RE.lastIndex = 0; }
+  var pending = false, queue = [];
+  function flush() { pending = false; var q = queue; queue = []; q.forEach(walk); }
+  function schedule(node) { queue.push(node); if (!pending) { pending = true; (window.requestAnimationFrame || setTimeout)(flush); } }
+  function start() {
+    walk(document.body);
+    new MutationObserver(function (muts) {
+      muts.forEach(function (m) {
+        if (m.type === 'childList') m.addedNodes.forEach(function (a) { schedule(a); });
+        else if (m.type === 'characterData') schedule(m.target);
+      });
+    }).observe(document.body, { childList: true, subtree: true, characterData: true });
+  }
+  if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+})();
