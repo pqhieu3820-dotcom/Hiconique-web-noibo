@@ -1894,3 +1894,7 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (bg) Chip đồng bộ: "còn khoảng Xs" xuống dòng riêng
 - offline.js: khi đang lưu, dòng thời gian còn lại tách thành dòng riêng `.l1b` (màu đồng, đậm vừa) dưới dòng "Đang lưu lên Google Sheet… N thao tác", cập nhật mỗi giây không làm nháy vòng xoay. sw v77.
+
+### 2026-09-30 (bh) Chip đồng bộ: icon lỗi "!" có animation + nền trong ~98%
+- offline.js: icon lỗi là SVG — vòng tròn bật lên, dấu "!" tự vẽ (nét dọc rồi chấm nảy), lắc nhẹ 1 lần, sau đó vòng sóng đỏ lan ra lặp lại để gây chú ý; nét dày 3.4, sắc nét ở mọi tỉ lệ. Giảm chuyển động → hiện tĩnh.
+- Nền chip gần như trong hoàn toàn (trắng 0–2%, blur 2px), chỉ còn viền/bóng để nhận ra khung. sw v78.
