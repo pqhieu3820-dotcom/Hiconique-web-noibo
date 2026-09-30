@@ -1975,3 +1975,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 - **Nguyên nhân lưu giờ làm việc không được**: server đọc 6 cột giờ (morningStart/End, afternoonStart/End, morningAutoCheckoutTime, afternoonAutoCheckoutTime) thành `'1899-12-30'` (Sheets tự đổi '07:30' thành kiểu giờ; các cột này thiếu trong `TIME_ONLY_FIELDS` nên bị định dạng như ngày). Web nhận giá trị hỏng → form hiện sai / mở lại không thấy giờ vừa lưu, và tính đi muộn/về sớm có thể sai. Đã: thêm 6 cột vào `TIME_ONLY_FIELDS` (**Apps Script v109** đã deploy) + client `getWorkSchedule` (task-data.js) dùng mặc định nếu giá trị không đúng HH:MM. **Dữ liệu đang lưu trong Sheet vẫn là chữ '1899-12-30' → Founder cần mở Setup thời gian làm việc, nhập lại giờ và bấm Lưu 1 lần** để ghi lại đúng.
 - Đoạn cuối form bỏ "(VD 18:00)".
 - Khung trạng thái đồng bộ (offline.js): bọc `window.fetch` — mọi yêu cầu GHI trực tiếp tới Apps Script (action save/add/update/delete/…, hoặc POST) không qua hàng đợi (VD Lưu giờ làm việc, cấp quyền…) cũng hiện "Đang lưu… → Đã đồng bộ / lỗi". Bỏ qua khi hàng đợi không rỗng để không đếm đôi. Lưu ý `GSHEETS_CONFIG` là `const` (không nằm trên `window`). Sửa nhãn "nhiều nhất: undefined" (chỉ hiện khi hàng đợi > 3 mục). sw v101.
+
+### 2026-09-30 (cf) Đổi chữ trong Setup giờ làm việc
+- timesheet.html: "…chấm công trước 07:35 vẫn OK" → "…vẫn chấp nhận". sw v102.
