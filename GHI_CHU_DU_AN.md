@@ -1821,3 +1821,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (al) Thanh menu ngang Sổ tài chính (màn hẹp)
 - Ẩn thanh cuộn xám chạm viền, thêm mờ dần hai đầu (mask) báo còn nội dung, cuộn có snap; padding 8×12. sw v56.
+
+### 2026-09-30 (am) Danh sách Danh mục mở sang bên phải ô
+- finance.html `.fn-combo-list`: mở bên phải ô (rộng 300px, cao tối đa 320px), thẻ chứa không còn cắt (`overflow:visible`); màn <900px quay lại mở phía dưới. sw v57.

@@ -132,8 +132,10 @@
     .fn-form-grid.cols5 { grid-template-columns: repeat(5, 1fr); }
     .fn-field-label { display: block; font-size: 0.6875rem; color: var(--fn-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
     .fn-combo { position: relative; }
-    .fn-combo-list { position: absolute; z-index: 60; left: 0; right: 0; top: calc(100% + 6px); max-height: 264px; overflow-y: auto; padding: 6px; background: var(--fn-surface, #fff); border: 1px solid var(--fn-border); border-radius: 12px; box-shadow: 0 14px 34px rgba(0,0,0,0.16); }
+    .fn-combo-list { position: absolute; z-index: 60; left: calc(100% + 10px); top: -6px; width: 300px; max-height: 320px; overflow-y: auto; padding: 6px; background: var(--fn-surface, #fff); border: 1px solid var(--fn-border); border-radius: 12px; box-shadow: 0 14px 34px rgba(0,0,0,0.16); }
     .fn-combo-list[hidden] { display: none; }
+    .fn-card:has(.fn-combo), .fn-card:has(.fn-combo) .fn-form-grid { overflow: visible; }
+    @media (max-width: 900px) { .fn-combo-list { left: 0; top: calc(100% + 6px); width: 100%; } }
     .fn-combo-item { padding: 9px 12px; border-radius: 8px; font-size: 0.8125rem; font-weight: 500; color: var(--fn-text); cursor: pointer; line-height: 1.35; }
     .fn-combo-item:hover { background: rgba(176,141,87,0.14); color: var(--fn-bronze, #B08D57); }
     .fn-combo-empty { padding: 10px 12px; font-size: 0.75rem; color: var(--fn-muted, #7A7568); }
