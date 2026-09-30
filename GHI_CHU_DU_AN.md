@@ -1,3 +1,11 @@
+## ⭐ QUAN TRỌNG — NƠI LƯU FILE CÀI ĐẶT HICONIQUE AGENT (người dùng chốt 2026-09-30)
+
+- **Folder Google Drive**: https://drive.google.com/drive/folders/1lSDuoqhGnGM7Yik1wk6V_N5dTdQlU97J?usp=sharing — tên "Folder cài đặt HICONIQUE APP PC", chủ sở hữu **hiconique.group@gmail.com**; trên máy dev là ổ **J:** → `J:\My Drive\DỮ LIỆU HICONIQUE\DỮ LIỆU GỐC (KHÔNG CHIA SẺ)\Folder cài đặt HICONIQUE APP PC`.
+- **Quy tắc**: mỗi bản Agent mới → copy `HiconiqueAgentSetup-v<ver>.exe` vào folder này (`build.py` tự copy khi ổ J: có mặt; nếu báo CẢNH BÁO thì upload tay). **Mọi nơi cần "link tải file cài" (nút tải trang Theo dõi hiệu suất, hướng dẫn, thông báo…) ghim THẲNG link folder này** — không dùng link GitHub nữa cho người dùng (GitHub chậm ~20–100 KB/s ở VN). Khỏi phải tính toán tốc độ tải.
+- GitHub Releases (`agent-v<ver>`) + `public/agent/latest.json` **vẫn giữ** chỉ để Agent TỰ CẬP NHẬT (cần link tải trực tiếp có kiểm SHA-256; Drive file lớn bị chặn bằng trang quét virus nên không dùng được cho bước này).
+- ⚠ Quyền chia sẻ hiện là "Bất kỳ ai có đường liên kết = **Người chỉnh sửa**" → ai có link cũng xoá/thay được file cài. Nên đổi thành **Người xem** (chỉ chủ + pqhieu3820 chỉnh sửa) — tránh bị tráo file cài độc hại.
+- Bản đã có trong folder: `HiconiqueAgentSetup-v2.0.6.exe` (69,6MB, chưa đăng release GitHub).
+
 # Ghi chú dự án — đọc trước khi làm việc
 
 File này tồn tại để không phải hỏi lại các thông tin dưới đây mỗi khi đổi máy hoặc mở đoạn
