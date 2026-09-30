@@ -37,6 +37,14 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
 - (2026-09-30) Viết lại đoạn mô tả đầu trang Tài sản & vật tư (`equipment.html`, `.subpage-lede`) gọn hơn, 2 câu, gom nhóm tài sản.
 
+### Phiên 2026-09-30 (s) — Theo dõi hiệu suất "trống trơn": nguyên nhân + cập nhật gần thời gian thực; khung Liquid Glass toàn web
+
+- **Vì sao trang Theo dõi hiệu suất hiện "—" / "Chưa có dữ liệu ứng dụng" dù Sheet có đủ dữ liệu** (đã đối chiếu: NS-Hoạt động 15 dòng, NS-Ứng dụng 42 dòng, đúng theo người; tải cache đầy đủ thì trang hiện đúng số liệu Hiếu 35 phút/Khánh 8 phút): `fetchFromAPI` bỏ sau **8s** rồi trả `[]`, mà Apps Script lúc nghẽn trả lời 9–13s ⇒ dữ liệu không bao giờ về. Nay timeout **20s**; trang tự **vẽ lại sau khi từng nguồn tải xong** (trước: `loadAppUsage` xong không render lại) và làm mới mỗi **30s** (trước 120s; hộp chi tiết mở vẫn cập nhật).
+- **Không chờ hết ngày**: Hub ghi hoạt động mỗi **60s** (`ACT_FLUSH_MS` 300000→60000); **Agent 2.0.5** gửi mỗi **2 phút** (`flushMinutes` 5→2; bản đã build, `HiconiqueAgent-v2.0.5.exe` ở Desktop — CHƯA đăng release, chờ "push"). Server: `upsertAppUsage` nay dùng `upsertRowsBatch_()` (đọc 1 lần, ghi mỗi dòng 1 lệnh, dòng mới chèn 1 khối) thay vòng lặp `updateData` từng dòng (~0,5s/dòng trong ổ khoá) — **Apps Script v100**. Thêm action `deleteStaffActivity` (xoá dòng theo Mã).
+- **"Mã sai" đầu bảng NS-Hoạt động**: 2 dòng `act_NV_T_2026-09-30_q9rh/_o40h` (và `act_TEST_ADMIN_…_t7iz`) là **dữ liệu do phiên kiểm thử của lập trình viên** (tài khoản giả `NV_T`/`TEST_ADMIN` khi thử web) chứ không phải Khánh — đã xoá 3 dòng; các dòng thật đúng theo người (CEO_QH_030800, NV_VK_210593); số liệu tổng hợp theo Mã thành viên, không phụ thuộc tên máy (VD DESKTOP-MJTHJ1K → PC-Pham-Quang-Hieu vẫn gộp chung).
+- **Khung trạng thái Liquid Glass toàn web**: chuyển từ `task-data.js` sang cuối **`offline.js`** (nạp ở MỌI trang, kể cả trang mới tạo sau này chỉ cần có `<script src="/js/offline.js">`); bỏ ngoại lệ trang Chấm công; **trong suốt hơn** (nền trắng .34→.10 / tối .09→.02, blur 16px). sw v39.
+- Lưu ý kiểm thử: khi thử web trên bản thật, KHÔNG dùng mã thành viên thật hay tài khoản giả có ghi dữ liệu (heartbeat/hoạt động Hub tự ghi lên Sheet).
+
 ### Phiên 2026-09-30 (r) — Mã tài sản tự điền, tăng dần, báo trùng, tôn trọng nhập tay
 
 - `equipment.js` `suggestCode()`: mã = `<tiền tố nhóm>-<số lớn nhất hiện có + 1>` (MT-001, MT-002… không lấp chỗ trống nữa nên luôn tăng dần; bỏ qua chính tài sản đang sửa). Ô Mã tự điền khi mở form Thêm mới, khi mở SỬA tài sản chưa có mã (như PC-KETOAN-KHANH), khi đổi nhóm (nếu chưa gõ tay), và khi bấm Lưu mà ô còn trống. Có mã sẵn thì giữ nguyên.

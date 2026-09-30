@@ -243,10 +243,11 @@
     $('smModal').addEventListener('click', function (e) { if (e.target === this) this.classList.remove('active'); });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') $('smModal').classList.remove('active'); });
     render(); reload();
-    setInterval(function () { if (document.visibilityState === 'visible' && !$('smModal').classList.contains('active')) reload(); }, 120000);
+    setInterval(function () { if (document.visibilityState === 'visible') reload(); }, 30000);
   }
   function reload() {
-    if (TM.loadAppUsage) TM.loadAppUsage(function () {});
+    // render lại sau MỖI nguồn tải xong (trước đây ứng dụng tải xong không vẽ lại nên hiện "Chưa có dữ liệu ứng dụng")
+    if (TM.loadAppUsage) TM.loadAppUsage(function () { render(); if ($('smModal').classList.contains('active')) renderAppBox(); });
     if (TM.loadStaffActivity) TM.loadStaffActivity(function () { render(); });
     else render();
   }

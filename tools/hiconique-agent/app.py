@@ -34,7 +34,7 @@ import zipfile
 from ctypes import wintypes
 from datetime import datetime, timezone
 
-VERSION = '2.0.4'
+VERSION = '2.0.5'
 APP_NAME = 'HiconiqueAgent'
 FROZEN = getattr(sys, 'frozen', False)
 BASE = os.path.dirname(os.path.abspath(sys.executable if FROZEN else __file__))
@@ -57,7 +57,7 @@ DEFAULTS = {
     'apiUrl': 'https://script.google.com/macros/s/AKfycbzgg0dfNgDTFgcTGlNvF2IHLUusK6YuBk1pot9SrbYi5B9al-H2nmmMlKLz5CpDlLY/exec',
     'memberId': '',              # mã thành viên trên Hub của người dùng máy này (trình cài đặt điền sẵn)
     'sampleSeconds': 15,         # tần suất kiểm tra cửa sổ đang mở
-    'flushMinutes': 5,           # tần suất gửi lên Sheet
+    'flushMinutes': 2,           # tần suất gửi lên Sheet (2026-09-30: 5 → 2 phút để trang Theo dõi hiệu suất gần thời gian thực)
     'idleSeconds': 120,          # không chuột/phím quá lâu này thì tính "không thao tác", không ghi ứng dụng
     'workHours': '07:30-18:00',  # ngoài khung giờ này không ghi gì
     'workDays': [0, 1, 2, 3, 4, 5],  # 0=Thứ 2 ... 6=Chủ nhật

@@ -692,6 +692,62 @@ function readCacheKey_(params) {
 }
 function jsonOut_(text) { return ContentService.createTextOutput(text).setMimeType(ContentService.MimeType.JSON); }
 
+// Ghi/cập nhật NHIỀU dòng theo Mã chỉ với vài lệnh Sheets (đọc 1 lần, ghi từng dòng đã có 1 lệnh, dòng mới chèn 1 khối) — thay cho vòng lặp
+// updateData()/addData() từng dòng (mỗi lần lại đọc cả sheet + ghi từng ô: ~0,5s/dòng, 20 ứng dụng = >10s trong ổ khoá, gây chậm/nghẽn).
+function upsertRowsBatch_(ss, sheetName, rows) {
+  if (!rows || !rows.length) return 0;
+  return withScriptLock_(function () {
+    var sheet = getOrCreateSheet(ss, sheetName);
+    var headers = getHeaders(sheet);
+    if (headers.length === 0) { rows.forEach(function (d) { addData_impl(ss, sheetName, d); }); return rows.length; }
+    var union = {};
+    rows.forEach(function (d) { Object.keys(d).forEach(function (k) { union[k] = d[k]; }); });
+    headers = ensureSchemaColumns(sheet, sheetName, headers, union);
+    var enKeys = headers.map(function (h) { return viToEnHeader(sheetName, h); });
+    var idIdx = enKeys.indexOf('id');
+    var lastRow = sheet.getLastRow();
+    var existing = lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, headers.length).getValues() : [];
+    var pos = {};
+    existing.forEach(function (r, i) { pos[String(r[idIdx])] = i; });
+    var nowIso = new Date().toISOString();
+    function build(d, base, isNew) {
+      return enKeys.map(function (en, i) {
+        var val = d[en];
+        if (val === undefined) {
+          if (en === 'updatedAt') return nowIso.split('T')[0];
+          if (en === 'createdAt' && isNew) return nowIso.split('T')[0];
+          return base ? base[i] : '';
+        }
+        if (Array.isArray(val)) return stringifyArrayForCell(en, val);
+        if (typeof val === 'string') val = enToViValue(sheetName, en, val);
+        val = toRealDateIfDateField(val, en);
+        return val !== undefined && val !== null ? val : '';
+      });
+    }
+    var toAdd = [], addIdx = {}, n = 0;
+    rows.forEach(function (d) {
+      var key = String(d.id);
+      if (pos[key] !== undefined) {
+        var i = pos[key];
+        var row = build(d, existing[i], false);
+        sheet.getRange(i + 2, 1, 1, headers.length).setValues([row]);
+        existing[i] = row;
+      } else if (addIdx[key] !== undefined) {
+        toAdd[addIdx[key]] = build(d, null, true);   // trùng Mã trong cùng lô: giữ bản sau
+      } else {
+        addIdx[key] = toAdd.length;
+        toAdd.push(build(d, null, true));
+      }
+      n++;
+    });
+    if (toAdd.length) {
+      sheet.insertRowsBefore(2, toAdd.length);
+      sheet.getRange(2, 1, toAdd.length, headers.length).setValues(toAdd);
+    }
+    return n;
+  });
+}
+
 function md5Hex_(s) {
   return Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, s).map(function (b) { return ('0' + (b & 0xff).toString(16)).slice(-2); }).join('');
 }
@@ -958,15 +1014,11 @@ function handleRequestImpl_(e) {
       // Gửi theo lô (mảng). Chỉ tên ứng dụng + tiêu đề cửa sổ, không có nội dung màn hình/phím gõ.
       var appRows = JSON.parse(params.data);
       if (!Array.isArray(appRows)) appRows = [appRows];
-      var appExisting = {};
-      getAllData(ss, SHEETS.appUsage).forEach(function (r) { appExisting[r.id] = true; });
-      var appN = 0;
-      appRows.forEach(function (r) {
-        if (!r || !r.id || !r.memberId) return;
-        if (appExisting[r.id]) updateData(ss, SHEETS.appUsage, r.id, r); else { addData(ss, SHEETS.appUsage, r); appExisting[r.id] = true; }
-        appN++;
-      });
-      result = { success: true, count: appN };
+      appRows = appRows.filter(function (r) { return r && r.id && r.memberId; });
+      result = { success: true, count: upsertRowsBatch_(ss, SHEETS.appUsage, appRows) };
+    } else if (action === 'deleteStaffActivity') {
+      // Dọn dòng hoạt động Hub sai/thử nghiệm (VD phiên thử của lập trình viên) — theo Mã
+      result = deleteData(ss, SHEETS.staffActivity, params.id);
     } else if (action === 'getLightingStandards') {
       result = getAllData(ss, SHEETS.lightingStandards);
     } else if (action === 'getLightingLamps') {

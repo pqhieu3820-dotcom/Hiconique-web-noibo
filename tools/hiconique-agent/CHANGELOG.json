@@ -1,5 +1,10 @@
 [
   {
+    "version": "2.0.5",
+    "date": "2026-09-30",
+    "notes": "Gửi dữ liệu thao tác lên Hub mỗi 2 phút (trước là 5 phút) để trang Theo dõi hiệu suất gần như cập nhật theo thời gian thực; máy chủ ghi theo lô nên nhanh hơn nhiều."
+  },
+  {
     "version": "2.0.4",
     "date": "2026-09-29",
     "notes": "Sửa lỗi sau khi cài/cập nhật icon Desktop và Apps & features vẫn hiện logo CŨ (Windows lưu icon theo đường dẫn file). Nay mỗi phiên bản dùng 1 file icon tên riêng (HiconiqueAgent-<phiên bản>.ico) và tự làm mới bộ nhớ đệm icon của Windows sau khi cài/cập nhật. Tab Lấy màu: ô xem trước tự thu nhỏ vừa khung để thấy đủ thông tin (Ctrl+cuộn chuột để phóng/thu tự do)."

@@ -270,57 +270,6 @@ if (typeof window !== 'undefined') {
   setTimeout(processWriteQueue_, 1500);
 }
 
-// ===== Khung trạng thái đồng bộ TOÀN WEB (2026-09-30): chỉ hiện khi có thao tác ghi; xong thì hiện "✓ Đã đồng bộ" rồi tự ẩn sau 5s; nền trong suốt ~78% =====
-(function () {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return;
-  if (/\/timesheet(\.html)?$/i.test(location.pathname)) return;   // trang Chấm công đã có khung trạng thái riêng
-  var last = { event: '', reason: '', tries: 0 }, failed = false, doneUntil = 0, el = null;
-  function sec(ms) { return (ms / 1000).toFixed(1).replace('.', ',') + 's'; }
-  function dur(ms) { var s = Math.max(0, Math.round(ms / 1000)); return s >= 60 ? Math.floor(s / 60) + 'p' + (s % 60 < 10 ? '0' : '') + (s % 60) + 's' : s + 's'; }
-  function ensure() {
-    if (el || !document.body) return el;
-    el = document.createElement('div'); el.id = 'hqSyncChip'; el.hidden = true;
-    if (!document.getElementById('hqSyncChipCss')) {
-      var st = document.createElement('style'); st.id = 'hqSyncChipCss';
-      // Kính lỏng (Liquid Glass): nền mờ trong suốt + blur/saturate, viền sáng phía trên, đổ bóng mềm; sáng/tối theo data-theme của web
-      st.textContent = '#hqSyncChip{position:fixed;right:16px;bottom:16px;z-index:9500;max-width:min(420px,calc(100vw - 32px));padding:11px 16px;border-radius:18px;font:500 13px/1.45 "Plus Jakarta Sans",Inter,system-ui,sans-serif;pointer-events:none;' +
-        '-webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);' +
-        'background:linear-gradient(135deg,rgba(255,255,255,.55),rgba(255,255,255,.28));color:#1E1C1A;border:1px solid rgba(255,255,255,.65);' +
-        'box-shadow:0 8px 32px rgba(31,38,135,.16),inset 0 1px 0 rgba(255,255,255,.75),inset 0 -1px 0 rgba(255,255,255,.2);}' +
-        'html[data-theme="dark"] #hqSyncChip{background:linear-gradient(135deg,rgba(255,255,255,.16),rgba(255,255,255,.06));color:#F3EFE8;border:1px solid rgba(255,255,255,.22);' +
-        'box-shadow:0 8px 32px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.28),inset 0 -1px 0 rgba(255,255,255,.05);}' +
-        '#hqSyncChip .l2{opacity:.68;font-size:12px;margin-top:2px}#hqSyncChip .ok{color:#2E7D4A}#hqSyncChip .bad{color:#B5402A}' +
-        'html[data-theme="dark"] #hqSyncChip .ok{color:#8FD4A0}html[data-theme="dark"] #hqSyncChip .bad{color:#F0A08C}';
-      document.head.appendChild(st);
-    }
-    el.style.cssText = '';
-    document.body.appendChild(el); return el;
-  }
-  function render() {
-    var q = readWriteQueue_(), n = q.length, now = Date.now(), M = window.HiconiqueMetrics || {};
-    var w = M.writeMs || [], aw = w.length ? w.reduce(function (a, b) { return a + b; }, 0) / w.length : 0;
-    if (!failed && n === 0 && now > doneUntil) { if (el) el.hidden = true; return; }
-    if (!ensure()) return;
-    var top = ''; if (n > 3) { var c = {}; q.forEach(function (o) { c[o.action] = (c[o.action] || 0) + 1; }); var k = Object.keys(c).sort(function (a, b) { return c[b] - c[a]; })[0]; top = ' · nhiều nhất: ' + k + ' ×' + c[k]; }
-    var l1, cls = '';
-    if (failed) { l1 = '⚠ Có thao tác KHÔNG lưu được lên Google Sheet — hãy chụp màn hình báo lại.'; cls = 'bad'; }
-    else if (n > 0 && last.event === 'retry') { l1 = '⚠ Chưa lưu được' + (last.reason ? ' (' + last.reason + ')' : '') + ' — thử lại lần ' + last.tries + (M.nextWriteAt > now ? ' sau ' + dur(M.nextWriteAt - now) : '') + '. ĐỪNG đóng trang.'; cls = 'bad'; }
-    else if (n > 0) l1 = 'Đang lưu lên Google Sheet… ' + n + ' thao tác' + (aw ? ' · còn khoảng ' + dur(n * aw) : '') + top;
-    else { l1 = '✓ Đã đồng bộ Google Sheet'; cls = 'ok'; }
-    var l2 = 'Ghi ' + (aw ? sec(aw) + '/lệnh' : '—') + ' · Đọc ' + (M.readMs != null ? sec(M.readMs) : '—') + ' · làm mới sau ' + (M.nextRefreshAt > now ? dur(M.nextRefreshAt - now) : '…');
-    el.hidden = false;
-    el.innerHTML = '<div class="' + cls + '" style="font-weight:600;">' + l1 + '</div><div class="l2">' + l2 + '</div>';
-  }
-  window.addEventListener('hiconique:sync-state', function (e) {
-    var d = e.detail || {};
-    if (d.event) { last = { event: d.event, reason: d.reason || '', tries: d.tries || 0 }; if (d.event === 'ok' || d.event === 'queued') failed = false; }
-    if (d.pending === 0 && d.event === 'ok') doneUntil = Date.now() + 5000;   // hiện "Đã đồng bộ" 5s rồi ẩn
-    render();
-  });
-  window.addEventListener('hiconique:sync-failed', function () { failed = true; render(); });
-  setInterval(render, 1000);
-})();
-
 function syncToGSheets(type, action, data, id) {
   var actionMap = {
     members: { add: 'addMember', update: 'updateMember', delete: 'deleteMember' },
@@ -378,7 +327,8 @@ function syncToGSheets(type, action, data, id) {
 function fetchFromAPI(action, callback, isRetry) {
   if (!isUsingGSheets() || !GSHEETS_CONFIG.API_URL) { callback([]); return; }
   var controller = new AbortController();
-  var timer = setTimeout(function () { controller.abort(); }, 8000), t0Read = Date.now();
+  // 2026-09-30: 8s → 20s. Apps Script lúc nghẽn trả lời 9–13s; hết 8s là bỏ và trả [] nên trang Theo dõi hiệu suất hiện toàn dấu "—" dù Sheet có dữ liệu.
+  var timer = setTimeout(function () { controller.abort(); }, 20000), t0Read = Date.now();
   fetch(GSHEETS_CONFIG.API_URL + '?action=' + encodeURIComponent(action), { redirect: 'follow', signal: controller.signal })
     .then(function (r) { return r.json(); })
     .then(function (data) {
@@ -2925,7 +2875,7 @@ var TaskManager = (function() {
   // "không thao tác" (tab hiện nhưng không có thao tác) hoặc "rời tab" (tab bị ẩn/chuyển sang ứng dụng khác).
   // Cộng dồn theo ngày cho từng thiết bị, ghi lên Sheet mỗi ~5 phút (id cố định nên chỉ cập nhật 1 dòng/ngày/thiết bị).
   // Nhân viên được thông báo 1 lần khi mở Hub (xem portal.js) và có thể xem số liệu của chính mình ở trang theo dõi.
-  var ACT_TICK_MS = 30000, ACT_FLUSH_MS = 300000, ACT_INPUT_WINDOW_MS = 120000;
+  var ACT_TICK_MS = 30000, ACT_FLUSH_MS = 60000, ACT_INPUT_WINDOW_MS = 120000;
   var actState = { lastInput: Date.now(), active: 0, idle: 0, away: 0, dirty: false };
   function actDeviceId() {
     var d = null;
