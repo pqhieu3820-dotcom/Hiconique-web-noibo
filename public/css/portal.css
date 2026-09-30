@@ -2058,3 +2058,71 @@ main { flex: 1; }
 .team-tenure span { white-space: normal; word-break: break-word; text-align: center; }
 
 [data-theme="light"] .team-tenure { color: #475569; }
+
+/* ---------- Team card: nhãn trạng thái (Ngưng công tác…) nằm TRONG luồng, phía trên avatar — không còn đè lên ảnh đại diện ---------- */
+.team-card-flag { position: static; align-self: center; margin: -4px 0 12px; }
+.team-card-flag .team-status-badge { white-space: nowrap; }
+
+/* ---------- Công cụ chính: 4 nhóm + lọc + tìm + ghim ---------- */
+.tool-hub { display: flex; flex-direction: column; gap: var(--space-lg); }
+.tool-hub-bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.tool-hub-search { flex: 0 1 300px; min-width: 200px; padding: 10px 14px; border-radius: 999px; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text); font: inherit; font-size: 0.875rem; }
+.tool-hub-search:focus { outline: none; border-color: var(--color-bronze); }
+.tool-hub-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.tool-hub-chip { border: 1px solid var(--color-border); background: transparent; color: var(--color-text-muted, var(--color-text)); border-radius: 999px; padding: 8px 14px; font: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; transition: all var(--dur-base) var(--ease); }
+.tool-hub-chip span { opacity: .55; font-weight: 500; margin-left: 4px; }
+.tool-hub-chip:hover { border-color: var(--color-bronze); color: var(--color-bronze); }
+.tool-hub-chip.on { background: var(--color-bronze); border-color: var(--color-bronze); color: #0B0D10; }
+.tool-hub-quick { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border: 1px dashed var(--color-border); border-radius: var(--radius-md); background: color-mix(in srgb, var(--color-surface) 60%, transparent); }
+.tool-quick-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.tool-quick-label { font-size: 0.6875rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--color-bronze); min-width: 104px; }
+.tool-quick { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 8px; border-radius: 999px; border: 1px solid var(--color-border); background: var(--color-surface); font-size: 0.8125rem; font-weight: 600; color: var(--color-text); text-decoration: none; }
+.tool-quick:hover { border-color: var(--color-bronze); color: var(--color-bronze); }
+.tool-quick-ic { display: inline-flex; width: 22px; height: 22px; color: var(--color-bronze); }
+.tool-quick-ic svg { width: 100%; height: 100%; }
+.tool-quick i { font-style: normal; color: var(--color-bronze); font-size: .75rem; }
+.tool-group-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px 14px; margin-bottom: var(--space-md); padding-bottom: 10px; border-bottom: 1px solid var(--color-border); }
+.tool-group-head h3 { font-family: var(--font-serif, inherit); font-size: 1.25rem; font-weight: 600; margin: 0; }
+.tool-group-hint { font-size: 0.8125rem; color: var(--color-text-muted, var(--color-text)); opacity: .75; }
+.tool-group-count { margin-left: auto; font-size: 0.75rem; color: var(--color-text-faint, var(--color-text)); opacity: .8; }
+.tool-hub-empty { text-align: center; padding: 32px 0; color: var(--color-text-muted, var(--color-text)); }
+.tool-card[hidden], .tool-group[hidden], .tool-hub-quick[hidden] { display: none !important; }
+.tool-pin { position: absolute; top: 12px; right: 40px; border: none; background: transparent; color: var(--color-text-faint, #999); font-size: 1rem; line-height: 1; cursor: pointer; opacity: 0; transition: opacity var(--dur-base) var(--ease), color var(--dur-base) var(--ease); padding: 4px; }
+.tool-card:hover .tool-pin, .tool-card.is-pinned .tool-pin, .tool-pin:focus-visible { opacity: 1; }
+.tool-card.is-pinned .tool-pin { color: var(--color-bronze); }
+.tool-pin:hover { color: var(--color-bronze); }
+@media (hover: none) { .tool-pin { opacity: .7; } }
+/* Thẻ công cụ trong các nhóm: KÍCH THƯỚC BẰNG NHAU, gọn (4 cột), không hiện nhãn GOOGLE SHEET/MỚI/DRIVE/GANTT… */
+.tool-hub .tool-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 14px; }
+.tool-hub .tool-card { min-height: 148px; padding: 16px 16px 14px; gap: 8px; }
+.tool-hub .tool-card .tool-icon { width: 36px; height: 36px; }
+.tool-hub .tool-card .tool-icon svg { width: 18px; height: 18px; }
+.tool-hub .tool-card .tool-title { font-size: 0.9375rem; margin: 2px 0 0; }
+.tool-hub .tool-card .tool-desc { font-size: 0.78125rem; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin: 0; }
+.tool-hub .tool-card .tool-badge { display: none; }
+@media (max-width: 1100px) { .tool-hub .tool-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .tool-hub .tool-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .tool-hub .tool-grid { grid-template-columns: 1fr; } .tool-hub .tool-card { min-height: 0; } }
+
+/* ---- Khối Công cụ chính cỡ VỪA (giữa bản lớn và bản thu nhỏ) (2026-09-30) ---- */
+.tool-hub { gap: 20px; }
+.tool-hub-bar { gap: 10px 12px; }
+.tool-hub-search { flex: 0 1 260px; min-width: 180px; padding: 8px 14px; font-size: 0.8125rem; }
+.tool-hub-chips { gap: 7px; }
+.tool-hub-chip { padding: 6px 13px; font-size: 0.78125rem; }
+.tool-hub-quick { padding: 10px 14px; gap: 8px; }
+.tool-quick-label { font-size: 0.65625rem; min-width: 96px; }
+.tool-quick { padding: 4px 11px 4px 7px; font-size: 0.78125rem; gap: 7px; }
+.tool-quick-ic { width: 18px; height: 18px; }
+.tool-group-head { margin-bottom: 12px; padding-bottom: 8px; gap: 8px 12px; }
+.tool-group-head h3 { font-size: 1.125rem; }
+.tool-group-hint, .tool-group-count { font-size: 0.75rem; }
+.tool-hub .tool-grid { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.tool-hub .tool-card { min-height: 132px; padding: 14px 14px 12px; gap: 7px; }
+.tool-hub .tool-card .tool-icon { width: 32px; height: 32px; }
+.tool-hub .tool-card .tool-icon svg { width: 16px; height: 16px; }
+.tool-hub .tool-card .tool-title { font-size: 0.90625rem; }
+.tool-hub .tool-card .tool-desc { font-size: 0.75rem; -webkit-line-clamp: 3; }
+.tool-hub .tool-card .tool-arrow { font-size: .8125rem; top: 12px; right: 14px; }
+.tool-pin { top: 9px; right: 34px; font-size: .9375rem; }
+@media (max-width: 480px) { .tool-hub .tool-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

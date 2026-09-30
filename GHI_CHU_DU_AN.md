@@ -45,6 +45,12 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
 - (2026-09-30) Viết lại đoạn mô tả đầu trang Tài sản & vật tư (`equipment.html`, `.subpage-lede`) gọn hơn, 2 câu, gom nhóm tài sản.
 
+### Phiên 2026-09-30 (y) — Thẻ Team hết đè nhãn; "Công cụ chính" chia 4 nhóm (BẢN XEM THỬ LOCAL — CHƯA PUSH)
+
+- **Thẻ thành viên**: nhãn "Ngưng công tác / Chờ duyệt / Đã từ chối / Tạm nghỉ" trước đè lên avatar (absolute góc phải) → nay nằm TRONG luồng, căn giữa phía trên avatar (`.team-card-flag` `position:static`, `portal.css`). Đã kiểm tra hiển thị.
+- **Công cụ chính (trang chủ) — bản xem thử local, người dùng chốt xong mới push**: `public/js/tools-hub.js` (nạp trong `index.html`) gom 15 thẻ `.tool-card[data-tool]` thành **4 nhóm**: Dự án & thi công (dashboard, meeting, drive, lighting, khai-toan, hicon-bim) · Kinh doanh & khách hàng (crm, pricing, orders, commission) · Nhân sự & chấm công (timesheet, payslip, staff-monitor) · Tài chính & tài sản (finance, equipment); thêm thanh **chip lọc theo nhóm (có số lượng)**, **ô tìm không dấu**, nút **★ ghim** trên từng thẻ (hiện khi rê chuột), hàng **Truy cập nhanh** ("Đã ghim" + "Dùng gần đây") — lưu `localStorage` (`hiconique_tool_pins`, `hiconique_tool_recent`) theo từng trình duyệt. Công cụ mới thêm mà chưa khai nhóm tự vào nhóm "Khác". CSS cuối `portal.css`. sw v45. Xem tại http://localhost:3000/index.html#tools. (Lần 3: đã nới lại cỡ VỪA — thẻ 230px/cao ~132px, icon 32px, mô tả 3 dòng; sw v48. Lần 2 từng thu nhỏ cả khối — ô tìm, chip, hàng nhanh, tiêu đề nhóm, thẻ 196px/cao ~104px, icon 28px; bỏ chữ VD trong ô tìm; sw v47.)
+- Chỉnh theo phản hồi: **mọi thẻ công cụ cùng kích thước** (lưới cố định 4 cột, `grid-auto-rows:1fr`, thẻ gọn: icon 36px, tiêu đề 15px, mô tả tối đa 3 dòng; 3/2/1 cột khi màn nhỏ), **ẩn hết nhãn** GOOGLE SHEET/MỚI/DRIVE/GANTT/APPS SCRIPT trong các nhóm (`.tool-hub .tool-badge{display:none}`); đã đo 15 thẻ đều 257×163. sw v46.
+
 ### Phiên 2026-09-30 (x) — Sổ tài chính: danh mục theo loại + dropdown Sheet; ngày 09-2026; lăn chuột chọn kỳ
 
 - **Tiêu đề** danh sách giao dịch hiện `Giao dịch tháng 09-2026` (trước `2026-09`).
