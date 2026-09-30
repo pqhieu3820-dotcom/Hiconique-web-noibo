@@ -1921,3 +1921,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 - **Wrap Text tự động** cho mọi ô mọi sheet (giữ căn lề đã đặt), hàng tự giãn cao khi mở Excel.
 - Bìa báo cáo: bỏ chữ "(bấm để chuyển sheet)" (liên kết vẫn bấm được). "NGƯỜI LẬP BIỂU" = tên tài khoản đang xuất file (`user.name`).
 - Sổ quỹ 111 / Sổ TGNH 112 dựng lại theo phong cách chung (tiêu đề + dòng kỳ báo cáo, header tối, sọc, tổng nền be, tô xanh/đỏ số tồn, bảng "Tổng hợp theo TK đối ứng" có tên tài khoản, khối ký) thay bố cục Times New Roman cũ. Diễn giải luôn là chữ (số như 123456798 không bị căn phải). sw v84.
+
+### 2026-09-30 (bo) Biểu đồ dòng tiền: Ctrl + lăn chuột để zoom
+- finance.html: giữ Ctrl + lăn trên biểu đồ (cả "Dòng tiền 6 tháng" và "Dòng tiền thực tế + dự báo") → phóng to/thu nhỏ 50%–250% (`chartZoom`, `applyChartZoom`): đổi độ cao biểu đồ, độ cao cột và độ rộng cột/khoảng cách qua biến CSS `--cz`; hiện nhãn % góc phải; nháy đúp = về 100%. Chặn zoom trình duyệt khi đang ở trên biểu đồ. sw v85.

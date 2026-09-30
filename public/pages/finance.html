@@ -80,9 +80,9 @@
     .fn-dash-row.thirds { grid-template-columns: repeat(3, 1fr); }
 
     .fn-chart-wrap { display: flex; align-items: flex-end; gap: 12px; height: 240px; padding: 44px 20px 12px; overflow-x: auto; overflow-y: hidden; }
-    .fn-chart-col { flex: 1; min-width: 96px; display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; justify-content: flex-end; }
-    .fn-chart-bars { position: relative; display: flex; gap: 8px; align-items: flex-end; height: 100%; }
-    .fn-chart-bar { width: 34px; border-radius: 4px 4px 0 0; position: relative; transition: opacity 0.15s; }
+    .fn-chart-col { flex: 1; min-width: calc(96px * var(--cz, 1)); display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; justify-content: flex-end; }
+    .fn-chart-bars { position: relative; display: flex; gap: calc(8px * var(--cz, 1)); align-items: flex-end; height: 100%; }
+    .fn-chart-bar { width: calc(34px * var(--cz, 1)); border-radius: 4px 4px 0 0; position: relative; transition: opacity 0.15s; }
     .fn-chart-bar:hover { opacity: 0.75; }
     .fn-chart-bar.revenue { background: linear-gradient(180deg, var(--fn-green), color-mix(in srgb, var(--fn-green) 70%, black)); }
     .fn-chart-bar.expense { background: linear-gradient(180deg, var(--fn-red), color-mix(in srgb, var(--fn-red) 70%, black)); }
@@ -146,6 +146,10 @@
     .fn-summary-card.fn-clickable:hover, .fn-card.fn-clickable:hover { transform: translateY(-2px); border-color: var(--fn-bronze); box-shadow: 0 10px 26px rgba(0,0,0,.08); }
     .fn-chart-col.fn-clickable:hover .fn-chart-label { color: var(--fn-bronze); }
         .fn-chart-col { position: relative; }
+    .fn-chart-wrap { position: relative; }
+    .fn-card:has(> .fn-chart-wrap) { position: relative; }
+    .fn-zoom-tip { position: absolute; right: 16px; top: 66px; padding: 3px 10px; border-radius: 12px; background: color-mix(in srgb, var(--fn-text) 82%, transparent); color: var(--fn-bg); font: 600 0.6875rem 'JetBrains Mono', monospace; opacity: 0; transform: translateY(-4px); transition: opacity .18s, transform .18s; pointer-events: none; z-index: 5; }
+    .fn-zoom-tip.on { opacity: 1; transform: none; }
     .fn-chart-col.fn-clickable::before { content: ''; position: absolute; z-index: 0; left: -4px; right: -4px; top: -38px; bottom: -8px; border-radius: 14px; border: 1px solid transparent; background: transparent; transition: background .18s, border-color .18s, box-shadow .18s; pointer-events: none; }
     .fn-chart-col.fn-clickable:hover::before { background: linear-gradient(180deg, color-mix(in srgb, var(--fn-bronze) 12%, transparent), color-mix(in srgb, var(--fn-bronze) 4%, transparent)); border-color: color-mix(in srgb, var(--fn-bronze) 30%, transparent); box-shadow: 0 6px 18px color-mix(in srgb, var(--fn-bronze) 14%, transparent); }
     .fn-chart-col > * { position: relative; z-index: 1; }
@@ -460,7 +464,7 @@
             '<div class="fn-section" id="sec-overview">' +
               '<div class="fn-summary-grid" id="fnSummaryGrid"></div>' +
               '<div class="fn-dash-row">' +
-                '<div class="fn-card" style="margin-bottom:0;"><div class="fn-card-head"><div class="fn-card-title">Dòng tiền 6 tháng gần nhất</div><div class="fn-card-desc" style="margin:0;">Bấm vào từng tháng để xem chi tiết</div></div><div class="fn-chart-wrap" id="fnChartWrap"></div><div class="fn-legend"><span><i style="background:var(--fn-green)"></i>Thu</span><span><i style="background:var(--fn-red)"></i>Chi</span></div></div>' +
+                '<div class="fn-card" style="margin-bottom:0;"><div class="fn-card-head"><div class="fn-card-title">Dòng tiền 6 tháng gần nhất</div><div class="fn-card-desc" style="margin:0;">Bấm vào tháng để xem chi tiết · Ctrl + lăn chuột để phóng to/thu nhỏ</div></div><div class="fn-chart-wrap" id="fnChartWrap"></div><span class="fn-zoom-tip"></span><div class="fn-legend"><span><i style="background:var(--fn-green)"></i>Thu</span><span><i style="background:var(--fn-red)"></i>Chi</span></div></div>' +
                 '<div class="fn-card fn-clickable" data-detail="attention" style="margin-bottom:0;" title="Bấm để xem chi tiết"><div class="fn-card-head"><div class="fn-card-title">Cần chú ý</div></div><div class="fn-attention-list" id="fnAttentionList"></div></div>' +
               '</div>' +
               '<div class="fn-dash-row split">' +
@@ -522,7 +526,7 @@
 
             '<div class="fn-section" id="sec-cashflow">' +
               '<div class="fn-section-head"><div class="fn-section-title">Dòng tiền & Dự báo</div><div class="fn-section-desc">Dòng tiền 6 tháng gần nhất và dự báo 3 tháng tới dựa trên trung bình động.</div></div>' +
-              '<div class="fn-card"><div class="fn-card-head"><div class="fn-card-title">Dòng tiền thực tế + dự báo</div></div><div class="fn-chart-wrap" id="fnFcChartWrap"></div><div class="fn-legend"><span><i style="background:var(--fn-green)"></i>Thu</span><span><i style="background:var(--fn-red)"></i>Chi</span><span><i class="dashed"></i>Dự báo (trung bình 3 tháng)</span></div></div>' +
+              '<div class="fn-card"><div class="fn-card-head"><div class="fn-card-title">Dòng tiền thực tế + dự báo</div></div><div class="fn-chart-wrap" id="fnFcChartWrap"></div><span class="fn-zoom-tip"></span><div class="fn-legend"><span><i style="background:var(--fn-green)"></i>Thu</span><span><i style="background:var(--fn-red)"></i>Chi</span><span><i class="dashed"></i>Dự báo (trung bình 3 tháng)</span></div></div>' +
               '<div class="fn-dash-row thirds" id="fnFcSummary"></div>' +
             '</div>' +
 
@@ -1099,7 +1103,24 @@
     }
 
     // Biểu đồ thu/chi N tháng gần nhất (+ forecastMonths tháng dự báo phía sau) — tự vẽ bằng div.
+    // Ctrl + lăn chuột trên biểu đồ = phóng to / thu nhỏ (0.5× – 2.5×), nhớ theo từng biểu đồ; nháy đúp = về 1×
+    var chartZoom = {}, chartArgs = {};
+    function applyChartZoom(wrap, dz, reset) {
+      var id = wrap.id, z = reset ? 1 : Math.max(0.5, Math.min(2.5, (chartZoom[id] || 1) * Math.exp(dz)));
+      chartZoom[id] = z; var a = chartArgs[id]; if (a) renderChart(id, a[0], a[1], a[2]);
+      var tip = wrap.parentNode.querySelector('.fn-zoom-tip'); if (tip) { tip.textContent = Math.round(z * 100) + '%'; tip.classList.add('on'); clearTimeout(tip._t); tip._t = setTimeout(function () { tip.classList.remove('on'); }, 1200); }
+    }
+    document.addEventListener('wheel', function (e) {
+      var w = e.target.closest && e.target.closest('.fn-chart-wrap');
+      if (!w || !e.ctrlKey) return;
+      e.preventDefault();
+      applyChartZoom(w, e.deltaY < 0 ? 0.12 : -0.12);
+    }, { passive: false });
+    document.addEventListener('dblclick', function (e) { var w = e.target.closest && e.target.closest('.fn-chart-wrap'); if (w && chartZoom[w.id] && chartZoom[w.id] !== 1) applyChartZoom(w, 0, true); });
     function renderChart(targetId, all, historyMonths, forecastMonths) {
+      chartArgs[targetId] = [all, historyMonths, forecastMonths];
+      var zoomF = chartZoom[targetId] || 1, wrapEl = document.getElementById(targetId);
+      wrapEl.style.setProperty('--cz', zoomF); wrapEl.style.height = Math.round(240 * zoomF) + 'px';
       var months = [];
       var now = new Date();
       for (var i = historyMonths - 1; i >= 0; i--) {
@@ -1125,7 +1146,7 @@
       }
 
       var max = Math.max.apply(null, data.map(function (d) { return Math.max(d.revenue, d.expense); }).concat([1]));
-      var maxBarPx = 160;
+      var maxBarPx = Math.round(160 * zoomF);
       document.getElementById(targetId).innerHTML = data.map(function (d) {
         var rH = Math.max(3, Math.round((d.revenue / max) * maxBarPx));
         var eH = Math.max(3, Math.round((d.expense / max) * maxBarPx));
