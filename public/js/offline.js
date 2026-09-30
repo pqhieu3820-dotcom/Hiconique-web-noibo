@@ -487,9 +487,9 @@ var Offline = (function () {
    Muốn giữ nguyên 1 vùng: đặt thuộc tính data-raw-date trên phần tử đó. */
 (function () {
   'use strict';
-  var RE = /\b(20\d{2}|19\d{2})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])\b(?![-_])/g;
+  var RE = /(?:\b(20\d{2}|19\d{2})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])\b(?![-_])|(?<![-_\/\w])(20\d{2}|19\d{2})-(0[1-9]|1[0-2])(?![-_\/\w]))/g;
   var SKIP = { SCRIPT: 1, STYLE: 1, TEXTAREA: 1, INPUT: 1, NOSCRIPT: 1, CODE: 1, PRE: 1 };
-  function convert(text) { return text.replace(RE, function (m, y, mo, d) { return d + '/' + mo + '/' + y; }); }
+  function convert(text) { return text.replace(RE, function (m, y, mo, d, y2, mo2) { return y ? d + '/' + mo + '/' + y : mo2 + '/' + y2; }); }
   function walk(root) {
     if (!root) return;
     if (root.nodeType === 3) { fix(root); return; }

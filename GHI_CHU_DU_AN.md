@@ -1871,3 +1871,7 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (az) Ngày tháng toàn web hiển thị dd/mm/yyyy
 - offline.js (nạp ở mọi trang) có bộ đổi chữ ngày `yyyy-mm-dd` → `dd/mm/yyyy` cho MỌI text hiển thị, kể cả nội dung tạo sau (MutationObserver). KHÔNG đụng: ô nhập (input/textarea), thuộc tính, script/style/code, mã có ký tự dính liền (id_2026-09-30_x), ngày sai (2026-13-40). Dữ liệu lưu + so sánh + Excel vẫn yyyy-mm-dd. Muốn giữ nguyên 1 vùng: thêm `data-raw-date`. Ô chọn ngày `<input type=date>` do trình duyệt tự hiển thị theo ngôn ngữ máy. Trang khai-toan.html không nạp offline.js nên chưa áp dụng. sw v70.
+
+### 2026-09-30 (ba) Tháng hiển thị MM/YYYY + thanh cuộn menu mảnh hơn
+- offline.js: bộ đổi chữ ngày nay đổi cả tháng đứng riêng `2026-09` → `09/2026` (không đổi khi dính `-`, `_`, `/` hoặc chữ đứng trước/sau, VD `TC-2026-09` giữ nguyên). Dữ liệu lưu vẫn `yyyy-mm`.
+- finance.html: thanh cuộn ngang menu mảnh 4px, màu nhạt hơn. sw v71.
