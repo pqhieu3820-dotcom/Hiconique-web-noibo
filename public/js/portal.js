@@ -293,7 +293,7 @@
     { title: 'Tài sản & vật tư', sub: 'Máy tính, văn phòng phẩm, dụng cụ đo đạc, giàn giáo, ván khuôn…', url: '/pages/equipment.html', keywords: 'thiet bi tai san vat tu kho gian giao van khuon but bi may thuy binh laser' },
     { title: 'Theo dõi hiệu suất', sub: 'Hoạt động Hub và ứng dụng đang dùng', url: '/pages/staff-monitor.html', keywords: 'hieu suat agent' },
     { title: 'HICON-BIM', sub: 'Mô hình BIM, vật liệu, BOQ', url: '/pages/hicon-bim.html', keywords: 'bim boq vat lieu sketchup' },
-    { title: 'Tài chính công ty', sub: 'Lãi/lỗ, dòng tiền, vay nợ — CEO-only', url: '/pages/finance.html', keywords: 'tai chinh loi nhuan' },
+    { title: 'Tài chính công ty', sub: 'Sổ thu chi, sổ quỹ, lãi/lỗ, dòng tiền, vay nợ — CEO/Founder & người được ủy quyền', url: '/pages/finance.html', keywords: 'tai chinh loi nhuan' },
     { title: 'Tài liệu / Wiki', sub: 'Quy trình, biểu mẫu, hướng dẫn', url: '/pages/wiki.html', keywords: 'wiki quy trinh bieu mau' },
     { title: 'SPC', sub: 'Kiểm soát chất lượng', url: '/pages/spc.html', keywords: 'chat luong quy chuan ky thuat' },
     { title: 'Thông báo', sub: 'Tin tức và thông báo nội bộ', url: '/pages/notices.html', keywords: 'bang tin' },

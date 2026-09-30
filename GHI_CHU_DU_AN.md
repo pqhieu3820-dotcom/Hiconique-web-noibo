@@ -1961,3 +1961,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (ca) Tên thẻ Báo cáo nhanh căn giữa dọc (cả khi có thanh cuộn)
 - Nguyên nhân lệch: thanh cuộn ngang cao 21–22px nằm dưới thẻ → khoảng dưới (32px) lớn hơn khoảng trên (10px). Nay đệm trên 14px, thanh cuộn cao 14px với thumb 4px nằm giữa (viền 5/5) → trên 14 / dưới 14; khi không có thanh cuộn (cửa sổ rộng) JS gắn class `no-sb` để đệm dưới 14px. Đã đo: trên 14 / dưới 15. sw v97.
+
+### 2026-09-30 (cb) Cập nhật đoạn mô tả trang Sổ tài chính cho đúng hiện trạng
+- finance.html (dòng mô tả dưới tiêu đề) và portal.js (mô tả trong ô tìm kiếm): bỏ "Chỉ CEO xem và chỉnh sửa được" / "CEO-only" — nay ghi rõ nội dung thực tế (sổ giao dịch có số phiếu & TK đối ứng, sổ quỹ 111/112, lãi/lỗ, dòng tiền, vay nợ, công nợ, BCTC & rủi ro, Báo cáo nhanh, xuất Excel) và đối tượng dùng: CEO, Founder và người được Founder ủy quyền. sw v98.
