@@ -117,6 +117,20 @@ function compactWriteQueue_() {
   });
   if (changed) saveWriteQueue_(out);
 }
+function diagnoseWrite_(op, urlLen, usePost, err, cb) {
+  var msg = String((err && err.message) || err || '');
+  if (/abort/i.test(msg)) { cb('Quá thời gian chờ (>' + (WRITE_TIMEOUT_MS / 1000) + 's) — máy chủ Google chậm/quá tải'); return; }
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) { cb('Máy đang MẤT MẠNG'); return; }
+  function withTimeout(url, init, ms) { var c = new AbortController(); var t = setTimeout(function () { c.abort(); }, ms); init.signal = c.signal; return fetch(url, init).then(function (r) { clearTimeout(t); return r; }, function (e) { clearTimeout(t); throw e; }); }
+  withTimeout(GSHEETS_CONFIG.API_URL + '?action=ping', { redirect: 'follow' }, 9000).then(function (r) {
+    if (r.ok) cb(usePost ? 'Máy chủ Google vẫn chạy nhưng từ chối lệnh này (POST ' + urlLen + ' ký tự) — báo lập trình viên' : 'Máy chủ Google vẫn chạy nhưng từ chối lệnh "' + op.action + '" (' + urlLen + ' ký tự)');
+    else cb('Máy chủ Google trả lỗi HTTP ' + r.status + ' (quá tải/đang cập nhật)');
+  }, function () {
+    withTimeout('https://www.gstatic.com/generate_204', { mode: 'no-cors', cache: 'no-store' }, 6000).then(function () {
+      cb('Có Internet nhưng KHÔNG tới được máy chủ Apps Script (bị chặn/DNS/tường lửa/quá tải)');
+    }, function () { cb('KHÔNG có kết nối Internet ra ngoài (mạng/WiFi/proxy)'); });
+  });
+}
 function processWriteQueue_() {
   if (writeQueueBusy) return;
   compactWriteQueue_();
@@ -175,7 +189,15 @@ function processWriteQueue_() {
     if (op.data && Object.keys(op.data).length > 0) {
       params += '&data=' + encodeURIComponent(JSON.stringify(op.data));
     }
-    fetch(GSHEETS_CONFIG.API_URL + params, { method: 'GET', redirect: 'follow', signal: controller.signal })
+    // URL GET quá dài (~>8KB) bị máy chủ Google từ chối và trình duyệt chỉ báo "Failed to fetch" → lệnh lớn gửi bằng POST (form, không preflight)
+    var urlLen = (GSHEETS_CONFIG.API_URL + params).length, usePost = urlLen > 6000;
+    var reqInit = { redirect: 'follow', signal: controller.signal };
+    var reqUrl = GSHEETS_CONFIG.API_URL + params;
+    if (usePost) {
+      var form = new URLSearchParams(); form.set('action', op.action); if (op.id) form.set('id', op.id); form.set('data', JSON.stringify(op.data || {}));
+      reqInit.method = 'POST'; reqInit.body = form; reqUrl = GSHEETS_CONFIG.API_URL;
+    } else { reqInit.method = 'GET'; }
+    fetch(reqUrl, reqInit)
       .then(function (response) { return response.json(); })
       .then(function (result) {
         if (result && result.error) {
@@ -202,7 +224,12 @@ function processWriteQueue_() {
         }
         finish(true);
       })
-      .catch(function (e) { finish(false, e, false); });
+      .catch(function (e) {
+        // Vì sao thất bại? Kiểm tra mạng → máy chủ → độ dài lệnh rồi báo lý do cụ thể (lần đầu và mỗi 5 lần thử)
+        var tries = (readWriteQueue_().filter(function (x) { return x.qid === op.qid; })[0] || {}).tries || 0;
+        if (tries % 5 !== 0) { finish(false, (HiconiqueMetrics.diag || {}).text || e, false); return; }
+        diagnoseWrite_(op, urlLen, usePost, e, function (text) { HiconiqueMetrics.diag = { text: text, at: Date.now() }; finish(false, text, false); });
+      });
   } catch (e) {
     finish(false, e, false);
   }
@@ -226,7 +253,20 @@ if (typeof window !== 'undefined') {
   function ensure() {
     if (el || !document.body) return el;
     el = document.createElement('div'); el.id = 'hqSyncChip'; el.hidden = true;
-    el.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:9500;max-width:min(420px,calc(100vw - 32px));padding:10px 14px;border-radius:12px;font:500 13px/1.45 "Plus Jakarta Sans",Inter,system-ui,sans-serif;background:rgba(30,28,26,.78);color:#F3EFE8;border:1px solid rgba(255,255,255,.12);box-shadow:0 6px 24px rgba(0,0,0,.22);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);pointer-events:none;';
+    if (!document.getElementById('hqSyncChipCss')) {
+      var st = document.createElement('style'); st.id = 'hqSyncChipCss';
+      // Kính lỏng (Liquid Glass): nền mờ trong suốt + blur/saturate, viền sáng phía trên, đổ bóng mềm; sáng/tối theo data-theme của web
+      st.textContent = '#hqSyncChip{position:fixed;right:16px;bottom:16px;z-index:9500;max-width:min(420px,calc(100vw - 32px));padding:11px 16px;border-radius:18px;font:500 13px/1.45 "Plus Jakarta Sans",Inter,system-ui,sans-serif;pointer-events:none;' +
+        '-webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);' +
+        'background:linear-gradient(135deg,rgba(255,255,255,.55),rgba(255,255,255,.28));color:#1E1C1A;border:1px solid rgba(255,255,255,.65);' +
+        'box-shadow:0 8px 32px rgba(31,38,135,.16),inset 0 1px 0 rgba(255,255,255,.75),inset 0 -1px 0 rgba(255,255,255,.2);}' +
+        'html[data-theme="dark"] #hqSyncChip{background:linear-gradient(135deg,rgba(255,255,255,.16),rgba(255,255,255,.06));color:#F3EFE8;border:1px solid rgba(255,255,255,.22);' +
+        'box-shadow:0 8px 32px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.28),inset 0 -1px 0 rgba(255,255,255,.05);}' +
+        '#hqSyncChip .l2{opacity:.68;font-size:12px;margin-top:2px}#hqSyncChip .ok{color:#2E7D4A}#hqSyncChip .bad{color:#B5402A}' +
+        'html[data-theme="dark"] #hqSyncChip .ok{color:#8FD4A0}html[data-theme="dark"] #hqSyncChip .bad{color:#F0A08C}';
+      document.head.appendChild(st);
+    }
+    el.style.cssText = '';
     document.body.appendChild(el); return el;
   }
   function render() {
@@ -235,14 +275,14 @@ if (typeof window !== 'undefined') {
     if (!failed && n === 0 && now > doneUntil) { if (el) el.hidden = true; return; }
     if (!ensure()) return;
     var top = ''; if (n > 3) { var c = {}; q.forEach(function (o) { c[o.action] = (c[o.action] || 0) + 1; }); var k = Object.keys(c).sort(function (a, b) { return c[b] - c[a]; })[0]; top = ' · nhiều nhất: ' + k + ' ×' + c[k]; }
-    var l1, color = '#F3EFE8';
-    if (failed) { l1 = '⚠ Có thao tác KHÔNG lưu được lên Google Sheet — hãy chụp màn hình báo lại.'; color = '#F0A08C'; }
-    else if (n > 0 && last.event === 'retry') { l1 = '⚠ Chưa lưu được' + (last.reason ? ' (' + last.reason + ')' : '') + ' — thử lại lần ' + last.tries + (M.nextWriteAt > now ? ' sau ' + dur(M.nextWriteAt - now) : '') + '. ĐỪNG đóng trang.'; color = '#F0A08C'; }
+    var l1, cls = '';
+    if (failed) { l1 = '⚠ Có thao tác KHÔNG lưu được lên Google Sheet — hãy chụp màn hình báo lại.'; cls = 'bad'; }
+    else if (n > 0 && last.event === 'retry') { l1 = '⚠ Chưa lưu được' + (last.reason ? ' (' + last.reason + ')' : '') + ' — thử lại lần ' + last.tries + (M.nextWriteAt > now ? ' sau ' + dur(M.nextWriteAt - now) : '') + '. ĐỪNG đóng trang.'; cls = 'bad'; }
     else if (n > 0) l1 = 'Đang lưu lên Google Sheet… ' + n + ' thao tác' + (aw ? ' · còn khoảng ' + dur(n * aw) : '') + top;
-    else { l1 = '✓ Đã đồng bộ Google Sheet'; color = '#8FD4A0'; }
+    else { l1 = '✓ Đã đồng bộ Google Sheet'; cls = 'ok'; }
     var l2 = 'Ghi ' + (aw ? sec(aw) + '/lệnh' : '—') + ' · Đọc ' + (M.readMs != null ? sec(M.readMs) : '—') + ' · làm mới sau ' + (M.nextRefreshAt > now ? dur(M.nextRefreshAt - now) : '…');
     el.hidden = false;
-    el.innerHTML = '<div style="color:' + color + ';font-weight:600;">' + l1 + '</div><div style="opacity:.7;font-size:12px;margin-top:2px;">' + l2 + '</div>';
+    el.innerHTML = '<div class="' + cls + '" style="font-weight:600;">' + l1 + '</div><div class="l2">' + l2 + '</div>';
   }
   window.addEventListener('hiconique:sync-state', function (e) {
     var d = e.detail || {};

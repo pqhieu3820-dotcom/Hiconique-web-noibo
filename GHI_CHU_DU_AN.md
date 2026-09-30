@@ -37,6 +37,12 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
 - (2026-09-30) Viết lại đoạn mô tả đầu trang Tài sản & vật tư (`equipment.html`, `.subpage-lede`) gọn hơn, 2 câu, gom nhóm tài sản.
 
+### Phiên 2026-09-30 (p) — "Failed to fetch" thử lại 1418 lần: lệnh ghi lớn gửi POST + tự chẩn đoán lý do; khung Liquid Glass
+
+- Ảnh người dùng: "Chưa lưu được (Failed to fetch) — thử lại lần **1418**". `Failed to fetch` là lỗi tầng mạng của trình duyệt; nghi nhất là **URL GET quá dài** (máy chủ Google từ chối ≥ ~8–12KB, đo: 8000 ký tự OK, 12000 → 400 không kèm CORS) — lệnh tài sản có JSON linh kiện + đơn giá + lịch sử dài. Sửa: lệnh có URL > 6000 ký tự gửi bằng **POST form** (`URLSearchParams`, không preflight; đã thử thật: POST 20KB → 200, `doPost` = `handleRequest`).
+- **Tự chẩn đoán khi lỗi mạng** (`diagnoseWrite_`, chạy ở lần thử đầu và mỗi 5 lần): hết giờ chờ → "Quá thời gian chờ… Google quá tải"; `navigator.onLine=false` → "MẤT MẠNG"; ping Apps Script được → "Máy chủ vẫn chạy nhưng từ chối lệnh <action> (N ký tự)"; ping HTTP lỗi → "trả lỗi HTTP n"; ping hỏng nhưng gstatic tới được → "Có Internet nhưng KHÔNG tới được Apps Script (chặn/DNS/tường lửa)"; cả hai hỏng → "KHÔNG có Internet ra ngoài". Lý do hiện thẳng trong khung trạng thái.
+- Khung trạng thái đổi sang **Liquid Glass** (`#hqSyncChipCss`): nền gradient trắng/mờ + `backdrop-filter: blur(22px) saturate(180%)`, viền sáng, bóng mềm; có biến thể sáng và tối theo `html[data-theme]` (đã chụp kiểm tra cả 2). sw v35.
+
 ### Phiên 2026-09-30 (o) — TÌM RA nguyên nhân hàng đợi 100+ lệnh: nhịp "đang online" (`updateMember` lastActiveAt); khung trạng thái toàn web
 
 - Ảnh khung của người dùng: "108 thao tác · nhiều nhất: **updateMember ×93** · ghi 3,8s/lệnh" ⇒ **`portal.js` `pingPresence()` (mỗi ~60s/tab + mỗi lần đổi tab/mở trang) gọi `TaskManager.updateMember(id,{lastActiveAt})` → mỗi nhịp là 1 lệnh trong hàng đợi ghi TUẦN TỰ**; máy chủ ~3–5s/lệnh nên hàng đợi phình mãi và mọi thao tác Lưu thật (tài sản, chấm công…) phải xếp sau → "lâu", "Sheet chưa thấy".
