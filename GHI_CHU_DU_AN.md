@@ -37,6 +37,14 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
 - (2026-09-30) Viết lại đoạn mô tả đầu trang Tài sản & vật tư (`equipment.html`, `.subpage-lede`) gọn hơn, 2 câu, gom nhóm tài sản.
 
+### Phiên 2026-09-30 (l) — Sửa lỗi "Lưu rồi mà Google Sheet không ghi, tải lại là mất" (hàng đợi ghi)
+
+- Điều tra: server ghi bình thường (thử trực tiếp `updateEquipment` payload 4,6KB → 200 trong ~5s, không 404; giới hạn URL GET ~8–12KB). Lỗi nằm ở **client** `task-data.js`:
+  1. `updateXxx` báo "Not found" (dòng chưa hề lên Sheet vì lần thêm trước thất bại) bị coi là lỗi tạm → **thử lại mãi và KẸT cả hàng đợi** (mọi lần Lưu sau đó không lên Sheet). Nay: `updateEquipment` gặp Not found → tự đổi thành `addEquipment` với đủ dữ liệu; update loại khác → bỏ sau 3 lần + báo `hiconique:sync-failed`. Lệnh lỗi từ lần thử thứ 2 được đưa xuống CUỐI hàng đợi để không chặn lệnh khác.
+  2. `saveWriteQueue_` nuốt lỗi `localStorage` đầy → lệnh không bao giờ vào hàng đợi. Nay giữ tạm trong RAM (`writeQueueMem_`) và vẫn gửi (đã test giả lập quota đầy: vẫn gọi `addEquipment`).
+- Dữ liệu người dùng đang nhập cho PC-KETOAN-KHANH (model, giá 9.601.600, nhà cung cấp, đơn giá linh kiện…) đã được ghi thẳng lên Sheet TB-Thiết bị bằng lệnh `updateEquipment` (kiểm tra có `200`). sw v30.
+- Nếu còn lặp lại: mở F12 → Console xem lỗi `GSheets API error`; `localStorage.hiconique_write_queue` cho biết lệnh đang kẹt.
+
 ### Phiên 2026-09-30 (k) — Cột "Đơn giá" cho từng linh kiện, tự cộng vào Giá mua
 
 - Bảng Linh kiện/Thông số (form tài sản) thêm cột **Đơn giá (₫)** sau cột SL (`data-f="price"`, gõ tự chấm hàng nghìn). Lưu trong cột JSON `specs` của sheet TB-Thiết bị (khóa `price` mỗi dòng) — không cần đổi cột Sheet/Apps Script.

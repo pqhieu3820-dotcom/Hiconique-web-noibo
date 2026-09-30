@@ -38,12 +38,20 @@ var writeQueueTimer = null;
 var writeTabId = 'tab_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
 var lastWriteOkAt = null;
 
+// Nếu localStorage đầy/bị chặn thì hàng đợi ghi giữ TẠM TRONG BỘ NHỚ (writeQueueMem_) để lệnh vẫn được gửi lên Sheet khi trang còn mở —
+// trước đây lỗi này bị nuốt im lặng: bấm Lưu xong dữ liệu không lên Sheet và tải lại là mất.
+var writeQueueMem_ = null;
 function readWriteQueue_() {
+  if (writeQueueMem_) return writeQueueMem_;
   try { var q = JSON.parse(localStorage.getItem(WRITE_QUEUE_KEY) || '[]'); return Array.isArray(q) ? q : []; }
   catch (e) { return []; }
 }
 function saveWriteQueue_(q) {
-  try { localStorage.setItem(WRITE_QUEUE_KEY, JSON.stringify(q)); } catch (e) { /* localStorage đầy — bỏ qua */ }
+  try { localStorage.setItem(WRITE_QUEUE_KEY, JSON.stringify(q)); writeQueueMem_ = null; }
+  catch (e) {
+    writeQueueMem_ = q.length ? q : null;
+    if (q.length) { try { console.warn('Bộ nhớ trình duyệt đầy — hàng đợi ghi giữ trong RAM, đừng đóng trang cho tới khi lên Sheet'); } catch (x) {} }
+  }
 }
 function emitSyncState_(extra) {
   var q = readWriteQueue_();
@@ -87,7 +95,7 @@ function processWriteQueue_() {
   touchWriteQueueLock_();
   var op = q[0];
 
-  function finish(ok, reason, deterministic) {
+  function finish(ok, reason, deterministic, maxTries) {
     clearTimeout(timer);
     writeQueueBusy = false;
     var cur = readWriteQueue_();
@@ -104,7 +112,7 @@ function processWriteQueue_() {
     console.error('GSheets API error (' + op.action + '):', reason);
     if (idx !== -1) {
       cur[idx].tries = (cur[idx].tries || 0) + 1;
-      if (deterministic && cur[idx].tries >= WRITE_MAX_TRIES) {
+      if (deterministic && cur[idx].tries >= (maxTries || WRITE_MAX_TRIES)) {
         cur.splice(idx, 1);
         saveWriteQueue_(cur);
         window.dispatchEvent(new CustomEvent('hiconique:sync-failed', { detail: { action: op.action, id: op.id } }));
@@ -112,6 +120,8 @@ function processWriteQueue_() {
         if (cur.length) scheduleWriteQueue_(200);
         return;
       }
+      // lệnh lỗi đưa xuống cuối hàng để KHÔNG chặn các lệnh khác phía sau (chỉ thử lại đúng thứ tự theo từng dòng dữ liệu)
+      if (cur.length > 1 && cur[idx].tries >= 2) { var bad = cur.splice(idx, 1)[0]; cur.push(bad); }
       saveWriteQueue_(cur);
       var delay = WRITE_RETRY_DELAYS[Math.min(cur[idx].tries - 1, WRITE_RETRY_DELAYS.length - 1)];
       emitSyncState_({ event: 'retry', tries: cur[idx].tries, action: op.action, id: op.id });
@@ -133,6 +143,22 @@ function processWriteQueue_() {
         if (result && result.error) {
           // Xoá 1 dòng đã xoá rồi (gửi lại sau khi lần đầu đã thành công nhưng mất phản hồi) = coi như xong.
           if (/^delete/i.test(op.action) && /not found/i.test(String(result.error))) { finish(true); return; }
+          // Sửa 1 dòng CHƯA có trên Sheet (lần thêm trước đó thất bại/mất): trước đây "Not found" bị coi là lỗi tạm và thử lại MÃI,
+          // làm KẸT cả hàng đợi (mọi lần Lưu sau đó không lên Sheet, tải lại là mất). Nay: thiết bị/tài sản → chuyển thành THÊM MỚI với đủ dữ liệu;
+          // loại khác → tính là lỗi tất định (bỏ sau vài lần + báo).
+          if (/^update/i.test(op.action) && /not found/i.test(String(result.error))) {
+            if (op.action === 'updateEquipment' && op.data && op.data.name) {
+              var cq = readWriteQueue_();
+              for (var k = 0; k < cq.length; k++) {
+                if (cq[k].qid === op.qid) { cq[k].action = 'addEquipment'; cq[k].data = Object.assign({}, cq[k].data, { id: op.id }); cq[k].tries = 0; break; }
+              }
+              saveWriteQueue_(cq);
+              writeQueueBusy = false; clearTimeout(timer); scheduleWriteQueue_(50);
+              return;
+            }
+            finish(false, result.error, true, 3);
+            return;
+          }
           finish(false, result.error, !/not found/i.test(String(result.error)));
           return;
         }
