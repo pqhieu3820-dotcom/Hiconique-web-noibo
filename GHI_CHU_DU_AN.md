@@ -1878,3 +1878,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (bb) Biểu đồ: khung hover bao trọn cột + nhãn số
 - finance.html: khung hover của mỗi tháng là `::before` phủ từ trên nhãn số tới dưới nhãn tháng (top -38px, bottom -8px), bo 14px, nền đồng nhạt dạng gradient + viền + bóng mềm, có hiệu ứng chuyển. sw v72.
+
+### 2026-09-30 (bc) Bảng Giao dịch gọn + tiêu đề tháng MM/YYYY
+- finance.html: bảng Giao dịch (9 cột) dùng font 0.75rem, padding ô 8px (thay 24px), cột Số phiếu/Ngày/Số tiền không xuống dòng → thấy đủ cột và nút Xoá; tiêu đề "Giao dịch tháng 09/2026". sw v73.

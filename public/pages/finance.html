@@ -191,6 +191,14 @@
 
     .fn-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
     .fn-table th { text-align: left; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--fn-muted); font-weight: 600; padding: 10px 24px; background: var(--fn-bg); border-bottom: 1px solid var(--fn-border); }
+    /* bảng Giao dịch: gọn để thấy đủ 9 cột + nút Xoá */
+    .fn-table:has(#fnEntryRows) { font-size: 0.75rem; table-layout: auto; }
+    .fn-table:has(#fnEntryRows) th, .fn-table:has(#fnEntryRows) td { padding: 9px 8px; }
+    .fn-table:has(#fnEntryRows) th:first-child, .fn-table:has(#fnEntryRows) td:first-child { padding-left: 18px; }
+    .fn-table:has(#fnEntryRows) th:last-child, .fn-table:has(#fnEntryRows) td:last-child { padding-right: 16px; }
+    .fn-table:has(#fnEntryRows) td:nth-child(1), .fn-table:has(#fnEntryRows) td:nth-child(8), .fn-table:has(#fnEntryRows) td:nth-child(9) { white-space: nowrap; }
+    .fn-table:has(#fnEntryRows) td:nth-child(3), .fn-table:has(#fnEntryRows) td:nth-child(5) { max-width: 180px; overflow-wrap: anywhere; }
+    .fn-table:has(#fnEntryRows) .fn-btn-sm { padding: 4px 9px; }
     .fn-table td { padding: 10px 24px; border-bottom: 1px solid var(--fn-border); vertical-align: middle; }
     .fn-table tr:last-child td { border-bottom: none; }
     .fn-amount { font-family: 'JetBrains Mono', monospace; font-weight: 600; white-space: nowrap; }
@@ -1255,7 +1263,7 @@
 
     // ============================== TRANSACTIONS ==============================
     function renderTransactionsList(month) {
-      document.getElementById('fnListTitle').textContent = 'Giao dịch tháng ' + month.slice(5, 7) + '-' + month.slice(0, 4);   // 2026-09 → 09-2026
+      document.getElementById('fnListTitle').textContent = 'Giao dịch tháng ' + month.slice(5, 7) + '/' + month.slice(0, 4);   // 2026-09 → 09/2026
       var list = TaskManager.getFinanceEntries({ month: month });
       var rows = document.getElementById('fnEntryRows');
 
