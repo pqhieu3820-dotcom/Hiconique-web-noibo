@@ -2013,3 +2013,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (cq) Xuất PDF 1200 DPI
 - payslip-docx.js: chụp ở `pixelRatio = 1200/96 = 12.5` (≈9925×14950px, ~150 megapixel/trang), JPEG 0.95; hạ dần 600 → 400 → 300 → 200 DPI nếu máy thiếu RAM. Đã thử: canvas 9925×14950 tạo được (~2s/trang, có nội dung), PDF 2 trang ≈ 4.9MB, ~2.7s. Máy yếu/điện thoại sẽ tự hạ xuống mức phù hợp. sw v112.
+
+### 2026-09-30 (cr) Xem nhanh Docx: chọn chất lượng PDF + thông báo DPI thực tế
+- payslip-docx.js: ô "Chất lượng PDF" trên thanh công cụ (mặc định **1200 DPI**, có 600 / 300). Sau khi xuất hiện thông báo "Đã xuất PDF — 1200 DPI · N trang · X MB"; nếu máy thiếu RAM phải hạ mức thì báo màu vàng "(đã hạ từ 1200 DPI do thiếu bộ nhớ)" — DPI thật = mức thấp nhất đã dùng ở các trang. Tải file bằng `pdf.output('blob')` để biết dung lượng. sw v113.
