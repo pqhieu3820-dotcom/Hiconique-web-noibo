@@ -1981,3 +1981,7 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (cg) Phiếu lương: ô tự động viền đỏ + bỏ placeholder ví dụ
 - payslip.html: các ô dữ liệu cố định không nhập tay (Ngày công, Tổng giờ làm, Giờ OT tự động, Đơn giá OT/giờ, Hoa hồng dự án tự động) có viền đỏ (`.pl-form-card .pl-field-value`) để phân biệt với ô nhập; bỏ chữ mờ ví dụ ở "Ghi chú thưởng khác" và "Ghi chú khấu trừ". sw v103.
+
+### 2026-09-30 (ch) Phiếu lương: Xuất Docx + Xem nhanh "Giấy đề nghị thanh toán lương"
+- `public/js/payslip-docx.js` (`PayslipDocx.download/preview`) + 2 nút cạnh "Hôm nay" ở payslip.html. File Word theo **Mẫu số 05-TT "Giấy đề nghị thanh toán" (TT 133/2016/TT-BTC)** + Quốc hiệu/Tiêu ngữ: đầu văn bản (tên công ty, địa chỉ, bộ phận | Mẫu số 05-TT), tiêu đề, "Kính gửi Ban Giám đốc", thông tin người đề nghị (tên, bộ phận, mã NV, số TK), nội dung, số tiền bằng số + bằng chữ (hàm `moneyWords`), bảng khoản mục (lương cơ bản, OT, hoa hồng, thưởng, khấu trừ, TỔNG), hình thức/thời hạn thanh toán, kèm theo, 4 ô ký (Giám đốc – Kế toán trưởng – Trưởng bộ phận – Người đề nghị). A4, lề chuẩn NĐ 30/2020 (2/2/3/1.5cm), Times New Roman 13.
+- Số liệu lấy từ phiếu đã gửi của tháng đó, hoặc tính trực tiếp từ form đang nhập nếu chưa gửi. Thư viện nạp khi bấm: `docx@8.5.0` (jsdelivr), xem nhanh dùng `jszip` + `docx-preview@0.3.3` (cả hai đặt global `docx` → nạp docx trước, giữ tham chiếu). Địa chỉ công ty để dấu chấm để điền tay (chưa có trong dữ liệu). sw v104.
