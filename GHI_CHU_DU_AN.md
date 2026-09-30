@@ -1964,3 +1964,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (cb) Cập nhật đoạn mô tả trang Sổ tài chính cho đúng hiện trạng
 - finance.html (dòng mô tả dưới tiêu đề) và portal.js (mô tả trong ô tìm kiếm): bỏ "Chỉ CEO xem và chỉnh sửa được" / "CEO-only" — nay ghi rõ nội dung thực tế (sổ giao dịch có số phiếu & TK đối ứng, sổ quỹ 111/112, lãi/lỗ, dòng tiền, vay nợ, công nợ, BCTC & rủi ro, Báo cáo nhanh, xuất Excel) và đối tượng dùng: CEO, Founder và người được Founder ủy quyền. sw v98.
+
+### 2026-09-30 (cc) Rút gọn câu cuối mô tả Sổ tài chính
+- finance.html: câu cuối còn "Dành cho CEO, Founder và người được ủy quyền." (bỏ "được Founder" và "VD Kế toán"). sw v99.
