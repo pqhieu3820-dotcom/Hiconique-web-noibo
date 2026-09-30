@@ -1967,3 +1967,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (cc) Rút gọn câu cuối mô tả Sổ tài chính
 - finance.html: câu cuối còn "Dành cho CEO, Founder và người được ủy quyền." (bỏ "được Founder" và "VD Kế toán"). sw v99.
+
+### 2026-09-30 (cd) Thẻ "Cập nhật gần đây" ở trang chủ = nhật ký chỉnh sửa/cập nhật web
+- public/index.html (mục Thông báo nội bộ, thẻ `notice-info` → `<ul class="notice-list">`): giữ lại và dùng để hiển thị các chỉnh sửa / cập nhật web. **Mỗi lần có thay đổi đáng kể, thêm 1 dòng mới lên ĐẦU danh sách** (`<li><span class="notice-date">dd/mm/yyyy</span> nội dung ngắn</li>`), giữ tối đa ~4–5 dòng (xoá dòng cũ nhất). Đã thay 3 dòng mẫu cũ (tháng 8) bằng 4 cập nhật thực: Sổ tài chính (sổ quỹ, số phiếu, TK đối ứng, Báo cáo nhanh, Excel), Agent 2.1.x, phân quyền Sổ tài chính + đếm ngược ngưng công tác, Khai toán nhanh. Các thẻ còn lại (Nhắc nhở cuối tuần, Họp team, phiếu lương) là dữ liệu thông báo do CEO quản lý. sw v100.
