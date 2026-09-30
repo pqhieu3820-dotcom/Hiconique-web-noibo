@@ -63,6 +63,7 @@ def gh_api(method, url, token, data=None, content_type='application/json'):
 
 
 def publish_release(version, exe_path, notes):
+    ASSET_NAME = 'HiconiqueAgentSetup-v%s.exe' % version   # tên file tải về CÓ số phiên bản
     token = github_token()
     tag = 'agent-v%s' % version
     api = 'https://api.github.com/repos/%s' % REPO
@@ -78,7 +79,7 @@ def publish_release(version, exe_path, notes):
     with open(exe_path, 'rb') as f:
         asset = gh_api('POST', upload_url, token, f.read(), content_type='application/octet-stream')
     # browser_download_url: https://github.com/<repo>/releases/download/<tag>/<asset> -> .../releases/latest/download/<asset>
-    return asset['browser_download_url'].rsplit('/download/', 1)[0] + '/latest/download/' + ASSET_NAME
+    return asset['browser_download_url']   # .../releases/download/agent-v<ver>/HiconiqueAgentSetup-v<ver>.exe (cố định theo phiên bản)
 
 
 src = open(ENTRY, encoding='utf-8').read()
@@ -96,8 +97,8 @@ subprocess.check_call([
     '--add-data', '%s%s.' % (LOGO, os.pathsep),
     '--hidden-import', 'PyQt5.QtSvg',
     '--hidden-import', 'PyQt5.QtNetwork',
-    '--hidden-import', 'pandas', '--hidden-import', 'openpyxl',
-    '--exclude-module', 'matplotlib', '--exclude-module', 'pandas.tests', '--exclude-module', 'tkinter',
+    '--hidden-import', 'openpyxl',
+    '--exclude-module', 'matplotlib', '--exclude-module', 'pandas', '--exclude-module', 'numpy', '--exclude-module', 'tkinter',
     '--distpath', os.path.join(HERE, 'dist'),
     '--workpath', os.path.join(HERE, 'build'), '--specpath', os.path.join(HERE, 'build'),
     ENTRY,
@@ -122,7 +123,7 @@ if '--no-publish' in sys.argv:
     print('OK (--no-publish): chỉ build + copy Desktop, chưa đăng release/latest.json', version, sha)
     sys.exit(0)
 
-print('Đang tải lên GitHub Releases (%s, ~%d MB)...' % (ASSET_NAME, size // 1024 // 1024))
+print('Đang tải lên GitHub Releases (HiconiqueAgentSetup-v%s.exe, ~%d MB)...' % (version, size // 1024 // 1024))
 stable_url = publish_release(version, exe, history[0]['notes'])
 print('OK ->', stable_url)
 

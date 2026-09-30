@@ -34,7 +34,7 @@ import zipfile
 from ctypes import wintypes
 from datetime import datetime, timezone
 
-VERSION = '2.0.5'
+VERSION = '2.0.6'
 APP_NAME = 'HiconiqueAgent'
 FROZEN = getattr(sys, 'frozen', False)
 BASE = os.path.dirname(os.path.abspath(sys.executable if FROZEN else __file__))
@@ -266,12 +266,134 @@ def http_open(url, timeout=30):
     return urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'HiconiqueAgent/%s' % VERSION}), timeout=timeout)
 
 
+def xl_read_rows(file_path):
+    """Đọc sheet đầu của file .xlsx → danh sách dòng (list giá trị), BỎ dòng tiêu đề đầu (giống pandas.read_excel). Ô trống = None."""
+    from openpyxl import load_workbook
+    wb = load_workbook(file_path, read_only=True, data_only=True)
+    try:
+        ws = wb.worksheets[0]
+        rows = [list(r) for r in ws.iter_rows(values_only=True)]
+    finally:
+        wb.close()
+    return rows[1:]
+
+
+def xl_write_records(file_path, records, sort_keys, hidden_keys):
+    """Ghi danh sách dict ra .xlsx: sắp xếp theo sort_keys, cột hidden_keys chỉ để sắp xếp (không ghi ra file)."""
+    from openpyxl import Workbook
+    records = sorted(records, key=lambda d: tuple(d[k] for k in sort_keys))
+    cols = [k for k in records[0].keys() if k not in hidden_keys]
+    wb = Workbook()
+    ws = wb.active
+    ws.append(cols)
+    for d in records:
+        ws.append([d[k] for k in cols])
+    wb.save(file_path)
+
+
 def relaunch_after_exit(exe):
     """Mở lại exe SAU KHI tiến trình hiện tại đã thoát (tránh bản mới tưởng đã có cửa sổ đang chạy rồi tự thoát)."""
     bat = os.path.join(tempfile.gettempdir(), 'hiconique_relaunch.bat')
     with open(bat, 'w', encoding='utf-8') as f:
         f.write('@echo off' + CRLF_ + 'ping -n 3 127.0.0.1 >nul' + CRLF_ + 'start "" "%s" --run --after-update' % exe + CRLF_ + 'del "%~f0"' + CRLF_)
     subprocess.Popen(['cmd', '/c', bat], close_fds=True, creationflags=0x08000000 | 0x00000008)  # NO_WINDOW | DETACHED
+
+
+def fmt_bytes(n):
+    return '%.1f MB' % (n / 1048576.0) if n >= 1048576 else '%d KB' % (n // 1024)
+
+
+def fmt_eta(sec):
+    sec = int(max(0, sec))
+    return '%d:%02d' % (sec // 60, sec % 60) if sec < 3600 else '%d:%02d:%02d' % (sec // 3600, sec % 3600 // 60, sec % 60)
+
+
+def download_file(url, dest, total, sha_progress=None, parts=4):
+    """Tải file bằng NHIỀU kết nối song song (Range) — mạng bị giới hạn/chậm theo từng kết nối (GitHub CDN ở VN hay chỉ ~40 KB/s/kết nối)
+    tải 4 luồng nhanh gấp ~3-4 lần. Máy chủ không hỗ trợ Range thì tự về 1 luồng. sha_progress(done, total, speed_bps, eta_sec) gọi ~mỗi 0,5s.
+    Trả về số byte đã tải; ném lỗi nếu thiếu dữ liệu."""
+    final_url, size, ranged = url, total, False
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'HiconiqueAgent/%s' % VERSION, 'Range': 'bytes=0-0'})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            final_url = r.geturl()
+            cr = r.headers.get('Content-Range') or ''
+            if r.status == 206 and '/' in cr:
+                size, ranged = int(cr.rsplit('/', 1)[1]), True
+            elif not size:
+                size = int(r.headers.get('Content-Length') or 0)
+    except Exception as e:
+        log('Dò Range lỗi, tải 1 luồng:', e)
+    state = {'done': 0, 'err': None}
+    lock = threading.Lock()
+    t0 = time.time()
+    stop = threading.Event()
+
+    def report():
+        while not stop.is_set():
+            time.sleep(0.5)
+            if sha_progress and size:
+                d = state['done']
+                sp = d / max(0.5, time.time() - t0)
+                sha_progress(d, size, sp, (size - d) / sp if sp > 0 else 0)
+
+    threading.Thread(target=report, daemon=True).start()
+
+    def fetch(lo, hi):
+        for attempt in range(4):
+            try:
+                req = urllib.request.Request(final_url, headers={'User-Agent': 'HiconiqueAgent/%s' % VERSION, 'Range': 'bytes=%d-%d' % (lo, hi)})
+                with urllib.request.urlopen(req, timeout=60) as r, open(dest, 'r+b') as f:
+                    if r.status != 206:
+                        raise RuntimeError('không hỗ trợ Range')
+                    f.seek(lo)
+                    while lo <= hi:
+                        chunk = r.read(min(1 << 18, hi - lo + 1))
+                        if not chunk:
+                            raise RuntimeError('đứt kết nối')
+                        f.write(chunk)
+                        lo += len(chunk)
+                        with lock:
+                            state['done'] += len(chunk)
+                return
+            except Exception as e:
+                state['err'] = e
+                if attempt == 3:
+                    raise
+                time.sleep(1 + attempt)
+
+    try:
+        if ranged and size > (4 << 20):
+            with open(dest, 'wb') as f:
+                f.truncate(size)
+            step = -(-size // parts)
+            errs = []
+            ths = []
+            for i in range(parts):
+                lo, hi = i * step, min(size - 1, (i + 1) * step - 1)
+                if lo > hi:
+                    continue
+                th = threading.Thread(target=lambda a=lo, b=hi: (fetch(a, b) if True else None), daemon=True)
+                ths.append(th)
+                th.start()
+            for th in ths:
+                th.join()
+            if state['done'] < size:
+                raise RuntimeError('tải thiếu dữ liệu (%d/%d): %s' % (state['done'], size, state['err']))
+        else:
+            with http_open(url, timeout=600) as r, open(dest, 'wb') as f:
+                size = size or int(r.headers.get('Content-Length') or 0)
+                while True:
+                    chunk = r.read(1 << 18)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+                    state['done'] += len(chunk)
+    finally:
+        stop.set()
+    if sha_progress and size:
+        sha_progress(size, size, size / max(0.5, time.time() - t0), 0)
+    return state['done']
 
 
 def check_update(cfg, progress=None, exe=None, restart=True):
@@ -297,22 +419,21 @@ def check_update(cfg, progress=None, exe=None, restart=True):
             progress('Có bản mới %s — đang tải về…' % info['version'])
         tmp = os.path.join(DATA_DIR, 'update.exe')
         total = int(info.get('size') or 0)
-        got, last_pct = 0, -1
+        last_txt = [0.0]
+
+        def on_progress(done, size, speed, eta):
+            if progress and time.time() - last_txt[0] >= 0.5:
+                last_txt[0] = time.time()
+                progress('Đang tải v%s… %d%% · %s/%s · %s/s · còn %s' % (
+                    info['version'], min(99, int(done * 100 / size)), fmt_bytes(done), fmt_bytes(size), fmt_bytes(int(speed)), fmt_eta(eta)))
+
+        download_file(url, tmp, total, on_progress)
+        if progress:
+            progress('Đang kiểm tra tệp tải về…')
         h = hashlib.sha256()
-        with http_open(url, timeout=600) as r, open(tmp, 'wb') as f:
-            total = total or int(r.headers.get('Content-Length') or 0)
-            while True:
-                chunk = r.read(1 << 20)
-                if not chunk:
-                    break
+        with open(tmp, 'rb') as f:
+            for chunk in iter(lambda: f.read(1 << 20), b''):
                 h.update(chunk)
-                f.write(chunk)
-                got += len(chunk)
-                if progress and total:
-                    pct = min(99, int(got * 100 / total))
-                    if pct != last_pct:
-                        last_pct = pct
-                        progress('Đang tải bản %s… %d%%' % (info['version'], pct))
         if h.hexdigest().lower() != str(info['sha256']).lower():
             log('Bản cập nhật sai mã SHA-256, hủy')
             os.remove(tmp)
@@ -525,7 +646,7 @@ from PyQt5.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView, QListWidget, QListWidgetItem, QAbstractItemView,
     QFileDialog, QMessageBox, QDialog, QGroupBox, QSystemTrayIcon, QMenu, QAction, QScrollArea,
     QGraphicsView, QGraphicsScene, QGraphicsRectItem, QGraphicsTextItem, QGraphicsLineItem,
-    QGraphicsItem, QSizePolicy, QSplitter, QRadioButton, QButtonGroup, QStackedWidget, QFrame,
+    QGraphicsItem, QSizePolicy, QSplitter, QRadioButton, QButtonGroup, QStackedWidget, QFrame, QProgressBar,
 )
 from PyQt5.QtNetwork import QLocalServer, QLocalSocket
 
@@ -597,6 +718,19 @@ QScrollBar::add-page, QScrollBar::sub-page { background: transparent; }
 QMenu { background: %(surface)s; color: %(text)s; border: 1px solid %(border)s; padding: 4px; }
 QMenu::item { padding: 7px 22px; border-radius: 6px; }
 QMenu::item:selected { background: %(sel)s; color: %(bronze)s; }
+QProgressBar { background: %(bg)s; border: 1px solid %(border)s; border-radius: 6px; text-align: center; min-height: 14px; max-height: 14px; font-size: 10px; color: %(text)s; }
+QProgressBar::chunk { background: %(bronze)s; border-radius: 5px; }
+QFrame#kpi { background: %(surface)s; border: 1px solid %(border)s; border-radius: 14px; }
+QFrame#kpi QLabel { background: transparent; }
+QLabel#kpiTitle { color: %(muted)s; font-size: 11px; font-weight: 600; }
+QLabel#kpiValue { font-size: 24px; font-weight: 700; }
+QLabel#kpiSub { color: %(muted)s; font-size: 11px; }
+QLabel#pillOk { background: rgba(79,111,82,0.20); color: #6FA274; border: 1px solid rgba(79,111,82,0.55); border-radius: 12px; padding: 4px 12px; font-weight: 700; }
+QLabel#pillBad { background: rgba(208,112,112,0.16); color: #D07070; border: 1px solid rgba(208,112,112,0.5); border-radius: 12px; padding: 4px 12px; font-weight: 700; }
+QLabel#chip { background: %(surface)s; border: 1px solid %(border)s; border-radius: 10px; padding: 3px 10px; color: %(muted)s; }
+QFrame#hero { background: %(surface)s; border: 1px solid %(border)s; border-radius: 16px; }
+QFrame#hero QLabel, QFrame#note QLabel { background: transparent; }
+QFrame#note { background: %(surface)s; border: 1px solid %(border)s; border-radius: 12px; }
 QToolTip { background: %(surface)s; color: %(text)s; border: 1px solid %(border)s; padding: 4px 8px; }
 """
 
@@ -663,6 +797,7 @@ class Shared:
         self.paused = False
         self.last_flush_at = None
         self.last_flush_ok = None
+        self.next_flush_at = time.time() + cfg['flushMinutes'] * 60   # mốc gửi kế tiếp (giao diện đếm ngược)
 
 
 class BackgroundWorker(QThread):
@@ -715,6 +850,7 @@ class BackgroundWorker(QThread):
                 self.shared.last_flush_at = datetime.now()
                 self.shared.last_flush_ok = ok
                 last_flush = time.time() if ok else time.time() - cfg['flushMinutes'] * 60 + 60
+                self.shared.next_flush_at = last_flush + cfg['flushMinutes'] * 60
             if cfg['reportHardware'] and time.time() - last_hw >= cfg['hardwareHours'] * 3600:
                 last_hw = time.time()
                 report_hardware(cfg)
@@ -730,50 +866,136 @@ class BackgroundWorker(QThread):
 # ==============================================================================
 # TAB 1 — Kiểm soát dữ liệu thao tác
 # ==============================================================================
+def fmt_dur(sec):
+    m = int(round(sec / 60.0))
+    if sec < 60:
+        return '%d giây' % int(sec)
+    return '%dh %02dp' % (m // 60, m % 60) if m >= 60 else '%d phút' % m
+
+
+def make_kpi(title):
+    f = QFrame()
+    f.setObjectName('kpi')
+    v = QVBoxLayout(f)
+    v.setContentsMargins(16, 12, 16, 12)
+    v.setSpacing(2)
+    t = QLabel(title.upper())
+    t.setObjectName('kpiTitle')
+    val = QLabel('—')
+    val.setObjectName('kpiValue')
+    sub = QLabel('')
+    sub.setObjectName('kpiSub')
+    sub.setWordWrap(True)
+    for w in (t, val, sub):
+        v.addWidget(w)
+    return f, val, sub
+
+
 class ActivityTab(QWidget):
     def __init__(self, shared, parent=None):
         super().__init__(parent)
         self.shared = shared
+        self.sel_app = None
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(28, 24, 28, 24)
-        lay.setSpacing(10)
+        lay.setContentsMargins(28, 22, 28, 22)
+        lay.setSpacing(12)
 
+        top = QHBoxLayout()
         head = QLabel('Kiểm soát dữ liệu thao tác')
         head.setObjectName('h1')
-        lay.addWidget(head)
-        sub = QLabel('Ghi nhận tên ứng dụng và tiêu đề cửa sổ đang dùng trong giờ làm việc, không chụp màn hình hay ghi phím gõ. '
-                     'Dữ liệu gửi lên Hub mỗi %d phút.' % shared.cfg['flushMinutes'])
+        top.addWidget(head)
+        top.addStretch(1)
+        self.lblStatus = QLabel()
+        top.addWidget(self.lblStatus)
+        self.btnPause = QPushButton('Tạm dừng ghi nhận')
+        self.btnPause.clicked.connect(self.toggle_pause)
+        top.addWidget(self.btnPause)
+        lay.addLayout(top)
+
+        sub = QLabel('Ghi nhận tên ứng dụng và tiêu đề cửa sổ đang dùng trong giờ làm việc — không chụp màn hình, không ghi phím gõ. '
+                     'Dữ liệu tự gửi lên Hub mỗi %d phút.' % shared.cfg['flushMinutes'])
         sub.setWordWrap(True)
         sub.setProperty('muted', True)
         lay.addWidget(sub)
 
-        row = QHBoxLayout()
-        self.lblStatus = QLabel()
-        self.lblStatus.setStyleSheet('font-weight:700;')
-        row.addWidget(self.lblStatus)
-        row.addStretch(1)
-        self.btnPause = QPushButton('Tạm dừng ghi nhận')
-        self.btnPause.clicked.connect(self.toggle_pause)
-        row.addWidget(self.btnPause)
-        lay.addLayout(row)
+        chips = QHBoxLayout()
+        chips.setSpacing(8)
+        for txt in ('👤  %s' % (shared.cfg.get('memberId') or '(chưa cấu hình)'),
+                    '🕒  Giờ làm việc %s' % shared.cfg.get('workHours'),
+                    '💻  %s' % socket.gethostname()):
+            c = QLabel(txt)
+            c.setObjectName('chip')
+            chips.addWidget(c)
+        chips.addStretch(1)
+        lay.addLayout(chips)
 
-        info = QLabel('Người dùng: %s   ·   Giờ làm việc: %s' % (shared.cfg.get('memberId') or '(chưa cấu hình)', shared.cfg.get('workHours')))
-        info.setProperty('muted', True)
-        lay.addWidget(info)
+        kp = QHBoxLayout()
+        kp.setSpacing(12)
+        self.kActive, self.vActive, self.sActive = make_kpi('Đang hoạt động hôm nay')
+        self.kIdle, self.vIdle, self.sIdle = make_kpi('Không thao tác')
+        self.kApps, self.vApps, self.sApps = make_kpi('Ứng dụng đã dùng')
+        self.kSend, self.vSend, self.sSend = make_kpi('Gửi lên Hub')
+        for k in (self.kActive, self.kIdle, self.kApps, self.kSend):
+            kp.addWidget(k, 1)
+        lay.addLayout(kp)
 
-        self.table = QTableWidget(0, 2)
-        self.table.setHorizontalHeaderLabels(['Ứng dụng', 'Phút hôm nay'])
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        self.table.horizontalHeader().setHighlightSections(False)
-        self.table.horizontalHeader().setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        body = QHBoxLayout()
+        body.setSpacing(12)
+        leftCard = QFrame()
+        leftCard.setObjectName('card')
+        lv = QVBoxLayout(leftCard)
+        lv.setContentsMargins(14, 12, 14, 12)
+        lt = QLabel('Ứng dụng hôm nay')
+        lt.setStyleSheet('font-weight:700;')
+        lv.addWidget(lt)
+        self.table = QTableWidget(0, 3)
+        self.table.setHorizontalHeaderLabels(['Ứng dụng', 'Thời gian', 'Tỉ lệ'])
+        hh = self.table.horizontalHeader()
+        hh.setSectionResizeMode(0, QHeaderView.Stretch)
+        hh.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        hh.setSectionResizeMode(2, QHeaderView.Fixed)
+        self.table.setColumnWidth(2, 130)
+        hh.setHighlightSections(False)
+        hh.setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.table.verticalHeader().setVisible(False)
-        self.table.verticalHeader().setDefaultSectionSize(34)
-        self.table.setAlternatingRowColors(True)
+        self.table.verticalHeader().setDefaultSectionSize(36)
         self.table.setShowGrid(False)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        lay.addWidget(self.table, 1)
+        self.table.itemSelectionChanged.connect(self.on_select)
+        self.table.setStyleSheet('QTableWidget{border:none;background:transparent;}')
+        lv.addWidget(self.table, 1)
+        body.addWidget(leftCard, 3)
+
+        rightCard = QFrame()
+        rightCard.setObjectName('card')
+        rv = QVBoxLayout(rightCard)
+        rv.setContentsMargins(14, 12, 14, 12)
+        self.lblDetail = QLabel('Chi tiết')
+        self.lblDetail.setStyleSheet('font-weight:700;')
+        rv.addWidget(self.lblDetail)
+        self.detail = QTableWidget(0, 2)
+        self.detail.setHorizontalHeaderLabels(['Tiêu đề cửa sổ', 'Phút'])
+        dh = self.detail.horizontalHeader()
+        dh.setSectionResizeMode(0, QHeaderView.Stretch)
+        dh.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        dh.setHighlightSections(False)
+        dh.setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.detail.verticalHeader().setVisible(False)
+        self.detail.verticalHeader().setDefaultSectionSize(30)
+        self.detail.setShowGrid(False)
+        self.detail.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.detail.setSelectionMode(QAbstractItemView.NoSelection)
+        self.detail.setWordWrap(True)
+        self.detail.setStyleSheet('QTableWidget{border:none;background:transparent;}')
+        rv.addWidget(self.detail, 1)
+        self.lblHint = QLabel('Chọn một ứng dụng bên trái để xem các cửa sổ/tab đã mở.')
+        self.lblHint.setProperty('muted', True)
+        self.lblHint.setWordWrap(True)
+        rv.addWidget(self.lblHint)
+        body.addWidget(rightCard, 2)
+        lay.addLayout(body, 1)
 
         btnRow = QHBoxLayout()
         btnOpen = QPushButton('Mở dữ liệu của tôi')
@@ -784,15 +1006,14 @@ class ActivityTab(QWidget):
         btnFlush.clicked.connect(self.flush_now)
         btnRow.addWidget(btnFlush)
         btnRow.addStretch(1)
-        lay.addLayout(btnRow)
-
         self.lblFlush = QLabel('')
         self.lblFlush.setProperty('muted', True)
-        lay.addWidget(self.lblFlush)
+        btnRow.addWidget(self.lblFlush)
+        lay.addLayout(btnRow)
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.refresh)
-        self.timer.start(2000)
+        self.timer.start(1000)
         self.refresh()
 
     def toggle_pause(self):
@@ -810,21 +1031,95 @@ class ActivityTab(QWidget):
         ok = flush(self.shared.cfg, self.shared.day, self.shared.st)
         self.shared.last_flush_at = datetime.now()
         self.shared.last_flush_ok = ok
+        self.shared.next_flush_at = time.time() + self.shared.cfg['flushMinutes'] * 60
         self.refresh()
 
+    def on_select(self):
+        rows = self.table.selectionModel().selectedRows()
+        if rows:
+            it = self.table.item(rows[0].row(), 0)
+            self.sel_app = it.data(Qt.UserRole) if it else None
+        self.fill_detail()
+
+    def fill_detail(self):
+        apps = self.shared.st.get('apps', {})
+        v = apps.get(self.sel_app) if self.sel_app else None
+        if not v:
+            self.lblDetail.setText('Chi tiết')
+            self.detail.setRowCount(0)
+            self.lblHint.setText('Chọn một ứng dụng bên trái để xem các cửa sổ/tab đã mở.')
+            return
+        titles = sorted(v.get('titles', {}).items(), key=lambda kv: -kv[1])
+        self.lblDetail.setText('Chi tiết — %s  ·  %s' % (self.sel_app, fmt_dur(v['sec'])))
+        self.detail.setRowCount(len(titles))
+        for i, (t, sec) in enumerate(titles):
+            a = QTableWidgetItem(t)
+            a.setToolTip(t)
+            self.detail.setItem(i, 0, a)
+            b = QTableWidgetItem('%.1f' % (sec / 60.0))
+            b.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            self.detail.setItem(i, 1, b)
+        self.lblHint.setText('' if titles else 'Ứng dụng này không có tiêu đề cửa sổ được ghi (hoặc đang tắt gửi tiêu đề).')
+
     def refresh(self):
-        self.lblStatus.setText('⏸ Đã tạm dừng ghi nhận' if self.shared.paused else '● Đang ghi nhận' + (' (ngoài giờ làm việc)' if not in_work_time(self.shared.cfg, datetime.now()) else ''))
-        self.lblStatus.setStyleSheet('font-weight:700;color:%s;' % ('#D07070' if self.shared.paused else '#4F6F52'))
-        self.btnPause.setText('Tiếp tục ghi nhận' if self.shared.paused else 'Tạm dừng ghi nhận')
-        apps = sorted(self.shared.st.get('apps', {}).items(), key=lambda kv: -kv[1]['sec'])
-        self.table.setRowCount(len(apps))
+        sh = self.shared
+        in_work = in_work_time(sh.cfg, datetime.now())
+        if sh.paused:
+            self.lblStatus.setText('⏸  Đã tạm dừng')
+            self.lblStatus.setObjectName('pillBad')
+        else:
+            self.lblStatus.setText('●  Đang ghi nhận' if in_work else '●  Chờ giờ làm việc')
+            self.lblStatus.setObjectName('pillOk')
+        self.lblStatus.style().unpolish(self.lblStatus)
+        self.lblStatus.style().polish(self.lblStatus)
+        self.btnPause.setText('Tiếp tục ghi nhận' if sh.paused else 'Tạm dừng ghi nhận')
+
+        apps = sorted(sh.st.get('apps', {}).items(), key=lambda kv: -kv[1]['sec'])
+        active = sum(v['sec'] for _, v in apps)
+        idle = sh.st.get('idleSec', 0)
+        tracked = active + idle
+        self.vActive.setText(fmt_dur(active))
+        self.sActive.setText('%d%% thời gian đo' % round(active * 100.0 / tracked) if tracked else 'chưa có dữ liệu')
+        self.vIdle.setText(fmt_dur(idle))
+        self.sIdle.setText('không chạm chuột/phím ≥ %d phút' % max(1, sh.cfg['idleSeconds'] // 60))
+        self.vApps.setText(str(len(apps)))
+        self.sApps.setText('%s nhiều nhất' % apps[0][0] if apps else 'chưa có ứng dụng nào')
+        if sh.last_flush_at:
+            self.vSend.setText('✓ %s' % sh.last_flush_at.strftime('%H:%M') if sh.last_flush_ok else '✗ lỗi')
+        else:
+            self.vSend.setText('—')
+        left = max(0, int(sh.next_flush_at - time.time()))
+        self.sSend.setText('gửi tiếp sau %d:%02d' % (left // 60, left % 60))
+        if sh.last_flush_at:
+            self.lblFlush.setText('Gửi lần cuối lúc %s — %s' % (sh.last_flush_at.strftime('%H:%M:%S'), 'thành công' if sh.last_flush_ok else 'thất bại, sẽ thử lại'))
+
+        # bảng ứng dụng: cập nhật tại chỗ (không dựng lại toàn bộ để khỏi nháy/mất chọn)
+        self.table.blockSignals(True)
+        if self.table.rowCount() != len(apps):
+            self.table.setRowCount(len(apps))
+        total = float(active) or 1.0
         for i, (name, v) in enumerate(apps):
-            self.table.setItem(i, 0, QTableWidgetItem(name))
-            it = QTableWidgetItem(str(round(v['sec'] / 60)))
-            it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.table.setItem(i, 1, it)
-        if self.shared.last_flush_at:
-            self.lblFlush.setText('Gửi lần cuối lúc %s — %s' % (self.shared.last_flush_at.strftime('%H:%M:%S'), 'thành công' if self.shared.last_flush_ok else 'thất bại, sẽ thử lại'))
+            it = self.table.item(i, 0)
+            if it is None:
+                it = QTableWidgetItem()
+                self.table.setItem(i, 0, it)
+                tm = QTableWidgetItem()
+                tm.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                self.table.setItem(i, 1, tm)
+                bar = QProgressBar()
+                bar.setRange(0, 100)
+                self.table.setCellWidget(i, 2, bar)
+            it.setText(name)
+            it.setData(Qt.UserRole, name)
+            self.table.item(i, 1).setText(fmt_dur(v['sec']))
+            self.table.cellWidget(i, 2).setValue(int(round(v['sec'] * 100 / total)))
+        if self.sel_app is None and apps:
+            self.sel_app = apps[0][0]
+        for i, (name, _) in enumerate(apps):
+            if name == self.sel_app and not self.table.selectionModel().isRowSelected(i, self.table.rootIndex()):
+                self.table.selectRow(i)
+        self.table.blockSignals(False)
+        self.fill_detail()
 
 
 # ==============================================================================
@@ -2244,18 +2539,18 @@ class CpColorListDialog(QDialog):
             QMessageBox.information(self, 'Thành công', 'Đã lưu và đồng bộ danh sách màu!')
 
     def import_excel(self):
-        import pandas as pd
         file_path, _ = QFileDialog.getOpenFileName(self, 'Mở file Excel', '', 'Excel Files (*.xlsx *.xls)')
         if file_path:
             try:
                 self.table.setSortingEnabled(False)
-                df = pd.read_excel(file_path)
-                for _index, row_data in df.iterrows():
-                    group = str(row_data.iloc[0]) if len(row_data) > 0 and pd.notna(row_data.iloc[0]) else ''
-                    name = str(row_data.iloc[1]) if len(row_data) > 1 and pd.notna(row_data.iloc[1]) else group
-                    rgb = str(row_data.iloc[2]) if len(row_data) > 2 and pd.notna(row_data.iloc[2]) else ''
-                    hex_val = str(row_data.iloc[3]) if len(row_data) > 3 and pd.notna(row_data.iloc[3]) else ''
-                    hsl = str(row_data.iloc[4]) if len(row_data) > 4 and pd.notna(row_data.iloc[4]) else ''
+                for row_data in xl_read_rows(file_path):
+                    def cell(i, default=''):
+                        return str(row_data[i]) if len(row_data) > i and row_data[i] is not None else default
+                    group = cell(0)
+                    name = cell(1, group)
+                    rgb = cell(2)
+                    hex_val = cell(3)
+                    hsl = cell(4)
                     if name and name != 'nan':
                         formatted_name = cp_format_color_name(name)
                         row = self.table.rowCount()
@@ -2271,7 +2566,6 @@ class CpColorListDialog(QDialog):
                 QMessageBox.warning(self, 'Lỗi', 'Không thể đọc file: %s' % e)
 
     def export_excel(self):
-        import pandas as pd
         file_path, _ = QFileDialog.getSaveFileName(self, 'Lưu file Excel', 'Danh_sach_mau.xlsx', 'Excel Files (*.xlsx)')
         if file_path:
             data = []
@@ -2289,10 +2583,8 @@ class CpColorListDialog(QDialog):
                     except Exception:
                         pass
                 data.append({'Nhóm màu': g, 'Tên màu': n, 'RGB': r, 'HEX': hx, 'HSL': hl, '_h': h_val, '_s': s_val, '_l': l_val})
-            df = pd.DataFrame(data)
-            df.sort_values(by=['Nhóm màu', '_h', '_s', '_l'], inplace=True)
-            df.drop(columns=['_h', '_s', '_l'], inplace=True)
-            df.to_excel(file_path, index=False)
+            if data:
+                xl_write_records(file_path, data, ['Nhóm màu', '_h', '_s', '_l'], ('_h', '_s', '_l'))
             QMessageBox.information(self, 'Thành công', 'Đã xuất file Excel thành công!')
 
 
@@ -3111,7 +3403,6 @@ class ColorPickerPanel(QWidget):
         image.save(file_path)
 
     def export_batch_to_excel(self):
-        import pandas as pd
         total_items = self.list_widget.count()
         if total_items == 0:
             QMessageBox.warning(self, 'Lỗi', 'Danh sách đang trống!')
@@ -3138,11 +3429,8 @@ class ColorPickerPanel(QWidget):
                     s_pct = int((s / 255) * 100); l_pct = int((l / 255) * 100)
                     data_list.append({'Nhóm màu': family, 'Tên màu': name, 'RGB': '%d, %d, %d' % (r, g, b),
                                        'HEX': hex_code, 'HSL': '%d, %d%%, %d%%' % (h, s_pct, l_pct), '_h': h, '_s': s_pct, '_l': l_pct})
-        df = pd.DataFrame(data_list)
-        if not df.empty:
-            df.sort_values(by=['Nhóm màu', '_h', '_s', '_l'], inplace=True)
-            df.drop(columns=['_h', '_s', '_l'], inplace=True)
-            df.to_excel(file_path, index=False)
+        if data_list:
+            xl_write_records(file_path, data_list, ['Nhóm màu', '_h', '_s', '_l'], ('_h', '_s', '_l'))
             QMessageBox.information(self, 'Thành công', 'Đã xuất thành công %d màu ra file Excel!' % len(items_to_export))
 
     def export_batch_images(self):
@@ -3478,24 +3766,69 @@ class InstallDialog(QDialog):
         self.installed = False
         self.setWindowTitle('Cài đặt HICONIQUE Agent %s' % VERSION)
         self.setWindowIcon(app_icon())
-        self.resize(560, 560)
+        self.resize(640, 760)
+        self.setMinimumSize(560, 640)
         lay = QVBoxLayout(self)
+        lay.setContentsMargins(26, 22, 26, 22)
+        lay.setSpacing(14)
 
+        hero = QFrame()
+        hero.setObjectName('hero')
+        hl = QHBoxLayout(hero)
+        hl.setContentsMargins(18, 16, 18, 16)
+        hl.setSpacing(14)
+        logo = QLabel()
+        logo.setPixmap(logo_pixmap(60))
+        logo.setFixedSize(64, 64)
+        hl.addWidget(logo)
+        ht = QVBoxLayout()
+        ht.setSpacing(2)
         title = QLabel('HICONIQUE Agent')
-        title.setStyleSheet('font-size:18px;font-weight:800;color:%s;' % BRONZE)
-        lay.addWidget(title)
+        title.setStyleSheet('font-size:22px;font-weight:800;color:%s;' % BRONZE)
+        ht.addWidget(title)
+        sub = QLabel('Cài đặt cho máy tính CÔNG TY  ·  phiên bản %s' % VERSION)
+        sub.setProperty('muted', True)
+        ht.addWidget(sub)
+        sub2 = QLabel('Chạy nền, ghi nhận thời gian dùng ứng dụng trong giờ làm việc (%s) và cấu hình phần cứng máy.' % cfg['workHours'])
+        sub2.setProperty('muted', True)
+        sub2.setWordWrap(True)
+        ht.addWidget(sub2)
+        hl.addLayout(ht, 1)
+        lay.addWidget(hero)
 
-        info = QLabel(
-            'Ứng dụng chạy nền trên máy tính CÔNG TY: ghi nhận thời gian sử dụng ứng dụng trong giờ làm việc (%s) và cấu hình '
-            'phần cứng máy, để công ty quản lý thiết bị và hỗ trợ phân bổ công việc.\n\n'
-            'Có ghi: tên ứng dụng, tiêu đề cửa sổ đang mở (cửa sổ ẩn danh bị che), cấu hình CPU/RAM/ổ cứng/pin...\n'
-            'KHÔNG ghi: màn hình, phím gõ, nội dung tin nhắn/tệp, clipboard, camera, micro.\n\n'
-            'Bạn đọc được dữ liệu của mình tại: %s\\hoat-dong-hom-nay.txt. Gỡ cài đặt bất cứ lúc nào trong Cài đặt Windows > Ứng dụng.'
-            % (cfg['workHours'], DATA_DIR))
-        info.setWordWrap(True)
-        lay.addWidget(info)
+        cols = QHBoxLayout()
+        cols.setSpacing(12)
+        for head, color, icon, items in (
+                ('Có ghi nhận', '#6FA274', '✓', ['Tên ứng dụng đang dùng', 'Tiêu đề cửa sổ (cửa sổ ẩn danh bị che)', 'Cấu hình CPU / RAM / ổ cứng / pin']),
+                ('KHÔNG ghi nhận', '#D07070', '✕', ['Màn hình, ảnh chụp', 'Phím gõ, clipboard', 'Tin nhắn, nội dung tệp, camera, micro'])):
+            box = QFrame()
+            box.setObjectName('note')
+            bl = QVBoxLayout(box)
+            bl.setContentsMargins(14, 12, 14, 12)
+            bl.setSpacing(4)
+            hd = QLabel(head)
+            hd.setStyleSheet('font-weight:700;color:%s;' % color)
+            bl.addWidget(hd)
+            for it in items:
+                r = QLabel('<span style="color:%s;font-weight:700;">%s</span>&nbsp; %s' % (color, icon, it))
+                r.setWordWrap(True)
+                bl.addWidget(r)
+            bl.addStretch(1)
+            cols.addWidget(box, 1)
+        lay.addLayout(cols)
 
-        lay.addWidget(QLabel('<b>Chọn tên của bạn:</b>'))
+        rd = QLabel('Bạn đọc được dữ liệu của mình tại <b>%s\\hoat-dong-hom-nay.txt</b>. Gỡ cài đặt bất cứ lúc nào trong Cài đặt Windows › Ứng dụng.' % DATA_DIR)
+        rd.setProperty('muted', True)
+        rd.setWordWrap(True)
+        lay.addWidget(rd)
+
+        pick = QFrame()
+        pick.setObjectName('card')
+        pl = QVBoxLayout(pick)
+        pl.setContentsMargins(16, 14, 16, 14)
+        pl.setSpacing(8)
+        st1 = QLabel('<b>Bước 1</b> — Chọn tên của bạn')
+        pl.addWidget(st1)
         comboRow = QHBoxLayout()
         self.combo = QComboBox()
         self.combo.setEditable(True)
@@ -3506,15 +3839,24 @@ class InstallDialog(QDialog):
         self.btnReload.setToolTip('Tải lại danh sách thành viên')
         self.btnReload.clicked.connect(self.load_members)
         comboRow.addWidget(self.btnReload)
-        lay.addLayout(comboRow)
+        pl.addLayout(comboRow)
         self.lblLoad = QLabel('')
         self.lblLoad.setProperty('muted', True)
         self.lblLoad.setWordWrap(True)
-        lay.addWidget(self.lblLoad)
-        hint = QLabel('Nếu không thấy tên (hoặc mạng chậm), cứ gõ thẳng mã thành viên của bạn (xem sheet NS-Thành viên) rồi bấm Cài đặt.')
+        pl.addWidget(self.lblLoad)
+        self.loadBar = QProgressBar()
+        self.loadBar.setRange(0, 0)
+        self.loadBar.setTextVisible(False)
+        self.loadBar.setStyleSheet('QProgressBar{min-height:4px;max-height:4px;border:none;border-radius:2px;}QProgressBar::chunk{border-radius:2px;}')
+        self.loadBar.setMaximumHeight(4)
+        self.loadBar.setMinimumHeight(4)
+        self.loadBar.hide()
+        pl.addWidget(self.loadBar)
+        hint = QLabel('Không thấy tên (hoặc mạng chậm)? Cứ gõ thẳng mã thành viên của bạn (xem sheet NS-Thành viên) rồi bấm Cài đặt.')
         hint.setProperty('muted', True)
         hint.setWordWrap(True)
-        lay.addWidget(hint)
+        pl.addWidget(hint)
+        lay.addWidget(pick)
 
         self.members = {}
         self.membersThread = None
@@ -3529,14 +3871,16 @@ class InstallDialog(QDialog):
 
         self.status = QLabel('')
         self.status.setStyleSheet('color:#D07070;')
+        self.status.setWordWrap(True)
         lay.addWidget(self.status)
 
-        self.btnInstall = QPushButton('Cài đặt')
+        lay.addStretch(1)
+        self.btnInstall = QPushButton('Cài đặt HICONIQUE Agent')
         self.btnInstall.setObjectName('primary')
-        self.btnInstall.setMinimumHeight(40)
+        self.btnInstall.setMinimumHeight(46)
+        self.btnInstall.setStyleSheet('font-size:15px;')
         self.btnInstall.clicked.connect(self.do_install)
         lay.addWidget(self.btnInstall)
-        lay.addStretch(1)
 
     def _fill_members(self, ms):
         typed = self.combo.currentText().strip()
@@ -3549,6 +3893,7 @@ class InstallDialog(QDialog):
         if self.membersThread is not None and self.membersThread.isRunning():
             return
         self.btnReload.setEnabled(False)
+        self.loadBar.show()
         self.lblLoad.setStyleSheet('')
         self.lblLoad.setText('Đang tải danh sách thành viên… (mạng chậm có thể mất tới 1–2 phút — bạn có thể gõ mã thành viên ngay)')
         self.membersThread = MembersThread(self.cfg)
@@ -3559,6 +3904,7 @@ class InstallDialog(QDialog):
 
     def on_members_loaded(self, ms, err):
         self.btnReload.setEnabled(True)
+        self.loadBar.hide()
         if ms:
             self._fill_members(ms)
             self.lblLoad.setStyleSheet('')
@@ -3577,6 +3923,8 @@ class InstallDialog(QDialog):
             self.status.setText('Cần tích đồng ý trước khi cài đặt.')
             return
         self.btnInstall.setEnabled(False)
+        self.btnInstall.setText('Đang cài đặt…')
+        QApplication.processEvents()
         try:
             subprocess.run(['taskkill', '/F', '/FI', 'IMAGENAME eq HiconiqueAgent.exe', '/FI', 'PID ne %d' % os.getpid()],
                            capture_output=True, creationflags=0x08000000)
@@ -3604,6 +3952,7 @@ class InstallDialog(QDialog):
             log('Cài đặt lỗi:', e)
             self.status.setText('Lỗi cài đặt: %s' % e)
             self.btnInstall.setEnabled(True)
+            self.btnInstall.setText('Cài đặt HICONIQUE Agent')
 
 
 def do_uninstall():

@@ -206,7 +206,7 @@
       $('agDate').textContent = a.releasedAt ? fmtDateTime(a.releasedAt) : '—';
       $('agSize').textContent = a.size ? fmtSize(a.size) : '—';
       $('agSha').textContent = a.sha256 || '—';
-      if (a.url) $('agDownload').href = a.url;
+      if (a.url) { $('agDownload').href = a.url; if ($('agDlName')) $('agDlName').textContent = 'Tải ' + decodeURIComponent(String(a.url).split('/').pop()); }   // tên file có số phiên bản
       $('agHist').innerHTML = (a.history && a.history.length ? a.history : [{ version: a.version, date: '', notes: a.notes || '' }]).map(function (h) {
         return '<li><b>v' + esc(h.version) + '</b>' + (h.date ? ' · ' + esc(String(h.date).split('-').reverse().join('/')) : '') + '<br>' + esc(h.notes || '') + '</li>';
       }).join('');
