@@ -1818,3 +1818,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 ### 2026-09-30 (ak) Nút Xuất báo cáo / Hôm nay + chip kính trong hơn
 - finance.html: nút Xuất báo cáo dùng inline-flex (icon nằm ngang hàng chữ, không đè), cao 38px; nút Hôm nay cùng cỡ (min-width 128px, cao 38px).
 - offline.js: chip Liquid Glass giảm độ đặc (alpha nền ~1–12%), blur 14px để nhìn xuyên rõ hơn. sw v55.
+
+### 2026-09-30 (al) Thanh menu ngang Sổ tài chính (màn hẹp)
+- Ẩn thanh cuộn xám chạm viền, thêm mờ dần hai đầu (mask) báo còn nội dung, cuộn có snap; padding 8×12. sw v56.
