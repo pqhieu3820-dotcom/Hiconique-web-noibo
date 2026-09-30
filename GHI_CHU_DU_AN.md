@@ -1927,3 +1927,7 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (bp) Excel: sửa lỗi Wrap Text làm tiêu đề bị bẻ thành cột dọc
 - Nguyên nhân: bật wrap cho MỌI ô làm các tiêu đề mục không gộp ô nằm ở cột hẹp (VD "II. NHẬN XÉT", "III. DANH MỤC PHỤ LỤC" ở cột A) bị bẻ từng chữ thành cột dọc. Nay wrap chỉ áp dụng cho ô nội dung; BỎ QUA (a) ô chữ đứng một mình trong hàng và không gộp, (b) nhãn dài có ô trống bên phải (VD "Số dư đầu kỳ (luỹ kế…)") — để tràn sang ô trống. Đã quét toàn bộ file mẫu: không còn ô nào bị bẻ sai. sw v86.
+
+### 2026-09-30 (bq) Báo cáo nhanh (xem trên web) + sửa zoom biểu đồ khi thu nhỏ
+- Nút **Báo cáo nhanh** cạnh Xuất báo cáo (finance.html + `public/js/finance-quick.js`, `FinanceQuick.open`): cửa sổ xem trực tiếp, bố cục & số liệu như file Excel — chọn kỳ (Tuần/Tháng/Quý/Năm/Toàn bộ hoặc từ–đến ngày), 7 thẻ: Tổng hợp (Quốc hiệu, tiêu ngữ, kỳ báo cáo, 9 chỉ tiêu có nhãn Tốt/Cần chú ý/Rủi ro, nhận xét, khối ký), Giao dịch, Sổ quỹ 111, Sổ TGNH 112 (+ tổng hợp TK đối ứng), Lãi-Lỗ, Dòng tiền & dự báo 3 tháng, Công nợ. Header tối, sọc, dòng tổng nền be, số âm đỏ. Có nút "Xuất Excel" trong cửa sổ.
+- Zoom biểu đồ: khi thu nhỏ chỉ giảm chiều CAO; độ rộng cột tối thiểu 36px, khoảng cách ≥8px, cột nhóm ≥96px (dùng `max()` trong CSS) để nhãn số (VD "30 tr") luôn nằm gọn trong cột và khung hover vàng bao trọn. sw v87.

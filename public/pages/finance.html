@@ -25,6 +25,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js" defer></script>
   <script src="/js/finance-categories.js"></script>
   <script src="/js/finance-export.js" defer></script>
+  <script src="/js/finance-quick.js" defer></script>
   <script src="/js/excel-standard.js" defer></script>
   <style>
     :root {
@@ -80,9 +81,9 @@
     .fn-dash-row.thirds { grid-template-columns: repeat(3, 1fr); }
 
     .fn-chart-wrap { display: flex; align-items: flex-end; gap: 12px; height: 240px; padding: 44px 20px 12px; overflow-x: auto; overflow-y: hidden; }
-    .fn-chart-col { flex: 1; min-width: calc(96px * var(--cz, 1)); display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; justify-content: flex-end; }
-    .fn-chart-bars { position: relative; display: flex; gap: calc(8px * var(--cz, 1)); align-items: flex-end; height: 100%; }
-    .fn-chart-bar { width: calc(34px * var(--cz, 1)); border-radius: 4px 4px 0 0; position: relative; transition: opacity 0.15s; }
+    .fn-chart-col { flex: 1; min-width: max(96px, calc(96px * var(--cz, 1))); display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; justify-content: flex-end; }
+    .fn-chart-bars { position: relative; display: flex; gap: max(8px, calc(8px * var(--cz, 1))); align-items: flex-end; height: 100%; }
+    .fn-chart-bar { width: max(36px, calc(36px * var(--cz, 1))); border-radius: 4px 4px 0 0; position: relative; transition: opacity 0.15s; }
     .fn-chart-bar:hover { opacity: 0.75; }
     .fn-chart-bar.revenue { background: linear-gradient(180deg, var(--fn-green), color-mix(in srgb, var(--fn-green) 70%, black)); }
     .fn-chart-bar.expense { background: linear-gradient(180deg, var(--fn-red), color-mix(in srgb, var(--fn-red) 70%, black)); }
@@ -252,6 +253,8 @@
     .fn-advice-desc { font-size: 0.78125rem; color: var(--fn-muted); line-height: 1.5; }
 
     .fn-overview-strip { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    #fnQuickBtn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 38px; min-width: 128px; padding: 0 18px; border-radius: 10px; white-space: nowrap; line-height: 1; border-color: color-mix(in srgb, var(--fn-bronze) 55%, var(--fn-border)); color: var(--fn-bronze); }
+    #fnQuickBtn svg { width: 14px; height: 14px; flex-shrink: 0; } #fnQuickBtn:hover { background: color-mix(in srgb, var(--fn-bronze) 10%, transparent); }
     #fnExportBtn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 38px; min-width: 128px; padding: 0 18px; border-radius: 10px; white-space: nowrap; line-height: 1; }
     #fnExportBtn svg { width: 14px !important; height: 14px !important; margin: 0 !important; vertical-align: 0 !important; flex-shrink: 0; }
     .fn-overview-strip .hq-month-nav-today { min-width: 128px; height: 38px; margin-left: 0; display: inline-flex; align-items: center; justify-content: center; padding: 0 18px; }
@@ -452,6 +455,7 @@
         '<div class="fn-hero">' +
           '<div class="fn-overview-strip">' +
             '<input type="month" class="fn-month-input" id="fnMonthInput">' +
+            '<button class="fn-btn fn-btn-ghost" id="fnQuickBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>Báo cáo nhanh</button>' +
             '<button class="fn-btn fn-btn-ghost" id="fnExportBtn">' +
               '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;vertical-align:-1px;margin-right:5px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>' +
               'Xuất báo cáo' +
@@ -805,6 +809,10 @@
       });
 
       document.getElementById('fnExportBtn').addEventListener('click', exportReport);
+      document.getElementById('fnQuickBtn').addEventListener('click', function () {
+        if (typeof FinanceQuick === 'undefined') { alert('Chưa tải xong bộ báo cáo nhanh. Thử lại sau vài giây.'); return; }
+        FinanceQuick.open({ TaskManager: TaskManager, TYPES: TYPES, TYPE_ORDER: TYPE_ORDER, receivableStatus: receivableStatus, STATUS_LABEL: STATUS_LABEL, user: user }, monthInput.value || currentMonthStr());
+      });
       (function bindLedger() {
         var f = document.getElementById('fnLgFrom'), tt = document.getElementById('fnLgTo'), m = monthInput.value || currentMonthStr();
         f.value = m + '-01'; tt.value = new Date(Number(m.slice(0, 4)), Number(m.slice(5, 7)), 0).toISOString().slice(0, 10).replace(/^(\d{4}-\d{2})-\d{2}$/, function (x) { return x; });
