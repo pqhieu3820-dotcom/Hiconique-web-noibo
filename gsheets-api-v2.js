@@ -4089,13 +4089,13 @@ function applyFinanceDropdowns() {
   const unionRule = financeCatRuleFor_('');
   sheet.getRange(2, cCol, maxRows, 1).clearDataValidations().setDataValidation(unionRule);
   types.forEach(function (r, i) { if (r[0]) sheet.getRange(2 + i, cCol).setDataValidation(financeCatRuleFor_(r[0])); });
-  // Sheet tra cứu 'DM-Danh mục TC': mỗi Loại 1 cột (để xem/sửa danh sách)
-  var ref = ss.getSheetByName('DM-Danh mục TC') || ss.insertSheet('DM-Danh mục TC');
+  // Sheet tra cứu 'TC-Danh mục TC': mỗi Loại 1 cột (để xem/sửa danh sách)
+  var ref = ss.getSheetByName('TC-Danh mục TC') || ss.insertSheet('TC-Danh mục TC');
   ref.clear();
   var keys = Object.keys(FINANCE_TYPE_LABELS_), maxLen = 0;
   keys.forEach(function (k, i) { ref.getRange(1, i + 1).setValue(FINANCE_TYPE_LABELS_[k]).setFontWeight('bold').setBackground('#22272E').setFontColor('#FFFFFF'); var arr = FINANCE_CATEGORIES_[k].map(function (x) { return [x]; }); ref.getRange(2, i + 1, arr.length, 1).setValues(arr); maxLen = Math.max(maxLen, arr.length); });
   ref.setFrozenRows(1); ref.autoResizeColumns(1, keys.length);
-  return 'Đã tạo dropdown Loại + Danh mục (phụ thuộc Loại) cho ' + maxRows + ' dòng; sheet tra cứu DM-Danh mục TC.';
+  return 'Đã tạo dropdown Loại + Danh mục (phụ thuộc Loại) cho ' + maxRows + ' dòng; sheet tra cứu TC-Danh mục TC.';
 }
 // Gọi từ onEdit: đổi cột Loại → cập nhật dropdown Danh mục của đúng dòng đó
 function financeOnEdit_(e) {
