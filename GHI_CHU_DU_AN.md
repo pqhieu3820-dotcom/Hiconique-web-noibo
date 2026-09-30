@@ -1924,3 +1924,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (bo) Biểu đồ dòng tiền: Ctrl + lăn chuột để zoom
 - finance.html: giữ Ctrl + lăn trên biểu đồ (cả "Dòng tiền 6 tháng" và "Dòng tiền thực tế + dự báo") → phóng to/thu nhỏ 50%–250% (`chartZoom`, `applyChartZoom`): đổi độ cao biểu đồ, độ cao cột và độ rộng cột/khoảng cách qua biến CSS `--cz`; hiện nhãn % góc phải; nháy đúp = về 100%. Chặn zoom trình duyệt khi đang ở trên biểu đồ. sw v85.
+
+### 2026-09-30 (bp) Excel: sửa lỗi Wrap Text làm tiêu đề bị bẻ thành cột dọc
+- Nguyên nhân: bật wrap cho MỌI ô làm các tiêu đề mục không gộp ô nằm ở cột hẹp (VD "II. NHẬN XÉT", "III. DANH MỤC PHỤ LỤC" ở cột A) bị bẻ từng chữ thành cột dọc. Nay wrap chỉ áp dụng cho ô nội dung; BỎ QUA (a) ô chữ đứng một mình trong hàng và không gộp, (b) nhãn dài có ô trống bên phải (VD "Số dư đầu kỳ (luỹ kế…)") — để tràn sang ô trống. Đã quét toàn bộ file mẫu: không còn ô nào bị bẻ sai. sw v86.

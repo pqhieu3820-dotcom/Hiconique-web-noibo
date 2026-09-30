@@ -857,10 +857,15 @@ var FinanceExport = (function () {
       wsCv.headerFooter = { oddFooter: '&C&"Times New Roman"&8Bản in lúc &D &T · Tạo tự động từ Sổ tài chính HICONIQUE' };
     })();
 
-    // Tự động bật Wrap Text cho MỌI ô của MỌI sheet (chữ dài xuống dòng, hàng tự giãn cao) — giữ nguyên căn lề/căn giữa đã đặt
+    // Tự động bật Wrap Text cho các ô nội dung (chữ dài xuống dòng, hàng tự giãn cao) — giữ nguyên căn lề/căn giữa đã đặt.
+    // KHÔNG bật cho tiêu đề mục đứng một mình trong hàng và không gộp ô (VD "II. NHẬN XÉT", "III. DANH MỤC PHỤ LỤC"): ô đó ở cột hẹp,
+    // bật wrap sẽ bẻ từng chữ thành cột dọc; để tràn sang các ô trống bên phải như bình thường.
     wb.eachSheet(function (ws) {
       ws.eachRow({ includeEmpty: false }, function (row) {
+        var filled = 0; row.eachCell({ includeEmpty: false }, function (c) { if (c.value !== null && c.value !== '' && c.value !== undefined) filled++; });
         row.eachCell({ includeEmpty: false }, function (c) {
+          if (filled <= 1 && !c.isMerged && typeof c.value === 'string') return;      // tiêu đề mục đứng một mình
+          if (!c.isMerged && typeof c.value === 'string' && c.value.length > (ws.getColumn(c.col).width || 9) && !row.getCell(c.col + 1).value) return;   // nhãn dài có ô trống bên phải → để tràn sang, không bẻ dòng
           var al = Object.assign({}, c.alignment || {});
           al.wrapText = true; if (!al.vertical) al.vertical = 'middle';
           c.alignment = al;
