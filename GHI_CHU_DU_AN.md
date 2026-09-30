@@ -1943,3 +1943,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (bu) Báo cáo nhanh: đủ 13 thẻ như 13 sheet Excel
 - finance-quick.js thêm 6 thẻ còn thiếu: **Tổng quan** (chỉ tiêu + chi phí theo danh mục), **Vay nợ** (dư nợ luỹ kế), **Sức khỏe TC** (3 tháng: chỉ số, ngưỡng Tốt/Cần chú ý/Rủi ro, nhận định tự động), **BCTC** (A–F: cân đối, số liệu sổ, KQKD, 12 chỉ số, Z-Score, dòng tiền HĐ; đọc `getBsSnapshotByYear`), **Rủi ro** (≈18 mục theo nhóm + tổng hợp), **Tham số** (hệ số loại giao dịch + quy ước). Tính lại bằng JS (`calc()`) theo đúng công thức/ngưỡng của file Excel; các số này phải khớp — nếu đổi công thức trong finance-export.js phải đổi cả finance-quick.js. Thanh thẻ cuộn ngang. sw v91.
+
+### 2026-09-30 (bv) Báo cáo nhanh: thanh thẻ lăn chuột cuộn ngang + thanh cuộn lùi xuống
+- finance-quick.js: rê chuột vào thanh thẻ (13 thẻ) + lăn → cuộn ngang; thanh cuộn ẩn mũi tên, mảnh, màu xám như các thanh khác, thumb lùi xuống (viền 6px trên) nên không dính chữ tên thẻ. sw v92.
