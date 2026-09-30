@@ -1885,3 +1885,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 ### 2026-09-30 (bd) Sổ tài chính: nút Xoá + bảng xác nhận + thông báo thêm/xoá
 - Nguyên nhân nút Xoá "không hoạt động": dùng `confirm()` gốc của trình duyệt (bị chặn ở nhiều môi trường, trả về "huỷ"), trái quy tắc dự án. Đã thay 4 chỗ (xoá giao dịch, thu hồi quyền, xác nhận đã thu công nợ, xoá công nợ) bằng hộp xác nhận riêng `fnConfirm` (hiện chi tiết số tiền/ngày/số phiếu, nút đỏ khi xoá, Esc/bấm nền để huỷ).
 - Thêm/xoá giao dịch → gửi thông báo chuông (`notifyFinanceChange_` trong task-data.js, sheet TT-Thông báo, scope = từng người) tới CEO/Founder/Admin + người được cấp quyền Sổ tài chính (Kế toán), trừ chính người thao tác. Ghi trực tiếp không qua `createNotification` (hàm đó chỉ cho admin/manager, Kế toán không có quyền). sw v74.
+
+### 2026-09-30 (be) Chip đồng bộ: nền trong suốt ~90%
+- offline.js: nền trắng chỉ 0–5% (trước 0–10%), blur 3px, vệt sáng mờ hơn, thêm viền tối rất nhạt (0 0 0 1px rgba(20,24,40,.06)) để chip vẫn nhìn thấy khi nền gần như trong hoàn toàn. sw v75.
