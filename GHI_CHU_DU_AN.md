@@ -1940,3 +1940,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (bt) Báo cáo nhanh: rộng hơn trên máy tính + dạng thẻ trên điện thoại
 - finance-quick.js: khung `max-width: min(1500px, 97vw)` (trước 1180px) → cột sổ quỹ thoải mái (Diễn giải ~274px). Điện thoại (≤760px): khung toàn màn hình, chip/tab nhỏ, ttiêu đề cuộn ngang; bảng Sổ quỹ 111/112 chuyển sang **dạng thẻ** (mỗi dòng sổ là 1 thẻ 2 cột có nhãn nhỏ — Ngày HT/CT, Phiếu, Diễn giải, TK, Nợ/Có, Số tồn, Người; ô trống tự ẩn) nên KHÔNG cần kéo ngang (đã đo scrollWidth = clientWidth ở 375px). Các bảng khác trên điện thoại: chữ nhỏ, wrap, cuộn ngang trong khung. `data-l` trên ô giữ nhãn cho dạng thẻ. sw v90.
+
+### 2026-09-30 (bu) Báo cáo nhanh: đủ 13 thẻ như 13 sheet Excel
+- finance-quick.js thêm 6 thẻ còn thiếu: **Tổng quan** (chỉ tiêu + chi phí theo danh mục), **Vay nợ** (dư nợ luỹ kế), **Sức khỏe TC** (3 tháng: chỉ số, ngưỡng Tốt/Cần chú ý/Rủi ro, nhận định tự động), **BCTC** (A–F: cân đối, số liệu sổ, KQKD, 12 chỉ số, Z-Score, dòng tiền HĐ; đọc `getBsSnapshotByYear`), **Rủi ro** (≈18 mục theo nhóm + tổng hợp), **Tham số** (hệ số loại giao dịch + quy ước). Tính lại bằng JS (`calc()`) theo đúng công thức/ngưỡng của file Excel; các số này phải khớp — nếu đổi công thức trong finance-export.js phải đổi cả finance-quick.js. Thanh thẻ cuộn ngang. sw v91.
