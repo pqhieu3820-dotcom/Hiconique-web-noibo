@@ -1907,3 +1907,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (bk) Quầng sáng chip mềm + fade dài hơn
 - offline.js `hqGlow`: 3 lớp bóng mờ rộng (blur 26–170px, spread tới 50px, alpha 5–34%) thay 2 lớp gắt, chu kỳ 3.4s → quầng lan mềm, tan dần xa hơn. sw v81.
+
+### 2026-09-30 (bl) Quầng sáng chip: nhạt 50%, chậm hơn
+- offline.js `hqGlow`: alpha các lớp bóng giảm một nửa (2.5–17%), chu kỳ 5.4s (chậm hơn 2s). sw v82.
