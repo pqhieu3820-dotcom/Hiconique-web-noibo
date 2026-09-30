@@ -771,6 +771,15 @@
         var f = document.getElementById('fnLgFrom'), tt = document.getElementById('fnLgTo'), m = monthInput.value || currentMonthStr();
         f.value = m + '-01'; tt.value = new Date(Number(m.slice(0, 4)), Number(m.slice(5, 7)), 0).toISOString().slice(0, 10).replace(/^(\d{4}-\d{2})-\d{2}$/, function (x) { return x; });
         var dd = new Date(Number(m.slice(0, 4)), Number(m.slice(5, 7)), 0); tt.value = m + '-' + ('0' + dd.getDate()).slice(-2);
+        // Rê chuột vào bảng sổ + lăn con lăn → cuộn NGANG (hết mép thì trả lại cuộn dọc cho trang)
+        var lw = document.querySelector('.fn-ledger-wrap');
+        if (lw) lw.addEventListener('wheel', function (e) {
+          if (lw.scrollWidth <= lw.clientWidth + 1 || e.ctrlKey) return;
+          var d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY; if (!d) return;
+          var max = lw.scrollWidth - lw.clientWidth, next = lw.scrollLeft + d;
+          if ((d < 0 && lw.scrollLeft <= 0) || (d > 0 && lw.scrollLeft >= max - 1)) return;
+          e.preventDefault(); lw.scrollLeft = Math.max(0, Math.min(max, next));
+        }, { passive: false });
         ['fnLgAcc', 'fnLgFrom', 'fnLgTo'].forEach(function (id) { document.getElementById(id).addEventListener('change', renderLedger); });
       })();
 

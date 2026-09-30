@@ -1843,3 +1843,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 ### 2026-09-30 (aq) Biểu đồ dòng tiền hết đè chữ + thanh cuộn menu
 - finance.html: nhãn giá trị trên cột Thu/Chi tách hai phía (Thu lệch trái, Chi lệch phải), cột rộng 18px, khoảng cách 8px, cột nhóm tối thiểu 72px → "13 tr" không còn bị cột kế bên đè.
 - Menu ngang màn hẹp: thanh cuộn ngang mảnh màu đồng, cách viền dưới 16px (không dính viền), bo tròn. sw v61.
+
+### 2026-09-30 (ar) Sổ quỹ: lăn chuột cuộn ngang
+- finance.html: rê chuột vào bảng Sổ quỹ rồi lăn con lăn → cuộn ngang bảng; tới mép trái/phải thì trả lại cuộn dọc cho trang (Ctrl+lăn vẫn để zoom). sw v62.
