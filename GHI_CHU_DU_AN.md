@@ -37,6 +37,11 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
 - (2026-09-30) Viết lại đoạn mô tả đầu trang Tài sản & vật tư (`equipment.html`, `.subpage-lede`) gọn hơn, 2 câu, gom nhóm tài sản.
 
+### Phiên 2026-09-30 (r) — Mã tài sản tự điền, tăng dần, báo trùng, tôn trọng nhập tay
+
+- `equipment.js` `suggestCode()`: mã = `<tiền tố nhóm>-<số lớn nhất hiện có + 1>` (MT-001, MT-002… không lấp chỗ trống nữa nên luôn tăng dần; bỏ qua chính tài sản đang sửa). Ô Mã tự điền khi mở form Thêm mới, khi mở SỬA tài sản chưa có mã (như PC-KETOAN-KHANH), khi đổi nhóm (nếu chưa gõ tay), và khi bấm Lưu mà ô còn trống. Có mã sẵn thì giữ nguyên.
+- **Nhập tay được ghi nhận**: gõ vào ô Mã đặt `state.codeTouched` → đổi nhóm không ghi đè nữa. **Báo trùng ngay khi gõ** (`checkCodeDup`, `#eqCodeHint` + viền đỏ: `Trùng mã với "<tên>"`); chặn lưu khi trùng như cũ. sw v37.
+
 ### Phiên 2026-09-30 (q) — Lệnh `addTimesheet` kẹt 1463 lần "Failed to fetch" dù server còn chạy → thang cách gửi + tự xác nhận
 
 - Khung báo: "Máy chủ Google vẫn chạy nhưng từ chối lệnh addTimesheet (731 ký tự) — thử lại lần 1463" (kẹt cả đêm). Kiểm tra: server nhận đúng lệnh này khi gửi từ ngoài (curl `addTimesheet` với dữ liệu tương tự → 200, 5s); bảng "Thực thi" Apps Script có nhiều `doGet` "Không thành công" ~3–4s xen kẽ (không có nhật ký); URL chỉ 731 ký tự nên KHÔNG phải quá dài ⇒ lỗi nằm ở tầng yêu cầu/phản hồi của riêng trình duyệt đó (tiện ích chặn, tường lửa, CORS mất khi Google trả trang lỗi…), không tái hiện từ ngoài.

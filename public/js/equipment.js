@@ -362,11 +362,22 @@
     parts.forEach(function (t) { if (!have[t]) state.specs.push({ type: t, name: '', spec: '', qty: '1' }); });
   }
   function suggestCode() {
-    var c = formCat($('efCat').value), used = {};
+    // Mã tăng dần theo nhóm: <tiền tố>-<số lớn nhất đang có + 1> (MT-001, MT-002…); mã nhập tay kiểu khác không ảnh hưởng
+    var c = formCat($('efCat').value), max = 0, used = {};
     if (!c.prefix) return '';
-    TM.getEquipment().forEach(function (e) { used[e.code] = true; });
-    for (var i = 1; i < 1000; i++) { var code = c.prefix + '-' + ('00' + i).slice(-3); if (!used[code]) return code; }
-    return '';
+    var re = new RegExp('^' + c.prefix + '-([0-9]+)$', 'i');   // tiền tố chỉ gồm chữ cái
+    TM.getEquipment().forEach(function (e) { if (e.id === state.editingId) return; used[String(e.code || '').toLowerCase()] = true; var m = re.exec(String(e.code || '').trim()); if (m) max = Math.max(max, parseInt(m[1], 10)); });
+    var n = max + 1, code;
+    do { code = c.prefix + '-' + ('00' + n).slice(-3); n++; } while (used[code.toLowerCase()]);
+    return code;
+  }
+  // Báo trùng mã ngay khi gõ
+  function checkCodeDup() {
+    var v = $('efCode').value.trim().toLowerCase(), hint = $('eqCodeHint'); if (!hint) return false;
+    var dup = v && TM.getEquipment().filter(function (x) { return String(x.code || '').trim().toLowerCase() === v && x.id !== state.editingId; })[0];
+    hint.hidden = !dup; hint.textContent = dup ? 'Trùng mã với "' + dup.name + '" — hãy đổi mã khác' : '';
+    $('efCode').style.borderColor = dup ? '#C0644A' : '';
+    return !!dup;
   }
   // ---- Phân bổ tồn kho theo vị trí + nhập/xuất/điều chuyển + lịch sử ----
   function renderStock() {
@@ -459,7 +470,10 @@
     $('efBuy').value = String(g('purchaseDate')).slice(0, 10); $('efWar').value = String(g('warrantyUntil')).slice(0, 10);
     $('efPrice').value = g('price') ? Number(String(g('price')).replace(/[^\d]/g, '')).toLocaleString('vi-VN') : ''; $('efSupplier').value = g('supplier');
     $('efQty').value = g('qty'); setUnit(g('unit')); $('efMin').value = g('minQty'); $('efNote').value = g('note');
-    $('efCode').value = e ? g('code') : suggestCode();
+    state.codeTouched = false;
+    $('efCode').value = (e && g('code')) ? g('code') : suggestCode();   // chưa có mã (kể cả tài sản cũ) → tự điền mã kế tiếp; có mã thì giữ nguyên
+    if (cloneFrom) $('efCode').value = suggestCode();
+    checkCodeDup();
     state.specs = src ? parseSpecs(src).map(function (s) { return { type: s.type || '', name: s.name || '', spec: s.spec || '', qty: s.qty || '1', price: s.price || '' }; }) : [];
     state.pcId = (src && !cloneFrom) ? (g('pcId') || '') : '';
     state.stock = src ? stockRows(src) : [];
@@ -500,6 +514,7 @@
       qty: formCat($('efCat').value).supply ? String(state.stock.length ? stockTotal(state.stock) : $('efQty').value.trim()) : '', stock: formCat($('efCat').value).supply ? JSON.stringify(state.stock.filter(function (r) { return r.loc && num(r.qty) > 0; })) : '', unit: formCat($('efCat').value).supply ? getUnit() : '', minQty: formCat($('efCat').value).supply ? $('efMin').value.trim() : '',
       specs: JSON.stringify(readSpecs()), note: $('efNote').value.trim(), pcId: $('efCat').value === 'Máy tính' ? (state.pcId || '') : ''
     };
+    if (!data.code) { data.code = suggestCode(); $('efCode').value = data.code; }
     var dup = TM.getEquipment().filter(function (x) { return data.code && x.code === data.code && x.id !== state.editingId; })[0];
     if (dup) { toast('Mã tài sản "' + data.code + '" đã dùng cho "' + dup.name + '"', true); return; }
     if (!formCat($('efCat').value).supply) { data.stock = ''; }
@@ -547,8 +562,10 @@
       ensureDefaultParts(this.value); renderSpecRows();
       setUnit('');
       refreshTypeList(); renderPcBox();
-      if (!state.editingId) $('efCode').value = suggestCode();
+      if (!state.codeTouched && (!state.editingId || !$('efCode').value.trim())) $('efCode').value = suggestCode();
+      checkCodeDup();
     });
+    $('efCode').addEventListener('input', function () { state.codeTouched = true; checkCodeDup(); });
     $('efUnit').addEventListener('change', function () { $('efUnitOther').hidden = this.value !== '__other'; if (this.value === '__other') $('efUnitOther').focus(); });
     $('eqAddStock').addEventListener('click', function () { state.stock.push({ loc: '', qty: '' }); renderStock(); var r = $('eqStockRows').lastElementChild; if (r) r.querySelector('input').focus(); });
     $('eqStockRows').addEventListener('input', function (e) {
