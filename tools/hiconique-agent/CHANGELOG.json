@@ -1,5 +1,10 @@
 [
   {
+    "version": "2.1.1",
+    "date": "2026-09-30",
+    "notes": "Sửa tên máy bị thiếu (VD 'PC-PHAM-QUANG-H' → 'PC-Pham-Quang-Hieu'): lấy đúng tên đầy đủ như Windows hiển thị ở mọi nơi (thanh thông tin, dữ liệu gửi web, thông số linh kiện). Đồng hồ hẹn giờ tắt máy đổi font hiện đại (Bahnschrift) đậm, to hơn."
+  },
+  {
     "version": "2.1.0",
     "date": "2026-09-30",
     "notes": "Giao diện: mũi tên ô chọn (dropdown) và nút tăng/giảm số vẽ lại dạng chevron nét mảnh màu đồng, danh sách xổ xuống bo tròn; ô tích chọn và nút radio đồng bộ kiểu mới; áp dụng toàn bộ app cả nền sáng/tối, kể cả bước chọn tên khi cài đặt."

@@ -35,7 +35,7 @@ import zipfile
 from ctypes import wintypes
 from datetime import datetime, timezone
 
-VERSION = '2.1.0'
+VERSION = '2.1.1'
 
 COMPANY_NAME = 'CÔNG TY TNHH THIẾT KẾ VÀ XÂY DỰNG HICONIQUE'
 
@@ -169,6 +169,21 @@ def _dpapi(data, protect):
         return ctypes.string_at(out.pbData, out.cbData)
     finally:
         ctypes.windll.kernel32.LocalFree(out.pbData)
+
+
+def full_hostname():
+    """Tên máy ĐẦY ĐỦ như Windows hiển thị (Settings › About). socket.gethostname()/%COMPUTERNAME% là tên NetBIOS bị cắt còn 15 ký tự
+    và viết HOA (VD 'PC-PHAM-QUANG-H') nên trước đây mọi dữ liệu gửi lên đều thiếu tên."""
+    try:
+        buf = ctypes.create_unicode_buffer(256)
+        n = ctypes.c_ulong(256)
+        for kind in (5, 1):          # ComputerNamePhysicalDnsHostname, ComputerNameDnsHostname
+            if ctypes.windll.kernel32.GetComputerNameExW(kind, buf, ctypes.byref(n)) and buf.value:
+                return buf.value
+            n = ctypes.c_ulong(256)
+    except Exception:
+        pass
+    return socket.gethostname()
 
 
 def write_secure(path, obj):
@@ -446,14 +461,14 @@ def cleanup_old_days(keep_days=7):
 
 
 def flush(cfg, day, st):
-    device = socket.gethostname()
+    device = full_hostname()
     rows = []
     for app, v in st['apps'].items():
         if v['sec'] < 30:
             continue
         top = sorted(v['titles'].items(), key=lambda kv: -kv[1])[:cfg['topTitles']]
         rows.append({
-            'id': 'app_%s_%s_%s_%s' % (cfg['memberId'], day, slug(device), slug(app)),
+            'id': 'app_%s_%s_%s_%s' % (cfg['memberId'], day, slug(device.upper()[:15]), slug(app)),
             'memberId': cfg['memberId'], 'date': day, 'device': device, 'app': friendly_app(app), 'appRaw': app,
             'minutes': round(v['sec'] / 60, 1),
             'titles': ' | '.join('%s (%dp)' % (t, round(s / 60)) for t, s in top) if cfg['sendTitles'] else '',
@@ -684,7 +699,7 @@ def report_hardware(cfg, hw=None):
                 hw = saved          # người dùng đã chỉnh sửa tay -> giữ nguyên nội dung đó, không quét đè
             else:
                 hw = hardware.collect(send_serials=cfg['sendSerials'])
-                hw['_idHost'] = hw.get('hostname', '')
+                hw['_idHost'] = (hw.get('hostname', '') or '').upper()[:15]     # giữ mã bản ghi cũ (tên NetBIOS) để không sinh dòng trùng
                 hw['edited'] = False
                 hw['savedAt'] = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
                 save_hardware(hw)
@@ -1224,7 +1239,7 @@ class ActivityTab(QWidget):
         chips.setSpacing(8)
         for kind, txt in (('user', shared.cfg.get('memberId') or '(chưa cấu hình)'),
                           ('clock', 'Giờ làm việc %s' % shared.cfg.get('workHours')),
-                          ('pc', socket.gethostname())):
+                          ('pc', full_hostname())):
             chips.addWidget(make_chip(kind, txt))
         chips.addStretch(1)
         lay.addLayout(chips)
@@ -1435,7 +1450,7 @@ class HardwareScanThread(QThread):
             if hw is None:
                 import hardware
                 hw = hardware.collect(send_serials=self.cfg['sendSerials'])
-                hw['_idHost'] = hw.get('hostname', '')   # mã bản ghi trên web luôn theo tên máy thật lúc quét, dù sau này tên hiển thị bị sửa
+                hw['_idHost'] = (hw.get('hostname', '') or '').upper()[:15]     # giữ mã bản ghi cũ (tên NetBIOS) để không sinh dòng trùng   # mã bản ghi trên web luôn theo tên máy thật lúc quét, dù sau này tên hiển thị bị sửa
                 hw['edited'] = False
                 hw['savedAt'] = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
                 save_hardware(hw)
@@ -1677,7 +1692,7 @@ class ShutdownTab(QWidget):
 
         self.lblCountdown = QLabel('00:00:00')
         self.lblCountdown.setAlignment(Qt.AlignCenter)
-        self.lblCountdown.setStyleSheet('font-size:46px;font-weight:300;letter-spacing:2px;')
+        self.lblCountdown.setStyleSheet('font-family:"Bahnschrift","Segoe UI Variable Display","Segoe UI";font-size:56px;font-weight:700;letter-spacing:3px;')
         cl.addWidget(self.lblCountdown)
         self.lblStatus = QLabel('Chưa có lịch hẹn')
         self.lblStatus.setAlignment(Qt.AlignCenter)

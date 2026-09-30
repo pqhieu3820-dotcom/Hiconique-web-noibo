@@ -1790,3 +1790,7 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (ad) Agent 2.1.0 — UI dropdown/spinbox/checkbox
 - QSS_TEMPLATE thêm style cho QComboBox/QSpinBox/QCheckBox/QRadioButton; icon chevron/dấu tích tự vẽ thành PNG vào `%LOCALAPPDATA%\HiconiqueAgent\ui-icons` theo theme (`theme_icons`, `_make_icon`). Muốn đổi màu/kiểu mũi tên: sửa `theme_icons`.
+
+### 2026-09-30 (ae) Agent 2.1.1 — tên máy đầy đủ + đồng hồ hẹn giờ
+- Nguyên nhân tên máy thiếu: `socket.gethostname()` / `%COMPUTERNAME%` là tên NetBIOS bị cắt 15 ký tự + viết HOA. Nay dùng `full_hostname()` (GetComputerNameExW) trong app.py; hardware.py dùng `[System.Net.Dns]::GetHostName()`. Mã bản ghi trên Sheet (id) vẫn theo tên cũ cắt 15 ký tự (`.upper()[:15]`) để không sinh dòng trùng.
+- Đồng hồ đếm ngược hẹn giờ tắt máy: font Bahnschrift đậm 56px.

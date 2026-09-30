@@ -51,7 +51,7 @@ $av = @(Get-CimInstance -Namespace root\SecurityCenter2 AntiVirusProduct | Selec
 $kbd = @(Get-CimInstance Win32_Keyboard | Select-Object Name, Description, Manufacturer)
 $mouse = @(Get-CimInstance Win32_PointingDevice | Select-Object Name, Description, Manufacturer, NumberOfButtons, PointingType)
 [pscustomobject]@{
-  Host = $env:COMPUTERNAME; Manu = $cs.Manufacturer; Model = $cs.Model; Serial = $bios.SerialNumber; BiosVer = $bios.SMBIOSBIOSVersion
+  Host = [System.Net.Dns]::GetHostName(); Manu = $cs.Manufacturer; Model = $cs.Model; Serial = $bios.SerialNumber; BiosVer = $bios.SMBIOSBIOSVersion
   BoardManu = $bb.Manufacturer; BoardProduct = $bb.Product; BoardSerial = $bb.SerialNumber
   Cpu = $cpu; Mem = $mem; MemSlots = $arr.MemoryDevices; MemMaxKB = $arr.MaxCapacity; Disks = $pd; DiskDrives = $dd; Logical = $ld; Gpu = $gpu; Mon = $mon
   OsCaption = $os.Caption; OsBuild = $os.BuildNumber; OsInstall = "$($os.InstallDate)"; OsBoot = "$($os.LastBootUpTime)"; LicStatus = $lic.LicenseStatus
