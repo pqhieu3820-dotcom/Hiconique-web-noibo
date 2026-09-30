@@ -1114,7 +1114,7 @@
     // Ctrl + lăn chuột trên biểu đồ = phóng to / thu nhỏ (0.5× – 2.5×), nhớ theo từng biểu đồ; nháy đúp = về 1×
     var chartZoom = {}, chartArgs = {};
     function applyChartZoom(wrap, dz, reset) {
-      var id = wrap.id, z = reset ? 1 : Math.max(0.5, Math.min(2.5, (chartZoom[id] || 1) * Math.exp(dz)));
+      var id = wrap.id, z = reset ? 1 : Math.max(0.6, Math.min(2.5, (chartZoom[id] || 1) * Math.exp(dz)));
       chartZoom[id] = z; var a = chartArgs[id]; if (a) renderChart(id, a[0], a[1], a[2]);
       var tip = wrap.parentNode.querySelector('.fn-zoom-tip'); if (tip) { tip.textContent = Math.round(z * 100) + '%'; tip.classList.add('on'); clearTimeout(tip._t); tip._t = setTimeout(function () { tip.classList.remove('on'); }, 1200); }
     }
@@ -1154,7 +1154,7 @@
       }
 
       var max = Math.max.apply(null, data.map(function (d) { return Math.max(d.revenue, d.expense); }).concat([1]));
-      var maxBarPx = Math.round(160 * zoomF);
+      var maxBarPx = Math.max(24, Math.round(240 * zoomF) - 80);   // = chiều cao vùng biểu đồ − (đệm trên 44 + đệm dưới 12 + nhãn tháng 26 − nhãn số nằm trong đệm): cột cao nhất LUÔN nằm gọn, không bị cắt ở mọi mức zoom
       document.getElementById(targetId).innerHTML = data.map(function (d) {
         var rH = Math.max(3, Math.round((d.revenue / max) * maxBarPx));
         var eH = Math.max(3, Math.round((d.expense / max) * maxBarPx));

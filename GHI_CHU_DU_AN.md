@@ -1934,3 +1934,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (br) Báo cáo nhanh: sổ quỹ 111/112 gọn, không cần kéo ngang
 - finance-quick.js: bảng sổ quỹ dùng `table-layout: fixed` + `colgroup` chia % cột (ngày 8%, số phiếu 9%, diễn giải 19%, TK 4.5–6%, tiền 9%, người 10.5%), tiêu đề cột cho xuống dòng, chữ .75rem, đệm 5px → vừa khít khung 1140px, không còn thanh kéo ngang (đã kiểm: scrollWidth = clientWidth). Bảng tổng hợp TK đối ứng cũng chia cột cố định. sw v88.
+
+### 2026-09-30 (bs) Sửa nặng zoom biểu đồ: cột bị cắt đỉnh khi thu nhỏ
+- Nguyên nhân: chiều cao cột (`maxBarPx`) co theo tỉ lệ zoom (160×z) nhưng các phần cố định (đệm trên 44, đệm dưới 12, nhãn tháng ~26px) KHÔNG co → ở zoom 50% cột cao nhất + nhãn tràn khỏi vùng biểu đồ (overflow-y hidden) nên bị cắt đỉnh, mất nhãn số. Nay `maxBarPx = 240×z − 80` (chiều cao vùng trừ phần cố định) → cột cao nhất luôn nằm gọn ở mọi mức zoom; giới hạn zoom 60%–250%. Đã đo: nhãn số luôn cách mép trên vùng 13px, đỉnh cột 30px ở cả 60%/100%/250%. sw v89.
