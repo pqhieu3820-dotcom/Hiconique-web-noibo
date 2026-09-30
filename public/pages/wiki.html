@@ -68,50 +68,20 @@
       </div>
 
       <div id="docAdminBar" class="doc-admin-bar" style="margin-top:var(--space-md);display:none;">
-        <button class="doc-toggle-btn" id="docAddBtn" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-          Thêm tài liệu
-        </button>
-        <form id="docForm" class="doc-form" hidden>
-          <div class="doc-field">
-            <label class="doc-field-label" for="docCategoryInput">Danh mục</label>
-            <div class="doc-cat-row">
-              <select id="docCategoryInput" required></select>
-              <button type="button" class="doc-cat-manage-btn" id="docCatManageBtn">Quản lý danh mục</button>
-            </div>
-          </div>
-          <div class="doc-cat-manage" id="docCatManage" hidden>
-            <div class="doc-cat-manage-add">
-              <input type="text" id="docCatNewInput" placeholder="Tên danh mục mới">
-              <button type="button" class="doc-cat-add-btn" id="docCatAddBtn">Thêm</button>
-            </div>
-            <ul class="doc-cat-list" id="docCatList"></ul>
-          </div>
-
-          <div class="doc-field">
-            <label class="doc-field-label" for="docNameInput">Tên tài liệu</label>
-            <input type="text" id="docNameInput" placeholder="VD: Quy trình nghiệm thu hạng mục sơn" required>
-          </div>
-          <div class="doc-field">
-            <label class="doc-field-label" for="docUrlInput">Link tài liệu</label>
-            <input type="text" id="docUrlInput" placeholder="Notion / Google Drive…" required>
-          </div>
-
-          <div class="doc-code-block">
-            <div class="doc-code-label-row">
-              <span class="doc-code-label">Mã tài liệu (tuỳ chọn)</span>
-              <button type="button" class="doc-code-info-btn" id="docCodeInfoBtn" aria-label="Xem quy ước đặt mã tài liệu">i</button>
-            </div>
-            <div class="doc-code-selects">
-              <select id="docCodeDept"></select>
-              <select id="docCodeType"></select>
-              <span class="doc-code-preview" id="docCodePreview">—</span>
-            </div>
-            <div class="doc-code-info-panel" id="docCodeInfoPanel" hidden></div>
-          </div>
-
-          <button type="submit" class="doc-submit-btn">Thêm tài liệu</button>
-        </form>
+        <div class="dc-toolbar">
+          <button class="doc-toggle-btn" id="docAddBtn" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            Thêm tài liệu
+          </button>
+          <button class="dc-btn" id="docCtlBtn" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            Kiểm soát mã hiệu <span class="dc-badge" id="docCtlBadge" hidden></span>
+          </button>
+          <button class="dc-btn" id="docSyncBtn" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5M3 21v-5h5"/></svg>
+            Đồng bộ từ Drive
+          </button>
+        </div>
       </div>
 
       <div class="wiki-cols" id="wikiCols" style="margin-top:var(--space-lg);">
@@ -237,6 +207,78 @@
     .doc-code-info-panel h5 { font-size: 0.6875rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-text-muted); margin: 10px 0 4px; }
     .doc-code-info-panel ul { margin: 0; padding-left: 16px; }
     .doc-code-info-panel li { margin-bottom: 4px; }
+
+    .doc-admin-bar { max-width: none; }
+    .dc-toolbar { display: flex; flex-wrap: wrap; gap: 10px; }
+    .dc-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text); font-family: 'Inter', sans-serif; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: border-color .15s, color .15s; }
+    .dc-btn svg { width: 16px; height: 16px; }
+    .dc-btn:hover { border-color: var(--color-bronze); color: var(--color-bronze); }
+    .dc-badge { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: #C75B5B; color: #fff; font-size: 0.6875rem; display: inline-flex; align-items: center; justify-content: center; }
+    .dc-badge[hidden] { display: none; }
+    .wiki-col-edit { background: none; border: none; color: var(--color-text-faint); font-size: 0.6875rem; cursor: pointer; padding: 0; margin-left: 8px; }
+    .wiki-col-edit:hover { color: var(--color-bronze); }
+    .wiki-doc-tag { font-size: 0.625rem; padding: 1px 6px; border-radius: 4px; margin-right: 6px; border: 1px solid var(--color-border); color: var(--color-text-faint); }
+    .wiki-doc-tag.bad { border-color: #C75B5B; color: #C75B5B; }
+
+    /* ===== modal thêm/sửa, kiểm soát, đồng bộ ===== */
+    .dm-overlay { position: fixed; inset: 0; z-index: 400; background: rgba(10, 12, 15, 0.55); backdrop-filter: blur(3px); display: flex; align-items: flex-start; justify-content: center; padding: 5vh 16px; overflow-y: auto; }
+    .dm-box { width: 100%; max-width: 860px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 16px; box-shadow: 0 24px 60px rgba(0,0,0,0.35); }
+    .dm-box.dm-wide { max-width: 980px; }
+    .dm-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 20px 24px 14px; border-bottom: 1px solid var(--color-border); }
+    .dm-title { font-size: 1.125rem; font-weight: 700; color: var(--color-text); }
+    .dm-sub { font-size: 0.8125rem; color: var(--color-text-muted); margin-top: 2px; }
+    .dm-x { background: none; border: none; font-size: 1.6rem; line-height: 1; color: var(--color-text-faint); cursor: pointer; padding: 0 4px; }
+    .dm-x:hover { color: var(--color-text); }
+    .dm-body { padding: 18px 24px 22px; }
+    .dm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 760px) { .dm-grid { grid-template-columns: 1fr; } }
+    .dm-card { position: relative; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+    .dm-grid .dm-card { margin-bottom: 0; }
+    .dm-card h4 { margin: 0 0 12px; font-size: 0.875rem; color: var(--color-text); display: flex; align-items: center; gap: 8px; }
+    .dm-step { width: 22px; height: 22px; border-radius: 50%; background: var(--color-bronze); color: var(--color-bg); font-size: 0.75rem; display: inline-flex; align-items: center; justify-content: center; }
+    .dm-lab { display: block; font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-muted); margin: 12px 0 6px; }
+    .dm-hint { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--color-text-faint); }
+    .dm-row { display: flex; gap: 8px; align-items: center; }
+    .dm-row > select, .dm-row > input { flex: 1; min-width: 0; }
+    .dm-box input, .dm-box select { padding: 10px 12px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); font-family: 'Inter', sans-serif; font-size: 0.875rem; width: 100%; box-sizing: border-box; }
+    .dm-box input:focus, .dm-box select:focus { outline: none; border-color: var(--color-bronze); }
+    .dm-box input[type=checkbox] { width: auto; }
+    .dm-code { font-family: 'JetBrains Mono', monospace !important; letter-spacing: 0.04em; font-weight: 600; color: var(--color-bronze) !important; }
+    .dm-btn { padding: 10px 14px; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-bg); color: var(--color-text); font-size: 0.8125rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+    .dm-btn:hover { border-color: var(--color-bronze); color: var(--color-bronze); }
+    .dm-link { background: none; border: none; color: var(--color-text-faint); font-size: 0.75rem; text-decoration: underline; cursor: pointer; white-space: nowrap; }
+    .dm-link:hover { color: var(--color-bronze); }
+    .dm-catbox { margin-top: 8px; padding: 10px; border: 1px dashed var(--color-border); border-radius: 8px; }
+    .dm-catbox[hidden], .doc-code-info-panel[hidden] { display: none; }
+    .dm-kind { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 10px; color: #fff; font-size: 0.625rem; text-transform: none; letter-spacing: 0; }
+    .dm-msg { min-height: 18px; margin-top: 8px; font-size: 0.75rem; line-height: 1.5; color: var(--color-text-muted); }
+    .dm-msg.ok { color: #4F8A5B; } .dm-msg.bad { color: #C75B5B; } .dm-msg.warn, .dm-msg .warn { color: #C7A464; }
+    .dm-msg code, .dm-body code { font-family: 'JetBrains Mono', monospace; color: var(--color-bronze); }
+    .dm-use { border: 1px solid var(--color-bronze); background: none; color: var(--color-bronze); border-radius: 6px; padding: 1px 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; cursor: pointer; }
+    .dm-use:hover { background: var(--color-bronze); color: var(--color-bg); }
+    .dm-foot { display: flex; gap: 10px; align-items: center; justify-content: flex-end; margin-top: 16px; }
+    .dm-foot .dm-msg { margin: 0 auto 0 0; }
+    .dm-primary { padding: 10px 20px !important; }
+    .dm-primary[disabled] { opacity: .45; cursor: not-allowed; }
+    .dm-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .dm-stat { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; padding: 12px 14px; }
+    .dm-stat b { display: block; font-size: 1.5rem; color: var(--color-text); }
+    .dm-stat span { font-size: 0.75rem; color: var(--color-text-muted); }
+    .dm-stat.bad { border-color: #C75B5B; } .dm-stat.bad b { color: #C75B5B; }
+    .dm-alert { border-color: #C75B5B; }
+    .dm-alert h4 { color: #C75B5B; }
+    .dm-dupgrp { margin-bottom: 8px; font-size: 0.8125rem; }
+    .dm-dupgrp ul, .dm-card ul.dm-list, .dm-card > ul { margin: 4px 0 0; padding-left: 18px; font-size: 0.8125rem; color: var(--color-text); }
+    .dm-dim { color: var(--color-text-faint); font-size: 0.75rem; }
+    .dm-mini { border: 1px solid var(--color-border); background: none; color: var(--color-text-muted); border-radius: 6px; padding: 0 8px; font-size: 0.6875rem; cursor: pointer; margin-left: 6px; }
+    .dm-mini:hover { border-color: var(--color-bronze); color: var(--color-bronze); }
+    .dm-tablewrap { max-height: 340px; overflow: auto; margin-top: 12px; border: 1px solid var(--color-border); border-radius: 8px; }
+    .dm-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; color: var(--color-text); }
+    .dm-table th { text-align: left; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-muted); padding: 8px 10px; border-bottom: 1px solid var(--color-border); position: sticky; top: 0; background: var(--color-surface); }
+    .dm-table td { padding: 8px 10px; border-bottom: 1px solid var(--color-border); vertical-align: top; }
+    .dm-tag { padding: 1px 8px; border-radius: 10px; font-size: 0.6875rem; border: 1px solid var(--color-border); }
+    .dm-tag.new { border-color: #4F8A5B; color: #4F8A5B; } .dm-tag.bad { border-color: #C75B5B; color: #C75B5B; } .dm-tag.ok { color: var(--color-text-faint); }
+    .dm-box .doc-code-info-panel { position: static; margin-top: 10px; max-height: 260px; }
   </style>
 
   <script>
@@ -332,8 +374,8 @@
         return '<div class="wiki-col"><h3>' + escapeHtml(g.category) + '</h3><ul>' +
           g.items.map(function (d) {
             return '<li><a href="' + escapeHtml(d.url || '#') + '" target="_blank" rel="noopener">' +
-              '<span>' + (d.code ? '<span class="wiki-doc-code">' + escapeHtml(d.code) + '</span>' : '') + escapeHtml(d.name) + '</span>' +
-              (canManage ? '<button type="button" class="wiki-col-del" data-id="' + escapeHtml(d.id) + '">Xoá</button>' : '<span>&rarr;</span>') +
+              '<span>' + (d.code ? '<span class="wiki-doc-code">' + escapeHtml(d.code) + '</span>' : (canManage ? '<span class="wiki-doc-tag">Chưa có mã</span>' : '')) + escapeHtml(d.name) + '</span>' +
+              (canManage ? '<span><button type="button" class="wiki-col-edit" data-edit-id="' + escapeHtml(d.id) + '">Sửa</button><button type="button" class="wiki-col-del" data-id="' + escapeHtml(d.id) + '">Xoá</button></span>' : '<span>&rarr;</span>') +
             '</a></li>';
           }).join('') +
         '</ul></div>';
@@ -349,6 +391,14 @@
         });
       });
 
+      wrap.querySelectorAll('.wiki-col-edit').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.preventDefault();
+          var d = allDocs().filter(function (x) { return x.id === btn.dataset.editId; })[0];
+          if (d) openDocForm(d);
+        });
+      });
+      refreshBadge();
       applySearch();
     }
 
@@ -400,78 +450,240 @@
       });
     }
 
-    function updateDocCodePreview() {
-      var dept = document.getElementById('docCodeDept').value;
-      var type = document.getElementById('docCodeType').value;
-      var preview = document.getElementById('docCodePreview');
-      preview.textContent = (dept && type) ? TaskManager.getNextDocCode(dept, type) : '—';
+    // ============ 2026-09-30: KIỂM SOÁT MÃ HIỆU + LINK TÀI LIỆU ============
+    var CODE_RE = /^[A-Z]{2,4}(?:-[A-Z]{2,4})?-\d{3,4}$/;
+    function normCode(s) { return String(s || '').trim().toUpperCase().replace(/\s+/g, ''); }
+    function allDocs() { return TaskManager.getDocuments().reduce(function (a, g) { return a.concat(g.items); }, []); }
+    function driveIdOf(url) { var m = /\/(?:d|folders)\/([A-Za-z0-9_-]{15,})/.exec(url || '') || /[?&]id=([A-Za-z0-9_-]{15,})/.exec(url || ''); return m ? m[1] : ''; }
+    function normUrl(u) { return String(u || '').trim().replace(/[?#].*$/, '').replace(/\/+$/, '').toLowerCase(); }
+    function linkKind(u) {
+      u = String(u || '').toLowerCase();
+      if (!u || u === '#') return null;
+      if (u.indexOf('drive.google') !== -1 || u.indexOf('docs.google') !== -1) return { t: 'Google Drive', c: '#4F8A5B' };
+      if (u.indexOf('notion.') !== -1) return { t: 'Notion', c: '#B08D57' };
+      if (u.indexOf('youtube.') !== -1 || u.indexOf('youtu.be') !== -1) return { t: 'YouTube', c: '#C75B5B' };
+      return { t: 'Liên kết ngoài', c: '#7A8CA5' };
+    }
+    function docByCode(code, ignoreId) {
+      code = normCode(code); if (!code) return null;
+      return allDocs().filter(function (d) { return d.id !== ignoreId && normCode(d.code) === code; })[0] || null;
+    }
+    function driveByCode(code, url) {
+      code = normCode(code); var did = driveIdOf(url);
+      return TaskManager.getDriveDocCodes().filter(function (x) { return normCode(x.code) === code && (!did || x.driveId !== did); })[0] || null;
+    }
+    function docByUrl(url, ignoreId) {
+      var n = normUrl(url); if (!n || n === '#') return null;
+      return allDocs().filter(function (d) { return d.id !== ignoreId && normUrl(d.url) === n; })[0] || null;
+    }
+    // tổng hợp cho bảng Kiểm soát
+    function analyze() {
+      var docs = allDocs(), byCode = {}, byUrl = {}, groups = {}, noCode = [];
+      docs.forEach(function (d) {
+        var c = normCode(d.code);
+        if (!c) noCode.push(d); else { (byCode[c] = byCode[c] || []).push(d); }
+        var u = normUrl(d.url); if (u && u !== '#') (byUrl[u] = byUrl[u] || []).push(d);
+        var m = /^([A-Z]{2,4})-([A-Z]{2,4})-(\d{3,4})$/.exec(c);
+        if (m) { var k = m[1] + '-' + m[2]; var g = groups[k] = groups[k] || { key: k, n: 0, max: 0, seqs: {} }; g.n++; var s = parseInt(m[3], 10); g.seqs[s] = true; if (s > g.max) g.max = s; }
+      });
+      var dupCodes = Object.keys(byCode).filter(function (c) { return byCode[c].length > 1; }).map(function (c) { return { code: c, docs: byCode[c] }; });
+      var dupUrls = Object.keys(byUrl).filter(function (u) { return byUrl[u].length > 1; }).map(function (u) { return { url: u, docs: byUrl[u] }; });
+      var badFormat = docs.filter(function (d) { return d.code && !CODE_RE.test(normCode(d.code)); });
+      var have = {}; docs.forEach(function (d) { if (d.driveId) have[d.driveId] = 1; if (d.url) { var i = driveIdOf(d.url); if (i) have[i] = 1; } });
+      var driveOnly = TaskManager.getDriveDocCodes().filter(function (x) { return !have[x.driveId]; });
+      var grp = Object.keys(groups).sort().map(function (k) {
+        var g = groups[k], gaps = []; for (var i = 1; i < g.max; i++) if (!g.seqs[i]) gaps.push(i);
+        return { key: k, n: g.n, max: g.max, gaps: gaps, next: k + '-' + ('00' + (g.max + 1)).slice(-3) };
+      });
+      return { total: docs.length, withCode: docs.length - noCode.length, noCode: noCode, dupCodes: dupCodes, dupUrls: dupUrls, badFormat: badFormat, driveOnly: driveOnly, groups: grp };
+    }
+    function issueCount() { var a = analyze(); return a.dupCodes.length + a.dupUrls.length + a.badFormat.length; }
+
+    // ---------- khung modal dùng chung ----------
+    function openModal(id, title, sub, bodyHtml, wide) {
+      closeModal(id);
+      var ov = document.createElement('div'); ov.className = 'dm-overlay'; ov.id = id;
+      ov.innerHTML = '<div class="dm-box' + (wide ? ' dm-wide' : '') + '" role="dialog" aria-modal="true"><div class="dm-head"><div><div class="dm-title">' + title + '</div>' + (sub ? '<div class="dm-sub">' + sub + '</div>' : '') + '</div><button type="button" class="dm-x" aria-label="Đóng">&times;</button></div><div class="dm-body">' + bodyHtml + '</div></div>';
+      document.body.appendChild(ov);
+      ov.addEventListener('mousedown', function (e) { if (e.target === ov) closeModal(id); });
+      ov.querySelector('.dm-x').addEventListener('click', function () { closeModal(id); });
+      return ov;
+    }
+    function closeModal(id) { var o = document.getElementById(id); if (o) o.remove(); }
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') ['dmForm', 'dmCtl', 'dmSync'].forEach(closeModal); });
+
+    // ---------- Form thêm / sửa ----------
+    function openDocForm(editDoc) {
+      var user = Auth.getCurrentUser();
+      var depts = getDocDepartments();
+      var cats = TaskManager.getDocCategories();
+      var isEdit = !!editDoc;
+      var body =
+        '<form id="dmFormEl" autocomplete="off">' +
+        '<div class="dm-grid">' +
+          '<section class="dm-card"><h4><span class="dm-step">1</span>Thông tin tài liệu</h4>' +
+            '<label class="dm-lab">Danh mục</label><div class="dm-row"><select id="dfCat">' + cats.map(function (c) { return '<option>' + escapeHtml(c) + '</option>'; }).join('') + '</select><button type="button" class="dm-link" id="dfCatMgr">Quản lý danh mục</button></div>' +
+            '<div id="dfCatBox" hidden class="dm-catbox"><div class="dm-row"><input id="dfCatNew" placeholder="Tên danh mục mới"><button type="button" class="dm-btn" id="dfCatAdd">Thêm</button></div><ul id="dfCatList" class="doc-cat-list"></ul></div>' +
+            '<label class="dm-lab">Tên tài liệu</label><input id="dfName" required placeholder="Quy trình nghiệm thu hạng mục sơn">' +
+            '<label class="dm-lab">Link tài liệu <span id="dfKind" class="dm-kind" hidden></span></label><input id="dfUrl" required placeholder="Dán link Google Drive / Notion / YouTube…">' +
+            '<div id="dfUrlMsg" class="dm-msg"></div>' +
+          '</section>' +
+          '<section class="dm-card"><h4><span class="dm-step">2</span>Mã hiệu tài liệu <button type="button" class="doc-code-info-btn" id="dfInfoBtn" aria-label="Quy ước mã">i</button></h4>' +
+            '<div class="dm-row"><select id="dfDept"><option value="">Phòng ban…</option>' + depts.map(function (d) { return '<option value="' + d[0] + '">' + escapeHtml(d[1]) + '</option>'; }).join('') + '</select>' +
+            '<select id="dfType"><option value="">Loại tài liệu…</option>' + DOC_TYPES.map(function (t) { return '<option value="' + t[0] + '">' + escapeHtml(t[1]) + '</option>'; }).join('') + '</select></div>' +
+            '<label class="dm-lab">Mã hiệu <span class="dm-hint">tự động theo Phòng ban + Loại · có thể gõ tay để sửa</span></label>' +
+            '<div class="dm-row"><input id="dfCode" class="dm-code" placeholder="VD: DRW-SOP-005" maxlength="16" spellcheck="false"><button type="button" class="dm-btn" id="dfAuto" title="Lấy lại mã tự động">Tự động</button></div>' +
+            '<div id="dfCodeMsg" class="dm-msg"></div>' +
+            '<div class="doc-code-info-panel" id="dfInfoPanel" hidden></div>' +
+          '</section>' +
+        '</div>' +
+        '<div class="dm-foot"><span id="dfSummary" class="dm-msg"></span><button type="button" class="dm-btn" id="dfCancel">Huỷ</button><button type="submit" class="doc-submit-btn dm-primary">' + (isEdit ? 'Lưu thay đổi' : 'Thêm tài liệu') + '</button></div>' +
+        '</form>';
+      var ov = openModal('dmForm', isEdit ? 'Sửa tài liệu' : 'Thêm tài liệu', 'Mã hiệu được kiểm tra trùng ngay khi nhập.', body);
+      var $ = function (id) { return ov.querySelector('#' + id); };
+      var manual = false;
+      var cat = $('dfCat'), name = $('dfName'), url = $('dfUrl'), dept = $('dfDept'), type = $('dfType'), code = $('dfCode');
+      if (isEdit) {
+        if (cats.indexOf(editDoc.category) === -1) { var o = document.createElement('option'); o.textContent = editDoc.category; cat.appendChild(o); }
+        cat.value = editDoc.category; name.value = editDoc.name || ''; url.value = editDoc.url && editDoc.url !== '#' ? editDoc.url : ''; code.value = editDoc.code || '';
+        var m = /^([A-Z]{2,4})-([A-Z]{2,4})-\d+$/.exec(normCode(editDoc.code)); if (m) { dept.value = m[1]; type.value = m[2]; }
+        manual = true;
+      }
+      function msg(el, cls, html) { el.className = 'dm-msg' + (cls ? ' ' + cls : ''); el.innerHTML = html; }
+      function checkUrl() {
+        var k = linkKind(url.value), kEl = $('dfKind');
+        if (k) { kEl.hidden = false; kEl.textContent = k.t; kEl.style.background = k.c; } else kEl.hidden = true;
+        var dup = docByUrl(url.value, isEdit ? editDoc.id : null);
+        if (dup) msg($('dfUrlMsg'), 'warn', '⚠ Link này đã có trong «' + escapeHtml(dup.name) + '»' + (dup.code ? ' (' + escapeHtml(dup.code) + ')' : '') + '.');
+        else msg($('dfUrlMsg'), '', url.value ? '' : 'Dùng link chia sẻ của file/thư mục để mọi người mở được.');
+        return dup;
+      }
+      var lastState = { ok: true };
+      function checkCode() {
+        var c = normCode(code.value), el = $('dfCodeMsg'); lastState = { ok: true };
+        if (!c) { msg(el, '', 'Không gán mã cũng được (tuỳ chọn). Chọn Phòng ban + Loại để lấy mã tự động.'); return; }
+        if (!CODE_RE.test(c)) { lastState = { ok: false }; msg(el, 'bad', '✕ Sai định dạng. Dạng chuẩn: <code>PHÒNGBAN-LOẠI-STT</code> ví dụ <code>DRW-SOP-005</code>.'); return; }
+        var d = docByCode(c, isEdit ? editDoc.id : null), dr = !d && driveByCode(c, url.value);
+        if (d || dr) {
+          lastState = { ok: false };
+          var m2 = /^([A-Z]{2,4})-([A-Z]{2,4})-\d+$/.exec(c), sug = m2 ? TaskManager.getNextDocCode(m2[1], m2[2]) : '';
+          msg(el, 'bad', '✕ <b>Mã đã tồn tại</b> — ' + (d ? 'đang dùng cho «' + escapeHtml(d.name) + '»' : 'trùng với file trên Drive «' + escapeHtml(dr.name) + '»') + '.' + (sug ? ' Mã trống tiếp theo: <button type="button" class="dm-use" data-use="' + sug + '">' + sug + '</button>' : ''));
+          return;
+        }
+        msg(el, 'ok', '✓ Mã hợp lệ, chưa có tài liệu nào dùng.');
+      }
+      function autoCode() {
+        if (dept.value && type.value) { code.value = TaskManager.getNextDocCode(dept.value, type.value); manual = false; } else if (!manual) code.value = '';
+        refresh();
+      }
+      function refresh() { checkUrl(); checkCode(); $('dfSummary').textContent = ''; }
+      dept.addEventListener('change', autoCode); type.addEventListener('change', autoCode);
+      $('dfAuto').addEventListener('click', function () { if (!dept.value || !type.value) { msg($('dfCodeMsg'), 'warn', 'Chọn Phòng ban và Loại tài liệu trước.'); return; } autoCode(); });
+      code.addEventListener('input', function () {
+        code.value = code.value.toUpperCase().replace(/[^A-Z0-9-]/g, ''); manual = true;
+        var m3 = /^([A-Z]{2,4})-([A-Z]{2,4})-/.exec(code.value); if (m3) { if (dept.querySelector('option[value="' + m3[1] + '"]')) dept.value = m3[1]; if (type.querySelector('option[value="' + m3[2] + '"]')) type.value = m3[2]; }
+        checkCode();
+      });
+      url.addEventListener('input', refresh);
+      ov.addEventListener('click', function (e) { var b = e.target.closest('[data-use]'); if (b) { code.value = b.dataset.use; manual = true; checkCode(); } });
+      // danh mục
+      function catList() {
+        var l = $('dfCatList'), cs = TaskManager.getDocCategories();
+        l.innerHTML = cs.map(function (c) { return '<li><span>' + escapeHtml(c) + '</span><button type="button" data-delcat="' + escapeHtml(c) + '">Xoá</button></li>'; }).join('');
+      }
+      function catSelect() { var prev = cat.value; cat.innerHTML = TaskManager.getDocCategories().map(function (c) { return '<option>' + escapeHtml(c) + '</option>'; }).join(''); if (prev) cat.value = prev; }
+      $('dfCatMgr').addEventListener('click', function () { $('dfCatBox').hidden = !$('dfCatBox').hidden; catList(); });
+      $('dfCatAdd').addEventListener('click', function () { var v = $('dfCatNew').value.trim(); if (!v) return; TaskManager.addDocCategory(v, user); $('dfCatNew').value = ''; catList(); catSelect(); cat.value = v; });
+      $('dfCatList').addEventListener('click', function (e) { var b = e.target.closest('[data-delcat]'); if (!b) return; TaskManager.deleteDocCategory(b.dataset.delcat, user); catList(); catSelect(); });
+      var ip = $('dfInfoPanel'); ip.innerHTML = buildDocCodeInfoHtml();
+      $('dfInfoBtn').addEventListener('click', function (e) { e.stopPropagation(); ip.hidden = !ip.hidden; });
+      $('dfCancel').addEventListener('click', function () { closeModal('dmForm'); });
+      ov.querySelector('#dmFormEl').addEventListener('submit', function (e) {
+        e.preventDefault();
+        checkCode();
+        if (!lastState.ok) { $('dfSummary').className = 'dm-msg bad'; $('dfSummary').textContent = 'Sửa mã hiệu trước khi lưu.'; code.focus(); return; }
+        var data = { category: cat.value, name: name.value.trim(), url: url.value.trim() || '#', code: normCode(code.value), driveId: driveIdOf(url.value) };
+        if (!data.name || !data.category) return;
+        if (isEdit) TaskManager.updateDocument(editDoc.id, Object.assign({ updatedAt: new Date().toISOString().slice(0, 10) }, data), user);
+        else { data.source = 'manual'; TaskManager.createDocument(data, user); }
+        closeModal('dmForm'); render();
+      });
+      refresh(); name.focus();
+    }
+
+    // ---------- Bảng Kiểm soát mã hiệu ----------
+    function openControl() {
+      var a = analyze();
+      var stat = function (n, l, bad) { return '<div class="dm-stat' + (bad && n ? ' bad' : '') + '"><b>' + n + '</b><span>' + l + '</span></div>'; };
+      var body =
+        '<div class="dm-stats">' + stat(a.total, 'Tài liệu') + stat(a.withCode, 'Đã có mã') + stat(a.noCode.length, 'Chưa có mã') + stat(a.dupCodes.length, 'Mã bị trùng', 1) + stat(a.dupUrls.length, 'Link bị trùng', 1) + stat(a.driveOnly.length, 'Trên Drive, chưa nhập') + '</div>' +
+        (a.dupCodes.length ? '<section class="dm-card dm-alert"><h4>Mã bị trùng</h4>' + a.dupCodes.map(function (g) { return '<div class="dm-dupgrp"><code>' + escapeHtml(g.code) + '</code> — ' + g.docs.length + ' tài liệu<ul>' + g.docs.map(function (d) { return '<li>' + escapeHtml(d.name) + ' <span class="dm-dim">· ' + escapeHtml(d.category || '') + '</span> <button type="button" class="dm-mini" data-edit="' + escapeHtml(d.id) + '">Sửa</button></li>'; }).join('') + '</ul></div>'; }).join('') + '</section>' : '') +
+        (a.dupUrls.length ? '<section class="dm-card dm-alert"><h4>Link bị trùng</h4>' + a.dupUrls.map(function (g) { return '<div class="dm-dupgrp"><span class="dm-dim">' + escapeHtml(g.url.slice(0, 70)) + '</span><ul>' + g.docs.map(function (d) { return '<li>' + escapeHtml(d.name) + ' <button type="button" class="dm-mini" data-edit="' + escapeHtml(d.id) + '">Sửa</button></li>'; }).join('') + '</ul></div>'; }).join('') + '</section>' : '') +
+        (a.badFormat.length ? '<section class="dm-card dm-alert"><h4>Mã sai định dạng</h4><ul>' + a.badFormat.map(function (d) { return '<li><b>' + escapeHtml(d.code) + '</b> ' + escapeHtml(d.name) + ' <button type="button" class="dm-mini" data-edit="' + escapeHtml(d.id) + '">Sửa</button></li>'; }).join('') + '</ul></section>' : '') +
+        '<section class="dm-card"><h4>Số lượng mã theo Phòng ban – Loại</h4>' + (a.groups.length ?
+          '<table class="dm-table"><thead><tr><th>Nhóm</th><th>Số tài liệu</th><th>STT cao nhất</th><th>Mã tiếp theo</th><th>STT còn trống</th></tr></thead><tbody>' +
+          a.groups.map(function (g) { return '<tr><td><code>' + g.key + '</code></td><td>' + g.n + '</td><td>' + g.max + '</td><td><code>' + g.next + '</code></td><td>' + (g.gaps.length ? g.gaps.slice(0, 12).join(', ') + (g.gaps.length > 12 ? '…' : '') : '—') + '</td></tr>'; }).join('') + '</tbody></table>' : '<p class="dm-dim">Chưa có tài liệu nào theo mã chuẩn PHÒNGBAN-LOẠI-STT.</p>') + '</section>' +
+        (a.noCode.length ? '<section class="dm-card"><h4>Tài liệu chưa có mã (' + a.noCode.length + ')</h4><ul class="dm-list">' + a.noCode.map(function (d) { return '<li>' + escapeHtml(d.name) + ' <span class="dm-dim">· ' + escapeHtml(d.category || '') + '</span> <button type="button" class="dm-mini" data-edit="' + escapeHtml(d.id) + '">Gán mã</button></li>'; }).join('') + '</ul></section>' : '');
+      var ov = openModal('dmCtl', 'Kiểm soát mã hiệu &amp; link', 'Số lượng, mã trùng, link trùng, mã còn trống.', body, true);
+      ov.addEventListener('click', function (e) { var b = e.target.closest('[data-edit]'); if (!b) return; var d = allDocs().filter(function (x) { return x.id === b.dataset.edit; })[0]; if (d) { closeModal('dmCtl'); openDocForm(d); } });
+    }
+
+    // ---------- Đồng bộ từ Google Drive ----------
+    var DRIVE_FOLDER_KEY = 'hiconique_doc_drive_folder';
+    function openSync() {
+      var saved = ''; try { saved = localStorage.getItem(DRIVE_FOLDER_KEY) || ''; } catch (e) { /* bỏ qua */ }
+      var body =
+        '<p class="dm-dim" style="margin:0 0 10px;">Quét thư mục Google Drive chứa tài liệu. Web lấy các file có <b>tên bắt đầu bằng mã hiệu</b> (VD <code>DRW-SOP-005 Quy trình…</code>), đối chiếu với danh sách và cho nhập những file chưa có. Chỉ đọc, không sửa gì trên Drive.</p>' +
+        '<div class="dm-row"><input id="dsFolder" placeholder="Dán link thư mục Google Drive…" value="' + escapeHtml(saved) + '"><button type="button" class="doc-submit-btn dm-primary" id="dsScan" style="white-space:nowrap;">Quét thư mục</button></div>' +
+        '<div id="dsOut" class="dm-msg" style="margin-top:12px;"></div>';
+      var ov = openModal('dmSync', 'Đồng bộ mã hiệu từ Google Drive', 'Đối chiếu tên file trên Drive với mã hiệu trên web.', body, true);
+      var out = ov.querySelector('#dsOut'), found = [];
+      ov.querySelector('#dsScan').addEventListener('click', function () {
+        var f = ov.querySelector('#dsFolder').value.trim(); if (!f) { out.className = 'dm-msg warn'; out.textContent = 'Dán link thư mục Drive trước.'; return; }
+        try { localStorage.setItem(DRIVE_FOLDER_KEY, f); } catch (e) { /* bỏ qua */ }
+        out.className = 'dm-msg'; out.textContent = 'Đang quét thư mục… (có thể mất 10–30 giây)';
+        TaskManager.scanDriveDocs(f, function (r) {
+          if (!r || r.error) {
+            var needAuth = r && /quyền|permission|authoriz|DriveApp/i.test(r.error || '');
+            out.className = 'dm-msg bad'; out.innerHTML = '✕ ' + escapeHtml((r && r.error) || 'Lỗi không rõ') + (needAuth ? '<br>Cần cấp quyền Drive 1 lần: mở Apps Script, chạy hàm <code>authorizeDriveScan</code>, bấm cho phép, rồi Deploy phiên bản mới.' : ''); return;
+          }
+          found = r.files || [];
+          var docs = allDocs();
+          var rows = found.map(function (x, i) {
+            var did = x.driveId, byDrive = docs.filter(function (d) { return d.driveId === did || driveIdOf(d.url) === did; })[0];
+            var byCode = docs.filter(function (d) { return normCode(d.code) === x.code; })[0];
+            var st = byDrive ? { k: 'ok', t: 'Đã có' } : byCode ? { k: 'bad', t: 'Trùng mã với «' + byCode.name + '»' } : { k: 'new', t: 'Mới' };
+            x._st = st.k;
+            return '<tr><td>' + (st.k === 'new' ? '<input type="checkbox" data-i="' + i + '" checked>' : '') + '</td><td><code>' + escapeHtml(x.code) + '</code></td><td>' + escapeHtml(x.name) + '<div class="dm-dim">' + escapeHtml(x.path) + '</div></td><td><span class="dm-tag ' + st.k + '">' + escapeHtml(st.t) + '</span></td></tr>';
+          }).join('');
+          var nNew = found.filter(function (x) { return x._st === 'new'; }).length, nBad = found.filter(function (x) { return x._st === 'bad'; }).length;
+          out.className = 'dm-msg';
+          out.innerHTML = 'Đã quét <b>' + r.scanned + '</b> file trong «' + escapeHtml(r.folder || '') + '»' + (r.truncated ? ' <span class="warn">(chưa hết — thư mục quá lớn, hãy quét thư mục con)</span>' : '') + ' — tìm thấy <b>' + found.length + '</b> file có mã hiệu: <b>' + nNew + '</b> mới, <b>' + nBad + '</b> trùng mã.' +
+            (found.length ? '<div class="dm-tablewrap"><table class="dm-table"><thead><tr><th></th><th>Mã hiệu</th><th>Tên file</th><th>Trạng thái</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+            '<div class="dm-foot"><select id="dsCat">' + TaskManager.getDocCategories().map(function (c) { return '<option>' + escapeHtml(c) + '</option>'; }).join('') + '</select><button type="button" class="doc-submit-btn dm-primary" id="dsImport"' + (nNew ? '' : ' disabled') + '>Nhập ' + nNew + ' tài liệu mới</button></div>' : '');
+          var imp = ov.querySelector('#dsImport');
+          if (imp) imp.addEventListener('click', function () {
+            var user = Auth.getCurrentUser(), n = 0, catv = ov.querySelector('#dsCat').value;
+            ov.querySelectorAll('input[data-i]:checked').forEach(function (cb) {
+              var x = found[Number(cb.dataset.i)]; if (!x || docByCode(x.code)) return;
+              TaskManager.createDocument({ category: catv, name: x.name, url: x.url, code: x.code, driveId: x.driveId, source: 'drive' }, user); n++;
+            });
+            closeModal('dmSync'); render();
+            showConfirmDialog('Đã nhập ' + n + ' tài liệu từ Drive.', function () {}, 'Đóng');
+          });
+        });
+      });
     }
 
     function initAdmin() {
-      var addBtn = document.getElementById('docAddBtn');
-      var form = document.getElementById('docForm');
-      addBtn.addEventListener('click', function () { form.hidden = !form.hidden; });
+      document.getElementById('docAddBtn').addEventListener('click', function () { openDocForm(null); });
+      document.getElementById('docCtlBtn').addEventListener('click', openControl);
+      document.getElementById('docSyncBtn').addEventListener('click', openSync);
+    }
 
-      renderCategorySelect();
-      renderCategoryManageList();
-
-      var deptSelect = document.getElementById('docCodeDept');
-      var typeSelect = document.getElementById('docCodeType');
-      deptSelect.innerHTML = '<option value="">— Phòng ban —</option>' +
-        getDocDepartments().map(function (d) { return '<option value="' + d[0] + '">' + escapeHtml(d[1]) + '</option>'; }).join('');
-      typeSelect.innerHTML = '<option value="">— Loại tài liệu —</option>' +
-        DOC_TYPES.map(function (t) { return '<option value="' + t[0] + '">' + escapeHtml(t[1]) + '</option>'; }).join('');
-      deptSelect.addEventListener('change', updateDocCodePreview);
-      typeSelect.addEventListener('change', updateDocCodePreview);
-
-      var infoBtn = document.getElementById('docCodeInfoBtn');
-      var infoPanel = document.getElementById('docCodeInfoPanel');
-      infoPanel.innerHTML = buildDocCodeInfoHtml();
-      infoBtn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        infoPanel.hidden = !infoPanel.hidden;
-      });
-      document.addEventListener('click', function (e) {
-        if (!infoPanel.hidden && !infoPanel.contains(e.target) && e.target !== infoBtn) infoPanel.hidden = true;
-      });
-
-      var catManageBtn = document.getElementById('docCatManageBtn');
-      var catManage = document.getElementById('docCatManage');
-      catManageBtn.addEventListener('click', function () { catManage.hidden = !catManage.hidden; });
-
-      document.getElementById('docCatAddBtn').addEventListener('click', function () {
-        var input = document.getElementById('docCatNewInput');
-        var name = input.value.trim();
-        if (!name) return;
-        TaskManager.addDocCategory(name, Auth.getCurrentUser());
-        input.value = '';
-        renderCategoryManageList();
-        renderCategorySelect();
-      });
-
-      form.addEventListener('submit', function (e) {
-        e.preventDefault();
-        var name = document.getElementById('docNameInput').value.trim();
-        var category = document.getElementById('docCategoryInput').value;
-        if (!name || !category) return;
-        var user = Auth.getCurrentUser();
-        var dept = deptSelect.value;
-        var type = typeSelect.value;
-        var code = (dept && type) ? TaskManager.getNextDocCode(dept, type) : '';
-        TaskManager.createDocument({
-          category: category,
-          name: name,
-          url: document.getElementById('docUrlInput').value.trim() || '#',
-          code: code
-        }, user);
-        document.getElementById('docNameInput').value = '';
-        document.getElementById('docUrlInput').value = '';
-        deptSelect.value = '';
-        typeSelect.value = '';
-        updateDocCodePreview();
-        form.hidden = true;
-        render();
-      });
+    function refreshBadge() {
+      var b = document.getElementById('docCtlBadge'); if (!b) return;
+      var n = issueCount(); b.textContent = n ? String(n) : ''; b.hidden = !n;
     }
 
     function boot() {

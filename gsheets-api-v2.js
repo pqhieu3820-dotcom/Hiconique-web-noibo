@@ -245,7 +245,8 @@ const FIELD_MAP = {
     ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
   ],
   documents: [
-    ['Mã TL', 'id'], ['Danh mục', 'category'], ['Tên tài liệu', 'name'], ['Đường liên kết', 'url'],
+    ['Mã TL', 'id'], ['Mã hiệu', 'code'], ['Danh mục', 'category'], ['Tên tài liệu', 'name'], ['Đường liên kết', 'url'],
+    ['Nguồn', 'source'], ['Mã file Drive', 'driveId'],
     ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
   ],
   pushDevices: [
@@ -961,6 +962,10 @@ function handleRequestImpl_(e) {
       result = updateData(ss, SHEETS.notices, params.id, JSON.parse(params.data));
     } else if (action === 'deleteNotice') {
       result = deleteData(ss, SHEETS.notices, params.id);
+    } else if (action === 'scanDriveDocs') {
+      // 2026-09-30: quét thư mục Google Drive, trả về các file có tên bắt đầu bằng MÃ HIỆU (VD DRW-SOP-005 Quy trình…) để trang Tài liệu
+      // đối chiếu/nhập vào danh sách. Chỉ ĐỌC, không sửa gì trên Drive. Cần cấp quyền Drive 1 lần: chạy hàm authorizeDriveScan trong editor.
+      result = scanDriveDocs_(params.folderId);
     } else if (action === 'getDocuments') {
       result = getAllData(ss, SHEETS.documents);
     } else if (action === 'addDocument') {
@@ -4143,4 +4148,35 @@ function applyEquipmentDropdowns() {
   const report = lines.join('\n');
   Logger.log(report);
   return report;
+}
+
+
+// ---------- Đồng bộ mã hiệu tài liệu từ Google Drive ----------
+var DOC_CODE_RE_ = /^\s*([A-Za-z]{2,4}(?:-[A-Za-z]{2,4})?-\d{3,4})(?!\d)/;
+
+/** Chạy tay 1 lần trong editor để Google hỏi cấp quyền đọc Drive (cần cho action scanDriveDocs). */
+function authorizeDriveScan() {
+  Logger.log('Drive OK: ' + DriveApp.getRootFolder().getName());
+}
+
+function scanDriveDocs_(folderId) {
+  var id = String(folderId || '').replace(/^.*\/folders\//, '').replace(/[?&#].*$/, '').replace(/[^A-Za-z0-9_-]/g, '');
+  if (!id) return { error: 'Thiếu mã/link thư mục Drive' };
+  var started = Date.now(), LIMIT_MS = 24000, MAX_FILES = 3000;
+  var root;
+  try { root = DriveApp.getFolderById(id); } catch (err) { return { error: 'Không mở được thư mục (sai link hoặc chưa cấp quyền Drive): ' + err }; }
+  var queue = [{ folder: root, path: root.getName() }], files = [], scanned = 0, truncated = false;
+  while (queue.length) {
+    if (Date.now() - started > LIMIT_MS || scanned > MAX_FILES) { truncated = true; break; }
+    var cur = queue.shift();
+    var fi = cur.folder.getFiles();
+    while (fi.hasNext()) {
+      var f = fi.next(); scanned++;
+      var m = DOC_CODE_RE_.exec(f.getName());
+      if (m) files.push({ code: m[1].toUpperCase(), name: f.getName().replace(DOC_CODE_RE_, '').replace(/^[\s:.\-–—_]+/, '') || f.getName(), fileName: f.getName(), url: f.getUrl(), driveId: f.getId(), path: cur.path, modified: Utilities.formatDate(f.getLastUpdated(), 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd') });
+    }
+    var di = cur.folder.getFolders();
+    while (di.hasNext()) { var d = di.next(); queue.push({ folder: d, path: cur.path + ' / ' + d.getName() }); }
+  }
+  return { files: files, scanned: scanned, truncated: truncated, folder: root.getName() };
 }

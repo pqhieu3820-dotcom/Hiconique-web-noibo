@@ -2433,13 +2433,25 @@ var TaskManager = (function() {
 
   // Mã tài liệu — [Phòng ban]-[Loại tài liệu]-[STT 3 số], STT tự tăng theo cặp
   // phòng ban+loại đã có, không phụ thuộc tài liệu bị xoá hay chưa (luôn tăng dần).
+  // 2026-09-30: kết quả quét Drive (mã hiệu các file đã đặt tên trên Google Drive) lưu ở máy để getNextDocCode KHÔNG cấp trùng mã đang dùng trên Drive.
+  function getDriveDocCodes() { try { var a = JSON.parse(localStorage.getItem('hiconique_drive_doc_codes') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  function setDriveDocCodes(list) { try { localStorage.setItem('hiconique_drive_doc_codes', JSON.stringify(list || [])); } catch (e) { /* bỏ qua */ } }
+  function scanDriveDocs(folder, callback) {
+    if (!isUsingGSheets() || !GSHEETS_CONFIG.API_URL) { callback({ error: 'Chưa kết nối Google Sheets' }); return; }
+    var controller = new AbortController(), timer = setTimeout(function () { controller.abort(); }, 60000);
+    fetch(GSHEETS_CONFIG.API_URL + '?action=scanDriveDocs&folderId=' + encodeURIComponent(folder), { redirect: 'follow', signal: controller.signal })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { clearTimeout(timer); if (d && d.files) setDriveDocCodes(d.files.map(function (f) { return { code: f.code, name: f.name, url: f.url, driveId: f.driveId }; })); callback(d || { error: 'Không có phản hồi' }); })
+      .catch(function (e) { clearTimeout(timer); callback({ error: 'Không quét được: ' + (e && e.message || e) }); });
+  }
+
   function getNextDocCode(dept, type) {
     if (!dept || !type) return '';
     var prefix = dept + '-' + type + '-';
     var maxSeq = 0;
-    getAll(STORAGE_KEYS.documents).forEach(function (d) {
-      if (d.code && d.code.indexOf(prefix) === 0) {
-        var seq = parseInt(d.code.slice(prefix.length), 10);
+    getAll(STORAGE_KEYS.documents).concat(getDriveDocCodes()).forEach(function (d) {
+      if (d.code && String(d.code).toUpperCase().indexOf(prefix) === 0) {
+        var seq = parseInt(String(d.code).slice(prefix.length), 10);
         if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
       }
     });
@@ -3461,6 +3473,8 @@ var TaskManager = (function() {
     addDocCategory: addDocCategory,
     deleteDocCategory: deleteDocCategory,
     getNextDocCode: getNextDocCode,
+    getDriveDocCodes: getDriveDocCodes,
+    scanDriveDocs: scanDriveDocs,
 
     // Lương cơ bản (Members.baseSalary)
     setMemberBaseSalary: setMemberBaseSalary,

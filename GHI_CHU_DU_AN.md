@@ -1800,3 +1800,10 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (ag) Web tiếp nhận: mỗi người 1 máy (Apps Script v104, Agent 2.1.3)
 - `upsertPcReport` (gsheets-api-v2.js): nhận `mode` từ Agent. `new` → giữ cả hai máy; `overwrite` hoặc Agent bản cũ (không gửi mode) → xóa máy khác của cùng memberId khỏi 'TB-Máy đã báo', ghi máy mới, chuyển `pcId` của tài sản (TB-Thiết bị) đang gắn máy cũ sang máy mới; kết quả trả thêm `replaced` (tên máy bị thay). Agent 2.1.3 không tự xóa nữa — để web xử lý. Apps Script đã deploy v104 (kèm sửa tháng tài chính yyyy-MM).
+
+### 2026-09-30 (ah) Trang Tài liệu: kiểm soát mã hiệu + link, đồng bộ Drive; Chấm công: khối trạng thái
+- **Nguyên nhân mã hiệu không lưu**: sheet `TT-Tài liệu` trước đây KHÔNG có cột mã hiệu (FIELD_MAP thiếu `code`) nên mã chỉ nằm ở localStorage từng máy. Đã thêm 3 cột `Mã hiệu`(code) / `Nguồn`(source: manual|drive) / `Mã file Drive`(driveId) — Apps Script **v105** đã deploy (ensureSchemaColumns tự thêm cột khi ghi).
+- wiki.html: modal Thêm/Sửa tài liệu 2 bước (Thông tin / Mã hiệu). Mã tự động theo Phòng ban+Loại, gõ tay được; kiểm tra tức thì: sai định dạng, **trùng mã** (báo tài liệu đang dùng + gợi ý mã trống tiếp theo, chặn lưu), trùng link (cảnh báo). Nút "Kiểm soát mã hiệu" (số lượng, mã/ link trùng, STT còn trống, tài liệu chưa có mã, badge số vấn đề) và mỗi dòng có nút Sửa.
+- **Đồng bộ Drive** (nút "Đồng bộ từ Drive"): action `scanDriveDocs` + `authorizeDriveScan` có trong gsheets-api-v2.js (repo) nhưng **CHƯA deploy lên Apps Script live** vì dùng DriveApp cần cấp quyền OAuth Drive (Founder phải tự bấm cho phép: dán code, chạy `authorizeDriveScan`, Deploy). Cho tới lúc đó nút quét sẽ báo lỗi. Quy ước tên file trên Drive: bắt đầu bằng mã hiệu (VD `DRW-SOP-005 Quy trình…`).
+- `getNextDocCode` tính cả mã đã quét từ Drive (localStorage `hiconique_drive_doc_codes`) để không cấp trùng.
+- timesheet.html: khối trạng thái "đã hoàn thành" làm lại (2 thẻ Ca sáng / Ca chiều, thẻ đi muộn/về sớm), dòng "Đã lưu lên hệ thống · giờ" dạng chấm trạng thái gọn. sw v52.
