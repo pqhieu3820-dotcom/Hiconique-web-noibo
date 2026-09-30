@@ -1814,3 +1814,7 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (aj) Chip đồng bộ — Liquid Glass kiểu iOS 26
 - offline.js (`#hqSyncChip`): nền gần trong suốt + blur 26px/saturate 210%, viền specular gradient (mask), ánh sáng bên trong, bóng mềm dài, bo 24px; icon tròn trạng thái (✓ xanh / ! đỏ / vòng xoay đồng khi đang lưu); hiện có animation trượt-lên, tôn trọng prefers-reduced-motion; chỉ cập nhật dòng số liệu mỗi giây để vòng xoay không bị nháy. sw v54.
+
+### 2026-09-30 (ak) Nút Xuất báo cáo / Hôm nay + chip kính trong hơn
+- finance.html: nút Xuất báo cáo dùng inline-flex (icon nằm ngang hàng chữ, không đè), cao 38px; nút Hôm nay cùng cỡ (min-width 128px, cao 38px).
+- offline.js: chip Liquid Glass giảm độ đặc (alpha nền ~1–12%), blur 14px để nhìn xuyên rõ hơn. sw v55.
