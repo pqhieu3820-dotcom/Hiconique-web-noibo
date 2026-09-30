@@ -8,8 +8,9 @@ HICONIQUE Agent — ứng dụng Windows 1 file .exe, viết bằng PyQt5, gồm
 Đóng cửa sổ (nút X) chỉ ẩn xuống khay hệ thống (system tray) — app vẫn chạy nền. Chuột phải icon khay > Thoát mới tắt hẳn.
 Tự cài, tự khởi động cùng Windows, tự cập nhật online, gỡ như ứng dụng bình thường (Cài đặt Windows > Ứng dụng).
 
-Công khai với nhân viên: hiện thông báo khi cài, dữ liệu của chính mình đọc được ở
-%LOCALAPPDATA%\\HiconiqueAgent\\hoat-dong-hom-nay.txt. Chỉ cài trên máy công ty, có sự đồng ý của người dùng.
+Công khai với nhân viên: hiện thông báo khi cài; dữ liệu của chính mình xem được ngay trong ứng dụng (tab Kiểm soát dữ liệu thao tác)
+và trên trang Theo dõi hiệu suất của Hub. Dữ liệu trên máy được MÃ HÓA (Windows DPAPI) — không có file văn bản đọc/sửa được.
+Chỉ cài trên máy công ty, có sự đồng ý của người dùng.
 Ghi: tên ứng dụng + tiêu đề cửa sổ đang mở (trong giờ làm việc) + cấu hình phần cứng máy.
 KHÔNG ghi: chụp màn hình, phím gõ, nội dung file/tin nhắn, clipboard, camera, micro.
 """
@@ -34,7 +35,7 @@ import zipfile
 from ctypes import wintypes
 from datetime import datetime, timezone
 
-VERSION = '2.0.6'
+VERSION = '2.0.7'
 APP_NAME = 'HiconiqueAgent'
 FROZEN = getattr(sys, 'frozen', False)
 BASE = os.path.dirname(os.path.abspath(sys.executable if FROZEN else __file__))
@@ -84,22 +85,99 @@ def log(*a):
         pass
 
 
+# ---- Lưu trữ KÍN trên máy (2026-09-30, yêu cầu bảo mật): mọi dữ liệu ghi nhận/cấu hình/cấu hình máy đều mã hóa bằng Windows DPAPI
+# (khóa gắn với tài khoản Windows đang dùng + chuỗi bí mật riêng của ứng dụng) — mở bằng Notepad chỉ thấy ký tự vô nghĩa, sửa/copy sang
+# máy khác/tài khoản khác đều KHÔNG giải mã được (coi như hỏng → bỏ, không tin). Không còn file .txt/.json đọc được.
+import ctypes.wintypes as _wt
+
+_SEC_MAGIC = b'HQ1'
+_SEC_ENTROPY = b'HICONIQUE-Agent/secure-store/v1'
+
+
+class _BLOB(ctypes.Structure):
+    _fields_ = [('cbData', _wt.DWORD), ('pbData', ctypes.POINTER(ctypes.c_char))]
+
+
+def _to_blob(b):
+    buf = ctypes.create_string_buffer(b, len(b))
+    return _BLOB(len(b), ctypes.cast(buf, ctypes.POINTER(ctypes.c_char))), buf
+
+
+def _dpapi(data, protect):
+    inb, keep1 = _to_blob(data)
+    ent, keep2 = _to_blob(_SEC_ENTROPY)
+    out = _BLOB()
+    fn = ctypes.windll.crypt32.CryptProtectData if protect else ctypes.windll.crypt32.CryptUnprotectData
+    if protect:
+        ok = fn(ctypes.byref(inb), None, ctypes.byref(ent), None, None, 1, ctypes.byref(out))
+    else:
+        ok = fn(ctypes.byref(inb), None, ctypes.byref(ent), None, None, 1, ctypes.byref(out))
+    if not ok:
+        return None
+    try:
+        return ctypes.string_at(out.pbData, out.cbData)
+    finally:
+        ctypes.windll.kernel32.LocalFree(out.pbData)
+
+
+def write_secure(path, obj):
+    raw = json.dumps(obj, ensure_ascii=False).encode('utf-8')
+    enc = _dpapi(raw, True)
+    if enc is None:
+        raise OSError('Không mã hóa được dữ liệu (DPAPI)')
+    tmp = path + '.tmp'
+    with open(tmp, 'wb') as f:
+        f.write(_SEC_MAGIC + enc)
+    os.replace(tmp, path)
+
+
+def read_secure(path, default=None):
+    try:
+        with open(path, 'rb') as f:
+            blob = f.read()
+        if not blob.startswith(_SEC_MAGIC):
+            return default
+        raw = _dpapi(blob[len(_SEC_MAGIC):], False)
+        if raw is None:
+            log('Dữ liệu mã hóa không hợp lệ (bị sửa/khác tài khoản):', os.path.basename(path))
+            return default
+        return json.loads(raw.decode('utf-8'))
+    except FileNotFoundError:
+        return default
+    except Exception as e:
+        log('Đọc dữ liệu mã hóa lỗi:', os.path.basename(path), e)
+        return default
+
+
+CONFIG_SECURE = os.path.join(DATA_DIR, 'config.dat')
+
+
 def load_config():
     cfg = dict(DEFAULTS)
-    for p in (os.path.join(BASE, 'config.json'), os.path.join(DATA_DIR, 'config.json')):
-        if os.path.exists(p):
+    saved = read_secure(CONFIG_SECURE)
+    if saved is None:
+        # Nâng cấp từ bản cũ (config.json đọc/sửa được): nhập 1 lần rồi XÓA file văn bản. File config.json cạnh exe bị bỏ qua hoàn toàn.
+        legacy = os.path.join(DATA_DIR, 'config.json')
+        if os.path.exists(legacy):
             try:
-                with open(p, encoding='utf-8-sig') as f:
-                    cfg.update(json.load(f))
+                with open(legacy, encoding='utf-8-sig') as f:
+                    saved = json.load(f)
+                keep = {k: saved[k] for k in ('memberId', 'workHours', 'workDays', 'sendTitles') if k in saved}
+                write_secure(CONFIG_SECURE, keep)
+                saved = keep
+                os.remove(legacy)
+                log('Đã chuyển cấu hình sang dạng mã hóa')
             except Exception as e:
-                log('config lỗi', p, e)
+                log('Chuyển cấu hình lỗi:', e)
+                saved = None
+    if isinstance(saved, dict):
+        cfg.update({k: v for k, v in saved.items() if k in ('memberId', 'workHours', 'workDays', 'sendTitles')})
     return cfg
 
 
 def save_config(cfg):
     keep = {k: cfg[k] for k in ('memberId', 'workHours', 'workDays', 'sendTitles') if k in cfg}
-    with open(os.path.join(DATA_DIR, 'config.json'), 'w', encoding='utf-8') as f:
-        json.dump(keep, f, ensure_ascii=False, indent=2)
+    write_secure(CONFIG_SECURE, keep)
 
 
 def msgbox(title, text, flags=0x40):
@@ -185,34 +263,74 @@ def in_work_time(cfg, now):
     return ah * 60 + am <= cur < bh * 60 + bm
 
 
+# Tên tiến trình Windows → tên quen thuộc (khóa viết thường, không .exe). Ứng dụng lạ: hiện tên gốc đã làm đẹp.
+FRIENDLY_APPS = {
+    'browser': 'Cốc Cốc', 'coccoc': 'Cốc Cốc', 'chrome': 'Google Chrome', 'msedge': 'Microsoft Edge', 'firefox': 'Firefox',
+    'opera': 'Opera', 'brave': 'Brave', 'safari': 'Safari', 'iexplore': 'Internet Explorer',
+    'explorer': 'Thư mục (File Explorer)', 'winword': 'Word', 'excel': 'Excel', 'powerpnt': 'PowerPoint', 'outlook': 'Outlook',
+    'onenote': 'OneNote', 'msaccess': 'Access', 'mspub': 'Publisher', 'wps': 'WPS Office', 'et': 'WPS Spreadsheets', 'wpp': 'WPS Presentation',
+    'acrobat': 'Adobe Acrobat', 'acrord32': 'Adobe Reader', 'foxitpdfreader': 'Foxit PDF Reader', 'foxitreader': 'Foxit PDF Reader',
+    'notepad': 'Notepad (Ghi chú)', 'notepad++': 'Notepad++', 'code': 'Visual Studio Code', 'devenv': 'Visual Studio',
+    'claude': 'Claude', 'zalo': 'Zalo', 'zalopc': 'Zalo', 'telegram': 'Telegram', 'skype': 'Skype', 'viber': 'Viber',
+    'teams': 'Microsoft Teams', 'ms-teams': 'Microsoft Teams', 'slack': 'Slack', 'zoom': 'Zoom', 'discord': 'Discord',
+    'taskmgr': 'Trình quản lý tác vụ (Task Manager)', 'applicationframehost': 'Cài đặt / ứng dụng Windows',
+    'systemsettings': 'Cài đặt Windows', 'searchhost': 'Tìm kiếm Windows', 'searchapp': 'Tìm kiếm Windows', 'searchui': 'Tìm kiếm Windows',
+    'shellexperiencehost': 'Giao diện Windows', 'startmenuexperiencehost': 'Menu Start', 'textinputhost': 'Bàn phím Windows',
+    'winrar': 'WinRAR', '7zfm': '7-Zip', 'googledrivefs': 'Google Drive (đồng bộ)', 'onedrive': 'OneDrive', 'dropbox': 'Dropbox',
+    'mmc': 'Bảng quản trị Windows (Services…)', 'cmd': 'Dòng lệnh (CMD)', 'powershell': 'PowerShell', 'windowsterminal': 'Windows Terminal',
+    'conhost': 'Cửa sổ dòng lệnh', 'regedit': 'Registry Editor', 'control': 'Control Panel', 'mstsc': 'Kết nối máy tính từ xa',
+    'anydesk': 'AnyDesk', 'teamviewer': 'TeamViewer', 'ultraviewer': 'UltraViewer',
+    'sketchup': 'SketchUp', 'layout': 'LayOut (SketchUp)', 'acad': 'AutoCAD', 'revit': 'Revit', '3dsmax': '3ds Max', 'vray': 'V-Ray',
+    'lumion': 'Lumion', 'enscape': 'Enscape', 'photoshop': 'Photoshop', 'illustrator': 'Illustrator', 'indesign': 'InDesign',
+    'lightroom': 'Lightroom', 'premiere pro': 'Premiere Pro', 'afterfx': 'After Effects', 'canva': 'Canva',
+    'vlc': 'VLC', 'wmplayer': 'Windows Media Player', 'spotify': 'Spotify', 'mspaint': 'Paint', 'snippingtool': 'Công cụ cắt ảnh',
+    'calculatorapp': 'Máy tính (Calculator)', 'calc': 'Máy tính (Calculator)', 'photos': 'Ảnh (Photos)', 'microsoft.photos': 'Ảnh (Photos)',
+    'misa': 'MISA', 'misasme': 'MISA SME', 'hiconiqueagent': 'HICONIQUE Agent', 'python': 'Python', 'pythonw': 'Python',
+    'node': 'Node.js', 'git': 'Git', 'gitkraken': 'GitKraken', 'postman': 'Postman', 'figma': 'Figma', 'obs64': 'OBS Studio',
+}
+
+
+def friendly_app(raw):
+    k = str(raw or '').strip()
+    if k.lower().endswith('.exe'):
+        k = k[:-4]
+    hit = FRIENDLY_APPS.get(k.lower())
+    if hit:
+        return hit
+    nice = re.sub(r'[_\-]+', ' ', k).strip()
+    return nice[:1].upper() + nice[1:] if nice else str(raw)
+
+
 def slug(s):
     return re.sub(r'[^A-Za-z0-9]+', '_', s).strip('_')[:40] or 'app'
 
 
 def state_path(day):
-    return os.path.join(DATA_DIR, 'state-%s.json' % day)
+    return os.path.join(DATA_DIR, 'state-%s.dat' % day)
+
+
+def purge_legacy_plaintext():
+    """Xóa các file văn bản cũ (đọc/sửa được) của bản trước: state-*.json, hoat-dong-hom-nay.txt, config.json."""
+    try:
+        for n in os.listdir(DATA_DIR):
+            if (n.startswith('state-') and n.endswith('.json')) or n == 'hoat-dong-hom-nay.txt':
+                try:
+                    os.remove(os.path.join(DATA_DIR, n))
+                except OSError:
+                    pass
+    except Exception:
+        pass
 
 
 def load_state(day):
-    try:
-        with open(state_path(day), encoding='utf-8') as f:
-            return json.load(f)
-    except Exception:
-        return {'apps': {}, 'idleSec': 0}
+    st = read_secure(state_path(day))
+    if isinstance(st, dict) and isinstance(st.get('apps'), dict):
+        return st
+    return {'apps': {}, 'idleSec': 0}
 
 
 def save_state(day, st):
-    with open(state_path(day), 'w', encoding='utf-8') as f:
-        json.dump(st, f, ensure_ascii=False)
-    lines = ['HICONIQUE Agent %s — ghi nhận ngày %s (cập nhật %s)' % (VERSION, day, datetime.now().strftime('%H:%M')), '']
-    for app, v in sorted(st['apps'].items(), key=lambda kv: -kv[1]['sec']):
-        lines.append('%-28s %4d phút' % (app, round(v['sec'] / 60)))
-        for t, s in sorted(v['titles'].items(), key=lambda kv: -kv[1])[:5]:
-            lines.append('    - %s (%d phút)' % (t, round(s / 60)))
-    lines.append('')
-    lines.append('Không thao tác: %d phút' % round(st.get('idleSec', 0) / 60))
-    with open(os.path.join(DATA_DIR, 'hoat-dong-hom-nay.txt'), 'w', encoding='utf-8') as f:
-        f.write('\n'.join(lines))
+    write_secure(state_path(day), st)
 
 
 def cleanup_old_days(keep_days=7):
@@ -234,7 +352,7 @@ def flush(cfg, day, st):
         top = sorted(v['titles'].items(), key=lambda kv: -kv[1])[:cfg['topTitles']]
         rows.append({
             'id': 'app_%s_%s_%s_%s' % (cfg['memberId'], day, slug(device), slug(app)),
-            'memberId': cfg['memberId'], 'date': day, 'device': device, 'app': app,
+            'memberId': cfg['memberId'], 'date': day, 'device': device, 'app': friendly_app(app), 'appRaw': app,
             'minutes': round(v['sec'] / 60, 1),
             'titles': ' | '.join('%s (%dp)' % (t, round(s / 60)) for t, s in top) if cfg['sendTitles'] else '',
             'lastSeen': datetime.now().strftime('%Y-%m-%d %H:%M'),
@@ -439,22 +557,17 @@ def check_update(cfg, progress=None, exe=None, restart=True):
 
 
 # ---------------- Báo cấu hình phần cứng (trang Thiết bị) ----------------
-HW_SAVED_FILE = os.path.join(DATA_DIR, 'hardware_saved.json')
+HW_SAVED_FILE = os.path.join(DATA_DIR, 'hardware_saved.dat')
 
 
 def load_saved_hardware():
-    try:
-        with open(HW_SAVED_FILE, encoding='utf-8') as f:
-            d = json.load(f)
-        return d if isinstance(d, dict) and d.get('specs') is not None else None
-    except Exception:
-        return None
+    d = read_secure(HW_SAVED_FILE)
+    return d if isinstance(d, dict) and d.get('specs') is not None else None
 
 
 def save_hardware(hw):
     try:
-        with open(HW_SAVED_FILE, 'w', encoding='utf-8') as f:
-            json.dump(hw, f, ensure_ascii=False, indent=1)
+        write_secure(HW_SAVED_FILE, hw)
     except Exception as e:
         log('Lưu cấu hình máy lỗi:', e)
 
@@ -769,7 +882,7 @@ class Shared:
         self.cfg = cfg
         self.day = datetime.now().strftime('%Y-%m-%d')
         self.st = load_state(self.day)
-        self.paused = False
+        self.paused = False   # luôn False — đã bỏ nút tạm dừng ghi nhận (yêu cầu 2026-09-30)
         self.last_flush_at = None
         self.last_flush_ok = None
         self.next_flush_at = time.time() + cfg['flushMinutes'] * 60   # mốc gửi kế tiếp (giao diện đếm ngược)
@@ -789,6 +902,7 @@ class BackgroundWorker(QThread):
 
     def run(self):
         cfg = self.shared.cfg
+        purge_legacy_plaintext()
         cleanup_old_days()
         if not os.path.exists(os.path.join(DATA_DIR, 'da-thong-bao-' + self.shared.day)):
             open(os.path.join(DATA_DIR, 'da-thong-bao-' + self.shared.day), 'w').close()
@@ -882,9 +996,6 @@ class ActivityTab(QWidget):
         top.addStretch(1)
         self.lblStatus = QLabel()
         top.addWidget(self.lblStatus)
-        self.btnPause = QPushButton('Tạm dừng ghi nhận')
-        self.btnPause.clicked.connect(self.toggle_pause)
-        top.addWidget(self.btnPause)
         lay.addLayout(top)
 
         sub = QLabel('Ghi nhận tên ứng dụng và tiêu đề cửa sổ đang dùng trong giờ làm việc — không chụp màn hình, không ghi phím gõ. '
@@ -914,8 +1025,10 @@ class ActivityTab(QWidget):
             kp.addWidget(k, 1)
         lay.addLayout(kp)
 
-        body = QHBoxLayout()
-        body.setSpacing(12)
+        body = QSplitter(Qt.Horizontal)   # kéo thanh giữa để đổi độ rộng 2 bảng
+        body.setChildrenCollapsible(False)
+        body.setHandleWidth(12)
+        body.setStyleSheet('QSplitter::handle{background:transparent;}QSplitter::handle:hover{background:rgba(176,141,87,0.35);border-radius:4px;}')
         leftCard = QFrame()
         leftCard.setObjectName('card')
         lv = QVBoxLayout(leftCard)
@@ -923,13 +1036,17 @@ class ActivityTab(QWidget):
         lt = QLabel('Ứng dụng hôm nay')
         lt.setStyleSheet('font-weight:700;')
         lv.addWidget(lt)
-        self.table = QTableWidget(0, 3)
-        self.table.setHorizontalHeaderLabels(['Ứng dụng', 'Thời gian', 'Tỉ lệ'])
+        self.table = QTableWidget(0, 4)
+        self.table.setHorizontalHeaderLabels(['Ứng dụng', 'Tên gốc', 'Thời gian', 'Tỉ lệ'])
         hh = self.table.horizontalHeader()
         hh.setSectionResizeMode(0, QHeaderView.Stretch)
-        hh.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        hh.setSectionResizeMode(2, QHeaderView.Fixed)
-        self.table.setColumnWidth(2, 130)
+        hh.setSectionResizeMode(1, QHeaderView.Interactive)
+        hh.setSectionResizeMode(2, QHeaderView.Interactive)
+        hh.setSectionResizeMode(3, QHeaderView.Interactive)
+        hh.setStretchLastSection(False)
+        self.table.setColumnWidth(1, 110)
+        self.table.setColumnWidth(2, 90)
+        self.table.setColumnWidth(3, 130)
         hh.setHighlightSections(False)
         hh.setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.table.verticalHeader().setVisible(False)
@@ -941,7 +1058,7 @@ class ActivityTab(QWidget):
         self.table.itemSelectionChanged.connect(self.on_select)
         self.table.setStyleSheet('QTableWidget{border:none;background:transparent;}')
         lv.addWidget(self.table, 1)
-        body.addWidget(leftCard, 3)
+        body.addWidget(leftCard)
 
         rightCard = QFrame()
         rightCard.setObjectName('card')
@@ -954,7 +1071,8 @@ class ActivityTab(QWidget):
         self.detail.setHorizontalHeaderLabels(['Tiêu đề cửa sổ', 'Phút'])
         dh = self.detail.horizontalHeader()
         dh.setSectionResizeMode(0, QHeaderView.Stretch)
-        dh.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        dh.setSectionResizeMode(1, QHeaderView.Interactive)
+        self.detail.setColumnWidth(1, 70)
         dh.setHighlightSections(False)
         dh.setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.detail.verticalHeader().setVisible(False)
@@ -969,13 +1087,13 @@ class ActivityTab(QWidget):
         self.lblHint.setProperty('muted', True)
         self.lblHint.setWordWrap(True)
         rv.addWidget(self.lblHint)
-        body.addWidget(rightCard, 2)
-        lay.addLayout(body, 1)
+        body.addWidget(rightCard)
+        body.setStretchFactor(0, 3)
+        body.setStretchFactor(1, 2)
+        body.setSizes([620, 420])
+        lay.addWidget(body, 1)
 
         btnRow = QHBoxLayout()
-        btnOpen = QPushButton('Mở dữ liệu của tôi')
-        btnOpen.clicked.connect(self.open_data_file)
-        btnRow.addWidget(btnOpen)
         btnFlush = QPushButton('Gửi ngay lên Hub')
         btnFlush.setObjectName('primary')
         btnFlush.clicked.connect(self.flush_now)
@@ -990,17 +1108,6 @@ class ActivityTab(QWidget):
         self.timer.timeout.connect(self.refresh)
         self.timer.start(1000)
         self.refresh()
-
-    def toggle_pause(self):
-        self.shared.paused = not self.shared.paused
-        self.refresh()
-
-    def open_data_file(self):
-        p = os.path.join(DATA_DIR, 'hoat-dong-hom-nay.txt')
-        try:
-            os.startfile(p if os.path.exists(p) else DATA_DIR)
-        except Exception as e:
-            QMessageBox.warning(self, 'HICONIQUE Agent', 'Không mở được: %s' % e)
 
     def flush_now(self):
         ok = flush(self.shared.cfg, self.shared.day, self.shared.st)
@@ -1025,7 +1132,7 @@ class ActivityTab(QWidget):
             self.lblHint.setText('Chọn một ứng dụng bên trái để xem các cửa sổ/tab đã mở.')
             return
         titles = sorted(v.get('titles', {}).items(), key=lambda kv: -kv[1])
-        self.lblDetail.setText('Chi tiết — %s  ·  %s' % (self.sel_app, fmt_dur(v['sec'])))
+        self.lblDetail.setText('Chi tiết — %s  ·  %s' % (friendly_app(self.sel_app), fmt_dur(v['sec'])))
         self.detail.setRowCount(len(titles))
         for i, (t, sec) in enumerate(titles):
             a = QTableWidgetItem(t)
@@ -1039,15 +1146,10 @@ class ActivityTab(QWidget):
     def refresh(self):
         sh = self.shared
         in_work = in_work_time(sh.cfg, datetime.now())
-        if sh.paused:
-            self.lblStatus.setText('⏸  Đã tạm dừng')
-            self.lblStatus.setObjectName('pillBad')
-        else:
-            self.lblStatus.setText('●  Đang ghi nhận' if in_work else '●  Chờ giờ làm việc')
-            self.lblStatus.setObjectName('pillOk')
+        self.lblStatus.setText('●  Đang ghi nhận' if in_work else '●  Chờ giờ làm việc')
+        self.lblStatus.setObjectName('pillOk')
         self.lblStatus.style().unpolish(self.lblStatus)
         self.lblStatus.style().polish(self.lblStatus)
-        self.btnPause.setText('Tiếp tục ghi nhận' if sh.paused else 'Tạm dừng ghi nhận')
 
         apps = sorted(sh.st.get('apps', {}).items(), key=lambda kv: -kv[1]['sec'])
         active = sum(v['sec'] for _, v in apps)
@@ -1078,16 +1180,20 @@ class ActivityTab(QWidget):
             if it is None:
                 it = QTableWidgetItem()
                 self.table.setItem(i, 0, it)
+                raw = QTableWidgetItem()
+                raw.setForeground(QColor('#8B8578'))
+                self.table.setItem(i, 1, raw)
                 tm = QTableWidgetItem()
                 tm.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                self.table.setItem(i, 1, tm)
+                self.table.setItem(i, 2, tm)
                 bar = QProgressBar()
                 bar.setRange(0, 100)
-                self.table.setCellWidget(i, 2, bar)
-            it.setText(name)
+                self.table.setCellWidget(i, 3, bar)
+            it.setText(friendly_app(name))
             it.setData(Qt.UserRole, name)
-            self.table.item(i, 1).setText(fmt_dur(v['sec']))
-            self.table.cellWidget(i, 2).setValue(int(round(v['sec'] * 100 / total)))
+            self.table.item(i, 1).setText(name)
+            self.table.item(i, 2).setText(fmt_dur(v['sec']))
+            self.table.cellWidget(i, 3).setValue(int(round(v['sec'] * 100 / total)))
         if self.sel_app is None and apps:
             self.sel_app = apps[0][0]
         for i, (name, _) in enumerate(apps):
@@ -3799,7 +3905,7 @@ class InstallDialog(QDialog):
             cols.addWidget(box, 1)
         lay.addLayout(cols)
 
-        rd = QLabel('Bạn đọc được dữ liệu của mình tại <b>%s\\hoat-dong-hom-nay.txt</b>. Gỡ cài đặt bất cứ lúc nào trong Cài đặt Windows › Ứng dụng.' % DATA_DIR)
+        rd = QLabel('Bạn xem được dữ liệu của mình ngay trong ứng dụng (tab Kiểm soát dữ liệu thao tác) và trên trang Theo dõi hiệu suất của Hub. Dữ liệu lưu trên máy được mã hóa. Gỡ cài đặt bất cứ lúc nào trong Cài đặt Windows › Ứng dụng.')
         rd.setProperty('muted', True)
         rd.setWordWrap(True)
         lay.addWidget(rd)

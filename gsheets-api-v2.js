@@ -322,7 +322,8 @@ const FIELD_MAP = {
   ],
   appUsage: [
     ['Mã', 'id'], ['Mã thành viên', 'memberId'], ['Ngày', 'date'], ['Thiết bị', 'device'],
-    ['Ứng dụng', 'app'], ['Phút', 'minutes'], ['Tiêu đề cửa sổ', 'titles'], ['Lần cuối', 'lastSeen']
+    ['Ứng dụng', 'app'], ['Phút', 'minutes'], ['Tiêu đề cửa sổ', 'titles'], ['Lần cuối', 'lastSeen'],
+    ['Tên gốc (tiến trình)', 'appRaw']   // 2026-09-30: cột 'Ứng dụng' = tên quen thuộc (Cốc Cốc, Excel, Thư mục...), cột này giữ tên tiến trình gốc
   ],
   priceCatalog: [
     ['Mã BG', 'id'], ['Danh mục', 'category'], ['Tên dịch vụ', 'name'], ['Đơn vị tính', 'unit'],

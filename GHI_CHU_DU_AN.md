@@ -1,10 +1,10 @@
 ## ⭐ QUAN TRỌNG — NƠI LƯU FILE CÀI ĐẶT HICONIQUE AGENT (người dùng chốt 2026-09-30)
 
-- **Folder Google Drive**: https://drive.google.com/drive/folders/1lSDuoqhGnGM7Yik1wk6V_N5dTdQlU97J?usp=sharing — tên "Folder cài đặt HICONIQUE APP PC", chủ sở hữu **hiconique.group@gmail.com**; trên máy dev là ổ **J:** → `J:\My Drive\DỮ LIỆU HICONIQUE\DỮ LIỆU GỐC (KHÔNG CHIA SẺ)\Folder cài đặt HICONIQUE APP PC`.
-- **Quy tắc**: mỗi bản Agent mới → copy `HiconiqueAgentSetup-v<ver>.exe` vào folder này (`build.py` tự copy khi ổ J: có mặt; nếu báo CẢNH BÁO thì upload tay). **Mọi nơi cần "link tải file cài" (nút tải trang Theo dõi hiệu suất, hướng dẫn, thông báo…) ghim THẲNG link folder này** — không dùng link GitHub nữa cho người dùng (GitHub chậm ~20–100 KB/s ở VN). Khỏi phải tính toán tốc độ tải.
+- **Folder Google Drive**: https://drive.google.com/drive/folders/1lSDuoqhGnGM7Yik1wk6V_N5dTdQlU97J?usp=sharing — tên "Folder cài đặt HICONIQUE APP PC", chủ sở hữu **hiconique.group@gmail.com**.
+- **Quy tắc (người dùng chốt)**: file cài chỉ đưa lên **THẲNG qua đường link Drive này** (mở link → tải lên `HiconiqueAgentSetup-v<ver>.exe`); **KHÔNG dùng/ghi nhận đường dẫn ổ đĩa cục bộ (ổ J:, thư mục đồng bộ)**. `build.py` chỉ tạo file `dist\HiconiqueAgent-v<ver>.exe` + copy ra Desktop và nhắc đưa lên link. **Mọi nơi cần "link tải file cài" (nút tải trang Theo dõi hiệu suất, hướng dẫn, thông báo…) ghim THẲNG link folder này** — không dùng link GitHub cho người dùng (GitHub chậm ~20–100 KB/s ở VN).
 - GitHub Releases (`agent-v<ver>`) + `public/agent/latest.json` **vẫn giữ** chỉ để Agent TỰ CẬP NHẬT (cần link tải trực tiếp có kiểm SHA-256; Drive file lớn bị chặn bằng trang quét virus nên không dùng được cho bước này).
 - ⚠ Quyền chia sẻ hiện là "Bất kỳ ai có đường liên kết = **Người chỉnh sửa**" → ai có link cũng xoá/thay được file cài. Nên đổi thành **Người xem** (chỉ chủ + pqhieu3820 chỉnh sửa) — tránh bị tráo file cài độc hại.
-- Bản đã có trong folder: `HiconiqueAgentSetup-v2.0.6.exe` (69,6MB, chưa đăng release GitHub).
+- Trong folder hiện có: `HiconiqueAgentSetup-v2.0.6.exe` (69,6MB). Bản 2.0.7 (bảo mật) build xong cần đưa lên link như trên.
 
 # Ghi chú dự án — đọc trước khi làm việc
 
@@ -44,6 +44,13 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 **Link production chính đã đổi sang Cloudflare Workers**: `https://hiconique-web-noibo.pqhieu3820.workers.dev` (link Netlify cũ `noibo.hiconique.com` bị lỗi DNS NXDOMAIN ngày 24/9, không liên quan code — người dùng đã chuyển hẳn sang dùng link Workers, vẫn giữ link cũ nhưng không phải link chính nữa). **Luôn dùng link Workers khi cần mở/test web live, không hỏi lại người dùng về việc này nữa.**
 
 - (2026-09-30) Viết lại đoạn mô tả đầu trang Tài sản & vật tư (`equipment.html`, `.subpage-lede`) gọn hơn, 2 câu, gom nhóm tài sản.
+
+### Phiên 2026-09-30 (u) — Agent 2.0.7: BẢO MẬT dữ liệu trên máy, tên ứng dụng thân thiện, bỏ tạm dừng/mở dữ liệu
+
+- **Bảo mật (yêu cầu "kín đi")**: trước đây `hoat-dong-hom-nay.txt` + `state-<ngày>.json` + `config.json` + `hardware_saved.json` là văn bản thường → nhân viên mở lên **sửa số liệu / đổi `memberId` để mạo danh**. Nay MỌI dữ liệu ghi nhận, cấu hình (`config.dat`), trạng thái ngày (`state-*.dat`) và cấu hình máy đã sửa (`hardware_saved.dat`) lưu bằng **Windows DPAPI** (`write_secure`/`read_secure`, thêm chuỗi bí mật riêng `_SEC_ENTROPY`, đầu file `HQ1`): mở Notepad chỉ thấy ký tự vô nghĩa, sửa 1 byte hoặc copy sang tài khoản/máy khác → giải mã hỏng → coi như không có (tự bắt đầu lại, không tin dữ liệu bị sửa). Nâng cấp từ bản cũ: `config.json` cũ được nhập 1 lần rồi xoá; `purge_legacy_plaintext()` xoá `state-*.json` + `hoat-dong-hom-nay.txt`; `config.json` cạnh exe bị bỏ qua hoàn toàn. Đã thử vòng ghi/đọc + sửa giả mạo (trả về mặc định) + kiểm tra không lộ chữ rõ trong file. Bỏ nút **"Mở dữ liệu của tôi"** và nút **"Tạm dừng ghi nhận"** (luôn ghi nhận; trạng thái chỉ "Đang ghi nhận / Chờ giờ làm việc"); trình cài đặt/thông báo web/trang Theo dõi không còn nhắc file .txt — nhân viên xem dữ liệu của mình ngay trong tab ứng dụng hoặc trang Theo dõi hiệu suất. Giới hạn còn lại (nói thẳng): DPAPI chống sửa/đọc thông thường; người dùng rất rành kỹ thuật chạy đúng mã/quyền vẫn có thể giải mã dữ liệu của CHÍNH mình — chống triệt để cần xác thực phía máy chủ.
+- **Tên ứng dụng thân thiện** (`FRIENDLY_APPS`/`friendly_app`): `browser`→Cốc Cốc, `chrome`→Google Chrome, `explorer`→Thư mục (File Explorer), `WINWORD`→Word, `Taskmgr`→Trình quản lý tác vụ, `ApplicationFrameHost`→Cài đặt / ứng dụng Windows, `GoogleDriveFS`→Google Drive (đồng bộ)… (~120 mục; lạ thì hiện tên gốc viết đẹp). Bảng ứng dụng có cột **Ứng dụng** (tên chuẩn) + cột **Tên gốc** (tiến trình). Gửi lên Hub: `app`=tên thân thiện, **`appRaw`**=tên gốc (id vẫn theo tên gốc nên không sinh dòng trùng); Sheet NS-Ứng dụng thêm cột **"Tên gốc (tiến trình)"** — **Apps Script v101**.
+- **Co kéo UI**: hai thẻ (Ứng dụng hôm nay | Chi tiết) nằm trong `QSplitter` kéo thanh giữa đổi độ rộng; các cột Tên gốc/Thời gian/Tỉ lệ/Phút kéo được (`Interactive`).
+- **Drive (người dùng chốt lại)**: file cài chỉ đưa lên THẲNG qua link folder Drive; **bỏ hẳn** việc dùng/ghi đường dẫn ổ J: và bỏ copy tự động trong `build.py` (mục QUAN TRỌNG đầu file đã sửa). Agent **2.0.7** đã build (`HiconiqueAgent-v2.0.7.exe` ở Desktop) — chưa đăng release, chưa lên Drive.
 
 ### Phiên 2026-09-30 (t) — Xuất báo cáo Sổ tài chính nhiều sheet + chọn kỳ; Agent 2.0.6 (UI mới, tải nhanh)
 

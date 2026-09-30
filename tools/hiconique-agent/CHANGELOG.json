@@ -1,5 +1,10 @@
 [
   {
+    "version": "2.0.7",
+    "date": "2026-09-30",
+    "notes": "BẢO MẬT: toàn bộ dữ liệu ghi nhận, cấu hình và cấu hình máy lưu trên máy được MÃ HÓA (Windows DPAPI) — không còn file .txt/.json đọc hay sửa được; bỏ nút 'Mở dữ liệu của tôi' và nút Tạm dừng ghi nhận. Tên ứng dụng hiển thị quen thuộc (Cốc Cốc, Word, Excel, Thư mục…) kèm cột 'Tên gốc'; hai bảng và các cột kéo co giãn được."
+  },
+  {
     "version": "2.0.6",
     "date": "2026-09-30",
     "notes": "Tự cập nhật hiện đủ tiến trình: dung lượng đã tải/tổng, tốc độ, thời gian còn lại; tải bằng 4 luồng song song. Giao diện tab Kiểm soát dữ liệu thao tác làm lại (thẻ tổng quan, bảng ứng dụng có tỉ lệ, chi tiết tiêu đề cửa sổ, đếm ngược lần gửi kế tiếp) và trình cài đặt đẹp hơn. Tên file tải về có số phiên bản (HiconiqueAgentSetup-v2.0.6.exe)."
