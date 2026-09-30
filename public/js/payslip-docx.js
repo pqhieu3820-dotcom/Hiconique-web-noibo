@@ -182,9 +182,9 @@ var PayslipDocx = (function () {
         function next() {
           if (i >= pages.length) return Promise.resolve();
           label.textContent = 'Trang ' + (i + 1) + '/' + pages.length + '…';
-          // 600 DPI: 1 inch = 96px CSS → pixelRatio = 600/96 = 6.25 (trang A4 ≈ 4960×7020px). Nếu máy không đủ bộ nhớ cho canvas lớn thì hạ dần 400 → 300 → 200 DPI.
+          // 1200 DPI: 1 inch = 96px CSS → pixelRatio = 1200/96 = 12.5 (trang A4 ≈ 9925×14950px, ~150 megapixel, ~6.5MB/trang). Nếu máy không đủ bộ nhớ cho canvas lớn thì hạ dần 600 → 400 → 300 → 200 DPI.
           function shot(list) { return window.htmlToImage.toCanvas(pages[i], { pixelRatio: list[0] / 96, backgroundColor: '#ffffff', cacheBust: false }).then(function (c) { if (!c || !c.width || !c.height) throw new Error('canvas rỗng'); return c; }).catch(function (e) { if (list.length > 1) return shot(list.slice(1)); throw e; }); }
-          return shot([600, 400, 300, 200]).then(function (canvas) {
+          return shot([1200, 600, 400, 300, 200]).then(function (canvas) {
             if (i > 0) pdf.addPage('a4', 'portrait');
             var w = 210, h = 210 * canvas.height / canvas.width, x = 0;
             if (h > 297) { h = 297; w = 297 * canvas.width / canvas.height; x = (210 - w) / 2; }   // giữ đúng tỉ lệ trang, không kéo giãn chữ

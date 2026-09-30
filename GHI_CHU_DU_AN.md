@@ -2010,3 +2010,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (cp) Xuất PDF 600 DPI
 - payslip-docx.js: chụp trang ở `pixelRatio = 600/96` (≈4962×7475px/trang A4), JPEG chất lượng 0.95; máy thiếu RAM thì tự hạ 400 → 300 → 200 DPI; giải phóng canvas sau mỗi trang. Đã đo: canvas thật 4962×7475 (600 DPI); PDF 2 trang ≈ 2MB, tạo ~1.3s. sw v111.
+
+### 2026-09-30 (cq) Xuất PDF 1200 DPI
+- payslip-docx.js: chụp ở `pixelRatio = 1200/96 = 12.5` (≈9925×14950px, ~150 megapixel/trang), JPEG 0.95; hạ dần 600 → 400 → 300 → 200 DPI nếu máy thiếu RAM. Đã thử: canvas 9925×14950 tạo được (~2s/trang, có nội dung), PDF 2 trang ≈ 4.9MB, ~2.7s. Máy yếu/điện thoại sẽ tự hạ xuống mức phù hợp. sw v112.
