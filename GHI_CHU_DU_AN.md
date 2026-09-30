@@ -2020,3 +2020,7 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 ### 2026-09-30 (cs) Thư mục Drive mặc định cho "Đồng bộ từ Drive" (trang Tài liệu)
 - wiki.html: `DEFAULT_DRIVE_FOLDER` = https://drive.google.com/drive/folders/1c5sglRIYx_0tRxgvhgFULkBkGuAgfwAg?usp=sharing (Founder cung cấp) — ô link tự điền sẵn, vẫn sửa được (nhớ theo trình duyệt).
 - Tình trạng bật tính năng: code `scanDriveDocs`/`authorizeDriveScan` đã có trong gsheets-api-v2.js (repo). Apps Script LIVE (v110) **chưa có**; để bật cần Founder chạy `authorizeDriveScan` trong editor + bấm Cho phép (cấp quyền đọc Drive), sau đó deploy phiên bản mới. sw v114.
+
+### 2026-09-30 (ct) Bật quét Drive — tiến độ
+- Đã dán code `scanDriveDocs`/`authorizeDriveScan` vào Apps Script (đã LƯU, CHƯA deploy) và **thêm quyền `https://www.googleapis.com/auth/drive.readonly` vào `appsscript.json`** (manifest có `oauthScopes` khai báo tường minh — thiếu dòng này thì hàm báo "Specified permissions are not sufficient"). Lưu ý: KHÔNG deploy phiên bản mới trước khi chủ tài khoản cấp quyền, nếu không web app có thể lỗi toàn bộ vì thiếu quyền.
+- Bước còn lại (chủ tài khoản): trong editor chọn hàm `authorizeDriveScan` → Chạy → "Xem lại quyền" → chọn tài khoản → Cho phép (cửa sổ cấp quyền là popup Google, cần bật cho phép popup nếu bị chặn). Xong mới deploy phiên bản mới.
