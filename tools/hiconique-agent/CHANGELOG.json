@@ -1,5 +1,10 @@
 [
   {
+    "version": "2.0.8",
+    "date": "2026-09-30",
+    "notes": "File Excel xuất từ app (danh sách màu) dùng tiêu đề văn bản chuẩn: CÔNG TY TNHH THIẾT KẾ VÀ XÂY DỰNG HICONIQUE, Quốc hiệu, Tiêu ngữ, địa danh ngày tháng; định dạng bảng và in A4."
+  },
+  {
     "version": "2.0.7",
     "date": "2026-09-30",
     "notes": "BẢO MẬT: toàn bộ dữ liệu ghi nhận, cấu hình và cấu hình máy lưu trên máy được MÃ HÓA (Windows DPAPI) — không còn file .txt/.json đọc hay sửa được; bỏ nút 'Mở dữ liệu của tôi' và nút Tạm dừng ghi nhận. Tên ứng dụng hiển thị quen thuộc (Cốc Cốc, Word, Excel, Thư mục…) kèm cột 'Tên gốc'; hai bảng và các cột kéo co giãn được. Chú thích 'Đóng cửa sổ (X)…' đổi thành dấu ⓘ (rê chuột để đọc); nhớ chế độ nền sáng/tối ở mọi lần mở lại (lưu cả file trên máy nên offline vẫn nhớ)."

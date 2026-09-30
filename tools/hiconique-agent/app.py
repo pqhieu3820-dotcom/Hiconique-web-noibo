@@ -35,7 +35,58 @@ import zipfile
 from ctypes import wintypes
 from datetime import datetime, timezone
 
-VERSION = '2.0.7'
+VERSION = '2.0.8'
+
+COMPANY_NAME = 'CÔNG TY TNHH THIẾT KẾ VÀ XÂY DỰNG HICONIQUE'
+
+
+def write_excel_with_heading(df, file_path, sheet_name='Dữ liệu'):
+    """Xuất DataFrame ra Excel với tiêu đề văn bản chuẩn (tên công ty, Quốc hiệu, Tiêu ngữ, địa danh ngày tháng) — đồng bộ với web."""
+    import datetime
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from openpyxl.utils import get_column_letter
+    with pd_excel_writer(file_path) as writer:
+        df.to_excel(writer, index=False, startrow=5, sheet_name=sheet_name)
+        ws = writer.sheets[sheet_name]
+        n = max(len(df.columns), 5)
+        right = min(5, max(2, n // 2)); left = max(1, min(4, n - right))
+        r0, r1 = left + 1, left + right
+        now = datetime.date.today()
+        def put(r, c1, c2, val, bold=False, italic=False, size=12, h='center'):
+            if c2 > c1:
+                ws.merge_cells(start_row=r, start_column=c1, end_row=r, end_column=c2)
+            c = ws.cell(row=r, column=c1, value=val)
+            c.font = Font(name='Times New Roman', size=size, bold=bold, italic=italic)
+            c.alignment = Alignment(horizontal=h, vertical='center', wrap_text=True)
+        put(1, 1, left, COMPANY_NAME, bold=True, size=11)
+        put(1, r0, r1, 'CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM', bold=True)
+        put(2, 1, left, 'Số: ....../......', size=11)
+        put(2, r0, r1, 'Độc lập - Tự do - Hạnh phúc', bold=True)
+        put(3, r0, r1, 'Hải Phòng, ngày %d tháng %d năm %d' % (now.day, now.month, now.year), italic=True, h='right')
+        ws.row_dimensions[1].height = 32
+        thin = Side(style='thin', color='FF999999')
+        for c in range(1, len(df.columns) + 1):
+            cell = ws.cell(row=6, column=c)
+            cell.font = Font(name='Times New Roman', size=12, bold=True)
+            cell.fill = PatternFill('solid', fgColor='FFE8EEF7')
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            width = max([len(str(cell.value or ''))] + [len(str(v)) for v in df.iloc[:, c - 1].tolist()]) + 4
+            ws.column_dimensions[get_column_letter(c)].width = min(max(width, 12), 40)
+        for row in ws.iter_rows(min_row=7, max_row=ws.max_row, max_col=len(df.columns)):
+            for cell in row:
+                cell.border = Border(left=thin, right=thin, top=thin, bottom=thin)
+        ws.freeze_panes = 'A7'
+        ws.page_setup.paperSize = 9
+        ws.page_setup.orientation = 'landscape' if len(df.columns) > 7 else 'portrait'
+        ws.page_setup.fitToWidth = 1; ws.page_setup.fitToHeight = 0
+        ws.sheet_properties.pageSetUpPr.fitToPage = True
+        ws.oddFooter.left.text = 'Hải Phòng, ngày &D'; ws.oddFooter.right.text = 'Trang &P / &N'
+
+
+def pd_excel_writer(file_path):
+    import pandas as pd
+    return pd.ExcelWriter(file_path, engine='openpyxl')
+
 APP_NAME = 'HiconiqueAgent'
 FROZEN = getattr(sys, 'frozen', False)
 BASE = os.path.dirname(os.path.abspath(sys.executable if FROZEN else __file__))
@@ -2684,7 +2735,7 @@ class CpColorListDialog(QDialog):
             df = pd.DataFrame(data)
             df.sort_values(by=['Nhóm màu', '_h', '_s', '_l'], inplace=True)
             df.drop(columns=['_h', '_s', '_l'], inplace=True)
-            df.to_excel(file_path, index=False)
+            write_excel_with_heading(df, file_path, 'Danh sách màu')
             QMessageBox.information(self, 'Thành công', 'Đã xuất file Excel thành công!')
 
 
@@ -3534,7 +3585,7 @@ class ColorPickerPanel(QWidget):
         if not df.empty:
             df.sort_values(by=['Nhóm màu', '_h', '_s', '_l'], inplace=True)
             df.drop(columns=['_h', '_s', '_l'], inplace=True)
-            df.to_excel(file_path, index=False)
+            write_excel_with_heading(df, file_path, 'Danh sách màu')
             QMessageBox.information(self, 'Thành công', 'Đã xuất thành công %d màu ra file Excel!' % len(items_to_export))
 
     def export_batch_images(self):
