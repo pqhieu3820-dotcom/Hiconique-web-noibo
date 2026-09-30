@@ -265,13 +265,13 @@
       var existing = TaskManager.getPayslips({ memberId: user.id, month: month })[0];
       var member = { name: user.name, role: user.role, id: user.id, bankAccount: user.bankAccount };
       if (existing) {
-        return { member: member, month: month, baseSalary: existing.baseSalary, workDays: existing.workDays, totalHours: existing.totalHours, otHours: existing.otHours, otRate: existing.otRate, otAmount: existing.otAmount, commissionAmount: existing.commissionAmount, otherBonus: existing.otherBonus, otherBonusNote: existing.otherBonusNote, deduction: existing.deduction, deductionNote: existing.deductionNote, totalAmount: existing.totalAmount, note: existing.note };
+        return { member: member, month: month, baseSalary: existing.baseSalary, workPay: slipWorkPay(existing), stdDays: STD_DAYS, workDays: existing.workDays, totalHours: existing.totalHours, otHours: existing.otHours, otRate: existing.otRate, otAmount: existing.otAmount, commissionAmount: existing.commissionAmount, otherBonus: existing.otherBonus, otherBonusNote: existing.otherBonusNote, deduction: existing.deduction, deductionNote: existing.deductionNote, totalAmount: existing.totalAmount, note: existing.note };
       }
       var stats = TaskManager.getMonthlyTimesheetStats(user.id, month), base = Number(user.baseSalary) || 0, rate = computeOtRate(base), comm = TaskManager.getMemberCommissionTotal(user.id, month);
       var fv = function (id) { var e = document.getElementById(id); return e ? e.value : ''; };
       var otMan = parseFloat(fv('plOtManual')) || 0, bonus = (typeof HiconiqueMoney !== 'undefined' && fv('plOtherBonus')) ? HiconiqueMoney.parse(fv('plOtherBonus')) : 0, ded = (typeof HiconiqueMoney !== 'undefined' && fv('plDeduction')) ? HiconiqueMoney.parse(fv('plDeduction')) : 0;
       var otHours = stats.overtimeHours + otMan, otAmount = Math.round(otHours * rate);
-      return { member: member, month: month, baseSalary: base, workDays: stats.workDays, totalHours: stats.totalHours, otHours: otHours, otRate: Math.round(rate), otAmount: otAmount, commissionAmount: comm, otherBonus: bonus, otherBonusNote: fv('plOtherBonusNote').trim(), deduction: ded, deductionNote: fv('plDeductionNote').trim(), totalAmount: Math.round(base + otAmount + comm + bonus - ded), note: fv('plNote').trim() };
+      return { member: member, month: month, baseSalary: base, workPay: computeWorkPay(base, stats.workDays), stdDays: STD_DAYS, workDays: stats.workDays, totalHours: stats.totalHours, otHours: otHours, otRate: Math.round(rate), otAmount: otAmount, commissionAmount: comm, otherBonus: bonus, otherBonusNote: fv('plOtherBonusNote').trim(), deduction: ded, deductionNote: fv('plDeductionNote').trim(), totalAmount: Math.round(computeWorkPay(base, stats.workDays) + otAmount + comm + bonus - ded), note: fv('plNote').trim() };
     }
     (function mountDocxButtons() {
       var nav = monthInput.closest('.hq-month-nav') || (monthInput.parentNode && monthInput.parentNode.querySelector('.hq-month-nav')) || document.querySelector('.hq-month-nav');
@@ -300,6 +300,14 @@
       return fresh ? Object.assign({}, session, fresh) : session;
     }
 
+    // LƯƠNG THEO NGÀY CÔNG: lương cơ bản là mức cho ĐỦ công chuẩn của tháng (26 công = 208h/8) → làm 3 công chỉ nhận 3/26.
+    // Làm quá công chuẩn thì tiền công tối đa bằng lương cơ bản, phần vượt tính vào giờ OT. Không cần thêm cột Sheet: tiền công của phiếu cũ/mới
+    // đều suy ra được từ tổng − OT − hoa hồng − thưởng + khấu trừ (phiếu cũ = lương cơ bản như trước).
+    var STD_DAYS = TaskManager.STANDARD_MONTHLY_HOURS / 8;
+    function computeWorkPay(baseSalary, workDays) { return Math.round((Number(baseSalary) || 0) / STD_DAYS * Math.min(Number(workDays) || 0, STD_DAYS)); }
+    function slipWorkPay(s) { return Math.round((Number(s.totalAmount) || 0) - (Number(s.otAmount) || 0) - (Number(s.commissionAmount) || 0) - (Number(s.otherBonus) || 0) + (Number(s.deduction) || 0)); }
+    function workPayNote(base, days) { return 'Lương cơ bản ' + fmt(base) + ' ÷ ' + STD_DAYS + ' công × ' + days + ' ngày công'; }
+
     function computeOtRate(baseSalary) {
       var hourly = (Number(baseSalary) || 0) / TaskManager.STANDARD_MONTHLY_HOURS;
       return hourly * TaskManager.OT_MULTIPLIER;
@@ -315,6 +323,7 @@
       var stats = TaskManager.getMonthlyTimesheetStats(user.id, month);
       var baseSalary = Number(user.baseSalary) || 0;
       var commissionAmount = TaskManager.getMemberCommissionTotal(user.id, month);
+      var workPay = computeWorkPay(baseSalary, stats.workDays);
 
       // Top stat tiles reflect the selected month, for the logged-in user.
       document.getElementById('plBaseSalary').textContent = fmt(baseSalary);
@@ -363,13 +372,13 @@
             '<div style="grid-column: span 2;"><span class="pl-field-label">Ghi chú khấu trừ</span><input type="text" class="pl-input pl-note-input" id="plDeductionNote"></div>' +
           '</div>' +
           '<div class="pl-breakdown">' +
-            '<div class="pl-breakdown-row"><span>Lương cơ bản</span><span id="bdBase">' + fmt(baseSalary) + '</span></div>' +
+            '<div class="pl-breakdown-row"><span>Lương theo ngày công <span style="color:var(--pl-muted);font-size:.75rem;">(' + stats.workDays + '/' + STD_DAYS + ' công · lương cơ bản ' + fmt(baseSalary) + ')</span></span><span id="bdBase">' + fmt(workPay) + '</span></div>' +
             '<div class="pl-breakdown-row"><span>Tăng ca (OT)</span><span id="bdOt">' + fmt(Math.round(otHoursAuto * otRate)) + '</span></div>' +
             '<div class="pl-breakdown-row"><span>Hoa hồng dự án</span><span id="bdCommission">' + fmt(commissionAmount) + '</span></div>' +
             '<div class="pl-breakdown-row"><span>Thưởng khác</span><span id="bdBonus">' + fmt(0) + '</span></div>' +
             '<div class="pl-breakdown-row minus"><span>Khấu trừ</span><span id="bdDeduction">− ' + fmt(0) + '</span></div>' +
           '</div>' +
-          '<div class="pl-total-row"><span class="pl-total-label">Tổng đề xuất thanh toán</span><span class="pl-total-value" id="plTotalPreview">' + fmt(baseSalary) + '</span></div>' +
+          '<div class="pl-total-row"><span class="pl-total-label">Tổng đề xuất thanh toán</span><span class="pl-total-value" id="plTotalPreview">' + fmt(workPay) + '</span></div>' +
           '<div><span class="pl-field-label">Ghi chú chung</span><textarea class="pl-input pl-note-input" id="plNote" rows="2" style="width:100%;" placeholder="Ghi chú thêm cho người duyệt (tuỳ chọn)"></textarea></div>' +
           '<div style="margin-top:16px; text-align:right;"><button class="pl-btn pl-btn-primary" id="plSubmitBtn">Gửi đề xuất lương</button></div>' +
         '</div>';
@@ -380,8 +389,8 @@
         var deduction = HiconiqueMoney.parse(document.getElementById('plDeduction').value);
         var otHours = otHoursAuto + otManual;
         var otAmount = otHours * otRate;
-        var total = baseSalary + otAmount + commissionAmount + otherBonus - deduction;
-        document.getElementById('bdBase').textContent = fmt(baseSalary);
+        var total = workPay + otAmount + commissionAmount + otherBonus - deduction;
+        document.getElementById('bdBase').textContent = fmt(workPay);
         document.getElementById('bdOt').textContent = fmt(Math.round(otAmount));
         document.getElementById('bdCommission').textContent = fmt(commissionAmount);
         document.getElementById('bdBonus').textContent = fmt(otherBonus);
@@ -474,7 +483,7 @@
         return '<div class="pl-row">' +
           '<span class="pl-row-member">' + (member ? member.name : s.memberId) + '</span>' +
           '<span>' + s.month + '</span>' +
-          '<span class="pl-row-amount">' + fmt(s.baseSalary) + '</span>' +
+          '<span class="pl-row-amount">' + fmt(slipWorkPay(s)) + '</span>' +
           '<span class="pl-row-amount">' + fmt((Number(s.otAmount) || 0) + (Number(s.commissionAmount) || 0) + (Number(s.otherBonus) || 0)) + '</span>' +
           '<span><span class="pl-badge ' + s.status + '">' + statusLabel(s.status) + '</span></span>' +
           '<span class="pl-row-actions">' +
