@@ -1949,3 +1949,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (bw) Thanh cuộn thẻ Báo cáo nhanh lùi thêm 5px
 - finance-quick.js: track cao 19px, thumb viền trên 11px (trước 14/6) → thanh trượt nằm thấp hơn 5px. sw v93.
+
+### 2026-09-30 (bx) Thẻ đang chọn của Báo cáo nhanh kín viền
+- finance-quick.js: thẻ đang chọn có viền kín cả 4 cạnh, bo 8px, bóng nhẹ (trước hở đáy vì thanh cuộn nằm giữa thẻ và nội dung). sw v94.
