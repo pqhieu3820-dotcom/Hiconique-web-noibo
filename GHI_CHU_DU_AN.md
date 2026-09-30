@@ -2004,3 +2004,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (cn) Xuất PDF tải thẳng về máy (không mở hộp thoại in)
 - payslip-docx.js: nút Xuất PDF nay tải file `.pdf` trực tiếp: chụp từng trang giấy đang xem bằng `html2canvas@1.4.1` (scale 2) rồi ghép vào PDF A4 bằng `jspdf@2.5.1` (cdnjs, nạp khi bấm), báo tiến độ "Trang x/y…" trên nút. PDF dạng ảnh (chữ không chọn/copy được, ~400KB cho 2 trang); cần PDF chữ vector/chọn được thì dùng "Tải file .docx" rồi Lưu thành PDF trong Word. Đã bỏ CSS in. sw v109.
+
+### 2026-09-30 (co) Xuất PDF giống hệt bản xem
+- Lỗi: PDF chụp bằng `html2canvas` bị lệch/cắt chữ ở bảng (khác bản xem). Đổi sang `html-to-image@1.11.11` (`toCanvas`, pixelRatio 2 — chụp bằng chính bộ dựng của trình duyệt qua SVG foreignObject) → khớp bản xem; ảnh mỗi trang giữ đúng tỉ lệ khi ghép vào A4 (không kéo giãn). Đã đối chiếu ảnh chụp trang: bảng, dấu, chữ đậm/nghiêng giống bản xem. sw v110.

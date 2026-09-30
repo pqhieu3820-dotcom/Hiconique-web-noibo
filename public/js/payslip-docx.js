@@ -19,8 +19,9 @@ var PayslipDocx = (function () {
     return loadScript('https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js').then(function () { LIB.docx = window.docx; return LIB.docx; });
   }
   function loadPdfLibs() {
-    if (window.html2canvas && window.jspdf) return Promise.resolve();
-    return loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js').then(function () { return loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'); });
+    if (window.htmlToImage && window.jspdf) return Promise.resolve();
+    // html-to-image (SVG foreignObject) chụp bằng chính bộ dựng của trình duyệt → GIỐNG HỆT bản xem (html2canvas làm lệch/cắt chữ ở bảng)
+    return loadScript('https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js').then(function () { return loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'); });
   }
   function ensurePreview() {
     if (LIB.preview) return Promise.resolve(LIB.preview);
@@ -181,9 +182,11 @@ var PayslipDocx = (function () {
         function next() {
           if (i >= pages.length) return Promise.resolve();
           label.textContent = 'Trang ' + (i + 1) + '/' + pages.length + '…';
-          return window.html2canvas(pages[i], { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false }).then(function (canvas) {
+          return window.htmlToImage.toCanvas(pages[i], { pixelRatio: 2, backgroundColor: '#ffffff', cacheBust: false }).then(function (canvas) {
             if (i > 0) pdf.addPage('a4', 'portrait');
-            pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+            var w = 210, h = 210 * canvas.height / canvas.width, x = 0;
+            if (h > 297) { h = 297; w = 297 * canvas.width / canvas.height; x = (210 - w) / 2; }   // giữ đúng tỉ lệ trang, không kéo giãn chữ
+            pdf.addImage(canvas.toDataURL('image/jpeg', 0.94), 'JPEG', x, 0, w, h, undefined, 'FAST');
             i++; return next();
           });
         }
