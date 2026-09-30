@@ -1797,3 +1797,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (af) Agent 2.1.2 — mỗi người 1 máy, xác nhận ghi đè/tạo mới
 - `report_hardware(cfg, hw, mode)`: 'auto' (nền, bỏ qua nếu web đã có máy khác của người này), 'ask' (bấm tay → trả conflict → `HardwareTab.ask_overwrite` hỏi Ghi đè / Tạo mới / Hủy), 'overwrite' (gọi `deletePcReport` các máy cũ rồi ghi máy này), 'new'. Danh sách máy lấy qua `getPcReports` (`other_machines_of_member`).
+
+### 2026-09-30 (ag) Web tiếp nhận: mỗi người 1 máy (Apps Script v104, Agent 2.1.3)
+- `upsertPcReport` (gsheets-api-v2.js): nhận `mode` từ Agent. `new` → giữ cả hai máy; `overwrite` hoặc Agent bản cũ (không gửi mode) → xóa máy khác của cùng memberId khỏi 'TB-Máy đã báo', ghi máy mới, chuyển `pcId` của tài sản (TB-Thiết bị) đang gắn máy cũ sang máy mới; kết quả trả thêm `replaced` (tên máy bị thay). Agent 2.1.3 không tự xóa nữa — để web xử lý. Apps Script đã deploy v104 (kèm sửa tháng tài chính yyyy-MM).

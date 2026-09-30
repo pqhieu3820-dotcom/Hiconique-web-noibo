@@ -1,11 +1,16 @@
 {
-  "version": "2.1.2",
-  "url": "https://github.com/pqhieu3820-dotcom/Hiconique-web-noibo/releases/download/agent-v2.1.2/HiconiqueAgentSetup-v2.1.2.exe",
-  "sha256": "b380762c52ef815a1e01cf5110f57eebea870df65250a44cde28e5d7ff9bcac6",
-  "size": 69659066,
-  "releasedAt": "2026-09-30T09:33:18Z",
-  "notes": "Mỗi người mặc định dùng 1 máy: khi bấm 'Cập nhật lên web' mà web đã có máy KHÁC của tài khoản này, app hiện bảng xác nhận 'Ghi đè máy cũ' / 'Tạo mới (giữ cả hai)' / 'Hủy'. Gửi tự động nền không tự ghi đè máy khác.",
+  "version": "2.1.3",
+  "url": "https://github.com/pqhieu3820-dotcom/Hiconique-web-noibo/releases/download/agent-v2.1.3/HiconiqueAgentSetup-v2.1.3.exe",
+  "sha256": "6b79a87562edc6b5556353e6315452049e7028c6df99452301f1b64a52fe4117",
+  "size": 69662374,
+  "releasedAt": "2026-09-30T09:38:18Z",
+  "notes": "Web (Apps Script) tự áp quy tắc mỗi người 1 máy khi nhận cấu hình: ghi đè máy cũ (chuyển liên kết tài sản sang máy mới) hoặc giữ cả hai nếu chọn 'Tạo mới'.",
   "history": [
+    {
+      "version": "2.1.3",
+      "date": "2026-09-30",
+      "notes": "Web (Apps Script) tự áp quy tắc mỗi người 1 máy khi nhận cấu hình: ghi đè máy cũ (chuyển liên kết tài sản sang máy mới) hoặc giữ cả hai nếu chọn 'Tạo mới'."
+    },
     {
       "version": "2.1.2",
       "date": "2026-09-30",
@@ -50,11 +55,6 @@
       "version": "2.0.4",
       "date": "2026-09-29",
       "notes": "Sửa lỗi sau khi cài/cập nhật icon Desktop và Apps & features vẫn hiện logo CŨ (Windows lưu icon theo đường dẫn file). Nay mỗi phiên bản dùng 1 file icon tên riêng (HiconiqueAgent-<phiên bản>.ico) và tự làm mới bộ nhớ đệm icon của Windows sau khi cài/cập nhật. Tab Lấy màu: ô xem trước tự thu nhỏ vừa khung để thấy đủ thông tin (Ctrl+cuộn chuột để phóng/thu tự do)."
-    },
-    {
-      "version": "2.0.3",
-      "date": "2026-09-29",
-      "notes": "Sửa trình cài đặt: ô 'Chọn tên của bạn' trước đây trống trơn khi mạng/máy chủ chậm (chỉ chờ 25 giây rồi im lặng và đứng hình). Nay tải danh sách ở nền không đứng hình, chờ tối đa 60 giây/lần và tự thử lại 4 lần, hiện tiến trình và báo lỗi rõ ràng, có nút 'Tải lại', nhớ danh sách lần trước, và cho gõ thẳng mã thành viên."
     }
   ]
 }

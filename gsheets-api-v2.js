@@ -997,9 +997,23 @@ function handleRequestImpl_(e) {
       result = getAllData(ss, SHEETS.pcReports);
     } else if (action === 'upsertPcReport') {
       // HICONIQUE Agent báo cấu hình máy (mỗi máy + người dùng 1 dòng, id cố định) — trang Thiết bị dùng để "Nhập từ Agent"
+      // 2026-09-30: MỖI NGƯỜI MẶC ĐỊNH 1 MÁY. Nếu người này đã có máy KHÁC trên Sheet: mode='new' (người dùng chọn "Tạo mới") → giữ cả hai;
+      // còn lại (mode='overwrite' hoặc Agent bản cũ không gửi mode) → xoá máy cũ, ghi máy mới, và chuyển các tài sản (TB-Thiết bị) đang gắn
+      // máy cũ sang máy mới để không bị mất liên kết.
       var pcData = JSON.parse(params.data);
-      var pcExisting = getAllData(ss, SHEETS.pcReports).filter(function (r) { return r.id === pcData.id; })[0];
+      var pcMode = pcData.mode; delete pcData.mode;
+      var pcAll = getAllData(ss, SHEETS.pcReports);
+      var pcExisting = pcAll.filter(function (r) { return r.id === pcData.id; })[0];
+      var pcReplaced = [];
+      if (pcMode !== 'new' && pcData.memberId) {
+        pcAll.filter(function (r) { return r.memberId === pcData.memberId && r.id !== pcData.id; }).forEach(function (old) {
+          getAllData(ss, SHEETS.equipment).filter(function (e) { return e.pcId === old.id; }).forEach(function (e) { updateData(ss, SHEETS.equipment, e.id, { pcId: pcData.id }); });
+          deleteData(ss, SHEETS.pcReports, old.id);
+          pcReplaced.push(old.hostname || old.id);
+        });
+      }
       result = pcExisting ? updateData(ss, SHEETS.pcReports, pcData.id, pcData) : addData(ss, SHEETS.pcReports, pcData);
+      if (result && typeof result === 'object' && pcReplaced.length) result.replaced = pcReplaced;
     } else if (action === 'deletePcReport') {
       // Xoá HẲN dòng máy đã báo (TB-Máy đã báo) khỏi Sheet — chỉ dùng cho mục "Máy đã cài HICONIQUE Agent" ở trang Thiết bị
       result = deleteData(ss, SHEETS.pcReports, params.id);

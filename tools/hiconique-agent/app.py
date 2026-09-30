@@ -35,7 +35,7 @@ import zipfile
 from ctypes import wintypes
 from datetime import datetime, timezone
 
-VERSION = '2.1.2'
+VERSION = '2.1.3'
 
 COMPANY_NAME = 'CÔNG TY TNHH THIẾT KẾ VÀ XÂY DỰNG HICONIQUE'
 
@@ -726,11 +726,7 @@ def report_hardware(cfg, hw=None, mode='auto'):
                 return True, hw
             if others and mode == 'ask':
                 return False, {'conflict': others, 'hw': hw}
-            if others and mode == 'overwrite':
-                for o in others:
-                    dbody = urllib.parse.urlencode({'action': 'deletePcReport', 'id': o.get('id')}).encode('utf-8')
-                    with urllib.request.urlopen(urllib.request.Request(cfg['apiUrl'], data=dbody, method='POST'), timeout=60) as r:
-                        r.read()
+        rec['mode'] = mode if mode in ('new', 'overwrite') else 'overwrite'   # web cũng tự áp quy tắc 1 người 1 máy; 'new' = giữ cả hai
         body = urllib.parse.urlencode({'action': 'upsertPcReport', 'data': json.dumps(rec, ensure_ascii=False)}).encode('utf-8')
         with urllib.request.urlopen(urllib.request.Request(cfg['apiUrl'], data=body, method='POST'), timeout=60) as r:
             r.read()

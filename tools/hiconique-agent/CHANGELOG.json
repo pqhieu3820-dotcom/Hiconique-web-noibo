@@ -1,5 +1,10 @@
 [
   {
+    "version": "2.1.3",
+    "date": "2026-09-30",
+    "notes": "Web (Apps Script) tự áp quy tắc mỗi người 1 máy khi nhận cấu hình: ghi đè máy cũ (chuyển liên kết tài sản sang máy mới) hoặc giữ cả hai nếu chọn 'Tạo mới'."
+  },
+  {
     "version": "2.1.2",
     "date": "2026-09-30",
     "notes": "Mỗi người mặc định dùng 1 máy: khi bấm 'Cập nhật lên web' mà web đã có máy KHÁC của tài khoản này, app hiện bảng xác nhận 'Ghi đè máy cũ' / 'Tạo mới (giữ cả hai)' / 'Hủy'. Gửi tự động nền không tự ghi đè máy khác."
