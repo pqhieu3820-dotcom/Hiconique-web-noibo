@@ -1998,3 +1998,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 ### 2026-09-30 (cl) Cỡ chữ 3 nút phiếu lương + giao diện Xem nhanh Docx mới
 - Nguyên nhân chữ 3 nút không đều: khai báo `font: 600 0.8125rem inherit` là CSS **không hợp lệ** (`inherit` không được đứng làm font-family trong shorthand) nên bị bỏ → nút dùng cỡ mặc định. Đã đổi sang `font-weight; font-size; font-family: inherit` ở payslip.html, payslip-docx.js, finance-quick.js. Quy tắc: KHÔNG dùng `font: … inherit`. Đã đo: cả 3 nút 13px/600.
 - Xem nhanh Docx làm lại kiểu trình xem tài liệu: nền tối chuyển sắc, thanh trên kính mờ (icon Word, tên tài liệu + file), nút zoom −/+/Vừa (Ctrl+lăn, Ctrl +/−), trang A4 có bóng đổ trên nền tối, tự vừa khung khi mở, vòng xoay khi tải, nút Tải file .docx (đồng) và Đóng; điện thoại ẩn chữ trên nút. sw v107.
+
+### 2026-09-30 (cm) Xem nhanh Docx: thêm nút Xuất PDF
+- payslip-docx.js: nút **Xuất PDF** giữa "Tải file .docx" và "Đóng" (cùng cỡ chữ 13px/600, cao 36px). Cách làm: `window.print()` + CSS `@media print` chỉ in các trang giấy (ẩn thanh công cụ và toàn bộ trang phía sau, `@page A4 margin 0`, zoom về 100% trong lúc in) → chọn "Lưu dưới dạng PDF" ở hộp thoại in; tên file gợi ý theo tên tài liệu. PDF là vector, giữ đúng font/bố cục, không cần thư viện thêm. sw v108.
