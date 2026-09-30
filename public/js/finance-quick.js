@@ -39,7 +39,8 @@ var FinanceQuick = (function () {
   // ---------------- dựng từng thẻ ----------------
   function table(head, rows, opts) {
     opts = opts || {};
-    return '<div class="fq-wrap"><table class="fq-grid"><thead><tr>' + head.map(function (h, i) { return '<th' + (opts.num && opts.num.indexOf(i) !== -1 ? ' class="n"' : '') + '>' + esc(h) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+    var cg = opts.cols ? '<colgroup>' + opts.cols.map(function (w) { return '<col style="width:' + w + '%">'; }).join('') + '</colgroup>' : '';
+    return '<div class="fq-wrap"><table class="fq-grid' + (opts.cols ? ' fq-fixed' : '') + '">' + cg + '<thead><tr>' + head.map(function (h, i) { return '<th' + (opts.num && opts.num.indexOf(i) !== -1 ? ' class="n"' : '') + '>' + esc(h) + '</th>'; }).join('') + '</tr></thead><tbody>' +
       (rows.length ? rows.join('') : '<tr><td colspan="' + head.length + '" class="fq-empty">Không có dữ liệu trong kỳ này.</td></tr>') + '</tbody>' + (opts.foot ? '<tfoot>' + opts.foot + '</tfoot>' : '') + '</table></div>';
   }
   function pill(t) { var c = { 'Tốt': 'g', 'An toàn': 'g', 'Cần chú ý': 'a', 'Rủi ro': 'r', 'Cảnh báo': 'a' }[t] || ''; return t ? '<span class="fq-pill ' + c + '">' + esc(t) + '</span>' : ''; }
@@ -100,8 +101,8 @@ var FinanceQuick = (function () {
     var names = window.HQ_ACCT || [], nm = function (k) { for (var i = 0; i < names.length; i++) if (names[i][0] === k) return names[i][1]; return ''; };
     var byRows = Object.keys(by).sort().map(function (k) { return '<tr><td class="c"><b>' + k + '</b></td><td colspan="3">' + esc(nm(k) || (k === 'Chưa gán' ? 'Chưa gán TK đối ứng — nên bổ sung' : '')) + '</td><td class="c">' + by[k].n + '</td><td class="n">' + fmt(by[k].i) + '</td><td class="n">' + fmt(by[k].o) + '</td></tr>'; });
     return '<h3 class="fq-sec">SỔ KẾ TOÁN CHI TIẾT ' + (acc === '111' ? 'QUỸ TIỀN MẶT' : 'TIỀN GỬI NGÂN HÀNG') + ' — TK ' + acc + '</h3>' +
-      table(['Ngày hạch toán', 'Ngày chứng từ', 'Số phiếu thu', 'Số phiếu chi', 'Diễn giải', 'TK quỹ', 'TK đối ứng', 'Phát sinh Nợ (thu)', 'Phát sinh Có (chi)', 'Số tồn', 'Người nhận / người nộp'], body, { num: [7, 8, 9], foot: '<tr><td colspan="7">CỘNG PHÁT SINH TRONG KỲ / SỐ DƯ CUỐI KỲ</td><td class="n">' + fmt(sIn) + '</td><td class="n">' + fmt(sOut) + '</td><td class="n ' + (run < 0 ? 'neg' : '') + '">' + fmt(run) + '</td><td></td></tr>' }) +
-      '<h3 class="fq-sec">TỔNG HỢP THEO TK ĐỐI ỨNG</h3>' + table(['TK đối ứng', 'Tên tài khoản', '', '', 'Số dòng', 'Thu (Nợ)', 'Chi (Có)'], byRows, { num: [4, 5, 6] });
+      table(['Ngày hạch toán', 'Ngày chứng từ', 'Số phiếu thu', 'Số phiếu chi', 'Diễn giải', 'TK quỹ', 'TK đối ứng', 'Phát sinh Nợ', 'Phát sinh Có', 'Số tồn', 'Người nhận / nộp'], body, { cols: [8, 8, 9, 9, 19, 4.5, 6, 9, 9, 9, 10.5], num: [7, 8, 9], foot: '<tr><td colspan="7">CỘNG PHÁT SINH TRONG KỲ / SỐ DƯ CUỐI KỲ</td><td class="n">' + fmt(sIn) + '</td><td class="n">' + fmt(sOut) + '</td><td class="n ' + (run < 0 ? 'neg' : '') + '">' + fmt(run) + '</td><td></td></tr>' }) +
+      '<h3 class="fq-sec">TỔNG HỢP THEO TK ĐỐI ỨNG</h3>' + table(['TK đối ứng', 'Tên tài khoản', '', '', 'Số dòng', 'Thu (Nợ)', 'Chi (Có)'], byRows, { cols: [10, 22, 12, 12, 10, 17, 17], num: [4, 5, 6] });
   }
 
   function viewPnl() {
@@ -151,7 +152,7 @@ var FinanceQuick = (function () {
     '.fq-p{line-height:1.6;text-align:justify;font-size:.875rem}.fq-sign{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center;margin-top:26px}.fq-sign div{display:flex;flex-direction:column;gap:2px;min-height:110px}.fq-sign span{margin-top:auto;font-weight:700}' +
     '.fq-wrap{overflow:auto;border:1px solid var(--fn-border,#e1dacd);border-radius:8px;max-height:60vh;overscroll-behavior:contain}' +
     '.fq-grid{width:100%;border-collapse:collapse;font:400 .8125rem Inter,system-ui,sans-serif;color:var(--fn-text,#222)}.fq-grid th{position:sticky;top:0;background:#22272E;color:#fff;font-weight:700;padding:9px 10px;text-align:center;border-bottom:2px solid var(--fn-bronze,#b08d57);white-space:nowrap}.fq-grid td{padding:7px 10px;border:1px solid #E1DACD;vertical-align:middle;overflow-wrap:anywhere}.fq-grid tbody tr:nth-child(even){background:#FAF7F2}.fq-grid .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.fq-grid .c{text-align:center;white-space:nowrap}.fq-grid .pos{color:#1F6B3A}.fq-grid .neg{color:#B5402A;font-weight:700}' +
-    '.fq-grid tfoot td{background:#F2EBDD;font-weight:700;border-top:2px solid var(--fn-bronze,#b08d57)}.fq-soft td{background:#F2EBDD!important}.fq-empty{text-align:center;color:#888;padding:18px!important}' +
+    '.fq-fixed{table-layout:fixed;font-size:.75rem!important}.fq-fixed th{white-space:normal!important;padding:8px 5px!important;font-size:.6875rem;line-height:1.25}.fq-fixed td{padding:6px 5px!important}.fq-fixed .c{white-space:nowrap}.fq-fixed .n{white-space:nowrap}.fq-grid tfoot td{background:#F2EBDD;font-weight:700;border-top:2px solid var(--fn-bronze,#b08d57)}.fq-soft td{background:#F2EBDD!important}.fq-empty{text-align:center;color:#888;padding:18px!important}' +
     '.fq-pill{display:inline-block;min-width:74px;padding:2px 10px;border-radius:4px;font-weight:700;font-size:.75rem;background:#E4E1DA;color:#6B675C}.fq-pill.g{background:#CFE8D5;color:#1F6B3A}.fq-pill.a{background:#F9E6B4;color:#8A6210}.fq-pill.r{background:#F6C9C0;color:#B5402A}' +
     '@media(max-width:700px){.fq-hd{flex-direction:column}.fq-hd .l{max-width:none}.fq-sign{grid-template-columns:1fr}}';
 

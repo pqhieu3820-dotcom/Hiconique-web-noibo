@@ -1931,3 +1931,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 ### 2026-09-30 (bq) Báo cáo nhanh (xem trên web) + sửa zoom biểu đồ khi thu nhỏ
 - Nút **Báo cáo nhanh** cạnh Xuất báo cáo (finance.html + `public/js/finance-quick.js`, `FinanceQuick.open`): cửa sổ xem trực tiếp, bố cục & số liệu như file Excel — chọn kỳ (Tuần/Tháng/Quý/Năm/Toàn bộ hoặc từ–đến ngày), 7 thẻ: Tổng hợp (Quốc hiệu, tiêu ngữ, kỳ báo cáo, 9 chỉ tiêu có nhãn Tốt/Cần chú ý/Rủi ro, nhận xét, khối ký), Giao dịch, Sổ quỹ 111, Sổ TGNH 112 (+ tổng hợp TK đối ứng), Lãi-Lỗ, Dòng tiền & dự báo 3 tháng, Công nợ. Header tối, sọc, dòng tổng nền be, số âm đỏ. Có nút "Xuất Excel" trong cửa sổ.
 - Zoom biểu đồ: khi thu nhỏ chỉ giảm chiều CAO; độ rộng cột tối thiểu 36px, khoảng cách ≥8px, cột nhóm ≥96px (dùng `max()` trong CSS) để nhãn số (VD "30 tr") luôn nằm gọn trong cột và khung hover vàng bao trọn. sw v87.
+
+### 2026-09-30 (br) Báo cáo nhanh: sổ quỹ 111/112 gọn, không cần kéo ngang
+- finance-quick.js: bảng sổ quỹ dùng `table-layout: fixed` + `colgroup` chia % cột (ngày 8%, số phiếu 9%, diễn giải 19%, TK 4.5–6%, tiền 9%, người 10.5%), tiêu đề cột cho xuống dòng, chữ .75rem, đệm 5px → vừa khít khung 1140px, không còn thanh kéo ngang (đã kiểm: scrollWidth = clientWidth). Bảng tổng hợp TK đối ứng cũng chia cột cố định. sw v88.
