@@ -37,6 +37,11 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
 - (2026-09-30) Viết lại đoạn mô tả đầu trang Tài sản & vật tư (`equipment.html`, `.subpage-lede`) gọn hơn, 2 câu, gom nhóm tài sản.
 
+### Phiên 2026-09-30 (q) — Lệnh `addTimesheet` kẹt 1463 lần "Failed to fetch" dù server còn chạy → thang cách gửi + tự xác nhận
+
+- Khung báo: "Máy chủ Google vẫn chạy nhưng từ chối lệnh addTimesheet (731 ký tự) — thử lại lần 1463" (kẹt cả đêm). Kiểm tra: server nhận đúng lệnh này khi gửi từ ngoài (curl `addTimesheet` với dữ liệu tương tự → 200, 5s); bảng "Thực thi" Apps Script có nhiều `doGet` "Không thành công" ~3–4s xen kẽ (không có nhật ký); URL chỉ 731 ký tự nên KHÔNG phải quá dài ⇒ lỗi nằm ở tầng yêu cầu/phản hồi của riêng trình duyệt đó (tiện ích chặn, tường lửa, CORS mất khi Google trả trang lỗi…), không tái hiện từ ngoài.
+- Sửa (`task-data.js`, `processWriteQueue_`): **thang cách gửi** theo số lần thử — lần 0,3,6…: GET; 1,4,7…: POST form; 2,5,8…: GET `mode:'no-cors'` (không đọc được phản hồi) rồi `verifyOpApplied_()` **đọc lại bảng** (`ADD_TO_GET_`: Timesheet/Equipment/Task/Project/Proposal/Notification/Member/Document/Customer/Order) tìm id → thấy thì coi là xong; không kiểm tra được thì từ lần thử ≥5 coi như đã gửi (lệnh add có chốt chặn trùng id phía server, lệnh update idempotent). Đã thử giả lập GET/POST đều "Failed to fetch": xong ở lần thứ 3 (~5s) và hàng đợi rỗng. sw v36.
+
 ### Phiên 2026-09-30 (p) — "Failed to fetch" thử lại 1418 lần: lệnh ghi lớn gửi POST + tự chẩn đoán lý do; khung Liquid Glass
 
 - Ảnh người dùng: "Chưa lưu được (Failed to fetch) — thử lại lần **1418**". `Failed to fetch` là lỗi tầng mạng của trình duyệt; nghi nhất là **URL GET quá dài** (máy chủ Google từ chối ≥ ~8–12KB, đo: 8000 ký tự OK, 12000 → 400 không kèm CORS) — lệnh tài sản có JSON linh kiện + đơn giá + lịch sử dài. Sửa: lệnh có URL > 6000 ký tự gửi bằng **POST form** (`URLSearchParams`, không preflight; đã thử thật: POST 20KB → 200, `doPost` = `handleRequest`).

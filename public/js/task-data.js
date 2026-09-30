@@ -117,6 +117,19 @@ function compactWriteQueue_() {
   });
   if (changed) saveWriteQueue_(out);
 }
+// Lệnh "add" đã vào Sheet chưa? (đọc lại bảng tương ứng, tìm id). true/false; null = không kiểm tra được (không phải lệnh add / bảng lạ / lỗi đọc)
+var ADD_TO_GET_ = { addTimesheet: 'getTimesheet', addEquipment: 'getEquipment', addTask: 'getTasks', addProject: 'getProjects', addProposal: 'getProposals',
+  addNotification: 'getNotifications', addMember: 'getMembers', addDocument: 'getDocuments', addCustomer: 'getCustomers', addOrder: 'getOrders' };
+function verifyOpApplied_(op, cb) {
+  var read = ADD_TO_GET_[op.action], id = (op.data && op.data.id) || op.id;
+  if (!read || !id) { cb(null); return; }
+  var c = new AbortController(), t = setTimeout(function () { c.abort(); }, 15000);
+  fetch(GSHEETS_CONFIG.API_URL + '?action=' + read, { redirect: 'follow', signal: c.signal }).then(function (r) { return r.json(); }).then(function (arr) {
+    clearTimeout(t);
+    if (!Array.isArray(arr)) { cb(null); return; }
+    cb(arr.some(function (x) { return x && x.id === id; }));
+  }, function () { clearTimeout(t); cb(null); });
+}
 function diagnoseWrite_(op, urlLen, usePost, err, cb) {
   var msg = String((err && err.message) || err || '');
   if (/abort/i.test(msg)) { cb('Quá thời gian chờ (>' + (WRITE_TIMEOUT_MS / 1000) + 's) — máy chủ Google chậm/quá tải'); return; }
@@ -190,9 +203,23 @@ function processWriteQueue_() {
       params += '&data=' + encodeURIComponent(JSON.stringify(op.data));
     }
     // URL GET quá dài (~>8KB) bị máy chủ Google từ chối và trình duyệt chỉ báo "Failed to fetch" → lệnh lớn gửi bằng POST (form, không preflight)
-    var urlLen = (GSHEETS_CONFIG.API_URL + params).length, usePost = urlLen > 6000;
+    // Thang cách gửi khi 1 lệnh cứ "Failed to fetch": lần thử 0,3,6.. = GET; 1,4,7.. = POST; 2,5,8.. = GET no-cors (không đọc được phản hồi,
+    // gửi xong thì ĐỌC LẠI để xác nhận lệnh đã vào Sheet) — vượt qua mọi chặn theo kiểu yêu cầu (tiện ích/tường lửa/CORS lỗi từ trang lỗi Google).
+    var tryNo = op.tries || 0, ladder = tryNo % 3;
+    var urlLen = (GSHEETS_CONFIG.API_URL + params).length, usePost = urlLen > 6000 || ladder === 1, noCors = ladder === 2 && !usePost;
     var reqInit = { redirect: 'follow', signal: controller.signal };
     var reqUrl = GSHEETS_CONFIG.API_URL + params;
+    if (noCors) {
+      reqInit.method = 'GET'; reqInit.mode = 'no-cors';
+      fetch(reqUrl, reqInit).then(function () {
+        clearTimeout(timer);
+        verifyOpApplied_(op, function (applied) {
+          if (applied === true || (applied === null && tryNo >= 5)) finish(true);
+          else finish(false, 'Đã gửi kiểu no-cors nhưng chưa thấy dòng trên Sheet', false);
+        });
+      }, function (e) { finish(false, 'no-cors: ' + ((e && e.message) || e), false); });
+      return;
+    }
     if (usePost) {
       var form = new URLSearchParams(); form.set('action', op.action); if (op.id) form.set('id', op.id); form.set('data', JSON.stringify(op.data || {}));
       reqInit.method = 'POST'; reqInit.body = form; reqUrl = GSHEETS_CONFIG.API_URL;
