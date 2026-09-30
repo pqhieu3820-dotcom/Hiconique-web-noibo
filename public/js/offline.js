@@ -443,7 +443,7 @@ var Offline = (function () {
         '#hqSyncChip .ic.bad{background:linear-gradient(160deg,#FF8A72,#D9482C);box-shadow:0 0 0 1px rgba(255,255,255,.4) inset,0 2px 10px rgba(217,72,44,.45);}' +
         '#hqSyncChip .ic.busy{background:linear-gradient(160deg,#E7C27F,#B08D57);box-shadow:0 0 0 1px rgba(255,255,255,.4) inset,0 2px 10px rgba(176,141,87,.45);}' +
         '#hqSyncChip .ic.busy i{width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,.9);border-top-color:transparent;animation:hqSpin .8s linear infinite;}' +
-        '#hqSyncChip .tx{min-width:0;-webkit-font-smoothing:antialiased}#hqSyncChip .l1{font-weight:700;font-size:13.5px;text-shadow:0 0 10px rgba(255,255,255,.55)}#hqSyncChip .l2{opacity:.75;font-weight:500;font-size:11.5px;margin-top:2px;font-variant-numeric:tabular-nums}' +
+        '#hqSyncChip .tx{min-width:0;-webkit-font-smoothing:antialiased}#hqSyncChip .l1{font-weight:700;font-size:13.5px;text-shadow:0 0 10px rgba(255,255,255,.55)}#hqSyncChip .l1b{font-weight:600;font-size:12.5px;color:#9A7434;margin-top:1px;font-variant-numeric:tabular-nums}html[data-theme="dark"] #hqSyncChip .l1b{color:#E7C27F}#hqSyncChip .l2{opacity:.75;font-weight:500;font-size:11.5px;margin-top:2px;font-variant-numeric:tabular-nums}' +
         '#hqSyncChip .l1.ok{color:#1F7A44}#hqSyncChip .l1.bad{color:#B5361F}html[data-theme="dark"] #hqSyncChip .l1.ok{color:#8FE0A8}html[data-theme="dark"] #hqSyncChip .l1.bad{color:#FFA793}' +
         '@keyframes hqTick{to{stroke-dashoffset:0}}@keyframes hqPop{0%{transform:scale(.3);opacity:0}60%{transform:scale(1.18);opacity:1}100%{transform:scale(1)}}@keyframes hqRing{0%{box-shadow:0 0 0 0 rgba(63,190,110,.55),0 0 0 1px rgba(255,255,255,.4) inset}100%{box-shadow:0 0 0 14px rgba(63,190,110,0),0 0 0 1px rgba(255,255,255,.4) inset}}' +
         '@keyframes hqGlassIn{from{opacity:0;transform:translateY(14px) scale(.94);filter:blur(6px)}to{opacity:1;transform:none;filter:none}}@keyframes hqSpin{to{transform:rotate(360deg)}}' +
@@ -459,17 +459,17 @@ var Offline = (function () {
     if (!failed && n === 0 && now > doneUntil) { if (el) el.hidden = true; return; }
     if (!ensure()) return;
     var top = ''; if (n > 3) { var c = {}; q.forEach(function (o) { c[o.action] = (c[o.action] || 0) + 1; }); var k = Object.keys(c).sort(function (a, b) { return c[b] - c[a]; })[0]; top = ' · nhiều nhất: ' + k + ' ×' + c[k]; }
-    var l1, cls = '', icon = '';
+    var l1, cls = '', icon = '', eta = '';
     if (failed) { l1 = 'Có thao tác KHÔNG lưu được lên Google Sheet — hãy chụp màn hình báo lại.'; cls = 'bad'; icon = '<span class="ic bad">!</span>'; }
     else if (n > 0 && last.event === 'retry') { l1 = 'Chưa lưu được' + (last.reason ? ' (' + last.reason + ')' : '') + ' — thử lại lần ' + last.tries + (M.nextWriteAt > now ? ' sau ' + dur(M.nextWriteAt - now) : '') + '. ĐỪNG đóng trang.'; cls = 'bad'; icon = '<span class="ic bad">!</span>'; }
-    else if (n > 0) { icon = '<span class="ic busy"><i></i></span>'; l1 = 'Đang lưu lên Google Sheet… ' + n + ' thao tác' + (aw ? ' · còn khoảng ' + dur(n * aw) : '') + top; }
+    else if (n > 0) { icon = '<span class="ic busy"><i></i></span>'; l1 = 'Đang lưu lên Google Sheet… ' + n + ' thao tác' + top; eta = aw ? 'còn khoảng ' + dur(n * aw) : ''; }
     else { l1 = 'Đã đồng bộ Google Sheet'; cls = 'ok'; icon = '<span class="ic ok"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.6 4.6L19 7.5"/></svg></span>'; }
     var l2 = 'Ghi ' + (aw ? sec(aw) + '/lệnh' : '—') + ' · Đọc ' + (M.readMs != null ? sec(M.readMs) : '—') + ' · làm mới sau ' + (M.nextRefreshAt > now ? dur(M.nextRefreshAt - now) : '…');
     el.hidden = false;
     var key = icon + '|' + cls + '|' + l1;
-    if (el._key === key && el.querySelector('.l2')) { el.querySelector('.l2').textContent = l2; return; }    // chỉ đổi dòng số liệu → giữ nguyên vòng xoay, không nháy
+    if (el._key === key && el.querySelector('.l2')) { el.querySelector('.l2').textContent = l2; var eb = el.querySelector('.l1b'); if (eb) eb.textContent = eta; return; }    // chỉ đổi dòng số liệu → giữ nguyên vòng xoay, không nháy
     el._key = key;
-    el.innerHTML = icon + '<div class="tx"><div class="l1 ' + cls + '">' + l1 + '</div><div class="l2">' + l2 + '</div></div>';
+    el.innerHTML = icon + '<div class="tx"><div class="l1 ' + cls + '">' + l1 + '</div>' + (eta ? '<div class="l1b">' + eta + '</div>' : '') + '<div class="l2">' + l2 + '</div></div>';
   }
   window.addEventListener('hiconique:sync-state', function (e) {
     var d = e.detail || {};

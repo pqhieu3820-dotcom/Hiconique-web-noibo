@@ -1891,3 +1891,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (bf) Chỉnh lời thông báo xoá giao dịch
 - Hộp xác nhận xoá ghi: "CEO, Founder và người được ủy quyền sẽ nhận thông báo về việc xoá này." (thay chữ "Kế toán"). Người nhận thông báo = CEO/Founder/Admin + mọi người được Founder ủy quyền ở mục Phân quyền truy cập (Kế toán hoặc bất kỳ ai), trừ người thao tác. sw v76.
+
+### 2026-09-30 (bg) Chip đồng bộ: "còn khoảng Xs" xuống dòng riêng
+- offline.js: khi đang lưu, dòng thời gian còn lại tách thành dòng riêng `.l1b` (màu đồng, đậm vừa) dưới dòng "Đang lưu lên Google Sheet… N thao tác", cập nhật mỗi giây không làm nháy vòng xoay. sw v77.
