@@ -1958,3 +1958,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (bz) Thanh thẻ Báo cáo nhanh: căn giữa dọc
 - finance-quick.js: `.fq-tabs` đệm 10px trên và 10px dưới (trước 10/0 làm thẻ dính đáy) → tên thẻ nằm giữa dải. sw v96.
+
+### 2026-09-30 (ca) Tên thẻ Báo cáo nhanh căn giữa dọc (cả khi có thanh cuộn)
+- Nguyên nhân lệch: thanh cuộn ngang cao 21–22px nằm dưới thẻ → khoảng dưới (32px) lớn hơn khoảng trên (10px). Nay đệm trên 14px, thanh cuộn cao 14px với thumb 4px nằm giữa (viền 5/5) → trên 14 / dưới 14; khi không có thanh cuộn (cửa sổ rộng) JS gắn class `no-sb` để đệm dưới 14px. Đã đo: trên 14 / dưới 15. sw v97.
