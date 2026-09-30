@@ -131,7 +131,11 @@
     .fn-form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; padding: 20px 24px; align-items: end; }
     .fn-form-grid.cols5 { grid-template-columns: repeat(5, 1fr); }
     .fn-field-label { display: block; font-size: 0.6875rem; color: var(--fn-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
-    .fn-vmsg { min-height: 16px; margin-top: 4px; font-size: 0.6875rem; color: var(--fn-muted); }
+    .fn-actor-row { display: flex; gap: 10px; } .fn-actor-row > * { flex: 1; min-width: 0; } .fn-actor-row [hidden] { display: none; }
+    .fn-form-grid { align-items: start; } .fn-form-grid .fn-field-label { display: block; margin-bottom: 6px; min-height: 14px; line-height: 14px; }
+    #fnAddBtn { height: 38px; margin-top: 20px; }
+    .fn-table th { white-space: nowrap; }
+    .fn-vmsg { min-height: 0; margin-top: 4px; font-size: 0.6875rem; color: var(--fn-muted); }
     .fn-vmsg.ok { color: var(--fn-green); } .fn-vmsg.bad { color: var(--fn-red); }
     .fn-hint { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--fn-bronze); }
     .fn-combo { position: relative; }
@@ -431,8 +435,8 @@
                   '<div><span class="fn-field-label">Ngày</span><input type="date" class="fn-input" id="fnDate"></div>' +
                   '<div><span class="fn-field-label">Số phiếu <span id="fnVoucherKind" class="fn-hint"></span></span><input type="text" class="fn-input mono" id="fnVoucherNo" maxlength="20" spellcheck="false"><div class="fn-vmsg" id="fnVoucherMsg"></div></div>' +
                   '<div><span class="fn-field-label">Tài khoản đối ứng</span><div class="fn-combo"><input type="text" class="fn-input" id="fnCounter" autocomplete="off" placeholder="Chọn hoặc gõ TK (VD 112)…"><div class="fn-combo-list" id="fnCounterList" hidden></div></div></div>' +
-                  '<div><span class="fn-field-label">Người giao dịch</span><select class="fn-select" id="fnActor"></select><input type="text" class="fn-input" id="fnActorOther" placeholder="Tên người / đối tác…" hidden style="margin-top:6px;"></div>' +
-                  '<div style="grid-column: span 2;"><span class="fn-field-label">Mô tả</span><input type="text" class="fn-input" id="fnDescription" placeholder="Ghi chú chi tiết khoản này..."></div>' +
+                  '<div style="grid-column: span 2;"><span class="fn-field-label">Người giao dịch</span><div class="fn-actor-row"><select class="fn-select" id="fnActor"></select><input type="text" class="fn-input" id="fnActorOther" placeholder="Tên người / đối tác…" hidden></div></div>' +
+                  '<div style="grid-column: span 3;"><span class="fn-field-label">Mô tả</span><input type="text" class="fn-input" id="fnDescription" placeholder="Ghi chú chi tiết khoản này..."></div>' +
                   '<div><button class="fn-btn fn-btn-primary" id="fnAddBtn" style="width:100%;">+ Thêm giao dịch</button></div>' +
                 '</div>' +
               '</div>' +

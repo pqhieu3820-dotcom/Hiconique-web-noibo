@@ -1829,3 +1829,7 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 - Sheet `TC-Tài chính công ty` thêm cột `Người giao dịch`(actor), `Số phiếu`(voucherNo), `TK đối ứng`(counterAccount) — Apps Script **v106** đã deploy.
 - finance.html form Thêm giao dịch: **Số phiếu tự sinh** `PT-yyMM-NNN` (khoản thu: doanh thu, vay vào) / `PC-yyMM-NNN` (khoản chi), sửa tay được, báo ngay khi TRÙNG số phiếu và chặn lưu; **Tài khoản đối ứng** dạng combobox gợi ý TK kế toán (111, 112, 131, 331, 334, 333, 511, 621, 622, 642…) hoặc gõ tay; **Người giao dịch** chọn thành viên (mặc định người đang đăng nhập) hoặc "Khác / đối tác bên ngoài". Bảng giao dịch có thêm 3 cột tương ứng.
 - Chip đồng bộ (offline.js): nền trong hơn nữa (alpha 0–6%, blur 9px), chữ đậm hơn; dấu ✓ thành SVG animation (icon bật lên, dấu tích tự vẽ, vòng sóng xanh lan ra), tôn trọng giảm chuyển động. sw v58.
+
+### 2026-09-30 (ao) Chỉnh form giao dịch + chip kính trong hơn nữa
+- finance.html: form giao dịch xếp lại lưới 4 cột — hàng 1 Loại/Danh mục/Số tiền/Ngày; hàng 2 Số phiếu/TK đối ứng/Người giao dịch (chiếm 2 cột, ô "đối tác" nằm cạnh); hàng 3 Mô tả (3 cột) + nút Thêm cao bằng ô nhập. Tiêu đề bảng không xuống dòng.
+- offline.js chip: blur 4–5px (nhìn xuyên nền rõ), bỏ brightness/inset glow làm sáng đục, nền trắng chỉ 0–10%. sw v59.
