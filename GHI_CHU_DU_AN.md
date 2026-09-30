@@ -35,6 +35,11 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
 **Link production chính đã đổi sang Cloudflare Workers**: `https://hiconique-web-noibo.pqhieu3820.workers.dev` (link Netlify cũ `noibo.hiconique.com` bị lỗi DNS NXDOMAIN ngày 24/9, không liên quan code — người dùng đã chuyển hẳn sang dùng link Workers, vẫn giữ link cũ nhưng không phải link chính nữa). **Luôn dùng link Workers khi cần mở/test web live, không hỏi lại người dùng về việc này nữa.**
 
+### Phiên 2026-09-30 (j) — Bảng Linh kiện/Thông số trong form tài sản rộng hơn, tự xuống dòng
+
+- `equipment.html`: hộp thoại rộng tối đa `min(1320px, 96vw)` (trước 1000px), cột phải rộng hơn (`0.8fr / 1.5fr`), cột Tên/Thông số chiếm nhiều chỗ hơn.
+- `equipment.js`: ô **Tên / Model** và **Thông số** đổi từ `<input>` sang `<textarea class="eq-ta">` tự cao theo nội dung (`autosizeTa`/`autosizeSpecs`, tự tính lại khi mở form và đổi cỡ cửa sổ) nên linh kiện dài xuống dòng, không bị cắt; Enter bị chặn (giá trị vẫn 1 dòng). Ô Loại giữ `<input>` + gợi ý. sw v28.
+
 ### Phiên 2026-09-30 (i) — Nút "Xóa" cho "Máy đã cài HICONIQUE Agent" (xóa luôn trên Google Sheet)
 
 - Form Thêm/Sửa tài sản (nhóm Máy tính) → khung "Máy đã cài HICONIQUE Agent": thêm nút **Xóa** cạnh "Nhập / đồng bộ cấu hình" (`#eqPcDelete`, `equipment.js`). Có hộp xác nhận, chỉ admin/manager (`canManageEquipment`).

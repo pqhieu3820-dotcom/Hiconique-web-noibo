@@ -420,12 +420,16 @@
     $('eqSpecRows').innerHTML = state.specs.length ? state.specs.map(function (s, i) {
       return '<div class="eq-spec-row" data-i="' + i + '">' +
         '<input class="eq-input" data-f="type" list="eqTypeList" value="' + esc(s.type) + '" placeholder="Loại"' + ro + '>' +
-        '<input class="eq-input" data-f="name" value="' + esc(s.name) + '" placeholder="Tên / Model"' + ro + '>' +
-        '<input class="eq-input" data-f="spec" value="' + esc(s.spec) + '" placeholder="Thông số"' + ro + '>' +
+        '<textarea class="eq-input eq-ta" rows="1" data-f="name" placeholder="Tên / Model"' + ro + '>' + esc(s.name) + '</textarea>' +
+        '<textarea class="eq-input eq-ta" rows="1" data-f="spec" placeholder="Thông số"' + ro + '>' + esc(s.spec) + '</textarea>' +
         '<input class="eq-input" data-f="qty" value="' + esc(s.qty) + '" inputmode="numeric"' + ro + '>' +
         (canManage() ? '<button type="button" class="eq-spec-del" data-del="' + i + '" title="Xóa dòng" aria-label="Xóa dòng">×</button>' : '<span></span>') + '</div>';
     }).join('') : '<p class="eq-sub">Chưa có dòng nào. Bấm “Điền mẫu theo nhóm” để có sẵn các đầu mục, hoặc “+ Thêm dòng”.</p>';
+    autosizeSpecs(); setTimeout(autosizeSpecs, 60);
   }
+  // Ô Loại / Tên / Thông số tự xuống dòng và cao ra theo nội dung (không cắt chữ dài)
+  function autosizeTa(t) { t.style.height = 'auto'; if (t.scrollHeight > 4) t.style.height = t.scrollHeight + 2 + 'px'; }
+  function autosizeSpecs() { Array.prototype.forEach.call($('eqSpecRows').querySelectorAll('textarea.eq-ta'), autosizeTa); }
   function readSpecs() {
     return state.specs.filter(function (s) { return s.type || s.name || s.spec; }).map(function (s) { return { type: s.type.trim(), name: s.name.trim(), spec: s.spec.trim(), qty: String(s.qty || '1').trim() || '1' }; });
   }
@@ -556,7 +560,10 @@
     $('eqSpecRows').addEventListener('input', function (e) {
       var row = e.target.closest('.eq-spec-row'); if (!row || !e.target.dataset.f) return;
       state.specs[Number(row.dataset.i)][e.target.dataset.f] = e.target.value;
+      if (e.target.tagName === 'TEXTAREA') autosizeTa(e.target);
     });
+    $('eqSpecRows').addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.tagName === 'TEXTAREA') e.preventDefault(); });
+    window.addEventListener('resize', autosizeSpecs);
     $('eqSpecRows').addEventListener('click', function (e) {
       var d = e.target.closest('[data-del]'); if (!d) return;
       state.specs.splice(Number(d.dataset.del), 1); renderSpecRows();
