@@ -2007,3 +2007,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (co) Xuất PDF giống hệt bản xem
 - Lỗi: PDF chụp bằng `html2canvas` bị lệch/cắt chữ ở bảng (khác bản xem). Đổi sang `html-to-image@1.11.11` (`toCanvas`, pixelRatio 2 — chụp bằng chính bộ dựng của trình duyệt qua SVG foreignObject) → khớp bản xem; ảnh mỗi trang giữ đúng tỉ lệ khi ghép vào A4 (không kéo giãn). Đã đối chiếu ảnh chụp trang: bảng, dấu, chữ đậm/nghiêng giống bản xem. sw v110.
+
+### 2026-09-30 (cp) Xuất PDF 600 DPI
+- payslip-docx.js: chụp trang ở `pixelRatio = 600/96` (≈4962×7475px/trang A4), JPEG chất lượng 0.95; máy thiếu RAM thì tự hạ 400 → 300 → 200 DPI; giải phóng canvas sau mỗi trang. Đã đo: canvas thật 4962×7475 (600 DPI); PDF 2 trang ≈ 2MB, tạo ~1.3s. sw v111.
