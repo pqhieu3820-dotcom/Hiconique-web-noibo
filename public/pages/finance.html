@@ -987,6 +987,15 @@
       ov.addEventListener('mousedown', function (e) { if (e.target === ov) dtClose(); });
       ov.querySelector('.fn-dt-x').addEventListener('click', dtClose);
     }
+    // Rê chuột vào biểu đồ + lăn con lăn → cuộn NGANG (hết mép thì trả cuộn dọc cho trang)
+    document.addEventListener('wheel', function (e) {
+      var w = e.target.closest && e.target.closest('.fn-chart-wrap');
+      if (!w || e.ctrlKey || w.scrollWidth <= w.clientWidth + 1) return;
+      var d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY; if (!d) return;
+      var max = w.scrollWidth - w.clientWidth;
+      if ((d < 0 && w.scrollLeft <= 0) || (d > 0 && w.scrollLeft >= max - 1)) return;
+      e.preventDefault(); w.scrollLeft = Math.max(0, Math.min(max, w.scrollLeft + d));
+    }, { passive: false });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') dtClose(); });
     function dtSign(e) { var s = TYPES[e.type] ? TYPES[e.type].cashSign : 0; return s > 0 ? 'pos' : (s < 0 ? 'neg' : ''); }
     function dtTable(list, withBalance, limit) {

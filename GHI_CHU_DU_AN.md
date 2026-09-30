@@ -1859,3 +1859,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (av) Biểu đồ dòng tiền: làm lại nhãn giá trị
 - finance.html: bỏ kiểu lệch trái/phải; cột rộng 34px, cách nhau 8px, nhãn số căn GIỮA ngay trên đầu mỗi cột (vừa bề rộng cột nên không đè nhau), vùng biểu đồ cao 240px + padding trên 44px để nhãn cột cao nhất không bị cắt. sw v66.
+
+### 2026-09-30 (aw) Biểu đồ dòng tiền: lăn chuột cuộn ngang
+- finance.html: rê chuột vào `.fn-chart-wrap` (2 biểu đồ) rồi lăn → cuộn ngang; tới mép trả cuộn dọc cho trang. sw v67.
