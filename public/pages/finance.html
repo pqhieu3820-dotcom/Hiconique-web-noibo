@@ -1311,7 +1311,7 @@
           fnConfirm('Xoá giao dịch này?',
             '<div class="fn-dt-stats" style="grid-template-columns:1fr 1fr;margin-bottom:10px;"><div class="fn-dt-stat"><b>' + fmt(en.amount) + ' ₫</b><span>' + escapeHtml(ty.label) + '</span></div><div class="fn-dt-stat"><b style="font-size:.85rem;">' + vnDate(en.date) + '</b><span>' + escapeHtml(en.voucherNo || 'Không có số phiếu') + '</span></div></div>' +
             escapeHtml([en.category, en.description].filter(Boolean).join(' · ') || '') +
-            '<div class="fn-dt-note" style="margin-top:10px;">Giao dịch bị xoá khỏi Sổ tài chính và Google Sheet. <b>CEO, Founder và Kế toán sẽ nhận thông báo</b> về việc xoá này.</div>',
+            '<div class="fn-dt-note" style="margin-top:10px;">Giao dịch bị xoá khỏi Sổ tài chính và Google Sheet. <b>CEO, Founder và người được ủy quyền sẽ nhận thông báo</b> về việc xoá này.</div>',
             'Xoá giao dịch', function () { TaskManager.deleteFinanceEntry(eid, user); renderAll(); }, true);
         });
       });

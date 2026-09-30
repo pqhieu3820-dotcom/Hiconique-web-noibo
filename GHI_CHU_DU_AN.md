@@ -1888,3 +1888,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (be) Chip đồng bộ: nền trong suốt ~90%
 - offline.js: nền trắng chỉ 0–5% (trước 0–10%), blur 3px, vệt sáng mờ hơn, thêm viền tối rất nhạt (0 0 0 1px rgba(20,24,40,.06)) để chip vẫn nhìn thấy khi nền gần như trong hoàn toàn. sw v75.
+
+### 2026-09-30 (bf) Chỉnh lời thông báo xoá giao dịch
+- Hộp xác nhận xoá ghi: "CEO, Founder và người được ủy quyền sẽ nhận thông báo về việc xoá này." (thay chữ "Kế toán"). Người nhận thông báo = CEO/Founder/Admin + mọi người được Founder ủy quyền ở mục Phân quyền truy cập (Kế toán hoặc bất kỳ ai), trừ người thao tác. sw v76.

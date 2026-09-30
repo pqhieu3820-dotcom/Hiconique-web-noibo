@@ -3088,7 +3088,7 @@ var TaskManager = (function() {
     return list.sort(function (a, b) { return new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0); });
   }
 
-  // 2026-09-30: thêm/xoá giao dịch → gửi THÔNG BÁO (chuông) tới CEO/Founder/Admin + người được cấp quyền Sổ tài chính (Kế toán), trừ chính người thao tác.
+  // 2026-09-30: thêm/xoá giao dịch → gửi THÔNG BÁO (chuông) tới CEO/Founder/Admin + người được Founder ỦY QUYỀN vào Sổ tài chính (VD Kế toán), trừ chính người thao tác.
   // Ghi trực tiếp (không qua createNotification vì hàm đó chỉ cho admin/manager — Kế toán thao tác cũng phải báo được).
   function financeRecipients_(actor) {
     return getActiveMembers().filter(function (m) {
