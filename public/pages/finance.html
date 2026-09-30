@@ -25,6 +25,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js" defer></script>
   <script src="/js/finance-categories.js"></script>
   <script src="/js/finance-export.js" defer></script>
+  <script src="/js/excel-standard.js" defer></script>
   <style>
     :root {
       --fn-bg: var(--color-bg); --fn-surface: var(--color-surface); --fn-border: var(--color-border);
@@ -135,6 +136,12 @@
     .fn-form-grid { align-items: start; } .fn-form-grid .fn-field-label { display: block; margin-bottom: 6px; min-height: 14px; line-height: 14px; }
     #fnAddBtn { height: 38px; margin-top: 20px; }
     .fn-table th { white-space: nowrap; }
+    .fn-info-btn { width: 15px; height: 15px; border-radius: 50%; border: 1px solid var(--fn-muted); background: none; color: var(--fn-muted); font: italic 0.625rem Georgia, serif; cursor: pointer; padding: 0; margin-left: 4px; vertical-align: 1px; }
+    .fn-info-btn:hover { color: var(--fn-bronze); border-color: var(--fn-bronze); }
+    .fn-counter-info { border: 1px dashed var(--fn-border); border-radius: 10px; padding: 12px 14px; font-size: 0.75rem; color: var(--fn-muted); line-height: 1.5; max-height: 300px; overflow: auto; background: var(--fn-bg); }
+    .fn-counter-info[hidden] { display: none; }
+    .fn-ci-ex { display: grid; gap: 4px; margin: 8px 0; color: var(--fn-text); }
+    .fn-ledger-wrap { overflow-x: auto; } .fn-ledger { min-width: 1080px; } .fn-ledger td.num, .fn-ledger th.num { text-align: right; font-variant-numeric: tabular-nums; } .fn-ledger .neg { color: var(--fn-red); } .fn-ledger tfoot td { font-weight: 700; background: var(--fn-bg); }
     .fn-vmsg { min-height: 0; margin-top: 4px; font-size: 0.6875rem; color: var(--fn-muted); }
     .fn-vmsg.ok { color: var(--fn-green); } .fn-vmsg.bad { color: var(--fn-red); }
     .fn-hint { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--fn-bronze); }
@@ -337,6 +344,7 @@
       ] },
       { label: 'Giao dịch', items: [
         { id: 'transactions', label: 'Giao dịch', icon: ICONS.transactions },
+        { id: 'ledger', label: 'Sổ quỹ / Sổ tiền gửi', icon: ICONS.transactions },
         { id: 'receivables', label: 'Công nợ khách hàng', icon: ICONS.customers }
       ] },
       { label: 'Báo cáo', items: [
@@ -434,9 +442,12 @@
                   '<div><span class="fn-field-label">Số tiền</span><input type="text" inputmode="numeric" class="fn-input mono" id="fnAmount" data-money-input value="0"></div>' +
                   '<div><span class="fn-field-label">Ngày</span><input type="date" class="fn-input" id="fnDate"></div>' +
                   '<div><span class="fn-field-label">Số phiếu <span id="fnVoucherKind" class="fn-hint"></span></span><input type="text" class="fn-input mono" id="fnVoucherNo" maxlength="20" spellcheck="false"><div class="fn-vmsg" id="fnVoucherMsg"></div></div>' +
-                  '<div><span class="fn-field-label">Tài khoản đối ứng</span><div class="fn-combo"><input type="text" class="fn-input" id="fnCounter" autocomplete="off" placeholder="Chọn hoặc gõ TK (VD 112)…"><div class="fn-combo-list" id="fnCounterList" hidden></div></div></div>' +
-                  '<div style="grid-column: span 2;"><span class="fn-field-label">Người giao dịch</span><div class="fn-actor-row"><select class="fn-select" id="fnActor"></select><input type="text" class="fn-input" id="fnActorOther" placeholder="Tên người / đối tác…" hidden></div></div>' +
-                  '<div style="grid-column: span 3;"><span class="fn-field-label">Mô tả</span><input type="text" class="fn-input" id="fnDescription" placeholder="Ghi chú chi tiết khoản này..."></div>' +
+                  '<div><span class="fn-field-label">Tài khoản quỹ</span><select class="fn-select" id="fnAccount"><option value="111">111 — Tiền mặt</option><option value="112">112 — Tiền gửi ngân hàng</option></select></div>' +
+                  '<div><span class="fn-field-label">TK đối ứng <button type="button" class="fn-info-btn" id="fnCounterInfoBtn" aria-label="TK đối ứng là gì?">i</button></span><div class="fn-combo"><input type="text" class="fn-input" id="fnCounter" autocomplete="off" placeholder="Chọn hoặc gõ TK (VD 112)…"><div class="fn-combo-list" id="fnCounterList" hidden></div></div></div>' +
+                  '<div><span class="fn-field-label">Người giao dịch</span><div class="fn-actor-row" style="flex-direction:column;"><select class="fn-select" id="fnActor"></select><input type="text" class="fn-input" id="fnActorOther" placeholder="Tên người / đối tác…" hidden></div></div>' +
+                  '<div class="fn-counter-info" id="fnCounterInfo" hidden style="grid-column: 1 / -1;"></div>' +
+                  '<div style="grid-column: span 2;"><span class="fn-field-label">Mô tả</span><input type="text" class="fn-input" id="fnDescription" placeholder="Ghi chú chi tiết khoản này..."></div>' +
+                  '<div><span class="fn-field-label">Ngày chứng từ <span class="fn-hint">· mặc định = Ngày</span></span><input type="date" class="fn-input" id="fnVoucherDate"></div>' +
                   '<div><button class="fn-btn fn-btn-primary" id="fnAddBtn" style="width:100%;">+ Thêm giao dịch</button></div>' +
                 '</div>' +
               '</div>' +
@@ -551,6 +562,17 @@
               '<div class="fn-card"><div class="fn-card-head"><div class="fn-card-title">Rủi ro phá sản — Altman Z-Score</div></div><table class="fn-table"><thead><tr><th>Rủi ro</th><th>Công thức</th><th>Giá trị hiện tại</th><th>Ngưỡng</th><th>Mức độ</th></tr></thead><tbody id="fnRiskZRows"></tbody></table></div>' +
             '</div>' +
 
+            '<div class="fn-section" id="sec-ledger">' +
+              '<div class="fn-section-head"><div class="fn-section-title">Sổ quỹ / Sổ tiền gửi</div><div class="fn-section-desc">Sổ kế toán chi tiết theo tài khoản quỹ: số phiếu, diễn giải, TK đối ứng, phát sinh Nợ/Có và số tồn cộng dồn. Dữ liệu lấy từ mục Giao dịch. Xuất Excel: dùng nút "Xuất báo cáo" ở đầu trang (đã có sheet Sổ quỹ 111 và Sổ TGNH 112 theo kỳ đã chọn).</div></div>' +
+              '<div class="fn-card"><div class="fn-form-grid" style="grid-template-columns:1fr 1fr 1fr;">' +
+                '<div><span class="fn-field-label">Tài khoản</span><select class="fn-select" id="fnLgAcc"><option value="111">111 — Tiền mặt</option><option value="112">112 — Tiền gửi ngân hàng</option></select></div>' +
+                '<div><span class="fn-field-label">Từ ngày</span><input type="date" class="fn-input" id="fnLgFrom"></div>' +
+                '<div><span class="fn-field-label">Đến ngày</span><input type="date" class="fn-input" id="fnLgTo"></div>' +
+              '</div></div>' +
+              '<div class="fn-card"><div class="fn-ledger-wrap"><table class="fn-table fn-ledger"><thead><tr><th>Ngày hạch toán</th><th>Ngày chứng từ</th><th>Số phiếu thu</th><th>Số phiếu chi</th><th>Diễn giải</th><th>TK</th><th>TK đối ứng</th><th class="num">Nợ (thu)</th><th class="num">Có (chi)</th><th class="num">Số tồn</th><th>Người nhận/nộp</th></tr></thead><tbody id="fnLgRows"></tbody><tfoot id="fnLgFoot"></tfoot></table></div></div>' +
+              '<div class="fn-card" id="fnLgSummary"></div>' +
+            '</div>' +
+
             '<div class="fn-section" id="sec-access">' +
               '<div class="fn-section-head"><div class="fn-section-title">Phân quyền truy cập</div><div class="fn-section-desc">Chỉ Founder cấp / thu hồi. Người được cấp (VD Kế toán) xem được trang Sổ tài chính và thêm, sửa, xóa dữ liệu như CEO.</div></div>' +
               '<div class="fn-card"><div class="fn-card-head"><div class="fn-card-title">Người được cấp quyền</div></div>' +
@@ -599,7 +621,35 @@
 
       // ---- Số phiếu thu/chi (PT = thu, PC = chi) + Tài khoản đối ứng ----
       var INCOME_TYPES = { revenue: 1, loan: 1 };   // khoản THU (doanh thu, vay vào) → PT; còn lại → PC
-      var COUNTER_ACCOUNTS = ['111 — Tiền mặt', '112 — Tiền gửi ngân hàng', '131 — Phải thu của khách hàng', '331 — Phải trả người bán', '334 — Phải trả người lao động', '333 — Thuế và các khoản phải nộp', '338 — Phải trả khác', '341 — Vay và nợ thuê tài chính', '511 — Doanh thu bán hàng & dịch vụ', '621 — Chi phí nguyên vật liệu', '622 — Chi phí nhân công', '627 — Chi phí sản xuất chung', '642 — Chi phí quản lý doanh nghiệp', '211 — Tài sản cố định', '141 — Tạm ứng'];
+      // Tài khoản kế toán (TT200/2014) hay dùng — [mã, tên, giải thích ngắn khi làm đối ứng với tiền (111/112)]
+      var ACCT = window.HQ_ACCT = [
+        ['111', 'Tiền mặt', 'Tiền trong quỹ. Chuyển quỹ ↔ ngân hàng: đối ứng 112.'],
+        ['112', 'Tiền gửi ngân hàng', 'Rút tiền NH nhập quỹ: Nợ 111 / Có 112. Nộp quỹ vào NH: Nợ 112 / Có 111.'],
+        ['131', 'Phải thu của khách hàng', 'Thu tiền khách nợ (Nợ 111/112, Có 131).'],
+        ['141', 'Tạm ứng', 'Chi tạm ứng cho nhân viên (Có 111, Nợ 141) hoặc nhân viên hoàn ứng.'],
+        ['152', 'Nguyên liệu, vật liệu', 'Mua vật liệu nhập kho, trả tiền ngay.'],
+        ['153', 'Công cụ, dụng cụ', 'Mua công cụ dụng cụ.'],
+        ['211', 'Tài sản cố định hữu hình', 'Mua máy móc, thiết bị, phương tiện.'],
+        ['242', 'Chi phí trả trước', 'Chi phí trả một lần nhưng phân bổ nhiều kỳ (thuê văn phòng, bảo hiểm…).'],
+        ['331', 'Phải trả người bán', 'Trả nợ nhà cung cấp, thầu phụ (Nợ 331, Có 111/112).'],
+        ['333', 'Thuế và các khoản phải nộp Nhà nước', 'Nộp thuế, phí, lệ phí.'],
+        ['334', 'Phải trả người lao động', 'Trả lương, thưởng cho nhân viên.'],
+        ['338', 'Phải trả, phải nộp khác', 'BHXH, BHYT, BHTN, kinh phí công đoàn (3383/3384/3385/3382).'],
+        ['341', 'Vay và nợ thuê tài chính', 'Nhận tiền vay / trả gốc vay.'],
+        ['4111', 'Vốn góp của chủ sở hữu', 'Chủ sở hữu góp vốn / rút vốn. Trong sổ hiện tại "Rút tiền NH nhập quỹ" cũng đang ghi 4111 — nên dùng 112.'],
+        ['421', 'Lợi nhuận sau thuế chưa phân phối', 'Chia lợi nhuận, trích quỹ.'],
+        ['511', 'Doanh thu bán hàng & cung cấp dịch vụ', 'Thu tiền doanh thu thiết kế, thi công.'],
+        ['515', 'Doanh thu hoạt động tài chính', 'Lãi tiền gửi, lãi cho vay.'],
+        ['621', 'Chi phí nguyên vật liệu trực tiếp', 'Vật tư dùng thẳng cho công trình.'],
+        ['622', 'Chi phí nhân công trực tiếp', 'Nhân công thi công trực tiếp.'],
+        ['627', 'Chi phí sản xuất chung', 'Chi phí chung của công trình/xưởng.'],
+        ['6421', 'Chi phí bán hàng', 'Marketing, hoa hồng, tiếp khách bán hàng.'],
+        ['6422', 'Chi phí quản lý doanh nghiệp', 'Chi phí văn phòng, lương quản lý, điện nước, phần mềm… (hay gặp nhất khi chi quỹ).'],
+        ['635', 'Chi phí tài chính', 'Lãi vay, phí ngân hàng.'],
+        ['711', 'Thu nhập khác', 'Thu ngoài hoạt động chính (phạt thu về, thanh lý…).'],
+        ['811', 'Chi phí khác', 'Chi ngoài hoạt động chính (phạt, bồi thường…).']
+      ];
+      var COUNTER_ACCOUNTS = ACCT.map(function (a) { return a[0] + ' — ' + a[1]; });
       function voucherPrefix() { return INCOME_TYPES[document.getElementById('fnType').value] ? 'PT' : 'PC'; }
       function voucherNextNo() {
         var ym = (document.getElementById('fnDate').value || new Date().toISOString().slice(0, 10)).slice(2, 7).replace('-', '');
@@ -622,6 +672,23 @@
         msg.className = 'fn-vmsg ' + (err ? 'bad' : 'ok');
         msg.textContent = err || (voucherVal() ? '✓ Số phiếu hợp lệ, chưa trùng' : '');
       }
+      var DEFAULT_COUNTER = { revenue: '511 — Doanh thu bán hàng & cung cấp dịch vụ', expense: '6422 — Chi phí quản lý doanh nghiệp', loan: '341 — Vay và nợ thuê tài chính', repayment: '341 — Vay và nợ thuê tài chính', bonus: '334 — Phải trả người lao động', penalty: '711 — Thu nhập khác' };
+      document.getElementById('fnType').addEventListener('change', function () {
+        var ci = document.getElementById('fnCounter');
+        if (!ci.value || ci.dataset.auto === '1') { ci.value = DEFAULT_COUNTER[this.value] || ''; ci.dataset.auto = ci.value ? '1' : ''; }
+      });
+      document.getElementById('fnCounter').addEventListener('input', function () { this.dataset.auto = ''; });
+      document.getElementById('fnCounter').value = DEFAULT_COUNTER.revenue; document.getElementById('fnCounter').dataset.auto = '1';
+      (function bindCounterInfo() {
+        var btn = document.getElementById('fnCounterInfoBtn'), box = document.getElementById('fnCounterInfo');
+        btn.addEventListener('click', function () {
+          if (!box.hidden) { box.hidden = true; return; }
+          box.innerHTML = '<b>Tài khoản đối ứng là gì?</b> Mỗi khoản thu/chi tiền kế toán ghi kép trên 2 tài khoản: <b>tài khoản quỹ</b> (111 tiền mặt hoặc 112 ngân hàng) và <b>tài khoản đối ứng</b> — cho biết tiền đó đến từ đâu / dùng vào việc gì.' +
+            '<div class="fn-ci-ex"><span><b>Thu</b> → Nợ 111/112, Có TK đối ứng (VD 511 doanh thu, 131 khách trả nợ, 4111 góp vốn)</span><span><b>Chi</b> → Nợ TK đối ứng, Có 111/112 (VD 6422 chi phí quản lý, 331 trả nhà cung cấp, 334 trả lương)</span></div>' +
+            '<table class="fn-table"><thead><tr><th>Mã</th><th>Tên tài khoản</th><th>Dùng khi</th></tr></thead><tbody>' + ACCT.map(function (a) { return '<tr><td><b>' + a[0] + '</b></td><td>' + escapeHtml(a[1]) + '</td><td>' + escapeHtml(a[2]) + '</td></tr>'; }).join('') + '</tbody></table>';
+          box.hidden = false;
+        });
+      })();
       (function bindVoucher() {
         var inp = document.getElementById('fnVoucherNo');
         inp.addEventListener('input', function () { inp.value = inp.value.toUpperCase(); inp.dataset.manual = inp.value ? '1' : ''; refreshVoucher(); });
@@ -656,6 +723,8 @@
           description: document.getElementById('fnDescription').value.trim(),
           voucherNo: voucherVal(),
           counterAccount: document.getElementById('fnCounter').value.trim(),
+          account: document.getElementById('fnAccount').value,
+          voucherDate: document.getElementById('fnVoucherDate').value || dateVal,
           actor: (document.getElementById('fnActor').value === '__other' ? document.getElementById('fnActorOther').value.trim() : document.getElementById('fnActor').value),
           amount: amount,
           date: dateVal,
@@ -693,6 +762,12 @@
       });
 
       document.getElementById('fnExportBtn').addEventListener('click', exportReport);
+      (function bindLedger() {
+        var f = document.getElementById('fnLgFrom'), tt = document.getElementById('fnLgTo'), m = monthInput.value || currentMonthStr();
+        f.value = m + '-01'; tt.value = new Date(Number(m.slice(0, 4)), Number(m.slice(5, 7)), 0).toISOString().slice(0, 10).replace(/^(\d{4}-\d{2})-\d{2}$/, function (x) { return x; });
+        var dd = new Date(Number(m.slice(0, 4)), Number(m.slice(5, 7)), 0); tt.value = m + '-' + ('0' + dd.getDate()).slice(-2);
+        ['fnLgAcc', 'fnLgFrom', 'fnLgTo'].forEach(function (id) { document.getElementById(id).addEventListener('change', renderLedger); });
+      })();
 
       var yearSelect = document.getElementById('fnCfoYear');
       var curYear = new Date().getFullYear();
@@ -767,6 +842,53 @@
       renderCfoHandbook(all);
       renderRisk(all, monthEntries, month);
       renderAccess();
+      renderLedger();
+    }
+
+    // ============================== SỔ QUỸ ==============================
+    function ledgerData() {
+      var acc = document.getElementById('fnLgAcc').value, from = document.getElementById('fnLgFrom').value, to = document.getElementById('fnLgTo').value;
+      var rows = TaskManager.getFinanceEntries().filter(function (e) { return TYPES[e.type] && TYPES[e.type].cashSign !== 0 && String(e.account || '111') === acc; })
+        .sort(function (a, b) { return String(a.date || '').localeCompare(String(b.date || '')) || String(a.createdAt || '').localeCompare(String(b.createdAt || '')); });
+      var opening = 0;
+      rows.forEach(function (e) { if (from && e.date < from) opening += TYPES[e.type].cashSign * (Number(e.amount) || 0); });
+      var run = opening, list = [], sumIn = 0, sumOut = 0;
+      rows.forEach(function (e) {
+        if ((from && e.date < from) || (to && e.date > to)) return;
+        var s = TYPES[e.type].cashSign, amt = Number(e.amount) || 0;
+        run += s * amt; if (s > 0) sumIn += amt; else sumOut += amt;
+        list.push({ e: e, inAmt: s > 0 ? amt : 0, outAmt: s < 0 ? amt : 0, bal: run });
+      });
+      return { acc: acc, from: from, to: to, opening: opening, list: list, sumIn: sumIn, sumOut: sumOut, closing: run };
+    }
+    function counterName(code) { var A = window.HQ_ACCT || []; for (var i = 0; i < A.length; i++) if (A[i][0] === code) return A[i][1]; return ''; }
+    function counterCell(e) {
+      var c = counterCode(e); if (!c) return e.counterAccount ? escapeHtml(e.counterAccount) : '<span style="color:var(--fn-muted)">—</span>';
+      var nm = counterName(c) || String(e.counterAccount || '').replace(/^\d+\s*[—-]\s*/, '');
+      return '<b style="font-family:JetBrains Mono,monospace;">' + c + '</b>' + (nm ? '<div style="font-size:0.6875rem;color:var(--fn-muted);line-height:1.3;">' + escapeHtml(nm) + '</div>' : '');
+    }
+    function counterSummaryHtml(d) {
+      var by = {};
+      d.list.forEach(function (r) { var c = counterCode(r.e) || 'Chưa gán'; var o = by[c] = by[c] || { n: 0, i: 0, o: 0 }; o.n++; o.i += r.inAmt; o.o += r.outAmt; });
+      var keys = Object.keys(by).sort();
+      if (!keys.length) return '';
+      return '<div class="fn-card-head"><div class="fn-card-title">Tổng hợp theo TK đối ứng</div></div><table class="fn-table"><thead><tr><th>TK đối ứng</th><th>Tên tài khoản</th><th class="num" style="text-align:right;">Số dòng</th><th style="text-align:right;">Thu (Nợ)</th><th style="text-align:right;">Chi (Có)</th></tr></thead><tbody>' +
+        keys.map(function (k) { var o = by[k]; return '<tr><td><b style="font-family:JetBrains Mono,monospace;">' + k + '</b></td><td>' + escapeHtml(counterName(k) || (k === 'Chưa gán' ? 'Chưa gán TK đối ứng — nên bổ sung' : '')) + '</td><td style="text-align:right;">' + o.n + '</td><td style="text-align:right;">' + fmt(o.i) + '</td><td style="text-align:right;">' + fmt(o.o) + '</td></tr>'; }).join('') + '</tbody></table>';
+    }
+    function counterCode(e) { var m = /^\d{3,4}/.exec(String(e.counterAccount || '')); return m ? m[0] : ''; }
+    function renderLedger() {
+      var body = document.getElementById('fnLgRows'); if (!body) return;
+      var d = ledgerData(), neg = function (n) { return n < 0 ? ' neg' : ''; }, money = function (n) { return n < 0 ? '(' + fmt(-n) + ')' : fmt(n); };
+      var html = '<tr><td colspan="9"><b>Số dư đầu kỳ</b></td><td class="num' + neg(d.opening) + '"><b>' + money(d.opening) + '</b></td><td></td></tr>';
+      html += d.list.length ? d.list.map(function (r) {
+        var e = r.e, isIn = r.inAmt > 0;
+        return '<tr><td>' + escapeHtml(e.date || '') + '</td><td>' + escapeHtml(e.voucherDate || e.date || '') + '</td><td style="font-family:JetBrains Mono,monospace;font-size:0.75rem;">' + (isIn ? escapeHtml(e.voucherNo || '') : '') + '</td><td style="font-family:JetBrains Mono,monospace;font-size:0.75rem;">' + (isIn ? '' : escapeHtml(e.voucherNo || '')) + '</td>' +
+          '<td>' + escapeHtml(e.description || e.category || '') + '</td><td>' + d.acc + '</td><td>' + counterCell(e) + '</td>' +
+          '<td class="num">' + fmt(r.inAmt) + '</td><td class="num">' + fmt(r.outAmt) + '</td><td class="num' + neg(r.bal) + '">' + money(r.bal) + '</td><td>' + escapeHtml(e.actor || '') + '</td></tr>';
+      }).join('') : '<tr><td colspan="11" class="fn-empty">Không có phát sinh trong kỳ cho tài khoản này.</td></tr>';
+      body.innerHTML = html;
+      var sumBox = document.getElementById('fnLgSummary'); if (sumBox) sumBox.innerHTML = counterSummaryHtml(d);
+      document.getElementById('fnLgFoot').innerHTML = '<tr><td colspan="7">Cộng phát sinh trong kỳ</td><td class="num">' + fmt(d.sumIn) + '</td><td class="num">' + fmt(d.sumOut) + '</td><td class="num' + neg(d.closing) + '">' + money(d.closing) + '</td><td>Số dư cuối kỳ</td></tr>';
     }
 
     function loadBsSnapshotIntoForm() {
@@ -1024,7 +1146,7 @@
           '<td style="font-family:JetBrains Mono,monospace;font-size:0.75rem;">' + escapeHtml(e.voucherNo || '—') + '</td>' +
           '<td><span class="fn-type-badge" style="background:var(--fn-bg);border:1px solid var(--fn-border);">' + escapeHtml(t.label) + '</span></td>' +
           '<td>' + escapeHtml(e.category || '—') + '</td>' +
-          '<td>' + escapeHtml(e.counterAccount || '—') + '</td>' +
+          '<td>' + counterCell(e) + '</td>' +
           '<td>' + escapeHtml(e.description || '') + '</td>' +
           '<td>' + escapeHtml(e.actor || '—') + '</td>' +
           '<td>' + escapeHtml(e.date || '') + '</td>' +

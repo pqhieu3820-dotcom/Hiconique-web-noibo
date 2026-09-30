@@ -148,7 +148,7 @@ var FinanceExport = (function () {
             '<div style="font-size:.6875rem;color:var(--fn-muted,#888);margin-top:8px;">Bấm 1 ngày để bắt đầu, bấm ngày thứ hai để chốt khoảng. Chấm xanh = ngày có giao dịch.</div>' +
           '</div>' +
         '</div>' +
-        '<div class="fx-f"><div><div class="fx-sum" id="fxSum"></div><div class="fx-sheets">Sheet: Tổng quan · Giao dịch · Lãi-Lỗ · Dòng tiền & Dự báo · Vay nợ · Công nợ KH · Sức khỏe TC · BCTC · Rủi ro · Tham số</div></div>' +
+        '<div class="fx-f"><div><div class="fx-sum" id="fxSum"></div><div class="fx-sheets">Sheet: Tổng quan · Giao dịch · Sổ quỹ 111 · Sổ TGNH 112 · Lãi-Lỗ · Dòng tiền & Dự báo · Vay nợ · Công nợ KH · Sức khỏe TC · BCTC · Rủi ro · Tham số</div></div>' +
           '<div style="display:flex;gap:8px;"><button class="fn-btn fn-btn-ghost" data-x>Hủy</button><button class="fn-btn fn-btn-primary" id="fxGo">Xuất Excel</button></div></div>' +
       '</div>';
     document.body.appendChild(modal);
@@ -305,6 +305,50 @@ var FinanceExport = (function () {
     try { build_(); } catch (err) { console.error('Export failed:', err); alert('Xuất file thất bại: ' + (err && err.message ? err.message : err)); btn.disabled = false; btn.textContent = 'Xuất Excel'; }
   }
 
+  // Sổ kế toán chi tiết quỹ tiền mặt (111) / tiền gửi ngân hàng (112) — bố cục như sổ xuất từ MISA:
+  // Ngày HT | Ngày CT | Số phiếu thu | Số phiếu chi | Diễn giải | TK | TK đối ứng | Nợ | Có | Số tồn (công thức) | Người nhận/nộp
+  function buildLedger_(ws, acc, all) {
+    var TYPES = ctx.TYPES, F = 'Times New Roman', THIN = { style: 'thin' }, bd = { top: THIN, left: THIN, bottom: THIN, right: THIN };
+    var rowsAll = all.filter(function (e) { return TYPES[e.type] && TYPES[e.type].cashSign !== 0 && String(e.account || '111') === acc; })
+      .sort(function (a, b) { return entryDate(a).localeCompare(entryDate(b)); });
+    var opening = 0; rowsAll.forEach(function (e) { if (entryDate(e) < range.from) opening += TYPES[e.type].cashSign * num(e.amount); });
+    var rows = rowsAll.filter(inRange);
+    var dm = function (s) { return s ? s.split('-').reverse().join('/') : ''; };
+    var nm = acc === '111' ? 'QUỸ TIỀN MẶT' : 'TIỀN GỬI NGÂN HÀNG';
+    ws.mergeCells('A1:K1'); ws.getCell('A1').value = 'SỔ KẾ TOÁN CHI TIẾT ' + nm; ws.getCell('A1').font = { name: F, size: 14, bold: true }; ws.getCell('A1').alignment = { horizontal: 'center' };
+    ws.mergeCells('A2:K2'); ws.getCell('A2').value = 'Tài khoản: ' + acc + '; Từ ngày ' + vn(range.from) + ' đến ngày ' + vn(range.to); ws.getCell('A2').font = { name: F, size: 11, bold: true, italic: true }; ws.getCell('A2').alignment = { horizontal: 'center' };
+    ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'J', 'K'].forEach(function (c) { ws.mergeCells(c + '3:' + c + '4'); });
+    ws.mergeCells('H3:I3');
+    var heads = { A3: 'Ngày hạch toán', B3: 'Ngày chứng từ', C3: 'Số phiếu thu', D3: 'Số phiếu chi', E3: 'Diễn giải', F3: 'Tài khoản', G3: 'TK đối ứng', H3: 'Số phát sinh', H4: 'Nợ', I4: 'Có', J3: 'Số tồn', K3: 'Người nhận/Người nộp' };
+    Object.keys(heads).forEach(function (k) { ws.getCell(k).value = heads[k]; });
+    for (var hr = 3; hr <= 4; hr++) for (var hc = 1; hc <= 11; hc++) { var c = ws.getCell(hr, hc); c.font = { name: F, bold: true, size: 10 }; c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8EEF7' } }; c.border = bd; }
+    var r = 5, open = r; ws.getCell('E5').value = 'Số dư đầu kỳ'; ws.getCell('J5').value = opening; r++;
+    var first = r, sumIn = 0, sumOut = 0, run = opening, by = {};
+    rows.forEach(function (e) {
+      var s = TYPES[e.type].cashSign, amt = num(e.amount), isIn = s > 0, code = (/^\d{3,4}/.exec(String(e.counterAccount || '')) || [''])[0];
+      run += s * amt; if (isIn) sumIn += amt; else sumOut += amt;
+      var k = code || 'Chưa gán'; var o = by[k] = by[k] || { i: 0, o: 0 }; if (isIn) o.i += amt; else o.o += amt;
+      ws.getRow(r).values = [dm(entryDate(e)), dm(e.voucherDate || entryDate(e)), isIn ? (e.voucherNo || '') : '', isIn ? '' : (e.voucherNo || ''), e.description || e.category || '', acc, code, isIn ? amt : 0, isIn ? 0 : amt, null, e.actor || ''];
+      ws.getCell('J' + r).value = { formula: 'J' + (r - 1) + '+H' + r + '-I' + r, result: run };
+      r++;
+    });
+    ws.getCell('E' + r).value = 'Cộng phát sinh trong kỳ';
+    ws.getCell('H' + r).value = { formula: 'SUM(H' + first + ':H' + (r - 1) + ')', result: sumIn };
+    ws.getCell('I' + r).value = { formula: 'SUM(I' + first + ':I' + (r - 1) + ')', result: sumOut };
+    ws.getCell('J' + r).value = { formula: 'J' + open + '+H' + r + '-I' + r, result: run };
+    var last = r;
+    for (var i = 5; i <= last; i++) { ['H', 'I', 'J'].forEach(function (cc) { ws.getCell(cc + i).numFmt = '#,##0;(#,##0);0'; }); for (var q = 1; q <= 11; q++) { var cell = ws.getCell(i, q); cell.font = { name: F, size: 10, bold: (i === open || i === last) }; cell.border = bd; } }
+    var sr = last + 2; ws.getCell('E' + sr).value = 'Tổng hợp theo TK đối ứng'; ws.getCell('E' + sr).font = { name: F, bold: true, size: 10 };
+    Object.keys(by).sort().forEach(function (k) { sr++; ws.getCell('E' + sr).value = k; ws.getCell('H' + sr).value = by[k].i; ws.getCell('I' + sr).value = by[k].o; ws.getCell('H' + sr).numFmt = '#,##0'; ws.getCell('I' + sr).numFmt = '#,##0'; ['E', 'H', 'I'].forEach(function (cc) { ws.getCell(cc + sr).font = { name: F, size: 10 }; }); });
+    var gr = sr + 2;
+    ws.mergeCells('H' + gr + ':K' + gr); ws.getCell('H' + gr).value = 'Ngày ..... tháng ..... năm ' + new Date().getFullYear(); ws.getCell('H' + gr).font = { name: F, italic: true, size: 10 }; ws.getCell('H' + gr).alignment = { horizontal: 'center' }; gr++;
+    [['A', 'C', 'Người ghi sổ'], ['E', 'E', 'Kế toán trưởng'], ['H', 'K', 'Giám đốc']].forEach(function (s) { if (s[0] !== s[1]) ws.mergeCells(s[0] + gr + ':' + s[1] + gr); ws.getCell(s[0] + gr).value = s[2]; ws.getCell(s[0] + gr).font = { name: F, bold: true, size: 10 }; ws.getCell(s[0] + gr).alignment = { horizontal: 'center' }; }); gr++;
+    [['A', 'C'], ['E', 'E'], ['H', 'K']].forEach(function (s) { if (s[0] !== s[1]) ws.mergeCells(s[0] + gr + ':' + s[1] + gr); ws.getCell(s[0] + gr).value = '(Ký, họ tên)'; ws.getCell(s[0] + gr).font = { name: F, italic: true, size: 9 }; ws.getCell(s[0] + gr).alignment = { horizontal: 'center' }; });
+    [13, 13, 12, 12, 50, 9, 11, 15, 15, 16, 24].forEach(function (w, i) { ws.getColumn(i + 1).width = w; });
+    ws.views = [{ state: 'frozen', ySplit: 4 }];
+    ws.pageSetup = { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, printArea: 'A1:K' + gr, printTitlesRow: '3:4', margins: { left: 0.4, right: 0.4, top: 0.6, bottom: 0.6, header: 0.3, footer: 0.3 } };
+  }
+
   function build_() {
     var TM = ctx.TaskManager, TYPES = ctx.TYPES, ORDER = ctx.TYPE_ORDER;
     var all = allEntries().slice().sort(function (a, b) { return entryDate(a).localeCompare(entryDate(b)); });
@@ -322,6 +366,8 @@ var FinanceExport = (function () {
     var wsCv = wb.addWorksheet('Bìa báo cáo', { properties: { tabColor: { argb: 'FF22272E' } }, views: [{ showGridLines: false }] });
     var wsOv = wb.addWorksheet('Tổng quan', { properties: { tabColor: { argb: BRONZE } } });
     var wsTx = wb.addWorksheet('Giao dịch');
+    var wsQ1 = wb.addWorksheet('Sổ quỹ 111', { properties: { tabColor: { argb: 'FF4F6F52' } } });
+    var wsQ2 = wb.addWorksheet('Sổ TGNH 112', { properties: { tabColor: { argb: 'FF3B6B8C' } } });
     var wsPl = wb.addWorksheet('Lãi-Lỗ');
     var wsCf = wb.addWorksheet('Dòng tiền & Dự báo');
     var wsDb = wb.addWorksheet('Vay nợ');
@@ -354,13 +400,14 @@ var FinanceExport = (function () {
     widths(wsPr, [26, 18, 16, 70]);
 
     // ============ GIAO DỊCH ============
-    title(wsTx, 'SỔ GIAO DỊCH', 8, sub);
-    header(wsTx, 4, ['Loại', 'Danh mục', 'Mô tả', 'Ngày', 'Tháng', 'Số tiền (₫)', 'Ảnh hưởng dòng tiền', 'Ảnh hưởng lãi/lỗ']);
+    title(wsTx, 'SỔ GIAO DỊCH', 12, sub);
+    header(wsTx, 4, ['Loại', 'Danh mục', 'Mô tả', 'Ngày', 'Tháng', 'Số tiền (₫)', 'Ảnh hưởng dòng tiền', 'Ảnh hưởng lãi/lỗ', 'Số phiếu', 'TK quỹ', 'TK đối ứng', 'Người giao dịch']);
     list.forEach(function (e, i) {
       var r = 5 + i;
       wsTx.getCell(r, 1).value = (TYPES[e.type] || { label: e.type }).label;
       wsTx.getCell(r, 2).value = e.category || '';
       wsTx.getCell(r, 3).value = e.description || '';
+      wsTx.getCell(r, 9).value = e.voucherNo || ''; wsTx.getCell(r, 10).value = e.account || '111'; wsTx.getCell(r, 11).value = (/^\d{3,4}/.exec(String(e.counterAccount || '')) || [''])[0]; wsTx.getCell(r, 12).value = e.actor || '';
       var dc = wsTx.getCell(r, 4); dc.value = dateCell(entryDate(e)); dc.numFmt = DATEF;
       wsTx.getCell(r, 5).value = (entryDate(e) || '').slice(0, 7);
       var ac = wsTx.getCell(r, 6); ac.value = num(e.amount); ac.numFmt = NUM; ac.font = { color: { argb: BLUE } };
@@ -370,10 +417,10 @@ var FinanceExport = (function () {
     var txLast = Math.max(5, 4 + list.length), txTot = txLast + 2;
     wsTx.getCell(txTot, 1).value = 'TỔNG (theo bộ lọc)';
     [6, 7, 8].forEach(function (c) { var col = String.fromCharCode(64 + c); var cell = wsTx.getCell(txTot, c); cell.value = { formula: 'SUBTOTAL(109,' + col + '5:' + col + txLast + ')' }; cell.numFmt = NUM; });
-    total(wsTx, txTot, 1, 8);
-    wsTx.autoFilter = { from: { row: 4, column: 1 }, to: { row: txLast, column: 8 } };
+    total(wsTx, txTot, 1, 12);
+    wsTx.autoFilter = { from: { row: 4, column: 1 }, to: { row: txLast, column: 12 } };
     wsTx.views = [{ state: 'frozen', ySplit: 4 }];
-    widths(wsTx, [20, 20, 40, 12, 10, 18, 20, 18]);
+    widths(wsTx, [20, 20, 40, 12, 10, 18, 20, 18, 16, 9, 12, 20]);
     var TX = function (col) { return q('Giao dịch') + '!$' + col + '$5:$' + col + '$' + txLast; };
     var sumT = function (t) { return 'SUMIFS(' + TX('F') + ',' + TX('A') + ',"' + label(t) + '")'; };
     var sumTM = function (t, mref) { return 'SUMIFS(' + TX('F') + ',' + TX('A') + ',"' + label(t) + '",' + TX('E') + ',' + mref + ')'; };
@@ -677,7 +724,8 @@ var FinanceExport = (function () {
     polish(wsOv, 5, rk, 1, 3); polish(wsOv, cr + 1, cr + Math.max(1, catNames.length), 1, 3);
     wsOv.addConditionalFormatting({ ref: 'C' + (cr + 1) + ':C' + (cr + Math.max(1, catNames.length)), rules: [{ type: 'dataBar', cfvo: [{ type: 'num', value: 0 }, { type: 'num', value: 1 }], color: { argb: 'FFD9B98A' }, gradient: false }] });
     colorSign(wsOv, oLN + ':' + oLN); colorSign(wsOv, oCF + ':' + oCF);
-    polish(wsTx, 5, txLast, 1, 8); colorSign(wsTx, 'G5:H' + txLast);
+    buildLedger_(wsQ1, '111', all); buildLedger_(wsQ2, '112', all);
+    polish(wsTx, 5, txLast, 1, 12); colorSign(wsTx, 'G5:H' + txLast);
     wsTx.addConditionalFormatting({ ref: 'A5:A' + txLast, rules: [
       { type: 'cellIs', operator: 'equal', formulae: ['"' + label('revenue') + '"'], style: { font: { color: { argb: 'FF1F6B3A' }, bold: true } } },
       { type: 'cellIs', operator: 'equal', formulae: ['"' + label('expense') + '"'], style: { font: { color: { argb: 'FFB5402A' }, bold: true } } },
@@ -696,7 +744,7 @@ var FinanceExport = (function () {
 
     // In ấn: A4, vùng in chuẩn, tiêu đề bảng lặp lại mỗi trang, đầu trang có Quốc hiệu – Tiêu ngữ
     printSetup(wsOv, 'A1:C' + (cr + Math.max(1, catNames.length) + 1), false, '4:4');
-    printSetup(wsTx, 'A1:H' + txTot, true, '4:4');
+    printSetup(wsTx, 'A1:L' + txTot, true, '4:4');
     printSetup(wsPl, 'A1:I' + (plT + 2), true, '4:4');
     printSetup(wsCf, 'A1:E' + (fr + 8), false, '6:6');
     printSetup(wsDb, 'A1:E' + (dbT + 2), false, '6:6');

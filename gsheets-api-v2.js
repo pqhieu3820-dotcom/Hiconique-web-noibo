@@ -349,7 +349,7 @@ const FIELD_MAP = {
   // thành các báo cáo (lãi/lỗ, dòng tiền, vay nợ...) từ đúng 1 nguồn dữ liệu.
   financeEntries: [
     ['Mã GD', 'id'], ['Loại', 'type'], ['Danh mục', 'category'], ['Mô tả', 'description'],
-    ['Số tiền', 'amount'], ['Tháng', 'month'], ['Ngày', 'date'], ['Ghi chú', 'note'], ['Người giao dịch', 'actor'], ['Số phiếu', 'voucherNo'], ['TK đối ứng', 'counterAccount'],
+    ['Số tiền', 'amount'], ['Tháng', 'month'], ['Ngày', 'date'], ['Ghi chú', 'note'], ['Người giao dịch', 'actor'], ['Số phiếu', 'voucherNo'], ['TK đối ứng', 'counterAccount'], ['Tài khoản quỹ', 'account'], ['Ngày chứng từ', 'voucherDate'],
     ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
   ],
   // Công nợ phải thu từ khách hàng (không phải giao dịch tiền mặt thật —
