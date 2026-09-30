@@ -1865,3 +1865,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (ax) Ngày hiển thị dd/mm/yyyy, không xuống dòng
 - finance.html: hàm `vnDate()` — bảng chi tiết (bấm ở Tổng quan), Sổ quỹ và bảng Giao dịch hiển thị ngày dạng 30/09/2026 trên 1 dòng (`white-space:nowrap`); dữ liệu lưu vẫn yyyy-mm-dd. sw v68.
+
+### 2026-09-30 (ay) Thanh cuộn ngang menu không chạm viền khung
+- finance.html: track cao 16px, thumb có viền trong suốt (background-clip) → thanh trượt thật dày ~6px nằm cách viền đáy khung 7px (trước đây dính sát viền). sw v69.
