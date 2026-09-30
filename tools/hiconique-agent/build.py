@@ -119,8 +119,15 @@ DESKTOP = os.path.join(os.path.expanduser('~'), 'Desktop')
 if os.path.isdir(DESKTOP):   # luôn copy 1 bản có hậu tố phiên bản ra Desktop
     shutil.copy2(VERSIONED, os.path.join(DESKTOP, os.path.basename(VERSIONED)))
     print('Đã copy ra Desktop:', os.path.join(DESKTOP, os.path.basename(VERSIONED)))
-# FILE CÀI ĐẶT chỉ đưa lên folder Google Drive theo LINK (kéo thả trên trình duyệt) — KHÔNG dùng đường dẫn ổ đĩa cục bộ (người dùng chốt 2026-09-30)
-print('>> Đưa file lên folder Drive (link trong GHI_CHU_DU_AN.md): %s' % VERSIONED)
+# FILE CÀI ĐẶT lên folder Google Drive (link trong GHI_CHU_DU_AN.md, mục QUAN TRỌNG). Cách chính: kéo thả qua link trên trình duyệt.
+# CÁCH DỰ PHÒNG (người dùng cho phép 2026-09-30, khi không upload được qua link): copy vào thư mục đồng bộ Google Drive for Desktop của tài khoản
+# hiconique.group (ổ J:) — Drive tự đồng bộ lên đúng folder đó. Xem ghi chú dự án để biết đường dẫn.
+DRIVE_FALLBACK = r'J:\My Drive\DỮ LIỆU HICONIQUE\DỮ LIỆU GỐC (KHÔNG CHIA SẺ)\Folder cài đặt HICONIQUE APP PC'
+if os.path.isdir(DRIVE_FALLBACK):
+    shutil.copy2(VERSIONED, os.path.join(DRIVE_FALLBACK, 'HiconiqueAgentSetup-v%s.exe' % version))
+    print('Đã copy vào folder Drive (cách dự phòng qua ổ J:):', DRIVE_FALLBACK)
+else:
+    print('>> Ổ J: không có — hãy đưa file lên folder Drive theo link: %s' % VERSIONED)
 if '--no-publish' in sys.argv:
     print('OK (--no-publish): chỉ build + copy Desktop, chưa đăng release/latest.json', version, sha)
     sys.exit(0)

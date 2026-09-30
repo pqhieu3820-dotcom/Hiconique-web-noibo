@@ -1,10 +1,10 @@
 ## ⭐ QUAN TRỌNG — NƠI LƯU FILE CÀI ĐẶT HICONIQUE AGENT (người dùng chốt 2026-09-30)
 
 - **Folder Google Drive**: https://drive.google.com/drive/folders/1lSDuoqhGnGM7Yik1wk6V_N5dTdQlU97J?usp=sharing — tên "Folder cài đặt HICONIQUE APP PC", chủ sở hữu **hiconique.group@gmail.com**.
-- **Quy tắc (người dùng chốt)**: file cài chỉ đưa lên **THẲNG qua đường link Drive này** (mở link → tải lên `HiconiqueAgentSetup-v<ver>.exe`); **KHÔNG dùng/ghi nhận đường dẫn ổ đĩa cục bộ (ổ J:, thư mục đồng bộ)**. `build.py` chỉ tạo file `dist\HiconiqueAgent-v<ver>.exe` + copy ra Desktop và nhắc đưa lên link. **Mọi nơi cần "link tải file cài" (nút tải trang Theo dõi hiệu suất, hướng dẫn, thông báo…) ghim THẲNG link folder này** — không dùng link GitHub cho người dùng (GitHub chậm ~20–100 KB/s ở VN).
+- **Quy tắc (người dùng chốt)**: **Ưu tiên** đưa file lên THẲNG qua đường link Drive này (mở link → tải lên `HiconiqueAgentSetup-v<ver>.exe`). **Chỉ khi KHÔNG upload được qua link** (Claude không tự upload được file ~70MB qua công cụ Drive/trình duyệt) thì dùng **CÁCH DỰ PHÒNG qua ổ J:** (người dùng đồng ý 2026-09-30): copy file vào `J:\My Drive\DỮ LIỆU HICONIQUE\DỮ LIỆU GỐC (KHÔNG CHIA SẺ)\Folder cài đặt HICONIQUE APP PC` (ổ J: = Google Drive for Desktop của **hiconique.group@gmail.com**, tự đồng bộ lên đúng folder trên) — `build.py` tự làm bước này khi có ổ J:, nếu không có sẽ nhắc upload tay theo link. Dù dùng cách nào, tên file phải là `HiconiqueAgentSetup-v<ver>.exe`. **Mọi nơi cần "link tải file cài" (nút tải trang Theo dõi hiệu suất, hướng dẫn, thông báo…) ghim THẲNG link folder này** — không dùng link GitHub cho người dùng (GitHub chậm ~20–100 KB/s ở VN).
 - GitHub Releases (`agent-v<ver>`) + `public/agent/latest.json` **vẫn giữ** chỉ để Agent TỰ CẬP NHẬT (cần link tải trực tiếp có kiểm SHA-256; Drive file lớn bị chặn bằng trang quét virus nên không dùng được cho bước này).
 - ⚠ Quyền chia sẻ hiện là "Bất kỳ ai có đường liên kết = **Người chỉnh sửa**" → ai có link cũng xoá/thay được file cài. Nên đổi thành **Người xem** (chỉ chủ + pqhieu3820 chỉnh sửa) — tránh bị tráo file cài độc hại.
-- Trong folder hiện có: `HiconiqueAgentSetup-v2.0.6.exe` (69,6MB). Bản 2.0.7 (bảo mật) build xong cần đưa lên link như trên.
+- Trong folder hiện có: `HiconiqueAgentSetup-v2.0.6.exe` (69,6MB). Bản 2.0.7 (bảo mật) được đưa lên bằng cách dự phòng qua ổ J: (ghi ở trên).
 
 # Ghi chú dự án — đọc trước khi làm việc
 
@@ -44,6 +44,13 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 **Link production chính đã đổi sang Cloudflare Workers**: `https://hiconique-web-noibo.pqhieu3820.workers.dev` (link Netlify cũ `noibo.hiconique.com` bị lỗi DNS NXDOMAIN ngày 24/9, không liên quan code — người dùng đã chuyển hẳn sang dùng link Workers, vẫn giữ link cũ nhưng không phải link chính nữa). **Luôn dùng link Workers khi cần mở/test web live, không hỏi lại người dùng về việc này nữa.**
 
 - (2026-09-30) Viết lại đoạn mô tả đầu trang Tài sản & vật tư (`equipment.html`, `.subpage-lede`) gọn hơn, 2 câu, gom nhóm tài sản.
+
+### Phiên 2026-09-30 (w) — Excel báo cáo tài chính: tô màu đánh giá, in chuẩn văn bản; đăng Agent 2.0.7
+
+- `finance-export.js`: (1) **Tô màu theo đánh giá** bằng định dạng có điều kiện (`colorEval`): Tốt/Thấp/An toàn/Đã thu = xanh · Cần chú ý/Trung bình/Cảnh báo/Chưa thu = vàng · Rủi ro/Cao/Nguy hiểm/Quá hạn = đỏ · Thiếu dữ liệu = xám — áp cho Sức khỏe TC, Rủi ro, Công nợ KH (trạng thái + quá hạn), BCTC (kết luận Z), Bìa; số âm/dương tô đỏ/xanh (`colorSign`) ở Lãi-Lỗ, Dòng tiền, Giao dịch, Tổng quan; cột "Loại" ở Giao dịch tô theo loại; thanh dữ liệu (dataBar) ở tỉ trọng chi phí & biên lợi nhuận. Mọi bảng kẻ khung mảnh + sọc xen kẽ (`polish`).
+- **Sheet đầu "Bìa báo cáo" = văn bản chuẩn, in luôn (A4 dọc, 1 trang)**: bên trái tên công ty + "Số: ....../BC-TC", bên phải **CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM / Độc lập - Tự do - Hạnh phúc** (gạch dưới), dòng *Hải Phòng, ngày … tháng … năm …* (ngày lúc xuất, tự động), tiêu đề **BÁO CÁO TÀI CHÍNH**, kỳ báo cáo, "Kính gửi", mục I chỉ tiêu chủ yếu (công thức liên kết + đánh giá tô màu), mục II **nhận xét tự động** (công thức ghép chữ theo số liệu), mục III phụ lục có **siêu liên kết** tới từng sheet, khối chữ ký **Người lập biểu (điền sẵn tên người xuất) / Kế toán trưởng / Giám đốc**. Font Times New Roman. Tên công ty đang là **"CÔNG TY HICONIQUE"** (chưa có tên pháp lý trong dự án — sửa hằng `HDR_LEFT` trong `finance-export.js` khi có).
+- **Cài đặt in mọi sheet** (`printSetup`): A4, vùng in chuẩn, vừa khổ ngang 1 trang, căn giữa, lề chuẩn văn bản, **tiêu đề bảng lặp lại mỗi trang** (`printTitlesRow`), **đầu trang có Quốc hiệu – Tiêu ngữ** + tên công ty, chân trang "Hải Phòng, ngày … · tên sheet · Trang x / y". Đã kiểm tra tạo file (11 sheet, có vùng in/đầu trang/định dạng có điều kiện, không lỗi); chưa xem bằng Excel thật (chưa xác nhận hình thức in).
+- **Đăng Agent 2.0.7** (theo lệnh "push hết"): GitHub Release + `latest.json`; file cài đưa lên Drive bằng **cách dự phòng qua ổ J:** (không upload được qua link) — đã ghi kỹ ở mục QUAN TRỌNG đầu file; `build.py` có bước copy dự phòng này.
 
 ### Phiên 2026-09-30 (v) — Sổ tài chính bỏ lời chào; Agent: dấu ⓘ + nhớ chế độ nền
 

@@ -228,6 +228,52 @@ var FinanceExport = (function () {
   function fill(c, argb) { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: argb } }; }
   function total(ws, row, from, to) { for (var i = from; i <= to; i++) { var c = ws.getCell(row, i); c.font = { bold: true }; fill(c, SOFT); c.border = { top: { style: 'thin', color: { argb: BRONZE } } }; } }
   function note(ws, row, text, span) { ws.mergeCells(row, 1, row, span); var c = ws.getCell(row, 1); c.value = text; c.font = { italic: true, size: 10, color: { argb: 'FF7A7568' } }; c.alignment = { wrapText: true, vertical: 'top' }; ws.getRow(row).height = 30; }
+  // ---- Tô màu theo đánh giá (Tốt/Thấp/An toàn/Đã thu = xanh · Cần chú ý/Trung bình/Cảnh báo/Chưa thu = vàng · Rủi ro/Cao/Nguy hiểm/Quá hạn = đỏ · Thiếu dữ liệu = xám)
+  function fillRule(text, bg, fg) { return { type: 'cellIs', operator: 'equal', formulae: ['"' + text + '"'], style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: bg } }, font: { color: { argb: fg }, bold: true } } }; }
+  var CF_GREEN = ['Tốt', 'Thấp', 'An toàn', 'Đã thu'], CF_AMBER = ['Cần chú ý', 'Trung bình', 'Cảnh báo', 'Chưa thu'], CF_RED = ['Rủi ro', 'Cao', 'Nguy hiểm', 'Quá hạn'], CF_GREY = ['Thiếu dữ liệu'];
+  function colorEval(ws, ref) {
+    var rules = [];
+    CF_GREEN.forEach(function (t) { rules.push(fillRule(t, 'FFCFE8D5', 'FF1F6B3A')); });
+    CF_AMBER.forEach(function (t) { rules.push(fillRule(t, 'FFF9E6B4', 'FF8A6210')); });
+    CF_RED.forEach(function (t) { rules.push(fillRule(t, 'FFF6C9C0', 'FFB5402A')); });
+    CF_GREY.forEach(function (t) { rules.push(fillRule(t, 'FFE4E1DA', 'FF6B675C')); });
+    ws.addConditionalFormatting({ ref: ref, rules: rules });
+  }
+  function colorSign(ws, ref) {   // số dương xanh / âm đỏ
+    ws.addConditionalFormatting({ ref: ref, rules: [
+      { type: 'cellIs', operator: 'lessThan', formulae: ['0'], style: { font: { color: { argb: 'FFB5402A' }, bold: true } } },
+      { type: 'cellIs', operator: 'greaterThan', formulae: ['0'], style: { font: { color: { argb: 'FF1F6B3A' } } } }
+    ] });
+  }
+  function centerBold(ws, ref) {   // ref dạng 'D14:D18'
+    var m = /^([A-Z]+)(\d+):([A-Z]+)(\d+)$/.exec(ref); if (!m) return;
+    for (var r = +m[2]; r <= +m[4]; r++) for (var c = ws.getColumn(m[1]).number; c <= ws.getColumn(m[3]).number; c++) { var cell = ws.getCell(r, c); cell.alignment = { horizontal: 'center', vertical: 'middle' }; cell.font = Object.assign({}, cell.font || {}, { bold: true }); }
+  }
+  // Kẻ khung mảnh + sọc xen kẽ cho vùng bảng (bỏ qua hàng tiêu đề/tổng đã tô màu riêng)
+  function polish(ws, r1, r2, c1, c2) {
+    for (var r = r1; r <= r2; r++) {
+      for (var c = c1; c <= c2; c++) {
+        var cell = ws.getCell(r, c);
+        cell.border = { top: { style: 'thin', color: { argb: 'FFE1DACD' } }, left: { style: 'thin', color: { argb: 'FFE1DACD' } }, bottom: { style: 'thin', color: { argb: 'FFE1DACD' } }, right: { style: 'thin', color: { argb: 'FFE1DACD' } } };
+        if (!cell.fill || !cell.fill.fgColor) { if ((r - r1) % 2 === 1) fill(cell, 'FFFAF7F2'); }
+        if (!cell.alignment) cell.alignment = { vertical: 'middle' };
+      }
+    }
+  }
+  // Cài đặt in chuẩn A4: vùng in, tiêu đề lặp lại, căn giữa, lề, đầu trang (Quốc hiệu) + chân trang (số trang)
+  var HDR_LEFT = 'CÔNG TY HICONIQUE';
+  function printSetup(ws, area, landscape, titleRows) {
+    ws.pageSetup = {
+      paperSize: 9, orientation: landscape ? 'landscape' : 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0,
+      horizontalCentered: true, printArea: area,
+      margins: { left: 0.6, right: 0.5, top: 1.15, bottom: 0.85, header: 0.35, footer: 0.35 }
+    };
+    if (titleRows) ws.pageSetup.printTitlesRow = titleRows;
+    ws.headerFooter = {
+      oddHeader: '&L&"Times New Roman,Bold"&9' + HDR_LEFT + '&R&"Times New Roman,Bold"&9CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\n&"Times New Roman,Bold"&9Độc lập - Tự do - Hạnh phúc',
+      oddFooter: '&L&"Times New Roman"&8Hải Phòng, ngày &D&C&"Times New Roman"&8&A&R&"Times New Roman"&8Trang &P / &N'
+    };
+  }
   function dateCell(s) { if (!s) return null; var p = String(s).split('-'); return new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])); }
   function kv(ws, row, label, val, fmt, how, opts) {
     opts = opts || {};
@@ -260,6 +306,7 @@ var FinanceExport = (function () {
     var label = function (t) { return TYPES[t].label; };
 
     // ---- thứ tự sheet: Tổng quan trước, nhưng tạo trước các sheet dữ liệu để biết địa chỉ ----
+    var wsCv = wb.addWorksheet('Bìa báo cáo', { properties: { tabColor: { argb: 'FF22272E' } }, views: [{ showGridLines: false }] });
     var wsOv = wb.addWorksheet('Tổng quan', { properties: { tabColor: { argb: BRONZE } } });
     var wsTx = wb.addWorksheet('Giao dịch');
     var wsPl = wb.addWorksheet('Lãi-Lỗ');
@@ -612,6 +659,117 @@ var FinanceExport = (function () {
     });
     widths(wsOv, [44, 22, 60]);
     wsOv.views = [{ state: 'frozen', ySplit: 4 }];
+
+    // ============ HOÀN THIỆN: kẻ khung, tô màu đánh giá, in ấn ============
+    polish(wsOv, 5, rk, 1, 3); polish(wsOv, cr + 1, cr + Math.max(1, catNames.length), 1, 3);
+    wsOv.addConditionalFormatting({ ref: 'C' + (cr + 1) + ':C' + (cr + Math.max(1, catNames.length)), rules: [{ type: 'dataBar', cfvo: [{ type: 'num', value: 0 }, { type: 'num', value: 1 }], color: { argb: 'FFD9B98A' }, gradient: false }] });
+    colorSign(wsOv, oLN + ':' + oLN); colorSign(wsOv, oCF + ':' + oCF);
+    polish(wsTx, 5, txLast, 1, 8); colorSign(wsTx, 'G5:H' + txLast);
+    wsTx.addConditionalFormatting({ ref: 'A5:A' + txLast, rules: [
+      { type: 'cellIs', operator: 'equal', formulae: ['"' + label('revenue') + '"'], style: { font: { color: { argb: 'FF1F6B3A' }, bold: true } } },
+      { type: 'cellIs', operator: 'equal', formulae: ['"' + label('expense') + '"'], style: { font: { color: { argb: 'FFB5402A' }, bold: true } } },
+      { type: 'cellIs', operator: 'equal', formulae: ['"' + label('loan') + '"'], style: { font: { color: { argb: 'FF8A6210' }, bold: true } } },
+      { type: 'cellIs', operator: 'equal', formulae: ['"' + label('repayment') + '"'], style: { font: { color: { argb: 'FF1F4E9E' }, bold: true } } }
+    ] });
+    polish(wsPl, 5, plLast, 1, 9); colorSign(wsPl, 'F5:F' + plT); colorSign(wsPl, 'H5:H' + plLast);
+    wsPl.addConditionalFormatting({ ref: 'G5:G' + plLast, rules: [{ type: 'dataBar', cfvo: [{ type: 'num', value: -0.5 }, { type: 'num', value: 1 }], color: { argb: 'FFD9B98A' }, gradient: false }] });
+    polish(wsCf, 7, cfLast, 1, 5); colorSign(wsCf, 'D7:D' + cfT); colorSign(wsCf, 'E7:E' + cfT);
+    polish(wsDb, 7, dbLast, 1, 5);
+    polish(wsRc, 5, rcLast, 1, 8); colorEval(wsRc, 'F5:G' + rcLast); centerBold(wsRc, 'F5:G' + rcLast);
+    polish(wsHl, 5, 10, 1, 3); polish(wsHl, 13, 18, 1, 5); colorEval(wsHl, 'D13:D18'); centerBold(wsHl, 'D14:D18');
+    polish(wsBs, 5, r5 + 4, 1, 3); colorEval(wsBs, 'C' + (r4 + 7)); centerBold(wsBs, 'C' + (r4 + 7) + ':C' + (r4 + 7));
+    polish(wsRk, 5, rkLast, 1, 6); colorEval(wsRk, 'F5:F' + rkLast); centerBold(wsRk, 'F5:F' + rkLast);
+    polish(wsPr, 5, 4 + ORDER.length, 1, 4);
+
+    // In ấn: A4, vùng in chuẩn, tiêu đề bảng lặp lại mỗi trang, đầu trang có Quốc hiệu – Tiêu ngữ
+    printSetup(wsOv, 'A1:C' + (cr + Math.max(1, catNames.length) + 1), false, '4:4');
+    printSetup(wsTx, 'A1:H' + txTot, true, '4:4');
+    printSetup(wsPl, 'A1:I' + (plT + 2), true, '4:4');
+    printSetup(wsCf, 'A1:E' + (fr + 8), false, '6:6');
+    printSetup(wsDb, 'A1:E' + (dbT + 2), false, '6:6');
+    printSetup(wsRc, 'A1:H' + (rcT + 4), true, '4:4');
+    printSetup(wsHl, 'A1:E23', true, null);
+    printSetup(wsBs, 'A1:C' + (r5 + 4), false, null);
+    printSetup(wsRk, 'A1:F' + (st0 + 6), true, '4:4');
+    printSetup(wsPr, 'A1:D' + (gr + 8), false, null);
+
+    // ============ BÌA BÁO CÁO — văn bản chuẩn, in luôn ============
+    (function () {
+      var now = new Date(), F = 'Times New Roman';
+      widths(wsCv, [6, 34, 20, 20, 20, 14]);
+      function m(r, c1, c2, val, o) {
+        wsCv.mergeCells(r, c1, r, c2); var c = wsCv.getCell(r, c1); c.value = val;
+        c.font = { name: F, size: (o && o.size) || 12, bold: !!(o && o.bold), italic: !!(o && o.italic), underline: !!(o && o.underline), color: { argb: 'FF000000' } };
+        c.alignment = { horizontal: (o && o.h) || 'center', vertical: 'middle', wrapText: true };
+        return c;
+      }
+      m(1, 1, 3, HDR_LEFT, { bold: true, size: 12 });
+      m(1, 4, 6, 'CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM', { bold: true, size: 12 });
+      m(2, 1, 3, 'Số: ....../BC-TC', { size: 12 });
+      m(2, 4, 6, 'Độc lập - Tự do - Hạnh phúc', { bold: true, size: 13 });
+      wsCv.getCell(2, 4).border = {}; ['D', 'E', 'F'].forEach(function (col) { wsCv.getCell(col + '3').border = { top: { style: 'thin', color: { argb: 'FF000000' } } }; });
+      wsCv.getRow(3).height = 6;
+      m(4, 4, 6, 'Hải Phòng, ngày ' + now.getDate() + ' tháng ' + (now.getMonth() + 1) + ' năm ' + now.getFullYear(), { italic: true, size: 12, h: 'right' });
+      wsCv.getRow(6).height = 8;
+      m(7, 1, 6, 'BÁO CÁO TÀI CHÍNH', { bold: true, size: 18 });
+      m(8, 1, 6, 'Kỳ báo cáo: từ ngày ' + vn(range.from) + ' đến ngày ' + vn(range.to), { bold: true, size: 13 });
+      m(9, 1, 6, 'Kính gửi: Ban Giám đốc / Chủ sở hữu Công ty', { italic: true, size: 12 });
+      wsCv.getRow(7).height = 30;
+      // Chỉ tiêu chủ yếu (công thức liên kết sheet Tổng quan)
+      var T = q('Tổng quan') + '!';
+      wsCv.getCell(11, 1).value = 'I. CÁC CHỈ TIÊU TÀI CHÍNH CHỦ YẾU'; wsCv.getCell(11, 1).font = { name: F, bold: true, size: 12 };
+      var head = ['STT', 'Chỉ tiêu', 'Giá trị', 'Đơn vị', 'Đánh giá', ''];
+      [1, 2, 3, 4, 5].forEach(function (i) { var c = wsCv.getCell(12, i); c.value = head[i - 1]; c.font = { name: F, bold: true, color: { argb: 'FFFFFFFF' } }; fill(c, DARK); c.alignment = { horizontal: 'center', vertical: 'middle' }; });
+      var kp = [
+        ['Doanh thu trong kỳ', T + oDT, NUM, 'VNĐ', null],
+        ['Chi phí hoạt động', T + oCP, NUM, 'VNĐ', null],
+        ['Lợi nhuận ròng', T + oLN, NUM, 'VNĐ', 'IF(C{r}>=0,"Tốt","Rủi ro")'],
+        ['Biên lợi nhuận ròng', 'IFERROR(' + T + oLN + '/' + T + oDT + ',0)', PCT, '%', 'IF(C{r}>=0.15,"Tốt",IF(C{r}>=0,"Cần chú ý","Rủi ro"))'],
+        ['Dòng tiền ròng trong kỳ', T + oCF, NUM, 'VNĐ', 'IF(C{r}>=0,"Tốt","Rủi ro")'],
+        ['Tồn quỹ cuối kỳ', cfClose, NUM, 'VNĐ', 'IF(C{r}>=0,"Tốt","Rủi ro")'],
+        ['Dư nợ vay cuối kỳ', debtEnd, NUM, 'VNĐ', 'IF(C{r}<=0,"Tốt","Cần chú ý")'],
+        ['Công nợ khách hàng chưa thu', rcUnpaid, NUM, 'VNĐ', null],
+        ['Trong đó công nợ quá hạn', rcOverdue, NUM, 'VNĐ', 'IF(C{r}=0,"Tốt","Rủi ro")'],
+        ['Số rủi ro mức Cao', q('Rủi ro') + '!$D$' + (st0 + 1), '0', 'rủi ro', 'IF(C{r}=0,"An toàn","Rủi ro")']
+      ];
+      kp.forEach(function (x, i) {
+        var r = 13 + i;
+        wsCv.getCell(r, 1).value = i + 1; wsCv.getCell(r, 1).alignment = { horizontal: 'center' };
+        wsCv.getCell(r, 2).value = x[0];
+        var v = wsCv.getCell(r, 3); v.value = { formula: x[1] }; v.numFmt = x[2]; v.alignment = { horizontal: 'right' };
+        wsCv.getCell(r, 4).value = x[3]; wsCv.getCell(r, 4).alignment = { horizontal: 'center' };
+        if (x[4]) wsCv.getCell(r, 5).value = { formula: x[4].replace(/\{r\}/g, r) };
+        [1, 2, 3, 4, 5].forEach(function (cc) { wsCv.getCell(r, cc).font = Object.assign({ name: F, size: 12 }, cc === 3 ? { bold: true } : {}); });
+      });
+      var kEnd = 12 + kp.length;
+      polish(wsCv, 13, kEnd, 1, 5); colorEval(wsCv, 'E13:E' + kEnd); centerBold(wsCv, 'E13:E' + kEnd); colorSign(wsCv, 'C15:C15');
+      // Nhận xét tự động
+      var nr = kEnd + 2;
+      wsCv.getCell(nr, 1).value = 'II. NHẬN XÉT'; wsCv.getCell(nr, 1).font = { name: F, bold: true, size: 12 };
+      wsCv.mergeCells(nr + 1, 1, nr + 1, 6);
+      var nc = wsCv.getCell(nr + 1, 1);
+      nc.value = { formula: '"Trong kỳ, công ty "&IF(C15>=0,"có lãi","bị lỗ")&" "&TEXT(ABS(C15),"#,##0")&" đồng trên doanh thu "&TEXT(C13,"#,##0")&" đồng (biên lợi nhuận "&TEXT(C16,"0.0%")&"). Dòng tiền ròng "&IF(C17>=0,"dương ","âm ")&TEXT(ABS(C17),"#,##0")&" đồng, tồn quỹ cuối kỳ "&TEXT(C18,"#,##0")&" đồng. Dư nợ vay "&TEXT(C19,"#,##0")&" đồng; công nợ khách hàng chưa thu "&TEXT(C20,"#,##0")&" đồng"&IF(C21>0,", trong đó quá hạn "&TEXT(C21,"#,##0")&" đồng cần đôn đốc thu hồi","")&". Có "&C22&" rủi ro mức Cao cần xem xét (chi tiết tại sheet Rủi ro)."' };
+      nc.font = { name: F, size: 12 }; nc.alignment = { wrapText: true, vertical: 'top', horizontal: 'justify' }; wsCv.getRow(nr + 1).height = 78;
+      // Phụ lục (liên kết tới từng sheet)
+      var ar = nr + 3;
+      wsCv.getCell(ar, 1).value = 'III. DANH MỤC PHỤ LỤC (bấm để chuyển sheet)'; wsCv.getCell(ar, 1).font = { name: F, bold: true, size: 12 };
+      var apx = [['Tổng quan', 'Chỉ tiêu tổng hợp, chi phí theo danh mục'], ['Giao dịch', 'Sổ giao dịch trong kỳ (có bộ lọc)'], ['Lãi-Lỗ', 'Kết quả kinh doanh theo tháng'], ['Dòng tiền & Dự báo', 'Tồn quỹ và dự báo 3 tháng'], ['Vay nợ', 'Vay – trả nợ, dư nợ luỹ kế'], ['Công nợ KH', 'Công nợ khách hàng, quá hạn'], ['Sức khỏe TC', 'Chấm điểm sức khỏe tài chính'], ['BCTC', 'Chỉ số thanh khoản, đòn bẩy, Z-Score'], ['Rủi ro', 'Đăng ký & đánh giá rủi ro'], ['Tham số', 'Hệ số & quy ước công thức']];
+      apx.forEach(function (x, i) {
+        var r = ar + 1 + i;
+        wsCv.getCell(r, 1).value = 'PL' + (i + 1); wsCv.getCell(r, 1).alignment = { horizontal: 'center' };
+        var l = wsCv.getCell(r, 2); l.value = { text: x[0], hyperlink: "#'" + x[0] + "'!A1" }; l.font = { name: F, size: 12, underline: true, color: { argb: 'FF1F4E9E' } };
+        wsCv.mergeCells(r, 3, r, 6); wsCv.getCell(r, 3).value = x[1]; wsCv.getCell(r, 3).font = { name: F, size: 12 };
+      });
+      var sr = ar + apx.length + 3;
+      // Chữ ký
+      m(sr, 4, 6, 'Hải Phòng, ngày ' + now.getDate() + ' tháng ' + (now.getMonth() + 1) + ' năm ' + now.getFullYear(), { italic: true, size: 12 });
+      m(sr + 1, 1, 2, 'NGƯỜI LẬP BIỂU', { bold: true }); m(sr + 1, 3, 4, 'KẾ TOÁN TRƯỞNG', { bold: true }); m(sr + 1, 5, 6, 'GIÁM ĐỐC', { bold: true });
+      m(sr + 2, 1, 2, '(Ký, ghi rõ họ tên)', { italic: true, size: 11 }); m(sr + 2, 3, 4, '(Ký, ghi rõ họ tên)', { italic: true, size: 11 }); m(sr + 2, 5, 6, '(Ký, đóng dấu, ghi rõ họ tên)', { italic: true, size: 11 });
+      wsCv.getRow(sr + 3).height = 70;
+      m(sr + 4, 1, 2, user.name || '', { bold: true }); m(sr + 4, 3, 4, '', { bold: true }); m(sr + 4, 5, 6, '', { bold: true });
+      wsCv.pageSetup = { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 1, horizontalCentered: true, printArea: 'A1:F' + (sr + 4), margins: { left: 0.8, right: 0.6, top: 0.7, bottom: 0.7, header: 0.3, footer: 0.3 } };
+      wsCv.headerFooter = { oddFooter: '&C&"Times New Roman"&8Bản in lúc &D &T · Tạo tự động từ Sổ tài chính HICONIQUE' };
+    })();
 
     wb.xlsx.writeBuffer().then(function (buffer) {
       var blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
