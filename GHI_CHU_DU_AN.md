@@ -1914,3 +1914,10 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 ### 2026-09-30 (bm) Chống "lan" cuộn ra trang — toàn web
 - offline.js (nạp mọi trang): bộ xử lý `wheel` toàn cục — con trỏ đang trong vùng có thanh cuộn (overflow auto/scroll, còn nội dung cuộn được) mà vùng đã tới mép theo chiều lăn thì `preventDefault()` → trang phía sau KHÔNG cuộn theo. Ngoài vùng cuộn: trang cuộn bình thường. Ctrl+lăn (zoom) không ảnh hưởng. Áp dụng cả vùng tạo động (hộp thoại, danh sách, bảng…).
 - finance.html: bảng Sổ quỹ / menu ngang / biểu đồ (lăn dọc → cuộn ngang) khi tới mép cũng đứng yên, không trả cuộn cho trang nữa. sw v83.
+
+### 2026-09-30 (bn) Sửa Excel Sổ tài chính: lỗi Circular Reference, tháng MM/YYYY, wrap text, sổ quỹ đồng bộ phong cách
+- **Lỗi "circular references" của Excel**: sheet Sổ TGNH 112 (và mọi sổ không có dòng phát sinh) có ô tổng `=SUM(H6:H5)` — vùng tự bao gồm chính ô tổng. Nay: không có dòng nào → ghi số 0; có dòng → `SUM(H<đầu>:H<cuối>)`. Đã quét toàn workbook không còn công thức tự trỏ vào chính nó.
+- **Tháng hiển thị 09/2026**: cột Tháng (Giao dịch), cột Tháng (Lãi-Lỗ, Dòng tiền) là NGÀY THẬT (ngày 1 của tháng) định dạng `mm/yyyy` → SUMIFS theo tháng vẫn khớp; nhãn dự báo `10/2026 (+1)`.
+- **Wrap Text tự động** cho mọi ô mọi sheet (giữ căn lề đã đặt), hàng tự giãn cao khi mở Excel.
+- Bìa báo cáo: bỏ chữ "(bấm để chuyển sheet)" (liên kết vẫn bấm được). "NGƯỜI LẬP BIỂU" = tên tài khoản đang xuất file (`user.name`).
+- Sổ quỹ 111 / Sổ TGNH 112 dựng lại theo phong cách chung (tiêu đề + dòng kỳ báo cáo, header tối, sọc, tổng nền be, tô xanh/đỏ số tồn, bảng "Tổng hợp theo TK đối ứng" có tên tài khoản, khối ký) thay bố cục Times New Roman cũ. Diễn giải luôn là chữ (số như 123456798 không bị căn phải). sw v84.

@@ -287,6 +287,8 @@ var FinanceExport = (function () {
       oddFooter: '&L&"Times New Roman"&8Hải Phòng, ngày &D&C&"Times New Roman"&8&A&R&"Times New Roman"&8Trang &P / &N'
     };
   }
+  function monthDate(ym) { var p = String(ym).split('-'); return new Date(Date.UTC(+p[0], +p[1] - 1, 1)); }
+  function setMonth(cell, ym) { cell.value = monthDate(ym); cell.numFmt = 'mm/yyyy'; cell.alignment = { horizontal: 'left', vertical: 'middle' }; }
   function dateCell(s) { if (!s) return null; var p = String(s).split('-'); return new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])); }
   function kv(ws, row, label, val, fmt, how, opts) {
     opts = opts || {};
@@ -305,49 +307,72 @@ var FinanceExport = (function () {
     try { build_(); } catch (err) { console.error('Export failed:', err); alert('Xuất file thất bại: ' + (err && err.message ? err.message : err)); btn.disabled = false; btn.textContent = 'Xuất Excel'; }
   }
 
-  // Sổ kế toán chi tiết quỹ tiền mặt (111) / tiền gửi ngân hàng (112) — bố cục như sổ xuất từ MISA:
-  // Ngày HT | Ngày CT | Số phiếu thu | Số phiếu chi | Diễn giải | TK | TK đối ứng | Nợ | Có | Số tồn (công thức) | Người nhận/nộp
+  // Sổ kế toán chi tiết quỹ tiền mặt (111) / tiền gửi ngân hàng (112) — cột như sổ MISA nhưng dùng CÙNG phong cách các sheet khác
+  // (tiêu đề đậm + dòng kỳ báo cáo nghiêng, header nền tối chữ trắng, sọc xen kẽ, dòng tổng nền be, tô xanh/đỏ số).
   function buildLedger_(ws, acc, all) {
-    var TYPES = ctx.TYPES, F = 'Times New Roman', THIN = { style: 'thin' }, bd = { top: THIN, left: THIN, bottom: THIN, right: THIN };
+    var TYPES = ctx.TYPES;
     var rowsAll = all.filter(function (e) { return TYPES[e.type] && TYPES[e.type].cashSign !== 0 && String(e.account || '111') === acc; })
       .sort(function (a, b) { return entryDate(a).localeCompare(entryDate(b)); });
     var opening = 0; rowsAll.forEach(function (e) { if (entryDate(e) < range.from) opening += TYPES[e.type].cashSign * num(e.amount); });
     var rows = rowsAll.filter(inRange);
-    var dm = function (s) { return s ? s.split('-').reverse().join('/') : ''; };
     var nm = acc === '111' ? 'QUỸ TIỀN MẶT' : 'TIỀN GỬI NGÂN HÀNG';
-    ws.mergeCells('A1:K1'); ws.getCell('A1').value = 'SỔ KẾ TOÁN CHI TIẾT ' + nm; ws.getCell('A1').font = { name: F, size: 14, bold: true }; ws.getCell('A1').alignment = { horizontal: 'center' };
-    ws.mergeCells('A2:K2'); ws.getCell('A2').value = 'Tài khoản: ' + acc + '; Từ ngày ' + vn(range.from) + ' đến ngày ' + vn(range.to); ws.getCell('A2').font = { name: F, size: 11, bold: true, italic: true }; ws.getCell('A2').alignment = { horizontal: 'center' };
-    ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'J', 'K'].forEach(function (c) { ws.mergeCells(c + '3:' + c + '4'); });
-    ws.mergeCells('H3:I3');
-    var heads = { A3: 'Ngày hạch toán', B3: 'Ngày chứng từ', C3: 'Số phiếu thu', D3: 'Số phiếu chi', E3: 'Diễn giải', F3: 'Tài khoản', G3: 'TK đối ứng', H3: 'Số phát sinh', H4: 'Nợ', I4: 'Có', J3: 'Số tồn', K3: 'Người nhận/Người nộp' };
-    Object.keys(heads).forEach(function (k) { ws.getCell(k).value = heads[k]; });
-    for (var hr = 3; hr <= 4; hr++) for (var hc = 1; hc <= 11; hc++) { var c = ws.getCell(hr, hc); c.font = { name: F, bold: true, size: 10 }; c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8EEF7' } }; c.border = bd; }
-    var r = 5, open = r; ws.getCell('E5').value = 'Số dư đầu kỳ'; ws.getCell('J5').value = opening; r++;
+    title(ws, 'SỔ KẾ TOÁN CHI TIẾT ' + nm + ' — TK ' + acc, 11, 'Kỳ báo cáo: ' + vn(range.from) + ' → ' + vn(range.to) + ' · Xuất lúc ' + new Date().toLocaleString('vi-VN') + ((ctx.user && ctx.user.name) ? ' · ' + ctx.user.name : ''));
+    header(ws, 4, ['Ngày hạch toán', 'Ngày chứng từ', 'Số phiếu thu', 'Số phiếu chi', 'Diễn giải', 'TK quỹ', 'TK đối ứng', 'Phát sinh Nợ (thu)', 'Phát sinh Có (chi)', 'Số tồn', 'Người nhận / người nộp']);
+    var r = 5, open = r;
+    ws.getCell(r, 5).value = 'Số dư đầu kỳ'; ws.getCell(r, 10).value = opening; ws.getCell(r, 10).numFmt = NUM;
+    for (var c0 = 1; c0 <= 11; c0++) { ws.getCell(r, c0).font = { bold: true }; fill(ws.getCell(r, c0), SOFT); }
+    r++;
     var first = r, sumIn = 0, sumOut = 0, run = opening, by = {};
     rows.forEach(function (e) {
       var s = TYPES[e.type].cashSign, amt = num(e.amount), isIn = s > 0, code = (/^\d{3,4}/.exec(String(e.counterAccount || '')) || [''])[0];
       run += s * amt; if (isIn) sumIn += amt; else sumOut += amt;
-      var k = code || 'Chưa gán'; var o = by[k] = by[k] || { i: 0, o: 0 }; if (isIn) o.i += amt; else o.o += amt;
-      ws.getRow(r).values = [dm(entryDate(e)), dm(e.voucherDate || entryDate(e)), isIn ? (e.voucherNo || '') : '', isIn ? '' : (e.voucherNo || ''), e.description || e.category || '', acc, code, isIn ? amt : 0, isIn ? 0 : amt, null, e.actor || ''];
-      ws.getCell('J' + r).value = { formula: 'J' + (r - 1) + '+H' + r + '-I' + r, result: run };
+      var k = code || 'Chưa gán'; var o = by[k] = by[k] || { n: 0, i: 0, o: 0 }; o.n++; if (isIn) o.i += amt; else o.o += amt;
+      var d1 = ws.getCell(r, 1); d1.value = dateCell(entryDate(e)); d1.numFmt = DATEF;
+      var d2 = ws.getCell(r, 2); d2.value = dateCell(e.voucherDate || entryDate(e)); d2.numFmt = DATEF;
+      ws.getCell(r, 3).value = isIn ? String(e.voucherNo || '') : ''; ws.getCell(r, 4).value = isIn ? '' : String(e.voucherNo || '');
+      ws.getCell(r, 5).value = String(e.description || e.category || ''); ws.getCell(r, 6).value = acc; ws.getCell(r, 7).value = code;
+      var h = ws.getCell(r, 8); h.value = isIn ? amt : 0; h.numFmt = NUM; h.font = { color: { argb: BLUE } };
+      var i2 = ws.getCell(r, 9); i2.value = isIn ? 0 : amt; i2.numFmt = NUM; i2.font = { color: { argb: BLUE } };
+      var j = ws.getCell(r, 10); j.value = { formula: 'J' + (r - 1) + '+H' + r + '-I' + r, result: run }; j.numFmt = NUM;
+      ws.getCell(r, 11).value = String(e.actor || '');
       r++;
     });
-    ws.getCell('E' + r).value = 'Cộng phát sinh trong kỳ';
-    ws.getCell('H' + r).value = { formula: 'SUM(H' + first + ':H' + (r - 1) + ')', result: sumIn };
-    ws.getCell('I' + r).value = { formula: 'SUM(I' + first + ':I' + (r - 1) + ')', result: sumOut };
-    ws.getCell('J' + r).value = { formula: 'J' + open + '+H' + r + '-I' + r, result: run };
-    var last = r;
-    for (var i = 5; i <= last; i++) { ['H', 'I', 'J'].forEach(function (cc) { ws.getCell(cc + i).numFmt = '#,##0;(#,##0);0'; }); for (var q = 1; q <= 11; q++) { var cell = ws.getCell(i, q); cell.font = { name: F, size: 10, bold: (i === open || i === last) }; cell.border = bd; } }
-    var sr = last + 2; ws.getCell('E' + sr).value = 'Tổng hợp theo TK đối ứng'; ws.getCell('E' + sr).font = { name: F, bold: true, size: 10 };
-    Object.keys(by).sort().forEach(function (k) { sr++; ws.getCell('E' + sr).value = k; ws.getCell('H' + sr).value = by[k].i; ws.getCell('I' + sr).value = by[k].o; ws.getCell('H' + sr).numFmt = '#,##0'; ws.getCell('I' + sr).numFmt = '#,##0'; ['E', 'H', 'I'].forEach(function (cc) { ws.getCell(cc + sr).font = { name: F, size: 10 }; }); });
-    var gr = sr + 2;
-    ws.mergeCells('H' + gr + ':K' + gr); ws.getCell('H' + gr).value = 'Ngày ..... tháng ..... năm ' + new Date().getFullYear(); ws.getCell('H' + gr).font = { name: F, italic: true, size: 10 }; ws.getCell('H' + gr).alignment = { horizontal: 'center' }; gr++;
-    [['A', 'C', 'Người ghi sổ'], ['E', 'E', 'Kế toán trưởng'], ['H', 'K', 'Giám đốc']].forEach(function (s) { if (s[0] !== s[1]) ws.mergeCells(s[0] + gr + ':' + s[1] + gr); ws.getCell(s[0] + gr).value = s[2]; ws.getCell(s[0] + gr).font = { name: F, bold: true, size: 10 }; ws.getCell(s[0] + gr).alignment = { horizontal: 'center' }; }); gr++;
-    [['A', 'C'], ['E', 'E'], ['H', 'K']].forEach(function (s) { if (s[0] !== s[1]) ws.mergeCells(s[0] + gr + ':' + s[1] + gr); ws.getCell(s[0] + gr).value = '(Ký, họ tên)'; ws.getCell(s[0] + gr).font = { name: F, italic: true, size: 9 }; ws.getCell(s[0] + gr).alignment = { horizontal: 'center' }; });
-    [13, 13, 12, 12, 50, 9, 11, 15, 15, 16, 24].forEach(function (w, i) { ws.getColumn(i + 1).width = w; });
+    var last = r - 1, tot = r;
+    ws.getCell(tot, 5).value = 'CỘNG PHÁT SINH TRONG KỲ / SỐ DƯ CUỐI KỲ';
+    // không có dòng nào → dùng số 0 (SUM(H6:H5) tự trỏ vào chính ô tổng → báo "circular reference" trong Excel)
+    var hs = ws.getCell(tot, 8), is = ws.getCell(tot, 9), js = ws.getCell(tot, 10);
+    if (rows.length) { hs.value = { formula: 'SUM(H' + first + ':H' + last + ')', result: sumIn }; is.value = { formula: 'SUM(I' + first + ':I' + last + ')', result: sumOut }; }
+    else { hs.value = 0; is.value = 0; }
+    js.value = { formula: 'J' + open + '+H' + tot + '-I' + tot, result: run };
+    [8, 9, 10].forEach(function (c) { ws.getCell(tot, c).numFmt = NUM; });
+    total(ws, tot, 1, 11);
+    polish(ws, 5, tot - 1, 1, 11);
+    if (rows.length) colorSign(ws, 'J' + first + ':J' + last);
+    // Tổng hợp theo TK đối ứng
+    var sr = tot + 3;
+    ws.mergeCells(sr - 1, 1, sr - 1, 6); ws.getCell(sr - 1, 1).value = 'TỔNG HỢP THEO TK ĐỐI ỨNG'; ws.getCell(sr - 1, 1).font = { bold: true, size: 12, color: { argb: 'FF22272E' } };
+    header(ws, sr, ['TK đối ứng', 'Tên tài khoản', '', '', 'Số dòng', '', '', 'Thu (Nợ)', 'Chi (Có)']);
+    var keys = Object.keys(by).sort(), rr = sr + 1;
+    keys.forEach(function (k) {
+      ws.getCell(rr, 1).value = k; ws.getCell(rr, 2).value = ACCT_NAMES[k] || (k === 'Chưa gán' ? 'Chưa gán TK đối ứng — nên bổ sung' : '');
+      ws.getCell(rr, 5).value = by[k].n; var a1 = ws.getCell(rr, 8); a1.value = by[k].i; a1.numFmt = NUM; var a2 = ws.getCell(rr, 9); a2.value = by[k].o; a2.numFmt = NUM;
+      ws.mergeCells(rr, 2, rr, 4); rr++;
+    });
+    if (keys.length) polish(ws, sr + 1, rr - 1, 1, 9); else { ws.getCell(rr, 1).value = 'Không có phát sinh trong kỳ.'; ws.getCell(rr, 1).font = { italic: true, color: { argb: 'FF7A7568' } }; rr++; }
+    // Khối ký duyệt
+    var g = rr + 2;
+    ws.mergeCells(g, 8, g, 11); ws.getCell(g, 8).value = 'Hải Phòng, ngày ..... tháng ..... năm ' + new Date().getFullYear(); ws.getCell(g, 8).font = { italic: true }; ws.getCell(g, 8).alignment = { horizontal: 'center' };
+    [[1, 3, 'NGƯỜI GHI SỔ'], [5, 5, 'KẾ TOÁN TRƯỞNG'], [8, 11, 'GIÁM ĐỐC']].forEach(function (s) {
+      if (s[0] !== s[1]) { ws.mergeCells(g + 1, s[0], g + 1, s[1]); ws.mergeCells(g + 2, s[0], g + 2, s[1]); }
+      var c1 = ws.getCell(g + 1, s[0]); c1.value = s[2]; c1.font = { bold: true }; c1.alignment = { horizontal: 'center' };
+      var c2 = ws.getCell(g + 2, s[0]); c2.value = '(Ký, ghi rõ họ tên)'; c2.font = { italic: true, size: 10, color: { argb: 'FF7A7568' } }; c2.alignment = { horizontal: 'center' };
+    });
+    widths(ws, [14, 14, 15, 15, 44, 9, 12, 17, 17, 17, 24]);
     ws.views = [{ state: 'frozen', ySplit: 4 }];
-    ws.pageSetup = { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, printArea: 'A1:K' + gr, printTitlesRow: '3:4', margins: { left: 0.4, right: 0.4, top: 0.6, bottom: 0.6, header: 0.3, footer: 0.3 } };
+    ws.autoFilter = { from: { row: 4, column: 1 }, to: { row: Math.max(5, tot - 1), column: 11 } };
+    printSetup(ws, 'A1:K' + (g + 2), true, '4:4');
   }
+  var ACCT_NAMES = { '111': 'Tiền mặt', '112': 'Tiền gửi ngân hàng', '131': 'Phải thu của khách hàng', '141': 'Tạm ứng', '152': 'Nguyên liệu, vật liệu', '153': 'Công cụ, dụng cụ', '211': 'Tài sản cố định hữu hình', '242': 'Chi phí trả trước', '331': 'Phải trả người bán', '333': 'Thuế và các khoản phải nộp', '334': 'Phải trả người lao động', '338': 'Phải trả, phải nộp khác', '341': 'Vay và nợ thuê tài chính', '4111': 'Vốn góp của chủ sở hữu', '421': 'Lợi nhuận sau thuế chưa phân phối', '511': 'Doanh thu bán hàng & cung cấp dịch vụ', '515': 'Doanh thu hoạt động tài chính', '621': 'Chi phí nguyên vật liệu trực tiếp', '622': 'Chi phí nhân công trực tiếp', '627': 'Chi phí sản xuất chung', '6421': 'Chi phí bán hàng', '6422': 'Chi phí quản lý doanh nghiệp', '635': 'Chi phí tài chính', '711': 'Thu nhập khác', '811': 'Chi phí khác' };
 
   function build_() {
     var TM = ctx.TaskManager, TYPES = ctx.TYPES, ORDER = ctx.TYPE_ORDER;
@@ -406,10 +431,10 @@ var FinanceExport = (function () {
       var r = 5 + i;
       wsTx.getCell(r, 1).value = (TYPES[e.type] || { label: e.type }).label;
       wsTx.getCell(r, 2).value = e.category || '';
-      wsTx.getCell(r, 3).value = e.description || '';
+      wsTx.getCell(r, 3).value = String(e.description || '');
       wsTx.getCell(r, 9).value = e.voucherNo || ''; wsTx.getCell(r, 10).value = e.account || '111'; wsTx.getCell(r, 11).value = (/^\d{3,4}/.exec(String(e.counterAccount || '')) || [''])[0]; wsTx.getCell(r, 12).value = e.actor || '';
       var dc = wsTx.getCell(r, 4); dc.value = dateCell(entryDate(e)); dc.numFmt = DATEF;
-      wsTx.getCell(r, 5).value = (entryDate(e) || '').slice(0, 7);
+      setMonth(wsTx.getCell(r, 5), (entryDate(e) || '').slice(0, 7));
       var ac = wsTx.getCell(r, 6); ac.value = num(e.amount); ac.numFmt = NUM; ac.font = { color: { argb: BLUE } };
       var gc = wsTx.getCell(r, 7); gc.value = { formula: 'F' + r + '*VLOOKUP(A' + r + ',' + PR + ',2,FALSE)' }; gc.numFmt = NUM;
       var hc = wsTx.getCell(r, 8); hc.value = { formula: 'F' + r + '*VLOOKUP(A' + r + ',' + PR + ',3,FALSE)' }; hc.numFmt = NUM;
@@ -451,7 +476,7 @@ var FinanceExport = (function () {
     header(wsPl, 4, ['Tháng', 'Doanh thu', '(−) Chi phí hoạt động', '(−) Thưởng nhân viên', '(+) Phạt nhân viên thu về', 'Lợi nhuận ròng', 'Biên lợi nhuận', 'Tăng/giảm LN so tháng trước', 'Doanh thu − Chi phí']);
     months.forEach(function (m, i) {
       var r = 5 + i;
-      wsPl.getCell(r, 1).value = m;
+      setMonth(wsPl.getCell(r, 1), m);
       [['B', 'revenue'], ['C', 'expense'], ['D', 'bonus'], ['E', 'penalty']].forEach(function (x) { var c = wsPl.getCell(x[0] + r); c.value = { formula: sumTM(x[1], '$A' + r) }; c.numFmt = NUM; });
       var f = wsPl.getCell('F' + r); f.value = { formula: 'B' + r + '-C' + r + '-D' + r + '+E' + r }; f.numFmt = NUM; f.font = { bold: true };
       var g = wsPl.getCell('G' + r); g.value = { formula: 'IFERROR(F' + r + '/B' + r + ',0)' }; g.numFmt = PCT;
@@ -477,7 +502,7 @@ var FinanceExport = (function () {
     header(wsCf, 6, ['Tháng', 'Tiền vào', 'Tiền ra', 'Dòng tiền ròng', 'Tồn quỹ cuối tháng']);
     months.forEach(function (m, i) {
       var r = 7 + i;
-      wsCf.getCell(r, 1).value = m;
+      setMonth(wsCf.getCell(r, 1), m);
       var b = wsCf.getCell('B' + r); b.value = { formula: 'SUMIFS(' + TX('G') + ',' + TX('E') + ',$A' + r + ',' + TX('G') + ',">0")' }; b.numFmt = NUM;
       var c = wsCf.getCell('C' + r); c.value = { formula: '-SUMIFS(' + TX('G') + ',' + TX('E') + ',$A' + r + ',' + TX('G') + ',"<0")' }; c.numFmt = NUM;
       var d = wsCf.getCell('D' + r); d.value = { formula: 'B' + r + '-C' + r }; d.numFmt = NUM; d.font = { bold: true };
@@ -498,7 +523,7 @@ var FinanceExport = (function () {
     var lastM = parse(range.to);
     for (var k = 1; k <= 3; k++) {
       var rr = fr + 3 + k, dm = new Date(lastM.getFullYear(), lastM.getMonth() + k, 1);
-      wsCf.getCell(rr, 1).value = dm.getFullYear() + '-' + pad(dm.getMonth() + 1) + ' (+' + k + ')';
+      wsCf.getCell(rr, 1).value = pad(dm.getMonth() + 1) + '/' + dm.getFullYear() + ' (+' + k + ')';
       var d1 = wsCf.getCell('D' + rr); d1.value = { formula: '$E$' + fr }; d1.numFmt = NUM;
       var e1 = wsCf.getCell('E' + rr); e1.value = { formula: '$E$' + (fr + 1) + '+$E$' + fr + '*' + k }; e1.numFmt = NUM; e1.font = { bold: true };
     }
@@ -725,6 +750,7 @@ var FinanceExport = (function () {
     wsOv.addConditionalFormatting({ ref: 'C' + (cr + 1) + ':C' + (cr + Math.max(1, catNames.length)), rules: [{ type: 'dataBar', cfvo: [{ type: 'num', value: 0 }, { type: 'num', value: 1 }], color: { argb: 'FFD9B98A' }, gradient: false }] });
     colorSign(wsOv, oLN + ':' + oLN); colorSign(wsOv, oCF + ':' + oCF);
     buildLedger_(wsQ1, '111', all); buildLedger_(wsQ2, '112', all);
+    // Tự động bật "Wrap Text" cho MỌI ô của MỌI sheet (chữ dài xuống dòng, hàng tự giãn) — giữ nguyên căn lề đã đặt
     polish(wsTx, 5, txLast, 1, 12); colorSign(wsTx, 'G5:H' + txLast);
     wsTx.addConditionalFormatting({ ref: 'A5:A' + txLast, rules: [
       { type: 'cellIs', operator: 'equal', formulae: ['"' + label('revenue') + '"'], style: { font: { color: { argb: 'FF1F6B3A' }, bold: true } } },
@@ -812,7 +838,7 @@ var FinanceExport = (function () {
       nc.font = { name: F, size: 12 }; nc.alignment = { wrapText: true, vertical: 'top', horizontal: 'justify' }; wsCv.getRow(nr + 1).height = 78;
       // Phụ lục (liên kết tới từng sheet)
       var ar = nr + 3;
-      wsCv.getCell(ar, 1).value = 'III. DANH MỤC PHỤ LỤC (bấm để chuyển sheet)'; wsCv.getCell(ar, 1).font = { name: F, bold: true, size: 12 };
+      wsCv.getCell(ar, 1).value = 'III. DANH MỤC PHỤ LỤC'; wsCv.getCell(ar, 1).font = { name: F, bold: true, size: 12 };
       var apx = [['Tổng quan', 'Chỉ tiêu tổng hợp, chi phí theo danh mục'], ['Giao dịch', 'Sổ giao dịch trong kỳ (có bộ lọc)'], ['Lãi-Lỗ', 'Kết quả kinh doanh theo tháng'], ['Dòng tiền & Dự báo', 'Tồn quỹ và dự báo 3 tháng'], ['Vay nợ', 'Vay – trả nợ, dư nợ luỹ kế'], ['Công nợ KH', 'Công nợ khách hàng, quá hạn'], ['Sức khỏe TC', 'Chấm điểm sức khỏe tài chính'], ['BCTC', 'Chỉ số thanh khoản, đòn bẩy, Z-Score'], ['Rủi ro', 'Đăng ký & đánh giá rủi ro'], ['Tham số', 'Hệ số & quy ước công thức']];
       apx.forEach(function (x, i) {
         var r = ar + 1 + i;
@@ -831,6 +857,16 @@ var FinanceExport = (function () {
       wsCv.headerFooter = { oddFooter: '&C&"Times New Roman"&8Bản in lúc &D &T · Tạo tự động từ Sổ tài chính HICONIQUE' };
     })();
 
+    // Tự động bật Wrap Text cho MỌI ô của MỌI sheet (chữ dài xuống dòng, hàng tự giãn cao) — giữ nguyên căn lề/căn giữa đã đặt
+    wb.eachSheet(function (ws) {
+      ws.eachRow({ includeEmpty: false }, function (row) {
+        row.eachCell({ includeEmpty: false }, function (c) {
+          var al = Object.assign({}, c.alignment || {});
+          al.wrapText = true; if (!al.vertical) al.vertical = 'middle';
+          c.alignment = al;
+        });
+      });
+    });
     wb.xlsx.writeBuffer().then(function (buffer) {
       var blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       var url = URL.createObjectURL(blob), a = document.createElement('a');
