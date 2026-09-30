@@ -37,6 +37,11 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
 - (2026-09-30) Viết lại đoạn mô tả đầu trang Tài sản & vật tư (`equipment.html`, `.subpage-lede`) gọn hơn, 2 câu, gom nhóm tài sản.
 
+### Phiên 2026-09-30 (n) — Khung trạng thái đồng bộ: tốc độ ghi/đọc + đếm ngược; GỘP lệnh ghi
+
+- Người dùng chụp khung: **"Đang lưu… (136 thao tác)"** → hàng đợi ghi phình to (mỗi lệnh gửi tuần tự ~3–5s ⇒ hàng chục phút mới xong, đó là lý do "Lưu mà Sheet chưa thấy"). Nay `callGSheetsAPI` **gộp** các lệnh `update*/upsert*` cùng `id` chưa gửi thành 1 lệnh (dữ liệu mới nhất đè lên; không gộp lệnh đang gửi dở) — thử: 6 lần sửa liên tiếp + 1 thêm → chỉ 3 lệnh.
+- Khung `#eqSyncStatus` (trang Tài sản) hiển thị 2 dòng, cập nhật mỗi giây: dòng 1 = trạng thái (Đang lưu N thao tác · còn khoảng X = N × thời gian ghi TB · lệnh nhiều nhất trong hàng đợi để dò nguyên nhân / ⚠ lỗi + thử lại sau Ns / ✓ Đã đồng bộ); dòng 2 = **Ghi x,xs/lệnh** (TB 5 lệnh gần nhất) · **Đọc x,xs** (lần đọc gần nhất) · **làm mới sau Ns** (đếm ngược nhịp 10–15s). Số đo trong `window.HiconiqueMetrics` (`task-data.js`; `offline.js` ghi `nextRefreshAt`). sw v32.
+
 ### Phiên 2026-09-30 (m) — Kiểm tra lại "Lưu không lên Sheet" + chip trạng thái lưu
 
 - Kiểm thử THẬT đầu-cuối bằng trình duyệt trên cả localhost và production (Workers): mở tài sản → sửa → Lưu → 1 lệnh `updateEquipment` (~4,8KB) → **HTTP 200 trong 3–4s, hàng đợi rỗng, Sheet ghi đúng** → luồng lưu chạy tốt ở máy sạch; lỗi của người dùng nằm ở trạng thái riêng của trình duyệt họ (hàng đợi/localStorage cũ hoặc mạng), không tái hiện được từ ngoài.

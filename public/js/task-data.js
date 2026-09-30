@@ -68,13 +68,27 @@ function touchWriteQueueLock_() {
   try { localStorage.setItem(WRITE_QUEUE_LOCK_KEY, writeTabId + '|' + Date.now()); } catch (e) {}
 }
 function scheduleWriteQueue_(delay) {
+  HiconiqueMetrics.nextWriteAt = Date.now() + delay;
   clearTimeout(writeQueueTimer);
   writeQueueTimer = setTimeout(processWriteQueue_, delay);
 }
 
+// Số đo tốc độ đọc/ghi + mốc đếm ngược (trang Tài sản hiển thị): writeMs = thời gian 5 lệnh ghi gần nhất, readMs = lần đọc gói gần nhất
+var HiconiqueMetrics = window.HiconiqueMetrics = { writeMs: [], readMs: null, readAt: 0, nextWriteAt: 0, nextRefreshAt: 0 };
 function callGSheetsAPI(action, data, id) {
   if (!isUsingGSheets() || !GSHEETS_CONFIG.API_URL) return;
   var q = readWriteQueue_();
+  // GỘP các lệnh sửa cùng 1 dòng chưa gửi (VD sửa liên tiếp / đánh dấu đọc nhiều lần): chỉ giữ 1 lệnh với dữ liệu mới nhất
+  // → hàng đợi không phình to (từng có 136 thao tác chờ). Không gộp lệnh đang gửi dở (phần tử đầu khi writeQueueBusy).
+  if (id && /^(update|upsert)/i.test(action)) {
+    for (var mi = writeQueueBusy ? 1 : 0; mi < q.length; mi++) {
+      if (q[mi].action === action && q[mi].id === id && !q[mi].tries) {
+        q[mi].data = Object.assign({}, q[mi].data, data || {}); q[mi].ts = Date.now();
+        saveWriteQueue_(q); emitSyncState_({ event: 'queued', action: action, id: id }); processWriteQueue_();
+        return;
+      }
+    }
+  }
   q.push({ qid: 'q_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7), action: action, data: data || {}, id: id || '', ts: Date.now(), tries: 0 });
   saveWriteQueue_(q);
   emitSyncState_({ event: 'queued', action: action, id: id });
@@ -93,7 +107,7 @@ function processWriteQueue_() {
   if (writeQueueLockedByOtherTab_()) { scheduleWriteQueue_(4000); return; }   // tab khác đang gửi, tránh gửi trùng
   writeQueueBusy = true;
   touchWriteQueueLock_();
-  var op = q[0];
+  var op = q[0], t0Write = Date.now();
 
   function finish(ok, reason, deterministic, maxTries) {
     clearTimeout(timer);
@@ -102,6 +116,7 @@ function processWriteQueue_() {
     var idx = -1;
     for (var i = 0; i < cur.length; i++) { if (cur[i].qid === op.qid) { idx = i; break; } }
     if (ok) {
+      HiconiqueMetrics.writeMs.push(Date.now() - t0Write); if (HiconiqueMetrics.writeMs.length > 5) HiconiqueMetrics.writeMs.shift();
       if (idx !== -1) cur.splice(idx, 1);
       saveWriteQueue_(cur);
       lastWriteOkAt = Date.now();
@@ -235,7 +250,7 @@ function syncToGSheets(type, action, data, id) {
 function fetchFromAPI(action, callback, isRetry) {
   if (!isUsingGSheets() || !GSHEETS_CONFIG.API_URL) { callback([]); return; }
   var controller = new AbortController();
-  var timer = setTimeout(function () { controller.abort(); }, 8000);
+  var timer = setTimeout(function () { controller.abort(); }, 8000), t0Read = Date.now();
   fetch(GSHEETS_CONFIG.API_URL + '?action=' + encodeURIComponent(action), { redirect: 'follow', signal: controller.signal })
     .then(function (r) { return r.json(); })
     .then(function (data) {
@@ -243,6 +258,7 @@ function fetchFromAPI(action, callback, isRetry) {
       // TRƯỚC khi trả callback để mọi trang đều thấy mốc giờ cập nhật đúng.
       if (typeof Offline !== 'undefined') Offline.markSynced();
       clearTimeout(timer);
+      if (window.HiconiqueMetrics) { window.HiconiqueMetrics.readMs = Date.now() - t0Read; window.HiconiqueMetrics.readAt = Date.now(); }
       callback(Array.isArray(data) ? data : []);
     })
     .catch(function (e) {
@@ -808,6 +824,7 @@ var TaskManager = (function() {
     var known = {};
     REFRESH_TYPES.forEach(function (ty) { if (gsHashes[ty] && gsCache[ty] && gsCache[ty].length > 0) known[API_READ_ACTIONS[ty]] = gsHashes[ty]; });
     var hashParam = Object.keys(known).length ? '&hashes=' + encodeURIComponent(JSON.stringify(known)) : '';
+    var t0Read = Date.now();
     fetch(GSHEETS_CONFIG.API_URL + '?action=getBundle&types=' + encodeURIComponent(actions.join(',')) + hashParam, { redirect: 'follow', signal: controller.signal })
       .then(function (r) { return r.json(); })
       .then(function (data) {
@@ -821,6 +838,7 @@ var TaskManager = (function() {
           if (Array.isArray(v)) { map[ty] = v; if (hs[act]) gsHashes[ty] = hs[act]; }
         });
         gsBundle = map; gsBundleAt = Date.now();
+        HiconiqueMetrics.readMs = gsBundleAt - t0Read; HiconiqueMetrics.readAt = gsBundleAt;
         if (typeof Offline !== 'undefined') Offline.markSynced();
         callback('ok');
       })

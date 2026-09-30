@@ -380,7 +380,9 @@ var Offline = (function () {
     pingCheck();
     pingTimer = setInterval(pingCheck, PING_INTERVAL_MS);
     (function scheduleSilentRefresh() {
-      setTimeout(function () { silentRefresh(); scheduleSilentRefresh(); }, SILENT_REFRESH_MIN_MS + Math.random() * SILENT_REFRESH_JITTER_MS);
+      var wait = SILENT_REFRESH_MIN_MS + Math.random() * SILENT_REFRESH_JITTER_MS;
+      if (window.HiconiqueMetrics) window.HiconiqueMetrics.nextRefreshAt = Date.now() + wait;
+      setTimeout(function () { silentRefresh(); scheduleSilentRefresh(); }, wait);
     })();
     registerServiceWorker();
     initPullToRefresh();
