@@ -312,6 +312,7 @@
   (function () {
     'use strict';
 
+    function vnDate(s) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || '')); return m ? m[3] + '/' + m[2] + '/' + m[1] : (s || ''); }
     function fmt(n) { return Math.round(Number(n) || 0).toLocaleString('vi-VN'); }
     function currentMonthStr() {
       var d = new Date();
@@ -918,7 +919,7 @@
       var html = '<tr><td colspan="9"><b>Số dư đầu kỳ</b></td><td class="num' + neg(d.opening) + '"><b>' + money(d.opening) + '</b></td><td></td></tr>';
       html += d.list.length ? d.list.map(function (r) {
         var e = r.e, isIn = r.inAmt > 0;
-        return '<tr><td>' + escapeHtml(e.date || '') + '</td><td>' + escapeHtml(e.voucherDate || e.date || '') + '</td><td style="font-family:JetBrains Mono,monospace;font-size:0.75rem;">' + (isIn ? escapeHtml(e.voucherNo || '') : '') + '</td><td style="font-family:JetBrains Mono,monospace;font-size:0.75rem;">' + (isIn ? '' : escapeHtml(e.voucherNo || '')) + '</td>' +
+        return '<tr><td style="white-space:nowrap;">' + vnDate(e.date) + '</td><td style="white-space:nowrap;">' + vnDate(e.voucherDate || e.date) + '</td><td style="font-family:JetBrains Mono,monospace;font-size:0.75rem;">' + (isIn ? escapeHtml(e.voucherNo || '') : '') + '</td><td style="font-family:JetBrains Mono,monospace;font-size:0.75rem;">' + (isIn ? '' : escapeHtml(e.voucherNo || '')) + '</td>' +
           '<td>' + escapeHtml(e.description || e.category || '') + '</td><td>' + d.acc + '</td><td>' + counterCell(e) + '</td>' +
           '<td class="num">' + fmt(r.inAmt) + '</td><td class="num">' + fmt(r.outAmt) + '</td><td class="num' + neg(r.bal) + '">' + money(r.bal) + '</td><td>' + escapeHtml(e.actor || '') + '</td></tr>';
       }).join('') : '<tr><td colspan="11" class="fn-empty">Không có phát sinh trong kỳ cho tài khoản này.</td></tr>';
@@ -1003,7 +1004,7 @@
       var shown = limit ? list.slice(0, limit) : list, bal = 0;
       var rows = shown.map(function (e) {
         var t = TYPES[e.type] || { label: e.type }, amt = Number(e.amount) || 0;
-        return '<tr><td>' + escapeHtml(e.date || '') + '</td><td style="font-family:JetBrains Mono,monospace;font-size:.75rem;">' + escapeHtml(e.voucherNo || '—') + '</td><td>' + escapeHtml(t.label) + '</td><td>' + escapeHtml(e.category || '—') + '</td><td>' + (e.counterAccount ? escapeHtml((/^\d{3,4}/.exec(e.counterAccount) || [e.counterAccount])[0]) : '—') + '</td><td>' + escapeHtml(e.description || '') + '</td><td>' + escapeHtml(e.actor || '') + '</td><td class="num ' + dtSign(e) + '">' + fmt(amt) + '</td></tr>';
+        return '<tr><td style="white-space:nowrap;">' + vnDate(e.date) + '</td><td style="font-family:JetBrains Mono,monospace;font-size:.75rem;">' + escapeHtml(e.voucherNo || '—') + '</td><td>' + escapeHtml(t.label) + '</td><td>' + escapeHtml(e.category || '—') + '</td><td>' + (e.counterAccount ? escapeHtml((/^\d{3,4}/.exec(e.counterAccount) || [e.counterAccount])[0]) : '—') + '</td><td>' + escapeHtml(e.description || '') + '</td><td>' + escapeHtml(e.actor || '') + '</td><td class="num ' + dtSign(e) + '">' + fmt(amt) + '</td></tr>';
       }).join('');
       return '<div class="fn-dt-wrap"><table class="fn-dt-table"><thead><tr><th>Ngày</th><th>Số phiếu</th><th>Loại</th><th>Danh mục</th><th>TK đối ứng</th><th>Mô tả</th><th>Người GD</th><th class="num" style="text-align:right;">Số tiền</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
         (limit && list.length > limit ? '<div class="fn-dt-note">Hiển thị ' + limit + ' / ' + list.length + ' giao dịch mới nhất — xem đầy đủ ở mục Giao dịch.</div>' : '');
@@ -1269,7 +1270,7 @@
           '<td>' + counterCell(e) + '</td>' +
           '<td>' + escapeHtml(e.description || '') + '</td>' +
           '<td>' + escapeHtml(e.actor || '—') + '</td>' +
-          '<td>' + escapeHtml(e.date || '') + '</td>' +
+          '<td style="white-space:nowrap;">' + vnDate(e.date) + '</td>' +
           '<td class="fn-amount ' + t.cls + '">' + fmt(e.amount) + '</td>' +
           '<td><button class="fn-btn fn-btn-ghost fn-btn-sm" data-delete-entry="' + e.id + '">Xoá</button></td>' +
         '</tr>';

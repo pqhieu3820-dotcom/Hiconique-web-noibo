@@ -1862,3 +1862,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (aw) Biểu đồ dòng tiền: lăn chuột cuộn ngang
 - finance.html: rê chuột vào `.fn-chart-wrap` (2 biểu đồ) rồi lăn → cuộn ngang; tới mép trả cuộn dọc cho trang. sw v67.
+
+### 2026-09-30 (ax) Ngày hiển thị dd/mm/yyyy, không xuống dòng
+- finance.html: hàm `vnDate()` — bảng chi tiết (bấm ở Tổng quan), Sổ quỹ và bảng Giao dịch hiển thị ngày dạng 30/09/2026 trên 1 dòng (`white-space:nowrap`); dữ liệu lưu vẫn yyyy-mm-dd. sw v68.
