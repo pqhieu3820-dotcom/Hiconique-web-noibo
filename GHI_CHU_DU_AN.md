@@ -1824,3 +1824,8 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (am) Danh sách Danh mục mở sang bên phải ô
 - finance.html `.fn-combo-list`: mở bên phải ô (rộng 300px, cao tối đa 320px), thẻ chứa không còn cắt (`overflow:visible`); màn <900px quay lại mở phía dưới. sw v57.
+
+### 2026-09-30 (an) Sổ tài chính: Người giao dịch, Số phiếu thu/chi, TK đối ứng; chip kính trong hơn
+- Sheet `TC-Tài chính công ty` thêm cột `Người giao dịch`(actor), `Số phiếu`(voucherNo), `TK đối ứng`(counterAccount) — Apps Script **v106** đã deploy.
+- finance.html form Thêm giao dịch: **Số phiếu tự sinh** `PT-yyMM-NNN` (khoản thu: doanh thu, vay vào) / `PC-yyMM-NNN` (khoản chi), sửa tay được, báo ngay khi TRÙNG số phiếu và chặn lưu; **Tài khoản đối ứng** dạng combobox gợi ý TK kế toán (111, 112, 131, 331, 334, 333, 511, 621, 622, 642…) hoặc gõ tay; **Người giao dịch** chọn thành viên (mặc định người đang đăng nhập) hoặc "Khác / đối tác bên ngoài". Bảng giao dịch có thêm 3 cột tương ứng.
+- Chip đồng bộ (offline.js): nền trong hơn nữa (alpha 0–6%, blur 9px), chữ đậm hơn; dấu ✓ thành SVG animation (icon bật lên, dấu tích tự vẽ, vòng sóng xanh lan ra), tôn trọng giảm chuyển động. sw v58.

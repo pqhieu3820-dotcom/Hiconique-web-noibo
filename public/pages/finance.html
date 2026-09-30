@@ -131,6 +131,9 @@
     .fn-form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; padding: 20px 24px; align-items: end; }
     .fn-form-grid.cols5 { grid-template-columns: repeat(5, 1fr); }
     .fn-field-label { display: block; font-size: 0.6875rem; color: var(--fn-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+    .fn-vmsg { min-height: 16px; margin-top: 4px; font-size: 0.6875rem; color: var(--fn-muted); }
+    .fn-vmsg.ok { color: var(--fn-green); } .fn-vmsg.bad { color: var(--fn-red); }
+    .fn-hint { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--fn-bronze); }
     .fn-combo { position: relative; }
     .fn-combo-list { position: absolute; z-index: 60; left: calc(100% + 10px); top: -6px; width: 300px; max-height: 320px; overflow-y: auto; padding: 6px; background: var(--fn-surface, #fff); border: 1px solid var(--fn-border); border-radius: 12px; box-shadow: 0 14px 34px rgba(0,0,0,0.16); }
     .fn-combo-list[hidden] { display: none; }
@@ -426,13 +429,16 @@
                   '<div><span class="fn-field-label">Danh mục</span><div class="fn-combo"><input type="text" class="fn-input" id="fnCategory" autocomplete="off" placeholder="Chọn hoặc gõ danh mục…"><div class="fn-combo-list" id="fnCatList" hidden></div></div></div>' +
                   '<div><span class="fn-field-label">Số tiền</span><input type="text" inputmode="numeric" class="fn-input mono" id="fnAmount" data-money-input value="0"></div>' +
                   '<div><span class="fn-field-label">Ngày</span><input type="date" class="fn-input" id="fnDate"></div>' +
-                  '<div style="grid-column: span 3;"><span class="fn-field-label">Mô tả</span><input type="text" class="fn-input" id="fnDescription" placeholder="Ghi chú chi tiết khoản này..."></div>' +
+                  '<div><span class="fn-field-label">Số phiếu <span id="fnVoucherKind" class="fn-hint"></span></span><input type="text" class="fn-input mono" id="fnVoucherNo" maxlength="20" spellcheck="false"><div class="fn-vmsg" id="fnVoucherMsg"></div></div>' +
+                  '<div><span class="fn-field-label">Tài khoản đối ứng</span><div class="fn-combo"><input type="text" class="fn-input" id="fnCounter" autocomplete="off" placeholder="Chọn hoặc gõ TK (VD 112)…"><div class="fn-combo-list" id="fnCounterList" hidden></div></div></div>' +
+                  '<div><span class="fn-field-label">Người giao dịch</span><select class="fn-select" id="fnActor"></select><input type="text" class="fn-input" id="fnActorOther" placeholder="Tên người / đối tác…" hidden style="margin-top:6px;"></div>' +
+                  '<div style="grid-column: span 2;"><span class="fn-field-label">Mô tả</span><input type="text" class="fn-input" id="fnDescription" placeholder="Ghi chú chi tiết khoản này..."></div>' +
                   '<div><button class="fn-btn fn-btn-primary" id="fnAddBtn" style="width:100%;">+ Thêm giao dịch</button></div>' +
                 '</div>' +
               '</div>' +
               '<div class="fn-card">' +
                 '<div class="fn-card-head"><div class="fn-card-title" id="fnListTitle">Giao dịch trong tháng</div></div>' +
-                '<table class="fn-table"><thead><tr><th>Loại</th><th>Danh mục</th><th>Mô tả</th><th>Ngày</th><th>Số tiền</th><th></th></tr></thead><tbody id="fnEntryRows"></tbody></table>' +
+                '<table class="fn-table"><thead><tr><th>Số phiếu</th><th>Loại</th><th>Danh mục</th><th>TK đối ứng</th><th>Mô tả</th><th>Người GD</th><th>Ngày</th><th>Số tiền</th><th></th></tr></thead><tbody id="fnEntryRows"></tbody></table>' +
               '</div>' +
             '</div>' +
 
@@ -587,6 +593,55 @@
       document.getElementById('fnType').addEventListener('change', function () { document.getElementById('fnCategory').value = ''; syncCategoryList(); });
       syncCategoryList();
 
+      // ---- Số phiếu thu/chi (PT = thu, PC = chi) + Tài khoản đối ứng ----
+      var INCOME_TYPES = { revenue: 1, loan: 1 };   // khoản THU (doanh thu, vay vào) → PT; còn lại → PC
+      var COUNTER_ACCOUNTS = ['111 — Tiền mặt', '112 — Tiền gửi ngân hàng', '131 — Phải thu của khách hàng', '331 — Phải trả người bán', '334 — Phải trả người lao động', '333 — Thuế và các khoản phải nộp', '338 — Phải trả khác', '341 — Vay và nợ thuê tài chính', '511 — Doanh thu bán hàng & dịch vụ', '621 — Chi phí nguyên vật liệu', '622 — Chi phí nhân công', '627 — Chi phí sản xuất chung', '642 — Chi phí quản lý doanh nghiệp', '211 — Tài sản cố định', '141 — Tạm ứng'];
+      function voucherPrefix() { return INCOME_TYPES[document.getElementById('fnType').value] ? 'PT' : 'PC'; }
+      function voucherNextNo() {
+        var ym = (document.getElementById('fnDate').value || new Date().toISOString().slice(0, 10)).slice(2, 7).replace('-', '');
+        var head = voucherPrefix() + '-' + ym + '-', max = 0;
+        TaskManager.getFinanceEntries().forEach(function (e) { if (e.voucherNo && String(e.voucherNo).indexOf(head) === 0) { var n = parseInt(String(e.voucherNo).slice(head.length), 10); if (n > max) max = n; } });
+        return head + ('00' + (max + 1)).slice(-3);
+      }
+      function voucherVal() { return document.getElementById('fnVoucherNo').value.trim().toUpperCase(); }
+      function voucherCheck(v) {
+        if (!v) return '';
+        if (!/^[A-Z0-9][A-Z0-9\/.-]{2,19}$/.test(v)) return 'Số phiếu chỉ gồm chữ, số và - / .';
+        var dup = TaskManager.getFinanceEntries().filter(function (e) { return String(e.voucherNo || '').toUpperCase() === v; })[0];
+        return dup ? 'Số phiếu đã tồn tại (' + (dup.category || dup.description || dup.date || '') + '). Chọn số khác.' : '';
+      }
+      function refreshVoucher() {
+        var inp = document.getElementById('fnVoucherNo'), msg = document.getElementById('fnVoucherMsg');
+        document.getElementById('fnVoucherKind').textContent = voucherPrefix() === 'PT' ? '· Phiếu thu' : '· Phiếu chi';
+        if (!inp.dataset.manual) inp.value = voucherNextNo();
+        var err = voucherCheck(voucherVal());
+        msg.className = 'fn-vmsg ' + (err ? 'bad' : 'ok');
+        msg.textContent = err || (voucherVal() ? '✓ Số phiếu hợp lệ, chưa trùng' : '');
+      }
+      (function bindVoucher() {
+        var inp = document.getElementById('fnVoucherNo');
+        inp.addEventListener('input', function () { inp.value = inp.value.toUpperCase(); inp.dataset.manual = inp.value ? '1' : ''; refreshVoucher(); });
+        document.getElementById('fnType').addEventListener('change', function () { inp.dataset.manual = ''; refreshVoucher(); });
+        document.getElementById('fnDate').addEventListener('change', function () { if (!inp.dataset.manual) refreshVoucher(); });
+        refreshVoucher();
+        var ci = document.getElementById('fnCounter'), cl = document.getElementById('fnCounterList');
+        function draw() {
+          var q = ci.value.trim().toLowerCase();
+          var s = COUNTER_ACCOUNTS.filter(function (c) { return !q || c.toLowerCase().indexOf(q) !== -1; });
+          cl.innerHTML = s.length ? s.map(function (c) { return '<div class="fn-combo-item" data-v="' + escapeHtml(c) + '">' + escapeHtml(c) + '</div>'; }).join('') : '<div class="fn-combo-empty">Không có gợi ý — cứ gõ số tài khoản</div>';
+        }
+        function open() { draw(); cl.hidden = false; }
+        ci.addEventListener('focus', open); ci.addEventListener('click', open); ci.addEventListener('input', open);
+        cl.addEventListener('mousedown', function (e) { var it = e.target.closest('.fn-combo-item'); if (!it) return; e.preventDefault(); ci.value = it.dataset.v; cl.hidden = true; });
+        document.addEventListener('mousedown', function (e) { if (!e.target.closest('.fn-combo')) cl.hidden = true; });
+      })();
+      (function initActor() {
+        var sel = document.getElementById('fnActor'), oth = document.getElementById('fnActorOther');
+        var ms = (TaskManager.getActiveMembers ? TaskManager.getActiveMembers() : TaskManager.getMembers()) || [];
+        sel.innerHTML = ms.map(function (m) { return '<option value="' + escapeHtml(m.name) + '">' + escapeHtml(m.name) + '</option>'; }).join('') + '<option value="__other">Khác / đối tác bên ngoài…</option>';
+        if (user && user.name) sel.value = user.name;
+        sel.addEventListener('change', function () { oth.hidden = sel.value !== '__other'; if (!oth.hidden) oth.focus(); });
+      })();
       document.getElementById('fnAddBtn').addEventListener('click', function () {
         var type = document.getElementById('fnType').value;
         var amount = HiconiqueMoney.parse(document.getElementById('fnAmount').value);
@@ -595,15 +650,24 @@
           type: type,
           category: document.getElementById('fnCategory').value.trim(),
           description: document.getElementById('fnDescription').value.trim(),
+          voucherNo: voucherVal(),
+          counterAccount: document.getElementById('fnCounter').value.trim(),
+          actor: (document.getElementById('fnActor').value === '__other' ? document.getElementById('fnActorOther').value.trim() : document.getElementById('fnActor').value),
           amount: amount,
           date: dateVal,
           month: dateVal.slice(0, 7)
         };
+        var vErr = voucherCheck(data.voucherNo);
+        if (vErr) { document.getElementById('fnVoucherMsg').className = 'fn-vmsg bad'; document.getElementById('fnVoucherMsg').textContent = vErr; return; }
         TaskManager.createFinanceEntry(data, user);
         document.getElementById('fnAmount').value = 0;
+        document.getElementById('fnCounter').value = '';
+        document.getElementById('fnVoucherNo').dataset.manual = '';
         document.getElementById('fnCategory').value = '';
         document.getElementById('fnDescription').value = '';
+        document.getElementById('fnActorOther').value = '';
         renderAll();
+        refreshVoucher();
       });
 
       document.getElementById('fnRcvAddBtn').addEventListener('click', function () {
@@ -946,16 +1010,19 @@
       var rows = document.getElementById('fnEntryRows');
 
       if (list.length === 0) {
-        rows.innerHTML = '<tr><td colspan="6" class="fn-empty">Chưa có giao dịch nào trong tháng này.</td></tr>';
+        rows.innerHTML = '<tr><td colspan="9" class="fn-empty">Chưa có giao dịch nào trong tháng này.</td></tr>';
         return;
       }
 
       rows.innerHTML = list.map(function (e) {
         var t = TYPES[e.type] || { label: e.type, cls: 'neutral' };
         return '<tr>' +
+          '<td style="font-family:JetBrains Mono,monospace;font-size:0.75rem;">' + escapeHtml(e.voucherNo || '—') + '</td>' +
           '<td><span class="fn-type-badge" style="background:var(--fn-bg);border:1px solid var(--fn-border);">' + escapeHtml(t.label) + '</span></td>' +
           '<td>' + escapeHtml(e.category || '—') + '</td>' +
+          '<td>' + escapeHtml(e.counterAccount || '—') + '</td>' +
           '<td>' + escapeHtml(e.description || '') + '</td>' +
+          '<td>' + escapeHtml(e.actor || '—') + '</td>' +
           '<td>' + escapeHtml(e.date || '') + '</td>' +
           '<td class="fn-amount ' + t.cls + '">' + fmt(e.amount) + '</td>' +
           '<td><button class="fn-btn fn-btn-ghost fn-btn-sm" data-delete-entry="' + e.id + '">Xoá</button></td>' +
