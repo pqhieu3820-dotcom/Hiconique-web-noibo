@@ -1,7 +1,7 @@
 /**
  * HiconiqueExcel — tiêu đề văn bản CHUẨN + cài đặt in cho MỌI file Excel xuất từ web (2026-09-30).
  * Chèn 5 dòng đầu mỗi sheet:
- *   CÔNG TY TNHH KIẾN TRÚC VÀ XÂY DỰNG HICONIQUE        CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+ *   CÔNG TY TNHH THIẾT KẾ VÀ XÂY DỰNG HICONIQUE        CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
  *   Số: ....../...                                        Độc lập - Tự do - Hạnh phúc
  *                                                         Hải Phòng, ngày … tháng … năm …
  * rồi dời nguyên nội dung cũ xuống (kể cả ô gộp, công thức, định dạng có điều kiện, ngăn đông cứng, bộ lọc, vùng in).
@@ -9,7 +9,7 @@
  */
 var HiconiqueExcel = (function () {
   'use strict';
-  var COMPANY = 'CÔNG TY TNHH KIẾN TRÚC VÀ XÂY DỰNG HICONIQUE';
+  var COMPANY = 'CÔNG TY TNHH THIẾT KẾ VÀ XÂY DỰNG HICONIQUE';
   var FONT = 'Times New Roman';
   var N = 5;   // số dòng tiêu đề chèn thêm
 

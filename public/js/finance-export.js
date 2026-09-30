@@ -274,7 +274,7 @@ var FinanceExport = (function () {
     }
   }
   // Cài đặt in chuẩn A4: vùng in, tiêu đề lặp lại, căn giữa, lề, đầu trang (Quốc hiệu) + chân trang (số trang)
-  var HDR_LEFT = 'CÔNG TY TNHH KIẾN TRÚC VÀ XÂY DỰNG HICONIQUE';
+  var HDR_LEFT = 'CÔNG TY TNHH THIẾT KẾ VÀ XÂY DỰNG HICONIQUE';
   function printSetup(ws, area, landscape, titleRows) {
     ws.pageSetup = {
       paperSize: 9, orientation: landscape ? 'landscape' : 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0,
