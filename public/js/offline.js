@@ -411,6 +411,29 @@ var Offline = (function () {
     if (typeof readWriteQueue_ === 'function') return readWriteQueue_();   // có cả hàng đợi giữ trong RAM khi localStorage đầy
     try { var a = JSON.parse(localStorage.getItem('hiconique_write_queue') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
   }
+  // 2026-09-30: THAO TÁC GHI TRỰC TIẾP (không qua hàng đợi ghi, VD Lưu giờ làm việc, cấp quyền…) cũng hiện trên khung trạng thái.
+  // Bọc window.fetch: yêu cầu ghi tới Apps Script (action save/add/update/delete… hoặc POST) mà lúc bắt đầu hàng đợi đang TRỐNG thì tính là "đang lưu",
+  // xong → "Đã đồng bộ", lỗi mạng → khung lỗi. Yêu cầu do chính hàng đợi gửi (lúc đó hàng đợi không rỗng) bỏ qua để không đếm đôi.
+  var direct = 0;
+  (function wrapFetch() {
+    if (typeof window.fetch !== 'function' || window.__hqFetchWrapped) return;
+    window.__hqFetchWrapped = true;
+    var orig = window.fetch, WRITE = /[?&]action=(save|add|update|delete|remove|set|upsert|create|register|approve|reject|mark|reset|import|clear|toggle|grant|revoke|resync)/i, READ = /[?&]action=(get|ping|scan)/i;
+    window.fetch = function (input, init) {
+      var url = typeof input === 'string' ? input : (input && input.url) || '';
+      var api = (typeof GSHEETS_CONFIG !== 'undefined' && GSHEETS_CONFIG) ? GSHEETS_CONFIG.API_URL : '';   // const toàn cục (không nằm trên window)
+      var isWrite = api && url.indexOf(api) === 0 && !READ.test(url) && (WRITE.test(url) || (init && /^POST$/i.test(init.method || '')));
+      if (!isWrite || readQueue_().length) return orig.apply(this, arguments);
+      var t0 = Date.now(); direct++; failed = false; render();
+      function finish(ok) {
+        direct = Math.max(0, direct - 1);
+        var M = window.HiconiqueMetrics; if (M) { M.writeMs = (M.writeMs || []).concat(Date.now() - t0).slice(-10); }
+        if (!ok) { failed = true; } else if (direct === 0 && !readQueue_().length) doneUntil = Date.now() + 5000;
+        render();
+      }
+      return orig.apply(this, arguments).then(function (res) { finish(true); return res; }, function (err) { finish(false); throw err; });
+    };
+  })();
   function sec(ms) { return (ms / 1000).toFixed(1).replace('.', ',') + 's'; }
   function dur(ms) { var s = Math.max(0, Math.round(ms / 1000)); return s >= 60 ? Math.floor(s / 60) + 'p' + (s % 60 < 10 ? '0' : '') + (s % 60) + 's' : s + 's'; }
   function ensure() {
@@ -461,11 +484,11 @@ var Offline = (function () {
     document.body.appendChild(el); return el;
   }
   function render() {
-    var q = readQueue_(), n = q.length, now = Date.now(), M = window.HiconiqueMetrics || {};
+    var q = readQueue_(), n = q.length + direct, now = Date.now(), M = window.HiconiqueMetrics || {};
     var w = M.writeMs || [], aw = w.length ? w.reduce(function (a, b) { return a + b; }, 0) / w.length : 0;
     if (!failed && n === 0 && now > doneUntil) { if (el) el.hidden = true; return; }
     if (!ensure()) return;
-    var top = ''; if (n > 3) { var c = {}; q.forEach(function (o) { c[o.action] = (c[o.action] || 0) + 1; }); var k = Object.keys(c).sort(function (a, b) { return c[b] - c[a]; })[0]; top = ' · nhiều nhất: ' + k + ' ×' + c[k]; }
+    var top = ''; if (q.length > 3) { var c = {}; q.forEach(function (o) { c[o.action] = (c[o.action] || 0) + 1; }); var k = Object.keys(c).sort(function (a, b) { return c[b] - c[a]; })[0]; top = ' · nhiều nhất: ' + k + ' ×' + c[k]; }
     var l1, cls = '', icon = '', eta = '';
     if (failed) { l1 = 'Có thao tác KHÔNG lưu được lên Google Sheet — hãy chụp màn hình báo lại.'; cls = 'bad'; icon = '<span class="ic bad"><svg viewBox="0 0 24 24"><path class="st" d="M12 5.8v7.4"/><circle class="dt" cx="12" cy="17.6" r="1.7"/></svg></span>'; }
     else if (n > 0 && last.event === 'retry') { l1 = 'Chưa lưu được' + (last.reason ? ' (' + last.reason + ')' : '') + ' — thử lại lần ' + last.tries + (M.nextWriteAt > now ? ' sau ' + dur(M.nextWriteAt - now) : '') + '. ĐỪNG đóng trang.'; cls = 'bad'; icon = '<span class="ic bad"><svg viewBox="0 0 24 24"><path class="st" d="M12 5.8v7.4"/><circle class="dt" cx="12" cy="17.6" r="1.7"/></svg></span>'; }

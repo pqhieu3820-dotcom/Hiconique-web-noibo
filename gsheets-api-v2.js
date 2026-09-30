@@ -1305,7 +1305,8 @@ function getAllData(ss, sheetName) {
       // trị time không hề bị mất, Sheets chỉ lưu dưới dạng serial Time thay
       // vì text thuần, format lại đúng ở đây là đủ khôi phục nguyên vẹn).
       if (Object.prototype.toString.call(val) === '[object Date]') {
-        const TIME_ONLY_FIELDS = { checkinTime: true, checkoutTime: true, morningCheckin: true, morningCheckout: true, afternoonCheckin: true, afternoonCheckout: true };
+        const TIME_ONLY_FIELDS = { checkinTime: true, checkoutTime: true, morningCheckin: true, morningCheckout: true, afternoonCheckin: true, afternoonCheckout: true,
+          morningStart: true, morningEnd: true, afternoonStart: true, afternoonEnd: true, morningAutoCheckoutTime: true, afternoonAutoCheckoutTime: true };   // 2026-09-30: giờ làm việc (Setup thời gian làm việc) cũng là giờ thuần — trước bị đọc thành '1899-12-30' nên lưu xong mở lại không thấy
         const pattern = TIME_ONLY_FIELDS[key] ? 'HH:mm' : (key === 'month' ? 'yyyy-MM' : 'yyyy-MM-dd');
         val = Utilities.formatDate(val, Session.getScriptTimeZone() || 'Asia/Ho_Chi_Minh', pattern);
       }

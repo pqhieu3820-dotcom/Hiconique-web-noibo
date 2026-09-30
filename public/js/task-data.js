@@ -2634,6 +2634,9 @@ var TaskManager = (function() {
       // vì hiện trống/0 sai ý ở form và khi tính "đi muộn" trong
       // isLateOrEarly().
       var ws = rows && rows.length > 0 ? Object.assign({}, DEFAULT_WORK_SCHEDULE, rows[0]) : DEFAULT_WORK_SCHEDULE;
+      // 2026-09-30: server cũ đọc cột giờ thành '1899-12-30' (Sheets tự đổi '07:30' thành kiểu giờ) → giá trị hỏng làm form hiện sai/không lưu được.
+      // Giá trị KHÔNG đúng HH:MM thì dùng mặc định thay vì dùng bản hỏng.
+      ['morningStart', 'morningEnd', 'afternoonStart', 'afternoonEnd'].forEach(function (k) { if (!/^([0-1][0-9]|2[0-3]):([0-5][0-9])$/.test(String(ws[k] || ''))) ws[k] = DEFAULT_WORK_SCHEDULE[k]; });
       if (ws.lateGraceMinutes === '' || ws.lateGraceMinutes == null || isNaN(Number(ws.lateGraceMinutes))) {
         ws.lateGraceMinutes = DEFAULT_WORK_SCHEDULE.lateGraceMinutes;
       } else {
