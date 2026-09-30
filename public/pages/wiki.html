@@ -630,8 +630,9 @@
 
     // ---------- Đồng bộ từ Google Drive ----------
     var DRIVE_FOLDER_KEY = 'hiconique_doc_drive_folder';
+    var DEFAULT_DRIVE_FOLDER = 'https://drive.google.com/drive/folders/1c5sglRIYx_0tRxgvhgFULkBkGuAgfwAg?usp=sharing';   // thư mục tài liệu công ty (Founder cung cấp 2026-09-30)
     function openSync() {
-      var saved = ''; try { saved = localStorage.getItem(DRIVE_FOLDER_KEY) || ''; } catch (e) { /* bỏ qua */ }
+      var saved = DEFAULT_DRIVE_FOLDER; try { saved = localStorage.getItem(DRIVE_FOLDER_KEY) || DEFAULT_DRIVE_FOLDER; } catch (e) { /* bỏ qua */ }
       var body =
         '<p class="dm-dim" style="margin:0 0 10px;">Quét thư mục Google Drive chứa tài liệu. Web lấy các file có <b>tên bắt đầu bằng mã hiệu</b> (VD <code>DRW-SOP-005 Quy trình…</code>), đối chiếu với danh sách và cho nhập những file chưa có. Chỉ đọc, không sửa gì trên Drive.</p>' +
         '<div class="dm-row"><input id="dsFolder" placeholder="Dán link thư mục Google Drive…" value="' + escapeHtml(saved) + '"><button type="button" class="doc-submit-btn dm-primary" id="dsScan" style="white-space:nowrap;">Quét thư mục</button></div>' +

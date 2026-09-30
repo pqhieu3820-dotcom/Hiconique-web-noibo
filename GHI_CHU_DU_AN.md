@@ -2016,3 +2016,7 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (cr) Xem nhanh Docx: chọn chất lượng PDF + thông báo DPI thực tế
 - payslip-docx.js: ô "Chất lượng PDF" trên thanh công cụ (mặc định **1200 DPI**, có 600 / 300). Sau khi xuất hiện thông báo "Đã xuất PDF — 1200 DPI · N trang · X MB"; nếu máy thiếu RAM phải hạ mức thì báo màu vàng "(đã hạ từ 1200 DPI do thiếu bộ nhớ)" — DPI thật = mức thấp nhất đã dùng ở các trang. Tải file bằng `pdf.output('blob')` để biết dung lượng. sw v113.
+
+### 2026-09-30 (cs) Thư mục Drive mặc định cho "Đồng bộ từ Drive" (trang Tài liệu)
+- wiki.html: `DEFAULT_DRIVE_FOLDER` = https://drive.google.com/drive/folders/1c5sglRIYx_0tRxgvhgFULkBkGuAgfwAg?usp=sharing (Founder cung cấp) — ô link tự điền sẵn, vẫn sửa được (nhớ theo trình duyệt).
+- Tình trạng bật tính năng: code `scanDriveDocs`/`authorizeDriveScan` đã có trong gsheets-api-v2.js (repo). Apps Script LIVE (v110) **chưa có**; để bật cần Founder chạy `authorizeDriveScan` trong editor + bấm Cho phép (cấp quyền đọc Drive), sau đó deploy phiên bản mới. sw v114.
