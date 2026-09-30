@@ -424,16 +424,18 @@ var Offline = (function () {
       st.textContent =
         '#hqSyncChip{position:fixed;right:18px;bottom:18px;z-index:9500;max-width:min(400px,calc(100vw - 36px));padding:12px 18px 12px 14px;border-radius:24px;display:flex;align-items:center;gap:12px;' +
         'font:500 13px/1.4 "Plus Jakarta Sans",Inter,system-ui,-apple-system,sans-serif;letter-spacing:.005em;pointer-events:none;isolation:isolate;' +
-        '-webkit-backdrop-filter:blur(2px) saturate(130%);backdrop-filter:blur(2px) saturate(130%);' +
-        'background:linear-gradient(140deg,rgba(255,255,255,.02) 0%,rgba(255,255,255,0) 50%,rgba(255,255,255,.01) 100%);color:#12110F;' +
+        '-webkit-backdrop-filter:blur(16px) saturate(170%);backdrop-filter:blur(16px) saturate(170%);--gl:63,190,110;' +
+        'background:linear-gradient(140deg,rgba(255,255,255,.72) 0%,rgba(255,255,255,.46) 50%,rgba(255,255,255,.6) 100%);color:#12110F;' +
         'box-shadow:0 1px 1px rgba(255,255,255,.5) inset,0 -1px 1px rgba(255,255,255,.12) inset,0 12px 30px -10px rgba(20,24,40,.22),0 0 0 1px rgba(20,24,40,.06),0 4px 12px rgba(20,24,40,.08);' +
-        'animation:hqGlassIn .42s cubic-bezier(.2,.9,.25,1.15) both;}' +
+        'animation:hqGlassIn .42s cubic-bezier(.2,.9,.25,1.15) both,hqGlow 2.4s .45s ease-in-out infinite alternate;}' +
+        '#hqSyncChip[data-st="bad"]{--gl:224,80,50}#hqSyncChip[data-st="busy"]{--gl:200,160,90}#hqSyncChip[data-st="ok"]{--gl:63,190,110}' +
+        '@keyframes hqGlow{0%{box-shadow:0 1px 1px rgba(255,255,255,.7) inset,0 0 14px 1px rgba(var(--gl),.28),0 0 34px 6px rgba(var(--gl),.14),0 10px 26px -10px rgba(20,24,40,.25)}100%{box-shadow:0 1px 1px rgba(255,255,255,.7) inset,0 0 26px 5px rgba(var(--gl),.5),0 0 60px 16px rgba(var(--gl),.26),0 10px 26px -10px rgba(20,24,40,.25)}}' +
         '#hqSyncChip::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1.2px;pointer-events:none;' +
         'background:linear-gradient(135deg,rgba(255,255,255,.95),rgba(255,255,255,.15) 38%,rgba(255,255,255,.08) 62%,rgba(255,255,255,.7));' +
         '-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);}' +
         '#hqSyncChip::after{content:"";position:absolute;left:12%;right:12%;top:1px;height:42%;border-radius:0 0 50% 50%/0 0 100% 100%;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,0));opacity:.3;}' +
-        'html[data-theme="dark"] #hqSyncChip{background:linear-gradient(140deg,rgba(255,255,255,.05) 0%,rgba(255,255,255,0) 45%,rgba(255,255,255,.02) 100%);color:#F6F2EB;' +
-        '-webkit-backdrop-filter:blur(5px) saturate(150%);backdrop-filter:blur(5px) saturate(150%);' +
+        'html[data-theme="dark"] #hqSyncChip{background:linear-gradient(140deg,rgba(60,64,74,.72) 0%,rgba(30,32,38,.55) 50%,rgba(44,47,55,.65) 100%);color:#F6F2EB;' +
+        '-webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);' +
         'box-shadow:0 1px 1px rgba(255,255,255,.35) inset,0 -1px 1px rgba(255,255,255,.06) inset,0 18px 44px -8px rgba(0,0,0,.55),0 4px 14px rgba(0,0,0,.3);}' +
         'html[data-theme="dark"] #hqSyncChip::before{background:linear-gradient(135deg,rgba(255,255,255,.6),rgba(255,255,255,.06) 38%,rgba(255,255,255,.03) 62%,rgba(255,255,255,.4));}' +
         'html[data-theme="dark"] #hqSyncChip::after{opacity:.35;}' +
@@ -471,6 +473,7 @@ var Offline = (function () {
     else { l1 = 'Đã đồng bộ Google Sheet'; cls = 'ok'; icon = '<span class="ic ok"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.6 4.6L19 7.5"/></svg></span>'; }
     var l2 = 'Ghi ' + (aw ? sec(aw) + '/lệnh' : '—') + ' · Đọc ' + (M.readMs != null ? sec(M.readMs) : '—') + ' · làm mới sau ' + (M.nextRefreshAt > now ? dur(M.nextRefreshAt - now) : '…');
     el.hidden = false;
+    el.setAttribute('data-st', failed || cls === 'bad' ? 'bad' : (n > 0 ? 'busy' : 'ok'));
     var key = icon + '|' + cls + '|' + l1;
     if (el._key === key && el.querySelector('.l2')) { el.querySelector('.l2').textContent = l2; var eb = el.querySelector('.l1b'); if (eb) eb.textContent = eta; return; }    // chỉ đổi dòng số liệu → giữ nguyên vòng xoay, không nháy
     el._key = key;

@@ -1901,3 +1901,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (bi) Chip đồng bộ: icon "đang lưu" vàng dạng vòng cung động
 - offline.js: icon đang lưu là SVG — vòng nền mờ + cung sáng nét tròn đầu tự co giãn khi quay (kiểu Material: cung dài ra – ngắn lại, quay 1.4s), vòng tròn vàng bật lên và có sóng vàng lan ra lặp lại; sắc nét ở mọi tỉ lệ. Giảm chuyển động → đứng yên. sw v79.
+
+### 2026-09-30 (bj) Chip đồng bộ: đục hơn + quầng sáng (glow) chuyển động theo trạng thái
+- offline.js: nền chip đục ~55–70% (sáng: trắng .46–.72, tối: xám .55–.72), blur 16–18px cho chữ rõ trên mọi nền. Thêm quầng sáng `hqGlow` nhịp thở 2.4s (box-shadow lan rộng/thu hẹp) đổi màu theo `data-st`: xanh (ok) / đỏ (bad) / vàng đồng (busy) qua biến `--gl`. Giảm chuyển động → tắt. sw v80.
