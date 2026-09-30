@@ -1807,3 +1807,7 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 - **Đồng bộ Drive** (nút "Đồng bộ từ Drive"): action `scanDriveDocs` + `authorizeDriveScan` có trong gsheets-api-v2.js (repo) nhưng **CHƯA deploy lên Apps Script live** vì dùng DriveApp cần cấp quyền OAuth Drive (Founder phải tự bấm cho phép: dán code, chạy `authorizeDriveScan`, Deploy). Cho tới lúc đó nút quét sẽ báo lỗi. Quy ước tên file trên Drive: bắt đầu bằng mã hiệu (VD `DRW-SOP-005 Quy trình…`).
 - `getNextDocCode` tính cả mã đã quét từ Drive (localStorage `hiconique_drive_doc_codes`) để không cấp trùng.
 - timesheet.html: khối trạng thái "đã hoàn thành" làm lại (2 thẻ Ca sáng / Ca chiều, thẻ đi muộn/về sớm), dòng "Đã lưu lên hệ thống · giờ" dạng chấm trạng thái gọn. sw v52.
+
+### 2026-09-30 (ai) UI Sổ tài chính + bỏ mũi tên nhãn tháng
+- finance.html: ô Danh mục đổi từ datalist gốc trình duyệt sang combobox tự dựng (`.fn-combo`, lọc theo chữ gõ, danh sách bo tròn nằm sát dưới ô); trang Phân quyền sửa dòng ghi chú bị đè mép thẻ (`.fn-access-note`).
+- Bỏ mũi tên sổ xuống cạnh nhãn tháng ở TOÀN WEB: month-nav.js không còn vẽ svg + CSS `.timeline-title-btn svg{display:none}` (gantt.css, projects.css, timesheet.html) cho các nơi tự dựng markup. sw v53.

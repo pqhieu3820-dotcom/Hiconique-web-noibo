@@ -2867,3 +2867,6 @@
 #dpValue { flex: none; min-width: 56px; padding: 5px 10px; text-align: center; border-radius: 8px; background: rgba(176,141,87,0.14); font-size: 0.8125rem; }
 .dps-save { width: 100%; margin-top: 16px; }
 .dps-history-row { align-items: baseline; }
+
+/* 2026-09-30: bỏ mũi tên sổ xuống cạnh nhãn tháng (bấm vào là tự sổ) — áp dụng toàn web */
+.timeline-title-btn svg { display: none !important; }

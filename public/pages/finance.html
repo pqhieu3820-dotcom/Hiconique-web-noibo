@@ -131,6 +131,13 @@
     .fn-form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; padding: 20px 24px; align-items: end; }
     .fn-form-grid.cols5 { grid-template-columns: repeat(5, 1fr); }
     .fn-field-label { display: block; font-size: 0.6875rem; color: var(--fn-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+    .fn-combo { position: relative; }
+    .fn-combo-list { position: absolute; z-index: 60; left: 0; right: 0; top: calc(100% + 6px); max-height: 264px; overflow-y: auto; padding: 6px; background: var(--fn-surface, #fff); border: 1px solid var(--fn-border); border-radius: 12px; box-shadow: 0 14px 34px rgba(0,0,0,0.16); }
+    .fn-combo-list[hidden] { display: none; }
+    .fn-combo-item { padding: 9px 12px; border-radius: 8px; font-size: 0.8125rem; font-weight: 500; color: var(--fn-text); cursor: pointer; line-height: 1.35; }
+    .fn-combo-item:hover { background: rgba(176,141,87,0.14); color: var(--fn-bronze, #B08D57); }
+    .fn-combo-empty { padding: 10px 12px; font-size: 0.75rem; color: var(--fn-muted, #7A7568); }
+    .fn-access-note { margin: 0; padding: 4px 24px 20px; font-size: 0.8125rem; color: var(--fn-muted, #7A7568); line-height: 1.5; }
     .fn-input, .fn-select { width: 100%; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--fn-border); background: var(--fn-bg); color: var(--fn-text); font-family: inherit; font-size: 0.8125rem; }
     .fn-input.mono { font-family: 'JetBrains Mono', monospace; }
 
@@ -409,7 +416,7 @@
                   '<div><span class="fn-field-label">Loại</span><select class="fn-select" id="fnType">' +
                     TYPE_ORDER.map(function (t) { return '<option value="' + t + '">' + TYPES[t].label + '</option>'; }).join('') +
                   '</select></div>' +
-                  '<div><span class="fn-field-label">Danh mục</span><input type="text" class="fn-input" id="fnCategory" list="fnCatList" autocomplete="off" placeholder="Chọn hoặc gõ danh mục…"><datalist id="fnCatList"></datalist></div>' +
+                  '<div><span class="fn-field-label">Danh mục</span><div class="fn-combo"><input type="text" class="fn-input" id="fnCategory" autocomplete="off" placeholder="Chọn hoặc gõ danh mục…"><div class="fn-combo-list" id="fnCatList" hidden></div></div></div>' +
                   '<div><span class="fn-field-label">Số tiền</span><input type="text" inputmode="numeric" class="fn-input mono" id="fnAmount" data-money-input value="0"></div>' +
                   '<div><span class="fn-field-label">Ngày</span><input type="date" class="fn-input" id="fnDate"></div>' +
                   '<div style="grid-column: span 3;"><span class="fn-field-label">Mô tả</span><input type="text" class="fn-input" id="fnDescription" placeholder="Ghi chú chi tiết khoản này..."></div>' +
@@ -534,7 +541,7 @@
               '<div class="fn-card"><div class="fn-card-head"><div class="fn-card-title">Cấp quyền cho thành viên</div></div>' +
                 '<div class="fn-form-grid" style="grid-template-columns:2fr 1fr;"><div><span class="fn-field-label">Thành viên</span><select class="fn-select" id="fnAccessPick"></select></div>' +
                 '<div style="align-self:end;"><button class="fn-btn fn-btn-primary" id="fnAccessAdd" style="width:100%;">+ Cấp quyền</button></div></div>' +
-                '<p class="fn-section-desc" style="margin:10px 0 0;">CEO / Admin luôn có quyền sẵn nên không cần cấp. Cấp quyền có hiệu lực ngay ở lần tải lại trang của người đó.</p></div>' +
+                '<p class="fn-access-note">CEO / Admin luôn có quyền sẵn nên không cần cấp. Cấp quyền có hiệu lực ngay ở lần tải lại trang của người đó.</p></div>' +
             '</div>' +
 
           '</div>' +
@@ -549,11 +556,27 @@
       if (typeof HiconiqueMoney !== 'undefined') HiconiqueMoney.bindAll(document);
 
       // Danh mục gợi ý theo Loại (datalist: chọn từ danh sách hoặc gõ riêng)
+      var catItems = [];
+      function renderCatList() {
+        var list = document.getElementById('fnCatList'), q = document.getElementById('fnCategory').value.trim().toLowerCase();
+        var shown = catItems.filter(function (c) { return !q || c.toLowerCase().indexOf(q) !== -1; });
+        list.innerHTML = shown.length ? shown.map(function (c) { return '<div class="fn-combo-item" data-v="' + escapeHtml(c) + '">' + escapeHtml(c) + '</div>'; }).join('') : '<div class="fn-combo-empty">Không có gợi ý — cứ gõ tên danh mục riêng</div>';
+      }
       function syncCategoryList() {
-        var t = document.getElementById('fnType').value, arr = (window.FINANCE_CATEGORIES && FINANCE_CATEGORIES[t]) || [];
-        document.getElementById('fnCatList').innerHTML = arr.map(function (c) { return '<option value="' + escapeHtml(c) + '"></option>'; }).join('');
+        var t = document.getElementById('fnType').value;
+        var arr = (window.FINANCE_CATEGORIES && window.FINANCE_CATEGORIES[t]) || [];
+        catItems = arr.slice();
+        renderCatList();
         document.getElementById('fnCategory').placeholder = 'Chọn hoặc gõ danh mục…';
       }
+      (function bindCatCombo() {
+        var inp = document.getElementById('fnCategory'), list = document.getElementById('fnCatList');
+        function open() { renderCatList(); list.hidden = false; }
+        inp.addEventListener('focus', open); inp.addEventListener('click', open); inp.addEventListener('input', open);
+        list.addEventListener('mousedown', function (e) { var it = e.target.closest('.fn-combo-item'); if (!it) return; e.preventDefault(); inp.value = it.dataset.v; list.hidden = true; });
+        document.addEventListener('mousedown', function (e) { if (!e.target.closest('.fn-combo')) list.hidden = true; });
+        inp.addEventListener('keydown', function (e) { if (e.key === 'Escape') list.hidden = true; });
+      })();
       document.getElementById('fnType').addEventListener('change', function () { document.getElementById('fnCategory').value = ''; syncCategoryList(); });
       syncCategoryList();
 
