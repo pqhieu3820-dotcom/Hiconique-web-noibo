@@ -1881,3 +1881,7 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (bc) Bảng Giao dịch gọn + tiêu đề tháng MM/YYYY
 - finance.html: bảng Giao dịch (9 cột) dùng font 0.75rem, padding ô 8px (thay 24px), cột Số phiếu/Ngày/Số tiền không xuống dòng → thấy đủ cột và nút Xoá; tiêu đề "Giao dịch tháng 09/2026". sw v73.
+
+### 2026-09-30 (bd) Sổ tài chính: nút Xoá + bảng xác nhận + thông báo thêm/xoá
+- Nguyên nhân nút Xoá "không hoạt động": dùng `confirm()` gốc của trình duyệt (bị chặn ở nhiều môi trường, trả về "huỷ"), trái quy tắc dự án. Đã thay 4 chỗ (xoá giao dịch, thu hồi quyền, xác nhận đã thu công nợ, xoá công nợ) bằng hộp xác nhận riêng `fnConfirm` (hiện chi tiết số tiền/ngày/số phiếu, nút đỏ khi xoá, Esc/bấm nền để huỷ).
+- Thêm/xoá giao dịch → gửi thông báo chuông (`notifyFinanceChange_` trong task-data.js, sheet TT-Thông báo, scope = từng người) tới CEO/Founder/Admin + người được cấp quyền Sổ tài chính (Kế toán), trừ chính người thao tác. Ghi trực tiếp không qua `createNotification` (hàm đó chỉ cho admin/manager, Kế toán không có quyền). sw v74.

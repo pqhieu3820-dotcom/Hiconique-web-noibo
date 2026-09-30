@@ -3088,11 +3088,33 @@ var TaskManager = (function() {
     return list.sort(function (a, b) { return new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0); });
   }
 
+  // 2026-09-30: thêm/xoá giao dịch → gửi THÔNG BÁO (chuông) tới CEO/Founder/Admin + người được cấp quyền Sổ tài chính (Kế toán), trừ chính người thao tác.
+  // Ghi trực tiếp (không qua createNotification vì hàm đó chỉ cho admin/manager — Kế toán thao tác cũng phải báo được).
+  function financeRecipients_(actor) {
+    return getActiveMembers().filter(function (m) {
+      return (!actor || m.id !== actor.id) && (m.roleLevel === 'admin' || m.level === 'founder' || hasFinanceAccess(m));
+    });
+  }
+  function notifyFinanceChange_(kind, e, user) {
+    try {
+      var lbl = { revenue: 'Doanh thu', expense: 'Chi phí', loan: 'Vay nợ (nhận)', repayment: 'Trả nợ', bonus: 'Thưởng nhân viên', penalty: 'Phạt nhân viên (thu về)', idle: 'Tiền ứ đọng', undisbursed: 'Chưa giải ngân' }[e.type] || e.type;
+      var d = String(e.date || '').split('-').reverse().join('/');
+      var verb = kind === 'delete' ? 'ĐÃ XOÁ' : 'đã THÊM';
+      var msg = (user.name || user.id) + ' ' + verb + ' giao dịch: ' + lbl + ' ' + (Number(e.amount) || 0).toLocaleString('vi-VN') + ' ₫' +
+        (e.category ? ' · ' + e.category : '') + (e.voucherNo ? ' · ' + e.voucherNo : '') + (d ? ' · ' + d : '') + (e.description ? ' · ' + e.description : '') + '.';
+      financeRecipients_(user).forEach(function (m) {
+        var n = add(STORAGE_KEYS.notifications, { title: kind === 'delete' ? 'Sổ tài chính: xoá giao dịch' : 'Sổ tài chính: thêm giao dịch', message: msg, type: kind === 'delete' ? 'warning' : 'info', scope: m.id, active: true, recurring: false, createdBy: user.id });
+        syncToGSheets('notifications', 'add', n);
+      });
+    } catch (err) { console.error('Gửi thông báo sổ tài chính lỗi:', err); }
+  }
+
   function createFinanceEntry(data, user) {
     if (!canManageFinance(user)) return null;
     data.createdBy = user.id;
     var created = add(STORAGE_KEYS.financeEntries, data);
     syncToGSheets('financeEntries', 'add', created);
+    notifyFinanceChange_('add', created, user);
     return created;
   }
 
@@ -3105,7 +3127,9 @@ var TaskManager = (function() {
 
   function deleteFinanceEntry(id, user) {
     if (!canManageFinance(user)) return null;
+    var old = getAll(STORAGE_KEYS.financeEntries).filter(function (x) { return x.id === id; })[0];
     var result = remove(STORAGE_KEYS.financeEntries, id);
+    if (old) notifyFinanceChange_('delete', old, user);
     syncToGSheets('financeEntries', 'delete', {}, id);
     return result;
   }

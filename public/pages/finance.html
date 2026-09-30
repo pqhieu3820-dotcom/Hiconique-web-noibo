@@ -166,6 +166,7 @@
     .fn-dt-table td { padding: 8px 10px; border-bottom: 1px solid var(--fn-border); vertical-align: top; } .fn-dt-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
     .fn-dt-table .pos { color: var(--fn-green); } .fn-dt-table .neg { color: var(--fn-red); } .fn-dt-empty { padding: 18px; text-align: center; color: var(--fn-muted); font-size: 0.8125rem; }
     .fn-dt-note { font-size: 0.75rem; color: var(--fn-muted); margin-top: 6px; }
+    .fn-btn-danger { background: var(--fn-red); color: #fff; } .fn-btn-danger:hover { background: #8a3a3a; }
     .fn-vmsg { min-height: 0; margin-top: 4px; font-size: 0.6875rem; color: var(--fn-muted); }
     .fn-vmsg.ok { color: var(--fn-green); } .fn-vmsg.bad { color: var(--fn-red); }
     .fn-hint { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--fn-bronze); }
@@ -989,6 +990,20 @@
     }
 
     // ============================== CHI TIẾT KHI BẤM VÀO TỔNG QUAN ==============================
+    function fnConfirm(title, html, okLabel, onOk, danger) {
+      var old = document.getElementById('fnConfirm'); if (old) old.remove();
+      var ov = document.createElement('div'); ov.className = 'fn-dt-overlay'; ov.id = 'fnConfirm'; ov.style.alignItems = 'center'; ov.style.zIndex = '600';
+      ov.innerHTML = '<div class="fn-dt-box" style="max-width:460px;" role="alertdialog" aria-modal="true"><div class="fn-dt-head"><div class="fn-dt-title">' + title + '</div></div><div class="fn-dt-body"><div style="font-size:0.875rem;line-height:1.55;">' + html + '</div>' +
+        '<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px;"><button type="button" class="fn-btn fn-btn-ghost" data-no>Huỷ</button><button type="button" class="fn-btn ' + (danger ? 'fn-btn-danger' : 'fn-btn-primary') + '" data-yes>' + okLabel + '</button></div></div></div>';
+      document.body.appendChild(ov);
+      function close() { ov.remove(); document.removeEventListener('keydown', onKey); }
+      function onKey(e) { if (e.key === 'Escape') close(); }
+      document.addEventListener('keydown', onKey);
+      ov.addEventListener('mousedown', function (e) { if (e.target === ov) close(); });
+      ov.querySelector('[data-no]').addEventListener('click', close);
+      ov.querySelector('[data-yes]').addEventListener('click', function () { close(); onOk(); });
+      ov.querySelector('[data-no]').focus();
+    }
     function dtClose() { var o = document.getElementById('fnDetail'); if (o) o.remove(); }
     function dtOpen(title, sub, stats, bodyHtml) {
       dtClose();
@@ -1249,7 +1264,7 @@
       var cands = (TaskManager.getActiveMembers ? TaskManager.getActiveMembers() : TaskManager.getMembers()).filter(function (m) { return !granted[m.id] && m.roleLevel !== 'admin' && m.level !== 'founder'; });
       pick.innerHTML = cands.length ? cands.map(function (m) { return '<option value="' + escapeHtml(m.id) + '">' + escapeHtml(m.name) + (m.role ? ' — ' + escapeHtml(m.role) : '') + '</option>'; }).join('') : '<option value="">(không còn thành viên để cấp)</option>';
       rows.querySelectorAll('[data-revoke-access]').forEach(function (b) {
-        b.addEventListener('click', function () { if (!confirm('Thu hồi quyền truy cập Sổ tài chính của người này?')) return; TaskManager.revokeFinanceAccess(b.getAttribute('data-revoke-access'), user); renderAccess(); });
+        b.addEventListener('click', function () { fnConfirm('Thu hồi quyền truy cập?', 'Người này sẽ không còn xem và thao tác được Sổ tài chính.', 'Thu hồi', function () { TaskManager.revokeFinanceAccess(b.getAttribute('data-revoke-access'), user); renderAccess(); }, true); });
       });
       var addBtn = document.getElementById('fnAccessAdd');
       if (addBtn && !addBtn.dataset.bound) {
@@ -1289,9 +1304,15 @@
 
       rows.querySelectorAll('[data-delete-entry]').forEach(function (btn) {
         btn.addEventListener('click', function () {
-          if (!confirm('Xoá giao dịch này?')) return;
-          TaskManager.deleteFinanceEntry(btn.getAttribute('data-delete-entry'), user);
-          renderAll();
+          var eid = btn.getAttribute('data-delete-entry');
+          var en = TaskManager.getFinanceEntries().filter(function (x) { return x.id === eid; })[0];
+          if (!en) return;
+          var ty = TYPES[en.type] || { label: en.type };
+          fnConfirm('Xoá giao dịch này?',
+            '<div class="fn-dt-stats" style="grid-template-columns:1fr 1fr;margin-bottom:10px;"><div class="fn-dt-stat"><b>' + fmt(en.amount) + ' ₫</b><span>' + escapeHtml(ty.label) + '</span></div><div class="fn-dt-stat"><b style="font-size:.85rem;">' + vnDate(en.date) + '</b><span>' + escapeHtml(en.voucherNo || 'Không có số phiếu') + '</span></div></div>' +
+            escapeHtml([en.category, en.description].filter(Boolean).join(' · ') || '') +
+            '<div class="fn-dt-note" style="margin-top:10px;">Giao dịch bị xoá khỏi Sổ tài chính và Google Sheet. <b>CEO, Founder và Kế toán sẽ nhận thông báo</b> về việc xoá này.</div>',
+            'Xoá giao dịch', function () { TaskManager.deleteFinanceEntry(eid, user); renderAll(); }, true);
         });
       });
     }
@@ -1332,7 +1353,7 @@
           var id = btn.getAttribute('data-mark-paid');
           var r = list.find(function (x) { return x.id === id; });
           if (!r) return;
-          if (!confirm('Xác nhận đã thu ' + fmt(r.amount) + ' từ ' + r.clientName + '? Hệ thống sẽ tự tạo một khoản Doanh thu tương ứng.')) return;
+          fnConfirm('Xác nhận đã thu tiền?', 'Đã thu <b>' + fmt(r.amount) + ' ₫</b> từ <b>' + escapeHtml(r.clientName || '') + '</b>? Hệ thống sẽ tự tạo một khoản Doanh thu tương ứng.', 'Xác nhận đã thu', function () {
           TaskManager.updateReceivable(id, { status: 'paid' }, user);
           var today = new Date().toISOString().split('T')[0];
           TaskManager.createFinanceEntry({
@@ -1344,13 +1365,13 @@
             month: today.slice(0, 7)
           }, user);
           renderAll();
+          });
         });
       });
       rows.querySelectorAll('[data-delete-rcv]').forEach(function (btn) {
         btn.addEventListener('click', function () {
-          if (!confirm('Xoá công nợ này?')) return;
-          TaskManager.deleteReceivable(btn.getAttribute('data-delete-rcv'), user);
-          renderAll();
+          var rid = btn.getAttribute('data-delete-rcv');
+          fnConfirm('Xoá công nợ này?', 'Khoản công nợ sẽ bị xoá khỏi danh sách và Google Sheet.', 'Xoá công nợ', function () { TaskManager.deleteReceivable(rid, user); renderAll(); }, true);
         });
       });
     }
