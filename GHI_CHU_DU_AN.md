@@ -1955,3 +1955,6 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### 2026-09-30 (by) Thanh cuộn thẻ Báo cáo nhanh: nâng thanh 5px, hạ đường kẻ
 - finance-quick.js: track cao 21px; thumb viền trên 6px (nâng 5px so với trước) và dưới 11px → đường kẻ ngang dưới thanh thấp hơn 2px; thumb vẫn dày 4px. sw v95.
+
+### 2026-09-30 (bz) Thanh thẻ Báo cáo nhanh: căn giữa dọc
+- finance-quick.js: `.fq-tabs` đệm 10px trên và 10px dưới (trước 10/0 làm thẻ dính đáy) → tên thẻ nằm giữa dải. sw v96.
