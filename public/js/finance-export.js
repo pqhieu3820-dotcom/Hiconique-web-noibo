@@ -126,6 +126,8 @@ var FinanceExport = (function () {
     '.fx-sheets{font-size:.6875rem;color:var(--fn-muted,#888);margin-top:2px;}' +
     '@media(max-width:640px){.fx-b{grid-template-columns:1fr;}.fx-side{border-right:none;padding-right:0;border-bottom:1px solid var(--fn-border,#ddd);padding-bottom:10px;margin-bottom:10px;}.fx-cal{padding-left:0;}}';
 
+  var SHEET_NAMES = ['Bìa báo cáo', 'Tổng quan', 'Giao dịch', 'Sổ quỹ 111', 'Sổ TGNH 112', 'Lãi-Lỗ', 'Dòng tiền & Dự báo', 'Vay nợ', 'Công nợ KH', 'Sức khỏe TC', 'BCTC', 'Rủi ro', 'Tham số'];
+  function selectedSheets() { return Array.prototype.map.call(modal.querySelectorAll('#fxSheetList input:checked'), function (i) { return i.value; }); }
   function build() {
     if (modal) return;
     var st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
@@ -148,10 +150,13 @@ var FinanceExport = (function () {
             '<div style="font-size:.6875rem;color:var(--fn-muted,#888);margin-top:8px;">Bấm 1 ngày để bắt đầu, bấm ngày thứ hai để chốt khoảng. Chấm xanh = ngày có giao dịch.</div>' +
           '</div>' +
         '</div>' +
-        '<div class="fx-f"><div><div class="fx-sum" id="fxSum"></div><div class="fx-sheets">Sheet: Tổng quan · Giao dịch · Sổ quỹ 111 · Sổ TGNH 112 · Lãi-Lỗ · Dòng tiền & Dự báo · Vay nợ · Công nợ KH · Sức khỏe TC · BCTC · Rủi ro · Tham số</div></div>' +
+        '<div class="fx-f"><div><div class="fx-sum" id="fxSum"></div><div class="fx-sheets"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;"><b style="font-size:.75rem;color:var(--fn-text,#222);">Sheet cần xuất</b><span><a href="#" id="fxAll">Chọn tất cả</a> · <a href="#" id="fxNone">Bỏ chọn</a></span></div><div id="fxSheetList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:2px 10px;"></div><div style="margin-top:6px;"><select id="fxMode" class="fn-select" style="padding:6px 8px;font-size:.75rem;max-width:340px;"><option value="one">1 file Excel gồm các sheet đã chọn</option><option value="split">Tách: mỗi sheet 1 file riêng (tải về .zip)</option></select></div><div style="margin-top:4px;opacity:.8;">Các sheet không chọn vẫn nằm trong file ở dạng ẩn để công thức không bị lỗi — muốn xem: chuột phải tên sheet → Hiện (Unhide).</div></div></div>' +
           '<div style="display:flex;gap:8px;"><button class="fn-btn fn-btn-ghost" data-x>Hủy</button><button class="fn-btn fn-btn-primary" id="fxGo">Xuất Excel</button></div></div>' +
       '</div>';
     document.body.appendChild(modal);
+    modal.querySelector('#fxSheetList').innerHTML = SHEET_NAMES.map(function (n) { return '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" value="' + esc(n) + '" checked> ' + esc(n) + '</label>'; }).join('');
+    modal.querySelector('#fxAll').addEventListener('click', function (e) { e.preventDefault(); Array.prototype.forEach.call(modal.querySelectorAll('#fxSheetList input'), function (i) { i.checked = true; }); });
+    modal.querySelector('#fxNone').addEventListener('click', function (e) { e.preventDefault(); Array.prototype.forEach.call(modal.querySelectorAll('#fxSheetList input'), function (i) { i.checked = false; }); });
     var chips = [['today', 'Hôm nay'], ['week', 'Tuần này'], ['lastweek', 'Tuần trước'], ['month', 'Tháng này'], ['lastmonth', 'Tháng trước'], ['quarter', 'Quý này'], ['year', 'Năm nay'], ['lastyear', 'Năm trước'], ['all', 'Toàn bộ']];
     modal.querySelector('#fxChips').innerHTML = chips.map(function (c) { return '<button class="fx-chip" data-p="' + c[0] + '">' + c[1] + '</button>'; }).join('');
     modal.querySelector('#fxSeg').innerHTML = [['week', 'Tuần'], ['month', 'Tháng'], ['quarter', 'Quý'], ['year', 'Năm']].map(function (c) { return '<button data-m="' + c[0] + '">' + c[1] + '</button>'; }).join('');
@@ -872,18 +877,46 @@ var FinanceExport = (function () {
         });
       });
     });
+    finishExport_(wb);
+  }
+
+  function resetGo_() { var b = modal.querySelector('#fxGo'); b.disabled = false; b.textContent = 'Xuất Excel'; }
+  function download_(blob, name) {
+    var url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+  }
+  // Chỉ hiện các sheet được chọn (sheet còn lại ẨN, vẫn nằm trong file để công thức tham chiếu chéo không lỗi #REF!)
+  function showOnly_(wb, names) {
+    var first = -1;
+    wb.worksheets.forEach(function (ws, i) { var on = names.indexOf(ws.name) !== -1; ws.state = on ? 'visible' : 'hidden'; if (on && first < 0) first = i; });
+    wb.views = [{ x: 0, y: 0, width: 10000, height: 20000, firstSheet: Math.max(0, first), activeTab: Math.max(0, first), visibility: 'visible' }];
+  }
+  function loadJsZip_() {
+    if (window.JSZip) return Promise.resolve();
+    return new Promise(function (res, rej) { var s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'; s.onload = res; s.onerror = function () { rej(new Error('Không tải được thư viện nén .zip')); }; document.head.appendChild(s); });
+  }
+  function finishExport_(wb) {
+    var sel = selectedSheets(), mode = modal.querySelector('#fxMode').value, span = range.from + '_' + range.to;
+    if (!sel.length) { alert('Chưa chọn sheet nào để xuất.'); resetGo_(); return; }
+    var fail = function (err) { console.error('Export failed:', err); alert('Xuất file thất bại. Vui lòng thử lại.'); resetGo_(); };
+    if (mode === 'split' && sel.length > 1) {
+      var zip = null, chain = loadJsZip_().then(function () { zip = new window.JSZip(); });
+      sel.forEach(function (name, i) {
+        chain = chain.then(function () { showOnly_(wb, [name]); return wb.xlsx.writeBuffer(); }).then(function (buf) {
+          zip.file(('0' + (i + 1)).slice(-2) + '-' + name.replace(/[\\/:*?"<>|&]+/g, '-').replace(/\s+/g, '-') + '.xlsx', buf);
+        });
+      });
+      chain.then(function () { return zip.generateAsync({ type: 'blob' }); }).then(function (blob) {
+        download_(blob, 'Bao-cao-tai-chinh-' + span + '-tach-sheet.zip'); modal.classList.remove('on'); resetGo_();
+      }).catch(fail);
+      return;
+    }
+    if (sel.length < SHEET_NAMES.length) showOnly_(wb, sel);
     wb.xlsx.writeBuffer().then(function (buffer) {
-      var blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      var url = URL.createObjectURL(blob), a = document.createElement('a');
-      a.href = url; a.download = 'Bao-cao-tai-chinh-' + range.from + '_' + range.to + '.xlsx';
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
-      modal.classList.remove('on');
-      var b = modal.querySelector('#fxGo'); b.disabled = false; b.textContent = 'Xuất Excel';
-    }).catch(function (err) {
-      console.error('Export failed:', err); alert('Xuất file thất bại. Vui lòng thử lại.');
-      var b = modal.querySelector('#fxGo'); b.disabled = false; b.textContent = 'Xuất Excel';
-    });
+      download_(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'Bao-cao-tai-chinh-' + span + (sel.length < SHEET_NAMES.length ? '-' + sel.length + '-sheet' : '') + '.xlsx');
+      modal.classList.remove('on'); resetGo_();
+    }).catch(fail);
   }
 
   return { open: open };

@@ -2200,3 +2200,7 @@ Dòng chèn mới ở đầu bảng thừa hưởng dropdown Danh mục cũ từ
 
 ## 2026-10-01 — Công nợ: nút Xoá ngay trên từng dòng danh sách (có hộp xác nhận; trước chỉ xoá được trong Chi tiết). sw v148.
 - 2026-10-01 (sửa): cột thao tác của bảng Công nợ bị cắt mất nút (Chi tiết/Xoá không thấy) → xếp dọc: Thu/Trả tiền, menu "Xuất Word/PDF…" (công văn, biên bản đối chiếu, giấy đề nghị TT), Chi tiết + Xoá. sw v149.
+
+## 2026-10-01 — Xuất báo cáo tài chính: chọn/tách sheet
+- `finance-export.js`: hộp Xuất báo cáo có danh sách 13 sheet để tick (Chọn tất cả/Bỏ chọn) và chế độ "1 file gồm các sheet đã chọn" hoặc "Tách mỗi sheet 1 file (.zip)". Sheet không chọn được ẨN (không xoá) để công thức tham chiếu chéo không lỗi #REF!. JSZip nạp khi cần. sw v150.
+- 2026-10-01 (sửa): bảng Công nợ bị tràn mất nút bên phải → bọc cuộn ngang, thu hẹp lề cột, cột Thao tác rộng cố định 112px. sw v151.

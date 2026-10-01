@@ -200,6 +200,7 @@
     .fn-btn-primary:hover { background: #C7A464; }
     .fn-btn-ghost { background: transparent; border: 1px solid var(--fn-border); color: var(--fn-text); }
     .fn-btn-ghost:hover { border-color: var(--fn-bronze); color: var(--fn-bronze); }
+    .fn-table.fn-debt th, .fn-table.fn-debt td { padding-left: 8px; padding-right: 8px; } .fn-table.fn-debt td:nth-child(2) { min-width: 130px; } .fn-table.fn-debt td:last-child { width: 112px; min-width: 112px; } .fn-table.fn-debt .fn-amount { white-space: nowrap; font-size: .8125rem; }
     .fn-btn-sm { padding: 6px 12px; font-size: 0.75rem; border-radius: 7px; }
     .fn-month-input { padding: 9px 12px; border-radius: 9px; border: 1px solid var(--fn-border); background: var(--fn-bg); color: var(--fn-text); font-family: inherit; font-size: 0.875rem; }
 
@@ -529,7 +530,7 @@
                   '<select class="fn-select" id="fnDebtParty" style="max-width:230px;"></select>' +
                   '<input type="text" class="fn-input" id="fnDebtSearch" placeholder="Tìm tên đối tượng, mô tả, số HĐ…" style="max-width:260px;">' +
                 '</div>' +
-                '<table class="fn-table"><thead><tr><th>Đối tượng</th><th>Nội dung</th><th>Hạn</th><th>Giá trị</th><th>Đã trả</th><th>Còn lại</th><th>Trạng thái</th><th></th></tr></thead><tbody id="fnRcvRows"></tbody></table>' +
+                '<div style="overflow-x:auto;"><table class="fn-table fn-debt"><thead><tr><th>Đối tượng</th><th>Nội dung</th><th>Hạn</th><th class="num">Giá trị</th><th class="num">Đã trả</th><th class="num">Còn lại</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody id="fnRcvRows"></tbody></table></div>' +
               '</div>' +
               '<div class="fn-card"><div class="fn-card-head"><div class="fn-card-title">Tuổi nợ (còn lại theo số ngày quá hạn)</div></div><table class="fn-table"><thead><tr><th>Nhóm</th><th>Chưa đến hạn</th><th>1–30 ngày</th><th>31–60 ngày</th><th>61–90 ngày</th><th>Trên 90 ngày</th></tr></thead><tbody id="fnDebtAging"></tbody></table></div>' +
             '</div>' +
