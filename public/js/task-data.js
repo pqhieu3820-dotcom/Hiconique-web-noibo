@@ -296,7 +296,8 @@ function syncToGSheets(type, action, data, id) {
     bsSnapshots: { add: 'addBsSnapshot', update: 'updateBsSnapshot', delete: 'deleteBsSnapshot' },
     orders: { add: 'addOrder', update: 'updateOrder', delete: 'deleteOrder' },
     spcStandards: { add: 'addSpcStandard', update: 'updateSpcStandard', delete: 'deleteSpcStandard' },
-    salaryComponents: { add: 'addSalaryComponent', update: 'updateSalaryComponent', delete: 'deleteSalaryComponent' }
+    salaryComponents: { add: 'addSalaryComponent', update: 'updateSalaryComponent', delete: 'deleteSalaryComponent' },
+    units: { add: 'addUnit', update: 'updateUnit', delete: 'deleteUnit' }
   };
 
   var apiAction = actionMap[type] ? actionMap[type][action] : null;
@@ -500,7 +501,8 @@ var TaskManager = (function() {
     bsSnapshots: 'hiconique_bs_snapshots',
     orders: 'hiconique_orders',
     spcStandards: 'hiconique_spc_standards',
-    salaryComponents: 'hiconique_salary_components'
+    salaryComponents: 'hiconique_salary_components',
+    units: 'hiconique_units'
   };
 
   // % hoa hồng mặc định theo vai trò — gợi ý khi tạo hoa hồng dự án, admin/
@@ -890,7 +892,7 @@ var TaskManager = (function() {
       lightingStandards: 'getLightingStandards', lightingLamps: 'getLightingLamps',
       lightingFactors: 'getLightingFactors', lightingPlans: 'getLightingPlans',
       equipment: 'getEquipment', pcReports: 'getPcReports', archivedMembers: 'getArchivedMembers', financeAccess: 'getFinanceAccess', customers: 'getCustomers', customerLogs: 'getCustomerLogs', staffActivity: 'getStaffActivity', appUsage: 'getAppUsage',
-      receivables: 'getReceivables', bsSnapshots: 'getBsSnapshots', orders: 'getOrders', spcStandards: 'getSpcStandards', salaryComponents: 'getSalaryComponents',
+      receivables: 'getReceivables', bsSnapshots: 'getBsSnapshots', orders: 'getOrders', spcStandards: 'getSpcStandards', salaryComponents: 'getSalaryComponents', units: 'getUnits',
       attendanceLocations: 'getAttendanceLocations'
     };
 
@@ -2543,6 +2545,26 @@ var TaskManager = (function() {
     return true;
   }
 
+  // ===================== Đơn vị tính riêng của công ty (unit-picker.js) — sheet TC-Đơn vị tính =====================
+  // Bảng đơn vị mẫu nằm sẵn trong unit-picker.js; đơn vị người dùng gõ thêm ("+ Thêm … vào bảng đơn vị") lưu ở đây, dùng chung cho mọi người.
+  function loadUnits(callback) {
+    getFromGSheets('units', function (items) {
+      if (items && items.length) localStorage.setItem(STORAGE_KEYS.units, JSON.stringify(items));
+      if (callback) callback();
+    });
+  }
+  function getCustomUnits() { return getAll(STORAGE_KEYS.units); }
+  function addCustomUnit(text, user) {
+    var u = String(text || '').trim();
+    if (!u || u.length > 24 || !user) return false;
+    var key = u.toLowerCase();
+    if (getCustomUnits().some(function (x) { return String(x.unit || '').toLowerCase() === key; })) return true;
+    var created = add(STORAGE_KEYS.units, { unit: u, group: 'Đơn vị riêng của công ty', createdBy: user.id });
+    if (!created) return false;
+    syncToGSheets('units', 'add', created);
+    return true;
+  }
+
   // Wiki document links (public/pages/wiki.html)
   function getDocuments() {
     var docs = getAll(STORAGE_KEYS.documents);
@@ -3755,6 +3777,11 @@ var TaskManager = (function() {
     createNotice: createNotice,
     updateNotice: updateNotice,
     deleteNotice: deleteNotice,
+
+    // Đơn vị tính riêng
+    loadUnits: loadUnits,
+    getCustomUnits: getCustomUnits,
+    addCustomUnit: addCustomUnit,
 
     // Cơ cấu lương
     loadSalaryComponents: loadSalaryComponents,

@@ -467,7 +467,7 @@
     });
     provSel.addEventListener('change', function () { setProvince(provSel.value); });
     document.getElementById('odProjectId').addEventListener('change', syncProvinceFromProject);
-    UnitPicker.attach({ container: itemRowsEl });   // ô Đơn vị: xổ bảng đơn vị xây dựng/thiết kế, gõ 1-2 chữ là lọc
+    UnitPicker.attach({ container: itemRowsEl, getCustom: function () { return TaskManager.getCustomUnits(); }, onAdd: function (txt) { var ok = TaskManager.addCustomUnit(txt, user); if (ok) toast('Đã thêm đơn vị “' + txt + '” vào bảng đơn vị.'); return ok; } });   // ô Đơn vị: xổ bảng đơn vị xây dựng/thiết kế, gõ 1-2 chữ là lọc
     PriceLookup.attach({
       container: itemRowsEl,
       getProvince: function () { return provSel.value; },
@@ -872,6 +872,7 @@
       if (Auth.getCurrentUser && !Auth.getCurrentUser()) { Auth.showLoginModal(); return; }
       user = getUser();
       fillStaticSelects();
+      TaskManager.loadUnits();
       resetForm();
       renderAll();
       setTimeout(renderAll, 1200); // re-render khi dữ liệu GSheets async về

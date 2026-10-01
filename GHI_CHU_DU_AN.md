@@ -2141,3 +2141,8 @@ Bỏ dropdown "Danh mục có sẵn" (thừa vì đã gõ tên là tra giá); th
 
 ### (dt) 01/10/2026 — Đơn hàng: ô Đơn vị có bảng đơn vị mẫu ngành xây dựng/thiết kế
 `js/unit-picker.js` (UnitPicker): bấm vào ô Đơn vị → xổ danh sách ~110 đơn vị theo nhóm (Diện tích: m2, m2 sàn, m2 sàn quy đổi, m2 VL…; Chiều dài: m, md…; Thể tích; Khối lượng; Số lượng/Đóng gói: bao 25kg, thùng 18L, bộ/25kg…; Thiết bị/công trình: điểm, vị trí, phòng, tầng…; Nhân công/thời gian: công, ca máy, cây/tháng…; Thiết kế/hồ sơ: bộ hồ sơ, bản vẽ, phối cảnh, buổi, đợt…; Tính tiền: trọn gói, khoán, %). Gõ 1-2 chữ là lọc (không cần dấu, hiểu cả tên gọi: "met vuong", "cong"), ↑↓ Enter hoặc bấm chuột chọn rồi nhảy sang ô Số lượng; vẫn gõ tự do. Thêm đơn vị mới: sửa mảng UNITS trong unit-picker.js. sw v139.
+
+
+### (du) 01/10/2026 — Ô Đơn vị: gọn lại + nút "Thêm đơn vị"
+- `unit-picker.js` viết lại: danh sách chỉ còn **ký hiệu gọn** (m2 · m3 · g · kg · tấn · buổi · bộ…) dạng nút chia nhóm, bỏ hết chữ giải thích và các biến thể dài (m2 sàn, m2 VL, bao 25kg…). Gõ 1–2 chữ vẫn lọc (không dấu, hiểu tên gọi như "met vuong").
+- Gõ đơn vị chưa có → hiện nút **"+ Thêm “…” vào bảng đơn vị"** (bấm hoặc Enter): lưu chung cho cả công ty vào sheet mới **TC-Đơn vị tính** (nhóm TC-; sheet được tạo khi có đơn vị đầu tiên → chạy lại `sortSheetsByPrefix()` nếu nó nằm cuối), hiện ở nhóm "Đơn vị riêng của công ty". `TaskManager.loadUnits/getCustomUnits/addCustomUnit`. Apps Script **v117** (getUnits/addUnit/updateUnit/deleteUnit). Muốn sửa/xóa đơn vị đã thêm: sửa thẳng trên Sheet. sw v140.

@@ -39,6 +39,7 @@ const SHEETS = {
   receivables: 'TC-Công nợ khách hàng',
   bsSnapshots: 'TC-Chỉ số cân đối kế toán',
   orders: 'TC-Đơn hàng',
+  units: 'TC-Đơn vị tính',   // 2026-10-01: đơn vị tính riêng thêm từ ô Đơn vị ở trang Đơn hàng (nhóm TC-)
   // 2026-09-26: nhóm TTCS- (Tính toán chiếu sáng) cho trang lighting.html — xem
   // GHI_CHU_DU_AN.md mục 6.9. 3 sheet danh mục/cấu hình (đọc-only từ web, sửa
   // trực tiếp trên Sheet) + 1 sheet lưu phương án tính toán người dùng đã lưu.
@@ -272,6 +273,9 @@ const FIELD_MAP = {
     ['Trạng thái', 'status'], ['Ghi chú', 'note'], ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'],
     ['Ngày cập nhật', 'updatedAt'], ['Ngày duyệt', 'reviewedAt'], ['Mã người duyệt', 'reviewerId'],
     ['Khấu trừ BH người lao động', 'bhEmployee'], ['Chi tiết cơ cấu lương', 'breakdown']
+  ],
+  units: [
+    ['Mã', 'id'], ['Đơn vị', 'unit'], ['Nhóm', 'group'], ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
   ],
   salaryComponents: [
     ['Mã', 'id'], ['Mã khoản', 'code'], ['Tên khoản', 'name'], ['Nhóm', 'kind'], ['Mức đủ tháng', 'amount'], ['Đóng BH', 'insured'],
@@ -1016,6 +1020,14 @@ function handleRequestImpl_(e) {
       result = updateData(ss, SHEETS.commissions, params.id, JSON.parse(params.data));
     } else if (action === 'deleteCommission') {
       result = deleteData(ss, SHEETS.commissions, params.id);
+    } else if (action === 'getUnits') {
+      result = getAllData(ss, SHEETS.units);
+    } else if (action === 'addUnit') {
+      result = addData(ss, SHEETS.units, JSON.parse(params.data));
+    } else if (action === 'updateUnit') {
+      result = updateData(ss, SHEETS.units, params.id, JSON.parse(params.data));
+    } else if (action === 'deleteUnit') {
+      result = deleteData(ss, SHEETS.units, params.id);
     } else if (action === 'getSalaryComponents') {
       result = getAllData(ss, SHEETS.salaryComponents);
     } else if (action === 'addSalaryComponent') {
