@@ -217,13 +217,16 @@
 
     // 2026-10-01: ⟳ ở trang con chỉ làm mới dữ liệu CỦA TRANG ĐÓ (nhanh hơn nhiều); muốn làm mới đủ 16 bảng → bấm ⟳ ở trang chủ.
     // (Vào trang từ trang chủ và tải lại trang đều đã tự cập nhật.)
-    var PAGE_TYPES = {
-      'timesheet': ['timesheet', 'members'], 'projects': ['projects', 'tasks', 'members'], 'tasks-manager': ['projects', 'tasks', 'members'],
-      'progress-board': ['projects', 'tasks', 'members'], 'my-dashboard': ['projects', 'tasks', 'timesheet'],
-      'finance': ['financeEntries', 'receivables', 'bsSnapshots'], 'khai-toan': ['financeEntries', 'receivables', 'bsSnapshots'],
-      'orders': ['orders', 'financeEntries', 'receivables', 'projects'], 'payslip': ['payslips', 'timesheet', 'members', 'commissions'],
-      'commission': ['commissions', 'commissionRates', 'projects', 'members'], 'notices': ['notices', 'notifications'],
-      'team': ['members'], 'profile': ['members'], 'staff-monitor': ['timesheet', 'members'], 'pricing': ['priceCatalog']
+    var PAGE_TYPES = {   // đã rà theo các hàm TaskManager.get* mà từng trang (và JS của nó) thực sự gọi
+      'timesheet': ['timesheet', 'members'], 'staff-monitor': ['timesheet', 'members', 'tasks'],
+      'projects': ['projects', 'tasks', 'members'], 'tasks-manager': ['projects', 'tasks', 'members', 'proposals'],
+      'progress-board': ['projects', 'tasks', 'members', 'proposals'], 'my-dashboard': ['projects', 'tasks', 'members'],
+      'finance': ['financeEntries', 'receivables', 'bsSnapshots', 'orders', 'members'], 'khai-toan': ['financeEntries', 'receivables', 'bsSnapshots', 'orders', 'members'],
+      'orders': ['orders', 'priceCatalog', 'projects', 'members', 'financeEntries', 'receivables'],
+      'payslip': ['payslips', 'timesheet', 'members', 'commissions'], 'commission': ['commissions', 'commissionRates', 'projects', 'members'],
+      'notices': ['notices', 'notifications'], 'team': ['members'], 'profile': ['members'], 'spc': ['members'],
+      'pricing': ['priceCatalog', 'projects', 'members'], 'crm': ['members', 'projects'], 'equipment': ['members', 'projects'],
+      'lighting': ['projects'], 'hicon-bim': ['members', 'projects'], 'wiki': ['documents', 'members']
     };
     // Dữ liệu RIÊNG của từng trang (ngoài 16 bảng chung): ⟳ cũng đọc lại; reload:true = trang không tự vẽ lại theo sự kiện → tải lại trang sau khi đọc xong
     var PAGE_EXTRA = {
@@ -231,7 +234,7 @@
       'spc': { loaders: ['loadSpcData'], reload: true }, 'lighting': { loaders: ['loadLightingData'], reload: true },
       'staff-monitor': { loaders: ['loadStaffActivity', 'loadAppUsage'] }, 'finance': { loaders: ['loadFinanceAccess', 'loadUnits'] },
       'orders': { loaders: ['loadUnits'] }, 'payslip': { loaders: ['loadSalaryComponents'] }, 'commission': { loaders: ['loadSalaryComponents'] },
-      'khai-toan': { loaders: ['loadFinanceAccess'] }
+      'khai-toan': { loaders: ['loadFinanceAccess'] }, 'timesheet': { loaders: ['getAttendanceLocations', 'getWorkSchedule'] }
     };
     function pageKey() { var m = location.pathname.match(/\/pages\/([^\/.]+)/); return m ? m[1] : null; }
     function runExtras(done) {
