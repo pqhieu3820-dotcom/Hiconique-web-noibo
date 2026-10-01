@@ -23,6 +23,8 @@
   <script src="/js/money-input.js"></script>
   <script src="/js/price-lookup.js"></script>
   <script src="/js/unit-picker.js"></script>
+  <script src="/js/payslip-docx.js" defer></script>
+  <script src="/js/debt-docx.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js" defer></script>
   <script src="/js/excel-standard.js" defer></script>
   <style>
@@ -723,6 +725,7 @@
             '<button class="od-btn od-btn-ghost od-btn-sm" data-toggle-detail="' + o.id + '">Chi tiết</button>' +
             '<button class="od-btn od-btn-ghost od-btn-sm" data-print-invoice="' + o.id + '">In</button>' +
             '<button class="od-btn od-btn-ghost od-btn-sm" data-export-excel="' + o.id + '">Excel</button>' +
+            '<select class="od-btn od-btn-ghost od-btn-sm" data-doc-order="' + o.id + '" title="Xuất văn bản Word / PDF"><option value="">Word/PDF…</option><option value="ob">Bảng kê & đề nghị thanh toán</option><option value="oq">Bảng báo giá</option><option value="oh">Biên bản giao nhận, nghiệm thu</option>' + (col > 0 ? '<option value="or">Phiếu thu (phần đã thu)</option>' : '') + '</select>' +
             (editable && ph === 'draft' ? '<button class="od-btn od-btn-primary od-btn-sm" data-submit-order="' + o.id + '">Gửi kế toán</button>' : '') +
             (canEdit && ph === 'pending' ? '<button class="od-btn od-btn-ghost od-btn-sm" data-recall-order="' + o.id + '">Thu hồi</button>' : '') +
             (editable ? '<button class="od-btn od-btn-ghost od-btn-sm" data-edit-order="' + o.id + '">Sửa</button>' : '') +
@@ -765,6 +768,14 @@
       });
       rows.querySelectorAll('[data-print-invoice]').forEach(function (btn) {
         btn.addEventListener('click', function () { var o = all.find(function (x) { return x.id === btn.getAttribute('data-print-invoice'); }); if (o) printInvoice(o); });
+      });
+      rows.querySelectorAll('[data-doc-order]').forEach(function (sel) {
+        sel.addEventListener('change', function () {
+          var o = all.find(function (x) { return x.id === sel.getAttribute('data-doc-order'); }), kind = sel.value; sel.value = '';
+          if (!o || !kind) return;
+          if (typeof DebtDocx === 'undefined') { alert('Chưa tải xong bộ tạo văn bản. Thử lại sau vài giây.'); return; }
+          DebtDocx.open(kind, { order: o });
+        });
       });
       rows.querySelectorAll('[data-export-excel]').forEach(function (btn) {
         btn.addEventListener('click', function () { var o = all.find(function (x) { return x.id === btn.getAttribute('data-export-excel'); }); if (o) exportOrderExcel(o); });

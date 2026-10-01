@@ -1324,10 +1324,17 @@
           '<td>' + escapeHtml(e.actor || '—') + '</td>' +
           '<td style="white-space:nowrap;">' + vnDate(e.date) + '</td>' +
           '<td class="fn-amount ' + t.cls + '">' + fmt(e.amount) + '</td>' +
-          '<td><button class="fn-btn fn-btn-ghost fn-btn-sm" data-delete-entry="' + e.id + '">Xoá</button></td>' +
+          '<td style="white-space:nowrap;">' + (t.cashSign ? '<button class="fn-btn fn-btn-ghost fn-btn-sm" data-doc-entry="' + e.id + '" title="Xuất ' + (t.cashSign > 0 ? 'phiếu thu' : 'phiếu chi') + ' (Word / PDF)">' + (t.cashSign > 0 ? 'Phiếu thu' : 'Phiếu chi') + '</button> ' : '') + '<button class="fn-btn fn-btn-ghost fn-btn-sm" data-delete-entry="' + e.id + '">Xoá</button></td>' +
         '</tr>';
       }).join('');
 
+      rows.querySelectorAll('[data-doc-entry]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var en = list.filter(function (x) { return x.id === btn.getAttribute('data-doc-entry'); })[0];
+          if (!en || typeof DebtDocx === 'undefined') { alert('Chưa tải xong bộ tạo văn bản. Thử lại sau vài giây.'); return; }
+          DebtDocx.open('ent', { entry: en, cashSign: (TYPES[en.type] || {}).cashSign || 0 });
+        });
+      });
       rows.querySelectorAll('[data-delete-entry]').forEach(function (btn) {
         btn.addEventListener('click', function () {
           var eid = btn.getAttribute('data-delete-entry');

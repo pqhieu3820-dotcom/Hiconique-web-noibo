@@ -184,7 +184,7 @@ var DebtDocx = (function () {
   function buildPhieu(D, a, isIn) {
     var k = kit(D), R = k.R, P = k.P, d = a.debt, p = a.payment || {}, n = nowParts();
     var dt = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(p.date || '')) || [null, n.yyyy, n.mm, n.dd];
-    var acc = p.account || '111', counter = isIn ? '131' : (d.partyType === 'employee' ? '334' : d.partyType === 'bank' || d.partyType === 'investor' ? '341' : d.partyType === 'gov' ? '333' : '331');
+    var acc = p.account || '111', counter = p.counter || (isIn ? '131' : (d.partyType === 'employee' ? '334' : d.partyType === 'bank' || d.partyType === 'investor' ? '341' : d.partyType === 'gov' ? '333' : '331'));
     var head = k.plainTable([
       k.plainCell([P(R('Đơn vị: ' + COMPANY.name, { bold: true, size: 22 }), { after: 0 }), P(R('Địa chỉ: ' + (COMPANY.address || DOTS), { size: 22 }), { after: 0 })], 58),
       k.plainCell([P(R('Mẫu số ' + (isIn ? '01' : '02') + ' - TT', { bold: true, size: 22 }), { align: k.C.CENTER, after: 0 }), P(R('(Ban hành theo Thông tư số 133/2016/TT-BTC ngày 26/08/2016 của Bộ Tài chính)', { italic: true, size: 18 }), { align: k.C.CENTER, after: 0 })], 42)
@@ -199,7 +199,7 @@ var DebtDocx = (function () {
       P(R(''), { after: 60 }),
       line(isIn ? 'Họ và tên người nộp tiền: ' : 'Họ và tên người nhận tiền: ', d.clientName || DOTS, true),
       line('Địa chỉ: ', d.partyAddress || DOTS),
-      line(isIn ? 'Lý do nộp: ' : 'Lý do chi: ', (isIn ? 'Thanh toán công nợ ' : 'Thanh toán công nợ cho ') + (d.clientName || '') + (d.refNo ? ' theo ' + d.refNo : '') + (p.note ? ' — ' + p.note : '')),
+      line(isIn ? 'Lý do nộp: ' : 'Lý do chi: ', p.reason || ((isIn ? 'Thanh toán công nợ ' : 'Thanh toán công nợ cho ') + (d.clientName || '') + (d.refNo ? ' theo ' + d.refNo : '') + (p.note ? ' — ' + p.note : ''))),
       line('Số tiền: ', fmt(amt) + ' đồng', true),
       line('(Viết bằng chữ): ', words(amt)),
       line('Kèm theo: ', '.......... chứng từ gốc.'),
@@ -211,11 +211,105 @@ var DebtDocx = (function () {
     return k.page(body);
   }
 
+
+  // ---------- E. Phiếu thu / chi từ 1 giao dịch trong Sổ tài chính ----------
+  // args.entry = giao dịch; args.cashSign > 0 → Phiếu thu, < 0 → Phiếu chi
+  function buildEntry(D, a) {
+    var e = a.entry, isIn = a.cashSign > 0, code = (/^\d{3,4}/.exec(String(e.counterAccount || '')) || [''])[0];
+    var d = { clientName: e.actor || '', partyAddress: '', partyType: 'other' };
+    var p = { amount: e.amount, date: e.voucherDate || e.date, voucherNo: e.voucherNo, account: e.account || '111', counter: code || undefined, method: e.account === '112' ? 'Chuyển khoản' : 'Tiền mặt',
+      reason: [e.category, e.description].filter(Boolean).join(' — ') };
+    return buildPhieu(D, { debt: d, payment: p }, isIn);
+  }
+
+  // ---------- F. Chứng từ đơn hàng ----------
+  function orderParts(o) {
+    var items = Array.isArray(o.items) ? o.items : [], total = Number(o.totalAmount) || 0;
+    var col = o.collectedAmount != null && o.collectedAmount !== '' ? Number(o.collectedAmount) || 0 : 0;
+    if (o.status === 'paid' || o.financeStatus === 'paid') col = total;
+    return { items: items, total: total, col: col, debt: Math.max(0, total - col) };
+  }
+  function itemsTable(k, items) {
+    var hd = ['STT', 'Mã', 'Tên hàng hóa, dịch vụ', 'ĐVT', 'Số lượng', 'Đơn giá', 'Thành tiền'], w = [6, 11, 31, 8, 10, 16, 18];
+    var rows = [k.row(hd.map(function (h, i) { return k.cell(h, { bold: true, align: k.C.CENTER, fill: 'E7E6E6', w: w[i], size: 22 }); }))];
+    items.forEach(function (it, i) { rows.push(k.row([k.cell(String(i + 1), { align: k.C.CENTER, size: 22 }), k.cell(it.code || '', { size: 22 }), k.cell(it.name || '', { size: 22 }), k.cell(it.unit || '', { align: k.C.CENTER, size: 22 }), k.cell(fmt(it.qty), { align: k.C.RIGHT, size: 22 }), k.cell(fmt(it.price), { align: k.C.RIGHT, size: 22 }), k.cell(fmt(it.lineTotal != null ? it.lineTotal : (Number(it.qty) || 0) * (Number(it.price) || 0)), { align: k.C.RIGHT, size: 22 })])); });
+    return k.table(rows);
+  }
+  function totalsLines(k, o, op) {
+    var R = k.R, P = k.P, ln = function (l, v, b) { return P([R(l + ': ', { bold: !!b }), R(v, { bold: !!b })], { align: k.C.RIGHT, after: 20 }); };
+    var out = [ln('Cộng tiền hàng, dịch vụ', fmt(o.subtotal != null ? o.subtotal : op.items.reduce(function (s, it) { return s + (Number(it.lineTotal) || 0); }, 0)) + ' đ')];
+    if (Number(o.discountAmount)) out.push(ln('Chiết khấu / giảm giá (' + (o.discountPercent || 0) + '%)', '-' + fmt(o.discountAmount) + ' đ'));
+    out.push(ln('Thuế suất GTGT ' + (o.vatPercent || 0) + '%, tiền thuế GTGT', fmt(o.vatAmount || 0) + ' đ'));
+    out.push(ln('TỔNG CỘNG TIỀN THANH TOÁN', fmt(op.total) + ' đ', true));
+    out.push(P([R('Số tiền viết bằng chữ: ', { italic: true }), R(words(op.total), { italic: true, bold: true })], { before: 60, after: 100 }));
+    return out;
+  }
+  function orderHead(k, o, kindTitle, note) {
+    var R = k.R, P = k.P, n = nowParts(), dt = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(o.createdAt || '')) || [null, n.yyyy, n.mm, n.dd];
+    return [k.plainTable([
+      k.plainCell([P(R(COMPANY.name, { bold: true, size: 24 }), { after: 0 }), P(R('Địa chỉ: ' + (COMPANY.address || DOTS) + (COMPANY.taxCode ? ' · MST: ' + COMPANY.taxCode : ''), { size: 22 }), { after: 0 }), P(R('Điện thoại: ' + (COMPANY.phone || DOTS) + (COMPANY.bankAccount ? ' · TK: ' + COMPANY.bankAccount + ' ' + (COMPANY.bankName || '') : ''), { size: 22 }), { after: 0 })], 60),
+      k.plainCell([P(R('Số: ' + (o.orderNumber || o.id), { bold: true, size: 24 }), { align: k.C.CENTER, after: 0 }), P(R('Ngày ' + dt[3] + ' tháng ' + dt[2] + ' năm ' + dt[1], { italic: true, size: 22 }), { align: k.C.CENTER, after: 0 })], 40)
+    ]),
+    P(R(kindTitle, { bold: true, size: 32 }), { align: k.C.CENTER, before: 140, after: 40 }),
+    P(R(note || '', { italic: true, size: 22 }), { align: k.C.CENTER, after: 120 }),
+    P([R('Đơn vị bán hàng: '), R(COMPANY.name, { bold: true })], { after: 20 }),
+    P([R('Họ tên người mua hàng / Tên đơn vị: '), R(o.clientName || DOTS, { bold: true })], { after: 20 }),
+    P(R('Mã số thuế: ' + (o.clientTaxCode || DOTS) + '   Điện thoại: ' + (o.clientPhone || DOTS)), { after: 20 }),
+    P(R('Địa chỉ: ' + (o.clientAddress || DOTS)), { after: 20 }),
+    P(R('Hình thức thanh toán: ' + (o.paymentMethod || 'TM/CK')), { after: 100 })];
+  }
+  // F1. Bảng kê hàng hóa, dịch vụ & đề nghị thanh toán (nội dung theo Điều 10 NĐ 123/2020/NĐ-CP) — KHÔNG thay thế hóa đơn GTGT điện tử
+  function buildOrderBill(D, a) {
+    var k = kit(D), o = a.order, op = orderParts(o), R = k.R, P = k.P;
+    var body = orderHead(k, o, 'BẢNG KÊ HÀNG HÓA, DỊCH VỤ KIÊM ĐỀ NGHỊ THANH TOÁN', '(Chứng từ nội bộ — hóa đơn GTGT điện tử được lập riêng theo Nghị định 123/2020/NĐ-CP)').concat([
+      itemsTable(k, op.items), P(R(''), { after: 60 })], totalsLines(k, o, op), [
+      P([R('Đã thanh toán: '), R(fmt(op.col) + ' đ', { bold: true }), R('      Còn phải thanh toán: '), R(fmt(op.debt) + ' đ', { bold: true }), op.debt > 0 && o.debtDueDate ? R(' (hạn thanh toán ' + vn(o.debtDueDate) + ')') : R('')], { after: 140 }),
+      k.sig([['NGƯỜI MUA HÀNG', '(Ký, ghi rõ họ tên)'], ['NGƯỜI LẬP BẢNG KÊ', '(Ký, ghi rõ họ tên)'], ['THỦ TRƯỞNG ĐƠN VỊ', '(Ký, đóng dấu, ghi rõ họ tên)']])]);
+    return k.page(body);
+  }
+  // F2. Báo giá
+  function buildOrderQuote(D, a) {
+    var k = kit(D), o = a.order, op = orderParts(o), R = k.R, P = k.P, I = { firstLine: 567 };
+    var body = [].concat(k.quocHieu(), orderHead(k, o, 'BẢNG BÁO GIÁ', '(Có giá trị trong 15 ngày kể từ ngày báo giá)'), [P(R('Kính gửi: ' + (o.clientName || DOTS), { bold: true }), { align: k.C.CENTER, after: 80 }),
+      P(R(COMPANY.name + ' trân trọng gửi tới Quý khách bảng báo giá hàng hóa, dịch vụ như sau:'), { indent: I }), itemsTable(k, op.items), P(R(''), { after: 60 })], totalsLines(k, o, op), [
+      P(R('Điều kiện thanh toán: ' + (op.debt > 0 && o.debtDueDate ? 'thanh toán ' + fmt(op.col) + ' đ khi ký xác nhận, số còn lại ' + fmt(op.debt) + ' đ trước ngày ' + vn(o.debtDueDate) + '.' : 'thanh toán theo thỏa thuận hai bên.') + ' Giá đã ' + (Number(o.vatPercent) ? 'bao gồm' : 'chưa bao gồm') + ' thuế GTGT.'), { indent: I, align: k.C.JUSTIFIED, after: 140 }),
+      k.sig([['KHÁCH HÀNG XÁC NHẬN', '(Ký, ghi rõ họ tên)'], ['ĐẠI DIỆN ' + COMPANY.short, '(Ký, ghi rõ họ tên, đóng dấu)']])]);
+    return k.page(body);
+  }
+  // F3. Biên bản giao nhận / nghiệm thu
+  function buildOrderHandover(D, a) {
+    var k = kit(D), o = a.order, op = orderParts(o), R = k.R, P = k.P, n = nowParts(), I = { firstLine: 567 };
+    var body = [].concat(k.quocHieu(), [
+      P(R('BIÊN BẢN GIAO NHẬN, NGHIỆM THU', { bold: true, size: 32 }), { align: k.C.CENTER, before: 80, after: 40 }),
+      P(R('Số đơn hàng: ' + (o.orderNumber || o.id), { italic: true }), { align: k.C.CENTER, after: 140 }),
+      P(R('Căn cứ Bộ luật Dân sự 2015, Luật Thương mại 2005 và đơn hàng số ' + (o.orderNumber || o.id) + ';'), { indent: I, align: k.C.JUSTIFIED }),
+      P(R('Hôm nay, ngày ' + n.dd + ' tháng ' + n.mm + ' năm ' + n.yyyy + ', tại ' + (o.clientAddress || COMPANY.place) + ', chúng tôi gồm:'), { indent: I }),
+      P([R('BÊN GIAO (Bên A): ', { bold: true }), R(COMPANY.name, { bold: true })], { after: 20 }), P(R('Đại diện: ' + (COMPANY.director || DOTS) + '   Chức vụ: ' + (COMPANY.directorTitle || 'Giám đốc')), { after: 80 }),
+      P([R('BÊN NHẬN (Bên B): ', { bold: true }), R(o.clientName || DOTS, { bold: true })], { after: 20 }), P(R('Địa chỉ: ' + (o.clientAddress || DOTS) + '   Điện thoại: ' + (o.clientPhone || DOTS)), { after: 100 }),
+      P(R('Hai bên cùng xác nhận việc bàn giao, nghiệm thu các hạng mục sau:'), { indent: I }), itemsTable(k, op.items),
+      P([R('Giá trị: ', { bold: true }), R(fmt(op.total) + ' đồng', { bold: true }), R(' (' + words(op.total).replace(/^./, function (c) { return c.toLowerCase(); }) + '), đã thanh toán ' + fmt(op.col) + ' đồng, còn lại ' + fmt(op.debt) + ' đồng.')], { before: 100, after: 80, indent: I, align: k.C.JUSTIFIED }),
+      P(R('Bên B đã kiểm tra số lượng, chất lượng và đồng ý nghiệm thu. Biên bản lập thành 02 bản có giá trị pháp lý như nhau, mỗi bên giữ 01 bản.'), { indent: I, align: k.C.JUSTIFIED, after: 140 }),
+      k.sig([['ĐẠI DIỆN BÊN A', '(Ký, ghi rõ họ tên, đóng dấu)'], ['ĐẠI DIỆN BÊN B', '(Ký, ghi rõ họ tên, đóng dấu)']])]);
+    return k.page(body);
+  }
+  // F4. Phiếu thu cho phần đã thu của đơn
+  function buildOrderReceipt(D, a) {
+    var o = a.order, op = orderParts(o);
+    var d = { clientName: o.clientName, partyAddress: o.clientAddress, partyType: 'customer' };
+    var date = String(o.financeReviewedAt || o.updatedAt || o.createdAt || '').slice(0, 10);
+    return buildPhieu(D, { debt: d, payment: { amount: op.col, date: date, voucherNo: o.voucherNo || '', method: o.paymentMethod || 'Tiền mặt', reason: 'Thu tiền đơn hàng ' + (o.orderNumber || o.id) } }, true);
+  }
+
   var KINDS = {
     cv: { title: 'Công văn đề nghị thanh toán công nợ', title2: 'Công văn thông báo kế hoạch thanh toán công nợ', build: buildCongVan, file: 'Cong_van_cong_no' },
     dc: { title: 'Biên bản đối chiếu công nợ', build: buildDoiChieu, file: 'Bien_ban_doi_chieu_cong_no' },
     dn: { title: 'Giấy đề nghị thanh toán (Mẫu 05-TT)', build: buildDeNghi, file: 'Giay_de_nghi_thanh_toan' },
     pt: { title: 'Phiếu thu (Mẫu 01-TT)', build: function (D, a) { return buildPhieu(D, a, true); }, file: 'Phieu_thu' },
+    ent: { title: 'Phiếu thu / chi (TT 133/2016/TT-BTC)', build: buildEntry, file: 'Phieu' },
+    ob: { title: 'Bảng kê hàng hóa, dịch vụ kiêm đề nghị thanh toán', build: buildOrderBill, file: 'Bang_ke' },
+    oq: { title: 'Bảng báo giá', build: buildOrderQuote, file: 'Bao_gia' },
+    oh: { title: 'Biên bản giao nhận, nghiệm thu', build: buildOrderHandover, file: 'Bien_ban_giao_nhan' },
+    or: { title: 'Phiếu thu (Mẫu 01-TT)', build: buildOrderReceipt, file: 'Phieu_thu_don_hang' },
     pc: { title: 'Phiếu chi (Mẫu 02-TT)', build: function (D, a) { return buildPhieu(D, a, false); }, file: 'Phieu_chi' }
   };
 
@@ -223,10 +317,13 @@ var DebtDocx = (function () {
     PT = window.PayslipDocx;
     if (!PT || !PT.openViewer) { alert('Chưa tải xong bộ tạo file Word. Thử lại sau vài giây.'); return Promise.resolve(); }
     var cfgK = KINDS[kind]; if (!cfgK) return Promise.resolve();
-    var d = args.debt, title = (kind === 'cv' && d.direction === 'payable') ? cfgK.title2 : cfgK.title;
-    var fileName = cfgK.file + '_' + plain(d.clientName) + (args.payment && args.payment.voucherNo ? '_' + plain(args.payment.voucherNo) : '') + '_' + nowParts().iso.replace(/-/g, '') + '.docx';
+    var d = args.debt, title, sub, who;
+    if (args.order) { title = cfgK.title; sub = (args.order.clientName || '') + ' · ' + (args.order.orderNumber || '') + ' · ' + fmt(args.order.totalAmount) + ' đ'; who = (args.order.orderNumber || '') + '_' + (args.order.clientName || ''); }
+    else if (args.entry) { var inn = args.cashSign > 0; title = inn ? 'Phiếu thu (Mẫu 01-TT)' : 'Phiếu chi (Mẫu 02-TT)'; sub = (args.entry.voucherNo || '') + ' · ' + (args.entry.actor || '') + ' · ' + fmt(args.entry.amount) + ' đ'; who = (inn ? 'thu' : 'chi') + '_' + (args.entry.voucherNo || '') + '_' + (args.entry.actor || ''); }
+    else { title = (kind === 'cv' && d.direction === 'payable') ? cfgK.title2 : cfgK.title; sub = (d.clientName || '') + ' · ' + (d.direction === 'payable' ? 'Phải trả' : 'Phải thu') + ' ' + fmt(d.outstanding != null ? d.outstanding : d.amount) + ' đ'; who = (d.clientName || '') + (args.payment && args.payment.voucherNo ? '_' + args.payment.voucherNo : ''); }
+    var fileName = cfgK.file + '_' + plain(who) + '_' + nowParts().iso.replace(/-/g, '') + '.docx';
     return PT.openViewer({
-      title: title, sub: (d.clientName || '') + ' · ' + (d.direction === 'payable' ? 'Phải trả' : 'Phải thu') + ' ' + fmt(d.outstanding != null ? d.outstanding : d.amount) + ' đ', fileName: fileName,
+      title: title, sub: sub, fileName: fileName,
       makeBlob: function () { return PT.ensureDocx().then(function (D) { return D.Packer.toBlob(cfgK.build(D, args)); }); }
     });
   }

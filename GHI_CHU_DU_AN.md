@@ -2179,3 +2179,8 @@ Dòng chèn mới ở đầu bảng thừa hưởng dropdown Danh mục cũ từ
 - `public/js/debt-docx.js` (dùng khung xem/tải .docx/PDF của `payslip-docx.js`, nay có `openViewer`): Công văn đề nghị thanh toán / thông báo thanh toán (NĐ 30/2020/NĐ-CP), Biên bản đối chiếu công nợ, Giấy đề nghị thanh toán (Mẫu 05-TT), Phiếu thu (01-TT), Phiếu chi (02-TT) (TT 133/2016/TT-BTC). Địa chỉ/MST/TK ngân hàng/người đại diện công ty điền ở `DebtDocx.COMPANY` (để trống thì in dấu chấm).
 - Hàng đợi ghi Sheet (`task-data.js`): thao tác người dùng (xoá/sửa…) chen lên trước thông báo chưa gửi; các `addNotification` chờ được gộp thành `addNotificationsBatch` → Xoá không còn phải chờ hàng chục giây.
 - sw v145.
+
+
+## 2026-10-01 — Xuất Word/PDF cho Sổ tài chính & Đơn hàng
+- `debt-docx.js` thêm: **Phiếu thu/chi từ giao dịch** (nút "Phiếu thu/Phiếu chi" mỗi dòng ở Giao dịch; Mẫu 01-TT / 02-TT, TT 133/2016/TT-BTC; tự lấy số phiếu, TK quỹ, TK đối ứng, bằng chữ) và 4 chứng từ đơn hàng (menu "Word/PDF…" ở trang Đơn hàng): Bảng kê hàng hóa dịch vụ kiêm đề nghị thanh toán (nội dung theo Điều 10 NĐ 123/2020/NĐ-CP, ghi rõ KHÔNG thay hóa đơn GTGT điện tử), Bảng báo giá, Biên bản giao nhận – nghiệm thu, Phiếu thu phần đã thu.
+- orders.html nạp thêm payslip-docx.js + debt-docx.js. sw v146.
