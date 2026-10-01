@@ -510,12 +510,22 @@ var Offline = (function () {
     if (!ensure()) return;
     var key = manual.kind + '|' + manual.l1;
     el.hidden = false; el.style.display = ''; el.setAttribute('data-st', manual.kind);
-    if (el._key === key && el.querySelector('.l2')) return;
+    var l2 = typeof manual.l2 === 'function' ? manual.l2() : (manual.l2 || '');
+    if (el._key === key && el.querySelector('.l2')) { el.querySelector('.l2').textContent = l2; return; }
     el._key = key;
-    el.innerHTML = ICONS_M[manual.kind] + '<div class="tx"><div class="l1 ' + (manual.kind === 'busy' ? '' : manual.kind) + '">' + manual.l1 + '</div><div class="l2">' + (manual.l2 || '') + '</div></div>';
+    el.innerHTML = ICONS_M[manual.kind] + '<div class="tx"><div class="l1 ' + (manual.kind === 'busy' ? '' : manual.kind) + '">' + manual.l1 + '</div><div class="l2">' + l2 + '</div></div>';
   }
   window.HiconiqueSyncChip = {
-    busy: function (l1, l2) { manual = { kind: 'busy', l1: l1 || 'Đang làm mới dữ liệu…', l2: l2 || 'Đang lấy dữ liệu mới nhất từ Google Sheet', until: 0 }; drawManual(); },
+    busy: function (l1, l2) {
+      var t0 = Date.now();
+      // dòng phụ tự cập nhật mỗi giây: việc đang làm + đã chờ + đếm ngược ước tính (theo lần đọc trước)
+      var info = l2 || function () {
+        var M = window.HiconiqueMetrics || {}, el_ = Date.now() - t0, est = Math.max(5000, M.readMs || 12000), left = est - el_;
+        return (M.refreshPhase || 'Đang lấy dữ liệu mới nhất từ Google Sheet') + ' · đã chờ ' + sec(el_) + (left > 0 ? ' · còn khoảng ' + dur(left) : ' · đang chờ Google phản hồi…');
+      };
+      manual = { kind: 'busy', l1: l1 || 'Đang làm mới dữ liệu…', l2: info, until: 0 }; drawManual();
+      if (!manual.tick) manual.tick = setInterval(function () { if (manual && manual.kind === 'busy') drawManual(); else clearInterval(manual && manual.tick); }, 500);
+    },
     ok: function (l1, l2, hold) { manual = { kind: 'ok', l1: l1 || 'Đã làm mới dữ liệu', l2: l2 || 'Dữ liệu trên màn hình khớp Google Sheet', until: Date.now() + (hold || 3000) }; el && (el._key = ''); drawManual(); },
     bad: function (l1, l2, hold) { manual = { kind: 'bad', l1: l1 || 'Chưa làm mới được', l2: l2 || 'Kiểm tra mạng rồi thử lại', until: Date.now() + (hold || 5000) }; el && (el._key = ''); drawManual(); }
   };

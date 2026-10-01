@@ -2254,3 +2254,8 @@ Dòng chèn mới ở đầu bảng thừa hưởng dropdown Danh mục cũ từ
 - `onEdit` (trigger sửa tay) gọi `bumpReadCacheVersion_()` → sửa tay trên Sheet làm hết hiệu lực cache đọc 15s phía máy chủ. Apps Script v126. sw v163.
 - 2026-10-01: theo yêu cầu, tạo dữ liệu chấm công THỬ 1/9–20/9 cho NV_VK_210593 và CEO_QH_030800 (40 dòng, mã dạng timesheet_2609DD_<ms>111/222, giờ 07:30–11:33–13:30–17:34 / 17:32, Tổng giờ = công thức) ở sheet TLCC-Chấm công, chèn cuối bảng; muốn xoá chỉ cần xoá các dòng ngày 01–20/09/2026 của 2 người này.
 - 2026-10-01: nút ⟳ Làm mới ở thanh đầu trang dùng chung khung kính ở góc dưới phải (offline.js `HiconiqueSyncChip.busy/ok/bad`): đang làm mới → xoay vàng, xong → xanh "Đã làm mới dữ liệu" 3s rồi ẩn; thay thông báo nâu cũ. sw v164.
+
+## 2026-10-01 — Nút Làm mới: nhanh hơn + hiển thị việc đang làm / đã chờ / đếm ngược ở chip góc dưới
+- Nguyên nhân chậm (đo thực tế): gói `getBundle` 16 bảng mất ~15s phía Apps Script (mỗi bảng ~7 lệnh Sheets: getLastRow, getLastColumn, getValues, getHeaders… chạy tuần tự; thông báo 47KB, chấm công 29KB).
+- Sửa server (`gsheets-api-v2.js`): `getAllData` đọc cả bảng + tiêu đề bằng 1 `getDataRange().getValues()`, tính múi giờ/khoá cột 1 lần; `handleBundle_` chuyển cờ `nc` xuống từng lệnh con. **Cần deploy Apps Script phiên bản mới (v127).**
+- Chip kính góc dưới: dòng phụ tự cập nhật mỗi 0,5s: "Đang đọc 16 bảng… · đã chờ Xs · còn khoảng Ys" (ước tính theo lần đọc trước, mặc định 12s); `offline.js`, `task-data.js` (refreshPhase). sw v165.

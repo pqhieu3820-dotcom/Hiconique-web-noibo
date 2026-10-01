@@ -220,7 +220,7 @@
       if (typeof TaskManager === 'undefined' || !TaskManager.refreshFromGSheets) return;
       btn.classList.add('spinning');
       btn.disabled = true;
-      if (window.HiconiqueSyncChip) HiconiqueSyncChip.busy();
+      if (window.HiconiqueSyncChip) { HiconiqueSyncChip.busy(); }
       TaskManager.refreshFromGSheets(function (ok) {
         btn.classList.remove('spinning');
         btn.disabled = false;

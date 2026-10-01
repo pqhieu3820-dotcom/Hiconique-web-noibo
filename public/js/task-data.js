@@ -990,10 +990,12 @@ var TaskManager = (function() {
     var hashParam = Object.keys(known).length && !forceFromSheet_ ? '&hashes=' + encodeURIComponent(JSON.stringify(known)) : '';
     if (forceFromSheet_) hashParam += '&nc=' + Date.now();   // khoá khác → bỏ qua cache 15s phía máy chủ
     var t0Read = Date.now();
+    if (window.HiconiqueMetrics) { HiconiqueMetrics.refreshPhase = 'Đang đọc ' + REFRESH_TYPES.length + ' bảng dữ liệu trên Google Sheet…'; }
     fetch(GSHEETS_CONFIG.API_URL + '?action=getBundle&types=' + encodeURIComponent(actions.join(',')) + hashParam, { redirect: 'follow', signal: controller.signal })
       .then(function (r) { return r.json(); })
       .then(function (data) {
         clearTimeout(timer);
+        if (window.HiconiqueMetrics) { HiconiqueMetrics.refreshPhase = 'Đang cập nhật dữ liệu lên màn hình…'; }
         if (!data || Array.isArray(data) || data.error) { callback('legacy'); return; }   // {error:'Unknown action'} = Apps Script bản cũ
         var map = {};
         var hs = data._h || {};

@@ -999,7 +999,7 @@ function handleBundle_(params) {
   const out = { _h: {} };
   actions.forEach(function (a) {
     try {
-      const body = handleRequest({ parameter: { action: a } }).getContent();
+      const body = handleRequest({ parameter: params.nc ? { action: a, nc: params.nc } : { action: a } }).getContent();
       const h = md5Hex_(body);
       out._h[a] = h;
       out[a] = (known[a] && known[a] === h) ? { same: true } : JSON.parse(body);
@@ -1572,14 +1572,17 @@ function getOrCreateSheet(ss, sheetName) {
 function getAllData(ss, sheetName) {
   const sheet = findSheet(ss, sheetName);
   if (!sheet) return []; // read never creates a tab — avoids phantom empties
-  const lastRow = sheet.getLastRow();
-  if (lastRow < 2) return [];
-  const data = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
-  const headers = getHeaders(sheet);
+  // 2026-10-01 (hiệu năng): MỘT lệnh Sheets đọc cả bảng kể cả dòng tiêu đề (trước: getLastRow + getLastColumn×2 + 2 lần getValues ≈ 7 lệnh/sheet, ×16 sheet
+  // mỗi lần làm mới ≈ 15s); múi giờ và tên khoá (viToEnHeader) tính 1 lần thay vì cho từng ô.
+  const all = sheet.getDataRange().getValues();
+  if (all.length < 2) return [];
+  const headers = all[0].map(function (h) { return typeof h === 'string' ? h.trim() : h; });
+  const data = all.slice(1), keys = headers.map(function (h) { return viToEnHeader(sheetName, h); });
+  const TZ = Session.getScriptTimeZone() || 'Asia/Ho_Chi_Minh';
   return data.map(function (row) {
     const obj = {};
     headers.forEach(function (h, i) {
-      const key = viToEnHeader(sheetName, h);
+      const key = keys[i];
       let val = row[i];
       // A Sheet cell formatted/entered as an actual Date (dob, deadline,
       // startDate...) comes back from getValues() as a real JS Date object
@@ -1607,7 +1610,7 @@ function getAllData(ss, sheetName) {
         const TIME_ONLY_FIELDS = { checkinTime: true, checkoutTime: true, morningCheckin: true, morningCheckout: true, afternoonCheckin: true, afternoonCheckout: true,
           morningStart: true, morningEnd: true, afternoonStart: true, afternoonEnd: true, morningAutoCheckoutTime: true, afternoonAutoCheckoutTime: true };   // 2026-09-30: giờ làm việc (Setup thời gian làm việc) cũng là giờ thuần — trước bị đọc thành '1899-12-30' nên lưu xong mở lại không thấy
         const pattern = TIME_ONLY_FIELDS[key] ? 'HH:mm' : (key === 'month' ? 'yyyy-MM' : 'yyyy-MM-dd');
-        val = Utilities.formatDate(val, Session.getScriptTimeZone() || 'Asia/Ho_Chi_Minh', pattern);
+        val = Utilities.formatDate(val, TZ, pattern);
       }
       if (typeof val === 'string' && val.startsWith('[')) {
         try { val = JSON.parse(val); } catch (e) { /* keep raw string */ }
