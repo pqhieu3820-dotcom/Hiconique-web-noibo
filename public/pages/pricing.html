@@ -849,6 +849,9 @@
           <div class="pr-card-desc">Dựng nhanh móng · tường · sàn · mái · lỗ mở bằng khối (kiểu SketchUp) → ra thể tích, diện tích, chiều dài → gán đơn giá DG-* → đưa sang <b>Dự toán xây dựng</b>. Xuất <b>.dae</b> (SketchUp nhập trực tiếp) hoặc nhập <b>.dae/.obj</b> từ SketchUp để gán vật liệu &amp; ra đơn giá.</div>
         </div>
         <div class="boq-head-btns">
+          <button class="pr-btn pr-btn-sm" id="m3dHub" type="button" title="Lấy mô hình SketchUp đã bấm Scan / Đồng bộ bằng plugin HICON-BIM (theo dự án đang chọn)">↻ Lấy từ SketchUp (Hub)</button>
+          <button class="pr-btn pr-btn-sm" id="m3dJsonIn" type="button" title="File .hicon-model.json xuất từ plugin HICON-BIM trong SketchUp">⇪ Nhập từ SketchUp (.json)</button>
+          <button class="pr-btn pr-btn-sm" id="m3dJsonOut" type="button" title="Gửi sang SketchUp: plugin HICON-BIM > Nhập mô hình từ web">⇩ Xuất cho SketchUp (.json)</button>
           <button class="pr-btn pr-btn-sm" id="m3dImport" type="button">⇪ Nhập .dae / .obj</button>
           <button class="pr-btn pr-btn-sm" id="m3dDae" type="button">⇩ Xuất .dae (SketchUp)</button>
           <button class="pr-btn pr-btn-sm" id="m3dObj" type="button">Xuất .obj</button>
@@ -857,6 +860,7 @@
         </div>
       </div>
       <input type="file" id="m3dFile" accept=".dae,.obj" hidden>
+      <input type="file" id="m3dJsonFile" accept=".json" hidden>
       <div class="m3d-toolbar">
         <div class="m3d-tools">
           <button class="m3d-tool active" data-tool="select" type="button" title="Chọn cấu kiện">⬚ Chọn</button>

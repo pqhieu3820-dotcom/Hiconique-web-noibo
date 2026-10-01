@@ -44,6 +44,16 @@ function bimSyncDeleteRowsWhere(ss, sheetName, field, value) {
   return removed;
 }
 
+// Nối thêm vào cuối dòng tiêu đề những khoá của `sample` chưa có cột (sheet còn trống → addDataBatch tự tạo tiêu đề).
+function bimSyncEnsureHeaders(ss, sheetName, sample) {
+  var sheet = findSheet(ss, sheetName);
+  if (!sheet) return;
+  var headers = getHeaders(sheet);
+  if (!headers.length) return;
+  var missing = Object.keys(sample).filter(function (k) { return headers.indexOf(k) === -1; });
+  if (missing.length) sheet.getRange(1, headers.length + 1, 1, missing.length).setValues([missing]);
+}
+
 // Trả về null nếu action không thuộc phạm vi file này (để handleRequest bên
 // gsheets-api-v2.js tự in ra "Unknown action" như cũ).
 function handleBimSyncAction(ss, action, params) {
@@ -69,6 +79,8 @@ function handleBimSyncAction(ss, action, params) {
   // hiện tại — đơn giản và luôn đúng hơn so với diff từng object một.
   if (action === 'syncBimObjects') {
     var payload = JSON.parse(params.data);
+    // v0.2 plugin gửi thêm cột (type, x, y, z, isLeaf, instanceName…): nếu sheet đã có tiêu đề cũ thì NỐI THÊM cột còn thiếu (không đổi/xoá cột sẵn có)
+    bimSyncEnsureHeaders(ss, BIM_SYNC_SHEETS.bimObjects, (payload.objects && payload.objects[0]) || {});
     bimSyncDeleteRowsWhere(ss, BIM_SYNC_SHEETS.bimObjects, 'modelId', payload.modelId);
     var saved = (payload.objects && payload.objects.length)
       ? addDataBatch(ss, BIM_SYNC_SHEETS.bimObjects, payload.objects)

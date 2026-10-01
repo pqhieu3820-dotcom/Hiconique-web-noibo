@@ -171,6 +171,8 @@
     .w-input, .w-select, .w-textarea { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--w-border-2); background: var(--w-surface); color: var(--w-text); font-family: inherit; font-size: 0.8125rem; }
     .w-textarea { resize: vertical; min-height: 36px; }
 
+    .bim-obj-tools { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding: 12px 16px; font-size: 0.8125rem; color: var(--w-faint); }
+    .bim-obj-tools select, .bim-obj-tools input { padding: 7px 10px; border-radius: 8px; border: 1px solid var(--w-border); background: var(--color-surface-2); color: inherit; font: inherit; }
     .w-table-wrap { background: var(--w-surface); border: 1px solid var(--w-border); border-radius: 12px; overflow-x: auto; }
     .w-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
     .w-table th { text-align: left; padding: 10px 16px; background: var(--color-surface-2); font-size: 0.625rem; text-transform: uppercase; color: var(--w-faint); font-weight: 700; border-bottom: 1px solid var(--w-border); letter-spacing: 0.03em; white-space: nowrap; }
@@ -544,15 +546,15 @@
 
               <div class="w-ptab-panel" data-ptab-panel="overview">
                 <div class="w-stats-row">
-                  <div class="w-stat"><div class="top"><span class="lbl">Models liên kết</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/></svg></div><div class="val">0</div><div class="sub">Chưa có plugin SketchUp</div></div>
-                  <div class="w-stat"><div class="top"><span class="lbl">Objects hiện diện</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg></div><div class="val">—</div><div class="sub">Chưa đồng bộ model</div></div>
+                  <div class="w-stat"><div class="top"><span class="lbl">Models liên kết</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/></svg></div><div class="val" id="projOvModels">0</div><div class="sub" id="projOvModelsSub">Chưa có plugin SketchUp</div></div>
+                  <div class="w-stat"><div class="top"><span class="lbl">Objects hiện diện</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg></div><div class="val" id="projOvObjects">—</div><div class="sub" id="projOvObjectsSub">Chưa đồng bộ model</div></div>
                   <div class="w-stat"><div class="top"><span class="lbl">Issues đang mở</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="val" id="projOvIssuesOpen">0</div><div class="sub" id="projOvIssuesSub">—</div></div>
                   <div class="w-stat"><div class="top"><span class="lbl">Giá trị BOQ (sau VAT)</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><div class="val" id="projOvBoqValue">0</div><div class="sub">đã áp dụng VAT 8%</div></div>
                 </div>
                 <div class="w-2col">
                   <div class="w-panel">
                     <div class="w-panel-head"><b>Model trong dự án</b><span class="sub">Một dự án có thể chứa nhiều file SketchUp</span></div>
-                    <div class="w-empty">Chưa có model SketchUp nào được đồng bộ — cần cài plugin HICON-BIM (.rbz), xem <a href="/pages/hicon-bim-huongdan.html" style="color:var(--w-accent)">hướng dẫn sử dụng</a>.</div>
+                    <div id="projOvModelList"><div class="w-empty">Chưa có model SketchUp nào được đồng bộ — cài plugin HICON-BIM (.rbz), xem <a href="/pages/hicon-bim-huongdan.html" style="color:var(--w-accent)">hướng dẫn</a>.</div></div>
                   </div>
                   <div class="w-panel">
                     <div class="w-panel-head"><b>Nhóm dự án</b><span class="sub" id="projOvTeamCount">0 thành viên</span></div>
@@ -564,7 +566,8 @@
               <div class="w-ptab-panel" data-ptab-panel="models" style="display:none">
                 <div class="w-panel">
                   <div class="w-panel-head"><b>Models &amp; Objects</b><span class="sub">Theo dõi file SketchUp, hiện diện đối tượng và trạng thái gán Product</span></div>
-                  <div class="w-empty">Chưa có dữ liệu — mục này sẽ hiển thị object/khối lượng thật khi đồng bộ từ plugin SketchUp (.rbz), hiện chưa có. Xem <a href="/pages/hicon-bim-huongdan.html" style="color:var(--w-accent)">giao diện dự kiến trong hướng dẫn sử dụng</a>.</div>
+                  <div id="bimObjToolbar" class="bim-obj-tools"></div>
+                  <div class="w-table-wrap"><table class="w-table"><thead><tr><th>Object</th><th>Loại</th><th>Tag / Nhóm</th><th>Tầng</th><th>Vật liệu</th><th style="text-align:right">X × Y × Z (m)</th><th style="text-align:right">Diện tích (m²)</th><th style="text-align:right">Thể tích (m³)</th><th>Sản phẩm</th></tr></thead><tbody id="bimObjRows"><tr><td colspan="9" class="w-empty">Chưa có dữ liệu — cài plugin HICON-BIM (.rbz) rồi bấm "Scan / Đồng bộ" trong SketchUp.</td></tr></tbody></table></div>
                 </div>
               </div>
 
@@ -723,8 +726,41 @@
       gsFetchList('getBimIssues', function (rows) { OV.issues = rows; done(); });
       gsFetchList('getBimBoqItems', function (rows) { OV.boqItems = rows; done(); });
     }
+    // Model / Object do plugin SketchUp đồng bộ (sheet "Model BIM" / "Object BIM") — lọc theo dự án đang mở
+    var PM = { models: [], objects: [], filter: { type: '', q: '' } };
+    var TYPE_VI = { foundation: 'Móng', neck: 'Cổ móng', gbeam: 'Giằng móng', column: 'Cột', beam: 'Dầm', wall: 'Tường', lintel: 'Lanh tô', slab: 'Sàn', roof: 'Mái', opening: 'Lỗ mở', other: 'Khác' };
+    function bimEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+    function bimN(v) { var n = parseFloat(String(v == null ? '' : v).replace(',', '.')); return isFinite(n) ? n : 0; }
+    function bimF(n, d) { return (Math.round(n * Math.pow(10, d || 2)) / Math.pow(10, d || 2)).toLocaleString('vi-VN'); }
+    function renderModels() {
+      var ms = PM.models, os = PM.objects;
+      var el = document.getElementById('projOvModels'); if (el) { el.textContent = ms.length; document.getElementById('projOvModelsSub').textContent = ms.length ? ms.length + ' file SketchUp' : 'Chưa có plugin SketchUp'; }
+      el = document.getElementById('projOvObjects'); if (el) { el.textContent = os.length || '—'; document.getElementById('projOvObjectsSub').textContent = os.length ? 'đã đồng bộ từ SketchUp' : 'Chưa đồng bộ model'; }
+      var list = document.getElementById('projOvModelList');
+      if (list && ms.length) list.innerHTML = ms.map(function (m) { return '<div style="padding:12px 18px;border-top:1px solid var(--w-border)"><b>' + bimEsc(m.fileName || '(không tên)') + '</b><div class="sub" style="color:var(--w-faint);font-size:.75rem;margin-top:3px">' + bimEsc(m.objectCount || 0) + ' object · đồng bộ ' + bimEsc(String(m.syncedAt || '').slice(0, 16).replace('T', ' ')) + (m.syncedBy ? ' · ' + bimEsc(m.syncedBy) : '') + '</div></div>'; }).join('');
+      var tb = document.getElementById('bimObjToolbar'); if (!tb) return;
+      var types = {}; os.forEach(function (o) { if (o.type) types[o.type] = 1; });
+      tb.innerHTML = '<span>' + os.length + ' object</span><select id="bimObjType"><option value="">Tất cả loại</option>' + Object.keys(types).map(function (k) { return '<option value="' + k + '"' + (PM.filter.type === k ? ' selected' : '') + '>' + (TYPE_VI[k] || k) + '</option>'; }).join('') + '</select><input id="bimObjQ" placeholder="Tìm tên / tag / vật liệu…" value="' + bimEsc(PM.filter.q) + '">';
+      document.getElementById('bimObjType').onchange = function () { PM.filter.type = this.value; renderObjRows(); };
+      document.getElementById('bimObjQ').oninput = function () { PM.filter.q = this.value; renderObjRows(); };
+      renderObjRows();
+    }
+    function renderObjRows() {
+      var body = document.getElementById('bimObjRows'); if (!body) return;
+      var q = PM.filter.q.trim().toLowerCase(), ty = PM.filter.type;
+      var rows = PM.objects.filter(function (o) { return (!ty || o.type === ty) && (!q || [o.defName, o.instanceName, o.tagName, o.group, o.materialName].join(' ').toLowerCase().indexOf(q) >= 0); });
+      if (!rows.length) { body.innerHTML = '<tr><td colspan="9" class="w-empty">' + (PM.objects.length ? 'Không có object khớp bộ lọc.' : 'Chưa có dữ liệu — cài plugin HICON-BIM (.rbz) rồi bấm "Scan / Đồng bộ" trong SketchUp.') + '</td></tr>'; return; }
+      var byName = {}; STORE.products.forEach(function (p) { byName[String(p.name || '').trim().toLowerCase()] = p; });
+      body.innerHTML = rows.slice(0, 500).map(function (o) {
+        var pr = byName[String(o.defName || '').trim().toLowerCase()];
+        return '<tr><td><b>' + bimEsc(o.instanceName || o.defName) + '</b>' + (o.instanceName && o.defName && o.instanceName !== o.defName ? '<div style="font-size:.6875rem;color:var(--w-faint)">' + bimEsc(o.defName) + '</div>' : '') + '</td><td>' + bimEsc(TYPE_VI[o.type] || o.type || '—') + '</td><td>' + bimEsc(o.group || o.tagName || '—') + '</td><td>' + bimEsc(o.level || '—') + '</td><td>' + bimEsc(o.materialName || '—') + '</td>' +
+          '<td style="text-align:right;font-family:\'JetBrains Mono\',monospace;white-space:nowrap">' + (o.width !== undefined ? bimF(bimN(o.width)) + ' × ' + bimF(bimN(o.depth)) + ' × ' + bimF(bimN(o.height)) : '—') + '</td><td style="text-align:right">' + bimF(bimN(o.area)) + '</td><td style="text-align:right">' + bimF(bimN(o.volume), 3) + '</td><td>' + (pr ? bimEsc(pr.name) : '<span style="color:var(--w-faint)">chưa gán</span>') + '</td></tr>';
+      }).join('') + (rows.length > 500 ? '<tr><td colspan="9" class="w-empty">Hiển thị 500 / ' + rows.length + ' object — lọc để xem tiếp.</td></tr>' : '');
+    }
     function reloadProjectData(projectId, cb) {
-      var pending = 2, done = function () { if (--pending === 0) { renderProjectOverviewStats(); if (cb) cb(); } };
+      var pending = 4, done = function () { if (--pending === 0) { renderProjectOverviewStats(); if (cb) cb(); } };
+      gsFetchList('getBimModels', function (rows) { PM.models = rows.filter(function (r) { return r.projectId === projectId; }); renderModels(); done(); });
+      gsFetchList('getBimObjects', function (rows) { PM.objects = rows.filter(function (r) { return r.projectId === projectId; }); renderModels(); done(); });
       gsFetchList('getBimIssues', function (rows) { STORE.issues = rows.filter(function (r) { return r.projectId === projectId; }); renderIssues(); done(); });
       gsFetchList('getBimBoqItems', function (rows) { STORE.boqItems = rows.filter(function (r) { return r.projectId === projectId; }); renderBoq(); done(); });
     }

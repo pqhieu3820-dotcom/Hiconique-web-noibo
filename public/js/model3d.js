@@ -73,11 +73,11 @@
     S.objects.forEach(function (o) {
       if (o.kind === 'mesh') { M[o.id] = { V: o.V, A: o.A, W: o.W, L: o.L, N: 1 }; return; }
       var L = (o.type === 'column' || o.type === 'neck') ? o.h : Math.max(o.w, o.d);
-      M[o.id] = { V: o.w * o.d * o.h, A: o.w * o.d, W: 2 * Math.max(o.w, o.d) * o.h, L: L, N: 1 };
+      M[o.id] = { V: o.vol > 0 ? o.vol : o.w * o.d * o.h, A: o.w * o.d, W: 2 * Math.max(o.w, o.d) * o.h, L: L, N: 1 };
     });
     var opens = S.objects.filter(function (o) { return o.type === 'opening' && o.kind !== 'mesh'; });
     S.objects.forEach(function (o) {
-      if (o.type !== 'wall' || o.kind === 'mesh') return;
+      if (o.type !== 'wall' || o.kind === 'mesh' || o.vol > 0) return;   // thể tích SketchUp đã gồm lỗ khoét
       var th = Math.min(o.w, o.d) || 1;
       opens.forEach(function (op) { var v = ovVol(o, op); if (v > 0) { M[o.id].V -= v; M[o.id].W -= 2 * v / th; } });
       M[o.id].V = Math.max(0, M[o.id].V); M[o.id].W = Math.max(0, M[o.id].W);
@@ -555,6 +555,57 @@
     };
     rd.readAsText(file);
   }
+  // ---------- cầu nối SketchUp (plugin HICON-BIM): .hicon-model.json + đồng bộ qua Hub ----------
+  // Toạ độ JSON: mét, X/Y mặt bằng, Z cao (nội bộ: x→x, y(JSON)→z, z(JSON)→y). Mỗi object là hộp (x,y,z = góc nhỏ nhất; w=X, d=Y, h=Z).
+  function exportJson() {
+    var objs = S.objects.filter(function (o) { return o.kind !== 'mesh'; });
+    if (!objs.length) { alert('Chưa có cấu kiện để xuất.'); return; }
+    var payload = { format: 'hicon-model', version: 1, units: 'm', axes: 'X,Y mặt bằng; Z chiều cao', source: 'HICONIQUE Hub', exportedAt: new Date().toISOString(),
+      objects: objs.map(function (o) { return { name: o.name, type: o.type, x: o.x, y: o.z, z: o.y, w: o.w, d: o.d, h: o.h, volume: o.vol || 0 }; }) };
+    download('mo-hinh.hicon-model.json', JSON.stringify(payload, null, 1), 'application/json');
+    status('Đã xuất ' + objs.length + ' cấu kiện. Trong SketchUp: Extensions > HICON-BIM > Nhập mô hình từ web (.hicon-model.json).');
+  }
+  function addPlain(list, src) {
+    snapshot();
+    S.objects = S.objects.filter(function (o) { return o.src !== src; });
+    var n = 0;
+    list.forEach(function (r) {
+      var w = Number(r.w), d = Number(r.d), h = Number(r.h);
+      if (!(w > 0.001 && d > 0.001 && h > 0.001)) return;
+      var type = TYPES[r.type] && r.type !== 'mesh' ? r.type : 'other';
+      var o = { id: 'm' + Date.now() + (seq++), kind: 'box', type: type, name: String(r.name || TYPES[type].label), x: Number(r.x) || 0, y: Number(r.z) || 0, z: Number(r.y) || 0, w: w, d: d, h: h, item: null, basis: '', src: src };
+      if (Number(r.volume) > 0 && type !== 'opening') o.vol = Number(r.volume);   // thể tích CHÍNH XÁC từ SketchUp (hộp bao chỉ để hiển thị)
+      S.objects.push(o); n++;
+    });
+    cands = null; rebuildAll(); refreshUI(); save(); view('iso');
+    return n;
+  }
+  function importJson(file) {
+    var rd = new FileReader();
+    rd.onload = function () {
+      try {
+        var data = JSON.parse(rd.result);
+        if (!data || data.format !== 'hicon-model' || !Array.isArray(data.objects)) { alert('File không đúng định dạng hicon-model (xuất từ plugin HICON-BIM: Extensions > HICON-BIM > Xuất mô hình cho web).'); return; }
+        var n = addPlain(data.objects, 'skp');
+        status('Đã nhập ' + n + ' cấu kiện từ SketchUp (' + (data.modelName || file.name) + '). Thể tích lấy theo SketchUp nếu là khối đặc.');
+      } catch (er) { alert('Không đọc được file: ' + er.message); }
+    };
+    rd.readAsText(file);
+  }
+  function importFromHub() {
+    var el = $('prToolProjectSelect'), pid = el && el.value;
+    if (!pid) { alert('Chọn dự án ở đầu trang trước (plugin đồng bộ theo Mã dự án).'); return; }
+    if (typeof GSHEETS_CONFIG === 'undefined' || !GSHEETS_CONFIG.API_URL) { alert('Chưa cấu hình kết nối Google Sheet.'); return; }
+    status('Đang lấy mô hình SketchUp đã đồng bộ của dự án…');
+    fetch(GSHEETS_CONFIG.API_URL + '?action=getBimObjects', { redirect: 'follow' }).then(function (r) { return r.json(); }).then(function (rows) {
+      rows = (Array.isArray(rows) ? rows : []).filter(function (r) { return r.projectId === pid && String(r.isLeaf) !== '0'; });
+      if (!rows.length) { status(''); alert('Chưa có object SketchUp nào của dự án này trên Hub. Trong SketchUp mở plugin HICON-BIM (Cài đặt: API URL + Mã dự án) rồi bấm "Scan / Đồng bộ". Nếu đã đồng bộ bằng bản plugin cũ (v0.1) thì cần đồng bộ lại bằng v0.2 để có toạ độ.'); return; }
+      if (rows[0].x === undefined || rows[0].width === undefined) { status(''); alert('Dữ liệu đồng bộ chưa có toạ độ — cập nhật plugin HICON-BIM lên v0.2 và đồng bộ lại.'); return; }
+      var n = addPlain(rows.map(function (r) { return { name: r.instanceName || r.defName, type: r.type, x: pn(r.x), y: pn(r.y), z: pn(r.z), w: pn(r.width), d: pn(r.depth), h: pn(r.height), volume: pn(r.volume) }; }), 'skp');
+      status('Đã lấy ' + n + ' cấu kiện từ SketchUp qua Hub.');
+    }).catch(function (er) { status(''); alert('Không lấy được dữ liệu: ' + er.message); });
+  }
+
   function pushToBoq() {
     var gs = groups(); if (!gs.length) { alert('Chưa gán đơn giá DG-* cho cấu kiện/loại nào.'); return; }
     if (!window.HiconiqueBoq) { alert('Tab Dự toán xây dựng chưa sẵn sàng.'); return; }
@@ -578,6 +629,10 @@
     $('m3dImport').addEventListener('click', function () { $('m3dFile').click(); });
     $('m3dFile').addEventListener('change', function () { var f = this.files[0]; this.value = ''; if (f && inited) importFile(f); });
     $('m3dPush').addEventListener('click', pushToBoq);
+    $('m3dJsonIn').addEventListener('click', function () { $('m3dJsonFile').click(); });
+    $('m3dJsonFile').addEventListener('change', function () { var f = this.files[0]; this.value = ''; if (f && inited) importJson(f); });
+    $('m3dJsonOut').addEventListener('click', exportJson);
+    $('m3dHub').addEventListener('click', function () { if (inited) importFromHub(); });
     $('m3dClear').addEventListener('click', function () { if (!S.objects.length || !confirm('Xoá toàn bộ mô hình của dự án này?')) return; snapshot(); S.objects = []; S.sel = null; cands = null; rebuildAll(); refreshUI(); save(); });
     $('m3dList').addEventListener('click', function (e) { var li = e.target.closest('.m3d-li'); if (li) { S.sel = li.getAttribute('data-oid'); refreshUI(); } });
     bindDim();
