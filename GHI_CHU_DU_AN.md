@@ -2063,3 +2063,7 @@ Nguyên nhân: nhịp "đang online" (updateMember lastActiveAt, mỗi ~60s, g�
 
 ### (dc) 01/10/2026 — SPC: gắn NHIỀU link
 Form thêm/sửa có mục **Link đính kèm**: nhiều dòng (tên + đường dẫn http/https), nút "+ Thêm link", xóa từng dòng; thẻ hiển thị mọi link (bấm mở tab mới, tên trống thì lấy tên miền). Lưu ở cột mới **Danh sách link** (`links`, JSON) của sheet TT-Quy chuẩn kỹ thuật; `linkLabel/linkUrl` giữ link đầu để tương thích mục mặc định. Đề xuất sửa link cũng qua duyệt Founder. Apps Script **v114** (FIELD_MAP thêm `links`). Lưu ý khi deploy: dropdown phiên bản trong hộp thoại đổi vị trí — LUÔN dùng `find` ref "Phiên bản mới" rồi zoom kiểm tra trước khi bấm Triển khai (từng lỡ chọn nhầm v112 → API mất action SPC vài phút). sw v124.
+
+
+### (dd) 01/10/2026 — Sắp xếp tab Google Sheet theo nhóm tiền tố
+Chạy `sortSheetsByPrefix()` (Apps Script, đã thêm vào repo + editor): gom tab theo nhóm tiền tố theo thứ tự khai báo trong `SHEETS` → **DA → NS → TC → TLCC → TT → TTCS → KH → TB → BIM**, rồi các tab `DGXD-…` (không nằm trong SHEETS) giữ nguyên thứ tự ở cuối. Chỉ đổi vị trí tab. **QUY ƯỚC:** sheet mới tạo phải đặt cạnh các sheet cùng tiền tố (khai báo trong `SHEETS` cạnh nhóm tương ứng; nếu sheet được tạo tự động ở cuối thì chạy lại `sortSheetsByPrefix()`).

@@ -4197,3 +4197,21 @@ function scanDriveDocs_(folderId) {
   }
   return { files: files, scanned: scanned, truncated: truncated, folder: root.getName() };
 }
+
+
+/** 2026-10-01: sắp xếp lại tab Google Sheet theo NHÓM TIỀN TỐ (DA, NS, TC, TLCC, TT, TTCS, KH, TB, BIM) theo thứ tự khai báo trong SHEETS. Chạy tay 1 lần trong editor; chỉ đổi vị trí tab, không sửa dữ liệu. Sheet lạ (không có trong SHEETS) xếp cuối. */
+function sortSheetsByPrefix() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const known = Object.keys(SHEETS).map(function (k) { return SHEETS[k]; });
+  const pre = function (n) { const i = n.indexOf('-'); return i > 0 ? n.slice(0, i) : ''; };
+  const order = [];
+  known.forEach(function (n) { const p = pre(n); if (p && order.indexOf(p) === -1) order.push(p); });
+  const rank = function (n) { const i = order.indexOf(pre(n)); return i === -1 ? order.length : i; };
+  const idx = function (n) { const i = known.indexOf(n); return i === -1 ? 9999 : i; };
+  const all = ss.getSheets();
+  Logger.log('TRƯỚC: ' + all.map(function (s) { return s.getName(); }).join(' | '));
+  const list = all.map(function (s, i) { return { s: s, n: s.getName(), i: i }; }).filter(function (o) { return !o.s.isSheetHidden(); })
+    .sort(function (a, b) { return rank(a.n) - rank(b.n) || idx(a.n) - idx(b.n) || a.i - b.i; });
+  list.forEach(function (o, pos) { ss.setActiveSheet(o.s); ss.moveActiveSheet(pos + 1); });
+  Logger.log('SAU: ' + ss.getSheets().map(function (s) { return s.getName(); }).join(' | '));
+}
