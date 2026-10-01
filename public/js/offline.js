@@ -423,12 +423,13 @@ var Offline = (function () {
       var url = typeof input === 'string' ? input : (input && input.url) || '';
       var api = (typeof GSHEETS_CONFIG !== 'undefined' && GSHEETS_CONFIG) ? GSHEETS_CONFIG.API_URL : '';   // const toàn cục (không nằm trên window)
       var isWrite = api && url.indexOf(api) === 0 && !READ.test(url) && (WRITE.test(url) || (init && /^POST$/i.test(init.method || '')));
-      if (!isWrite || readQueue_().length) return orig.apply(this, arguments);
+      // nhịp nền (đang online lastActiveAt, gửi keepalive) không phải thao tác của người dùng → không hiện khung
+      if (!isWrite || readQueue_().length || (init && init.keepalive)) return orig.apply(this, arguments);
       var t0 = Date.now(); direct++; directAt.push(t0); failed = false; render();
       function finish(ok) {
         direct = Math.max(0, direct - 1); var di = directAt.indexOf(t0); if (di !== -1) directAt.splice(di, 1);
         var M = window.HiconiqueMetrics; if (M) { M.writeMs = (M.writeMs || []).concat(Date.now() - t0).slice(-10); }
-        if (!ok) { failed = true; } else if (direct === 0 && !readQueue_().length) doneUntil = Date.now() + 5000;
+        if (!ok) { failed = true; } else if (direct === 0 && !readQueue_().length) doneUntil = Date.now() + 3000;
         render();
       }
       return orig.apply(this, arguments).then(function (res) { finish(true); return res; }, function (err) { finish(false); throw err; });
@@ -506,7 +507,7 @@ var Offline = (function () {
   window.addEventListener('hiconique:sync-state', function (e) {
     var d = e.detail || {};
     if (d.event) { last = { event: d.event, reason: d.reason || '', tries: d.tries || 0 }; if (d.event === 'ok' || d.event === 'queued') failed = false; }
-    if (d.event === 'ok' && !readQueue_().length) doneUntil = Date.now() + 5000;   // hiện "Đã đồng bộ" 5s rồi ẩn
+    if (d.event === 'ok' && !readQueue_().length) doneUntil = Date.now() + 3000;   // hiện "Đã đồng bộ" 3s rồi ẩn
     render();
   });
   window.addEventListener('hiconique:sync-failed', function () { failed = true; render(); });

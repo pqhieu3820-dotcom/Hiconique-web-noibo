@@ -2044,3 +2044,7 @@ Thêm dòng 01/10 (sửa báo trùng link, khung đồng bộ), bỏ dòng Agent
 
 ### (cy) 01/10/2026 — Xóa thông báo "Họp team tháng 9"
 Thông báo quá hạn (07/09/2026) đã gỡ khỏi trang chủ theo yêu cầu. sw v119.
+
+
+### (cz) 01/10/2026 — Khung đồng bộ vẫn hiện lặp
+Nguyên nhân: nhịp "đang online" (updateMember lastActiveAt, mỗi ~60s, gửi keepalive) bị khung đồng bộ tính là thao tác ghi → cứ ~1 phút lại hiện "Đang lưu/Đã đồng bộ". Sửa `offline.js`: bỏ qua yêu cầu keepalive; thời gian giữ "Đã đồng bộ" 5s → 3s. sw v120.
