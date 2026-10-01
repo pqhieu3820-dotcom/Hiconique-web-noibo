@@ -2204,3 +2204,4 @@ Dòng chèn mới ở đầu bảng thừa hưởng dropdown Danh mục cũ từ
 ## 2026-10-01 — Xuất báo cáo tài chính: chọn/tách sheet
 - `finance-export.js`: hộp Xuất báo cáo có danh sách 13 sheet để tick (Chọn tất cả/Bỏ chọn) và chế độ "1 file gồm các sheet đã chọn" hoặc "Tách mỗi sheet 1 file (.zip)". Sheet không chọn được ẨN (không xoá) để công thức tham chiếu chéo không lỗi #REF!. JSZip nạp khi cần. sw v150.
 - 2026-10-01 (sửa): bảng Công nợ bị tràn mất nút bên phải → bọc cuộn ngang, thu hẹp lề cột, cột Thao tác rộng cố định 112px. sw v151.
+- 2026-10-01 (UI): cột Thao tác Công nợ gọn lại: nút chính Thu/Trả tiền + nút ⋯ mở menu (Xem chi tiết, Sửa, Công văn, Biên bản đối chiếu, Giấy đề nghị TT, Xoá màu đỏ). sw v152.
