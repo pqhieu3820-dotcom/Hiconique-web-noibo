@@ -2199,3 +2199,4 @@ Dòng chèn mới ở đầu bảng thừa hưởng dropdown Danh mục cũ từ
 - Action server không client nào gọi (chưa gỡ, chờ quyết): deleteAcceptanceCheck, deleteCashFlowPlan, deleteContractorComparison, deleteProjectDocument, deleteStaffActivity.
 
 ## 2026-10-01 — Công nợ: nút Xoá ngay trên từng dòng danh sách (có hộp xác nhận; trước chỉ xoá được trong Chi tiết). sw v148.
+- 2026-10-01 (sửa): cột thao tác của bảng Công nợ bị cắt mất nút (Chi tiết/Xoá không thấy) → xếp dọc: Thu/Trả tiền, menu "Xuất Word/PDF…" (công văn, biên bản đối chiếu, giấy đề nghị TT), Chi tiết + Xoá. sw v149.

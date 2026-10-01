@@ -1407,14 +1407,18 @@
           '<td class="fn-amount">' + fmt(d.paidAmount) + '</td>' +
           '<td class="fn-amount ' + (recv ? 'pos' : 'neg') + '">' + fmt(d.outstanding) + '</td>' +
           '<td><span class="fn-status-badge ' + debtCls(d.dStatus) + '">' + DEBT_ST[d.dStatus] + '</span></td>' +
-          '<td style="white-space:nowrap;display:flex;gap:6px;">' +
+          '<td><div style="display:flex;flex-direction:column;gap:5px;min-width:104px;">' +
             (d.outstanding > 0 ? '<button class="fn-btn fn-btn-primary fn-btn-sm" data-debtpay="' + d.id + '">' + (recv ? 'Thu tiền' : 'Trả tiền') + '</button>' : '') +
-            '<button class="fn-btn fn-btn-ghost fn-btn-sm" data-debtview="' + d.id + '">Chi tiết</button>' +
-            '<button class="fn-btn fn-btn-ghost fn-btn-sm" data-debtdel="' + d.id + '">Xoá</button>' +
-          '</td></tr>';
+            '<select class="fn-select" style="padding:5px 8px;font-size:.75rem;" data-debtdoc="' + d.id + '" title="Xuất văn bản Word / PDF"><option value="">Xuất Word/PDF…</option><option value="cv">' + (recv ? 'Công văn đòi nợ' : 'Công văn thông báo TT') + '</option><option value="dc">Biên bản đối chiếu</option>' + (recv ? '' : '<option value="dn">Giấy đề nghị thanh toán</option>') + '</select>' +
+            '<div style="display:flex;gap:5px;"><button class="fn-btn fn-btn-ghost fn-btn-sm" style="flex:1;" data-debtview="' + d.id + '">Chi tiết</button>' +
+            '<button class="fn-btn fn-btn-ghost fn-btn-sm" style="flex:1;" data-debtdel="' + d.id + '">Xoá</button></div>' +
+          '</div></td></tr>';
       }).join('');
       rows.querySelectorAll('[data-debtpay]').forEach(function (b) { b.addEventListener('click', function () { openDebtPay(b.getAttribute('data-debtpay')); }); });
       rows.querySelectorAll('[data-debtview]').forEach(function (b) { b.addEventListener('click', function () { openDebtDetail(b.getAttribute('data-debtview')); }); });
+      rows.querySelectorAll('[data-debtdoc]').forEach(function (s) {
+        s.addEventListener('change', function () { var d = debtById(s.getAttribute('data-debtdoc')), k = s.value; s.value = ''; if (d && k) debtDoc(k, d); });
+      });
       rows.querySelectorAll('[data-debtdel]').forEach(function (b) {
         b.addEventListener('click', function () {
           var d = debtById(b.getAttribute('data-debtdel')); if (!d) return;
