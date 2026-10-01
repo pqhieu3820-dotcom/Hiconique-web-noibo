@@ -2036,3 +2036,7 @@ Nguyên nhân: `normUrl` cắt toàn bộ query string nên các playlist YouTub
 
 ### (cw) 01/10/2026 — Khung "Đang lưu lên Google Sheet" hiện mãi
 Nguyên nhân: khung đếm cả lệnh ghi trực tiếp bị treo (fetch không phản hồi) và lệnh tồn cũ trong hàng đợi chưa từng gửi được (chờ mạng/khóa tab khác). Sửa (`offline.js`): lệnh trực tiếp treo >40s không tính; lệnh hàng đợi chỉ tính khi mới (<2 phút) hoặc đã từng thử lại (lỗi vẫn hiện khung đỏ). Chỉ hiện khi đang có thao tác thật. sw v117.
+
+
+### (cx) 01/10/2026 — Thẻ "Cập nhật gần đây"
+Thêm dòng 01/10 (sửa báo trùng link, khung đồng bộ), bỏ dòng Agent cũ nhất để giữ 5 dòng. sw v118.
