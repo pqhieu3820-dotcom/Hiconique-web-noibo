@@ -85,7 +85,59 @@ var PricingRef = (function () {
       sec('Lưu ý quan trọng', table(['Mục', 'Nội dung'], NOTES.map(function (n) { return [esc(n[0]), esc(n[1])]; }), ['150px'])) +
       sec('Các công cụ trong trang này', table(['Công cụ', 'Dùng để làm gì', 'Thời điểm sử dụng'], TOOLS.map(function (n) { return [esc(n[0]), esc(n[1]), esc(n[2])]; }), ['170px', '50%']));
   }
-  function renderSources(wrap) {
+  // ---- rà soát nguồn theo tháng (THỦ CÔNG, chỉ quản lý đánh dấu) + chỗ gắn khóa API (chưa dùng) ----
+  function monthNow() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2); }
+  function vnMonth(m) { var p = String(m || '').split('-'); return p.length > 1 ? p[1] + '/' + p[0] : '—'; }
+  function renderSources(wrap, ctx) {
+    ctx = ctx || {};
+    var canEdit = !!(ctx.canEdit && ctx.canEdit()), api = ctx.api || '', jget = ctx.jget, status = {};
+    wrap.className = '';
+    wrap.innerHTML = '<div id="prSrcSum" style="padding:14px 24px 0;font-size:.8125rem;"></div><div style="padding:10px 24px 0;"><input class="pr-input" id="prSrcQ" type="search" placeholder="Tìm nguồn: mã, tổ chức, nội dung…" style="max-width:360px"></div><div style="overflow-x:auto;" id="prSrcTbl"></div><div id="prSrcSet"></div>';
+    function badge(s) {
+      var cur = monthNow();
+      if (!s || !s.checkedMonth) return '<span style="color:var(--pr-muted)">Chưa rà soát</span>';
+      var lbl = s.status === 'changed' ? 'Có thay đổi giá' : (s.status === 'dead' ? 'Nguồn lỗi' : 'Không đổi'), col = s.status === 'changed' ? '#B5402A' : (s.status === 'dead' ? '#B5402A' : '#2E7D4A');
+      return '<b style="color:' + (s.checkedMonth === cur ? col : '#B08D57') + '">' + (s.checkedMonth === cur ? '✓ ' : '') + vnMonth(s.checkedMonth) + '</b> · ' + lbl + (s.checkedBy ? '<span style="display:block;font-size:.6875rem;color:var(--pr-muted)">' + esc(s.checkedBy) + (s.note ? ' — ' + esc(s.note) : '') + '</span>' : '');
+    }
+    function draw(q) {
+      var toks = norm(q).split(/\s+/).filter(Boolean), list = SOURCES.filter(function (s) { var h = norm(s.join(' ')); return toks.every(function (t) { return h.indexOf(t) !== -1; }); }), cur = monthNow();
+      var done = SOURCES.filter(function (s) { return status[s[0]] && status[s[0]].checkedMonth === cur; }), ch = done.filter(function (s) { return status[s[0]].status === 'changed'; }).length, dead = done.filter(function (s) { return status[s[0]].status === 'dead'; }).length;
+      wrap.querySelector('#prSrcSum').innerHTML = '<b>Tháng ' + vnMonth(cur) + ':</b> đã rà ' + done.length + '/' + SOURCES.length + ' nguồn · <span style="color:#B5402A">' + ch + ' có thay đổi giá cần cập nhật</span> · ' + dead + ' nguồn lỗi' + (canEdit ? '' : ' <span style="color:var(--pr-muted)">(quản lý mới đánh dấu được)</span>');
+      wrap.querySelector('#prSrcTbl').innerHTML = table(['Mã', 'Tổ chức / NCC', 'Nội dung sử dụng', 'Liên kết', 'Rà soát gần nhất'].concat(canEdit ? ['Đánh dấu tháng này'] : []), list.map(function (s) {
+        return [esc(s[0]), esc(s[1]), esc(s[2]), '<a href="' + esc(s[3]) + '" target="_blank" rel="noopener">Mở nguồn ↗</a>', badge(status[s[0]])].concat(canEdit ? ['<select class="pr-quote-select" data-src="' + esc(s[0]) + '" style="min-width:170px"><option value="">— Chọn —</option><option value="ok">Đã rà – không đổi</option><option value="changed">Có thay đổi giá</option><option value="dead">Nguồn lỗi / không mở được</option></select>'] : []);
+      }), ['70px', '20%', '', '110px', '22%']) + (list.length ? '' : '<div class="pr-empty">Không có nguồn nào khớp.</div>');
+    }
+    wrap.querySelector('#prSrcQ').addEventListener('input', function () { draw(this.value); });
+    wrap.querySelector('#prSrcTbl').addEventListener('change', function (e) {
+      var sel = e.target.closest('[data-src]'); if (!sel || !sel.value || !jget) return;
+      var code = sel.getAttribute('data-src'), s = SOURCES.filter(function (x) { return x[0] === code; })[0], note = prompt('Ghi chú cho nguồn ' + code + ' (không bắt buộc):', '') || '';
+      var rec = { id: code, org: s[1], content: s[2], url: s[3], checkedMonth: monthNow(), status: sel.value, checkedBy: ctx.userName ? ctx.userName() : '', note: note };
+      sel.disabled = true;
+      jget(api + '?action=upsertPriceSource&data=' + encodeURIComponent(JSON.stringify(rec)), 2).then(function () { status[code] = rec; draw(wrap.querySelector('#prSrcQ').value); }).catch(function (err) { sel.disabled = false; alert('Không lưu được: ' + (err && err.message || err)); });
+    });
+    draw('');
+    if (jget && api) jget(api + '?action=getPriceSources').then(function (l) { (Array.isArray(l) ? l : []).forEach(function (r) { status[r.id] = r; }); draw(wrap.querySelector('#prSrcQ').value); }).catch(function () { /* chưa có sheet DG-Nguồn thì thôi */ });
+    if (canEdit && jget && api) renderApiBox(wrap.querySelector('#prSrcSet'), ctx);
+  }
+  // Chỗ gắn khóa API cập nhật giá (CHƯA dùng): lưu ở sheet DG-Cài đặt, không bao giờ trả khóa về trình duyệt (chỉ hiện 4 ký tự cuối)
+  function renderApiBox(box, ctx) {
+    var api = ctx.api, jget = ctx.jget;
+    box.innerHTML = '<div style="margin:22px 24px 8px;padding:16px 18px;border:1px dashed var(--pr-border);border-radius:14px;"><div style="font-weight:700;font-size:.8125rem;margin-bottom:4px;">Kết nối AI cập nhật giá <span style="font-weight:600;font-size:.6875rem;padding:2px 8px;border-radius:999px;border:1px solid var(--pr-border);color:var(--pr-muted);margin-left:6px;">CHƯA BẬT · đang làm thủ công</span></div>' +
+      '<div style="font-size:.75rem;color:var(--pr-muted);line-height:1.6;margin-bottom:12px;">Khi có khóa API (có phí), dán vào đây để sau này máy đọc nguồn và đề xuất giá mới vào hàng chờ duyệt. Hiện tại <b>chưa có tự động hóa nào chạy</b> — mọi cập nhật giá vẫn do người nhập ở nút "Sửa giá". Khóa lưu ở sheet <code>DG-Cài đặt</code> (chỉ nhân sự có quyền xem Sheet mới thấy), không hiển thị lại trên web.</div>' +
+      '<div style="display:grid;grid-template-columns:2fr 1fr auto;gap:10px;align-items:end;"><div><span style="font-size:.6875rem;color:var(--pr-muted);text-transform:uppercase;">Khóa API (Anthropic)</span><input class="pr-input mono" id="prApiKey" type="password" autocomplete="off" placeholder="sk-ant-…"></div><div><span style="font-size:.6875rem;color:var(--pr-muted);text-transform:uppercase;">Mô hình</span><input class="pr-input" id="prApiModel" type="text" value="claude-sonnet-5-5"></div><button type="button" class="pr-btn pr-btn-primary" id="prApiSave">Lưu</button></div>' +
+      '<div id="prApiState" style="font-size:.75rem;color:var(--pr-muted);margin-top:10px;">Đang kiểm tra…</div></div>';
+    var state = box.querySelector('#prApiState');
+    function load() { jget(api + '?action=getPriceSettings').then(function (l) { l = Array.isArray(l) ? l : []; var k = l.filter(function (x) { return x.id === 'anthropic_api_key'; })[0], m = l.filter(function (x) { return x.id === 'ai_model'; })[0]; if (m && m.value) box.querySelector('#prApiModel').value = m.value; state.innerHTML = k && k.set ? 'Đã gắn khóa <b>' + esc(k.masked) + '</b> · tự động hóa: <b>TẮT</b> <button type="button" class="pr-btn pr-btn-ghost" id="prApiDel" style="padding:3px 10px;font-size:.6875rem;margin-left:6px">Gỡ khóa</button>' : 'Chưa gắn khóa · tự động hóa: <b>TẮT</b>'; var d = box.querySelector('#prApiDel'); if (d) d.addEventListener('click', function () { if (confirm('Gỡ khóa API khỏi sheet DG-Cài đặt?')) save('anthropic_api_key', '', 'Khóa API Anthropic (bí mật)').then(load); }); }).catch(function () { state.textContent = 'Chưa đọc được cài đặt.'; }); }
+    function save(id, value, note) { return jget(api + '?action=savePriceSetting&data=' + encodeURIComponent(JSON.stringify({ id: id, value: value, note: note || '' })), 2); }
+    box.querySelector('#prApiSave').addEventListener('click', function () {
+      var key = box.querySelector('#prApiKey').value.trim(), model = box.querySelector('#prApiModel').value.trim();
+      var jobs = [save('ai_model', model || 'claude-sonnet-5-5', 'Mô hình AI dùng khi bật cập nhật giá'), save('auto_update', 'off', 'Tự động hóa cập nhật giá: off = thủ công')];
+      if (key) jobs.push(save('anthropic_api_key', key, 'Khóa API Anthropic (bí mật)'));
+      Promise.all(jobs).then(function () { box.querySelector('#prApiKey').value = ''; load(); }).catch(function (err) { alert('Không lưu được: ' + (err && err.message || err)); });
+    });
+    load();
+  }
+  function renderSourcesOld_(wrap) {
     wrap.className = '';
     wrap.innerHTML = '<div style="padding:14px 24px 0;"><input class="pr-input" id="prSrcQ" type="search" placeholder="Tìm nguồn: mã, tổ chức, nội dung…" style="max-width:360px"></div><div style="overflow-x:auto;" id="prSrcTbl"></div>';
     function draw(q) {

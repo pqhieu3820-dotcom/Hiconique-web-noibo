@@ -1072,7 +1072,7 @@
       <div class="pr-card-head">
         <div>
           <div class="pr-card-title">Nguồn dữ liệu</div>
-          <div class="pr-card-desc">Danh sách tổ chức/NCC/khảo sát dùng để xây database đơn giá 34 tỉnh — bấm để mở nguồn gốc.</div>
+          <div class="pr-card-desc">Danh sách tổ chức/NCC/khảo sát dùng để xây database đơn giá 34 tỉnh — bấm để mở nguồn gốc; quản lý đánh dấu đã rà soát từng nguồn theo tháng.</div>
         </div>
       </div>
       <div id="prSourcesWrap" class="pr-empty">Đang dựng...</div>
@@ -1223,7 +1223,8 @@
       return { low: avg(lows), high: avg(highs) };
     }
 
-    PricingProv.mount({ select: document.getElementById('prProvinceSelect'), wrap: document.getElementById('prProvinceTableWrap'), onLoaded: function () { recalcPrelimQty(); } });
+    function canEditPrices() { var u = getUser(); return !!(u && typeof TaskManager !== 'undefined' && TaskManager.canManageNotifications(u)); }
+    PricingProv.mount({ select: document.getElementById('prProvinceSelect'), wrap: document.getElementById('prProvinceTableWrap'), onLoaded: function () { recalcPrelimQty(); }, canEdit: canEditPrices, user: getUser });
     fetchProvinceList();
     fetchProjectTypes();
 
@@ -2225,7 +2226,7 @@
     function loadSourcesOnce() {
       if (referenceLoaded.sources) return;
       referenceLoaded.sources = true;
-      PricingRef.renderSources(document.getElementById('prSourcesWrap'));
+      PricingRef.renderSources(document.getElementById('prSourcesWrap'), { canEdit: canEditPrices, api: GSHEETS_CONFIG.API_URL, jget: PricingProv.jget, userName: function () { var u = getUser(); return u ? (u.name || u.id) : ''; } });
     }
     var baseActivateTab2 = activateTab;
     activateTab = function (tab) {

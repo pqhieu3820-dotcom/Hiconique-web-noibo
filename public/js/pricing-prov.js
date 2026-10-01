@@ -100,7 +100,7 @@ var PricingProv = (function () {
     a.addEventListener('input', function () { st.area = num(a.value); render(); });
     w.querySelector('#ppXls').addEventListener('click', exportXls);
     w.querySelector('#ppChips').addEventListener('click', function (e) { var b = e.target.closest('[data-k]'); if (!b) return; st.kind = b.getAttribute('data-k'); st.grp = ''; st.limit = 150; render(); });
-    w.querySelector('#ppTbl').addEventListener('click', function (e) { var more = e.target.closest('[data-more]'); if (more) { st.limit += 300; render(); return; } var r = e.target.closest('[data-i]'); if (r) openCompare(filtered()[Number(r.getAttribute('data-i'))]); });
+    w.querySelector('#ppTbl').addEventListener('click', function (e) { var more = e.target.closest('[data-more]'); if (more) { st.limit += 300; render(); return; } var ed = e.target.closest('[data-edit]'); if (ed) { openEdit(filtered()[Number(ed.getAttribute('data-edit'))]); return; } var r = e.target.closest('[data-i]'); if (r) openCompare(filtered()[Number(r.getAttribute('data-i'))]); });
   }
   function render() {
     var all = data[st.province] || [], m = meta[st.province] || {};
@@ -111,19 +111,66 @@ var PricingProv = (function () {
     var gs = {}; all.forEach(function (e) { if (e.grp && (st.kind === 'all' || e.kind === st.kind)) gs[e.grp] = 1; });
     var g = w.querySelector('#ppGrp'), keep = st.grp; g.innerHTML = '<option value="">Mọi nhóm</option>' + Object.keys(gs).sort().map(function (x) { return '<option value="' + esc(x) + '"' + (x === keep ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('');
     var rows = filtered(), show = rows.slice(0, st.limit), area = st.area, showAmt = area > 0;
-    var html = '<table class="pp-tbl"><thead><tr><th>Mã</th><th>Tên / phạm vi</th><th>ĐVT</th><th class="n">Giá thấp</th><th class="n">Giá TB</th><th class="n">Giá cao</th>' + (showAmt ? '<th class="n">Thành tiền thấp</th><th class="n">Thành tiền cao</th>' : '') + '<th>Nhà cung cấp / ghi chú</th></tr></thead><tbody>';
+    var html = '<table class="pp-tbl"><thead><tr><th>Mã</th><th>Tên / phạm vi</th><th>ĐVT</th><th class="n">Giá thấp</th><th class="n">Giá TB</th><th class="n">Giá cao</th>' + (showAmt ? '<th class="n">Thành tiền thấp</th><th class="n">Thành tiền cao</th>' : '') + '<th>Nhà cung cấp / ghi chú</th>' + (canEdit() ? '<th></th>' : '') + '</tr></thead><tbody>';
     var last = '';
     show.forEach(function (e, i) {
       var sec = e.kind === 'ct' || e.kind === 'vt' ? KIND_LABEL[e.kind] + (e.grp ? ' · ' + e.grp : '') : KIND_LABEL[e.kind];
-      if (sec !== last) { html += '<tr class="pp-sec"><td colspan="' + (showAmt ? 9 : 7) + '">' + esc(sec) + '</td></tr>'; last = sec; }
+      if (sec !== last) { html += '<tr class="pp-sec"><td colspan="' + ((showAmt ? 9 : 7) + (canEdit() ? 1 : 0)) + '">' + esc(sec) + '</td></tr>'; last = sec; }
       var perM2 = showAmt && /m2|m²/i.test(e.unit) && (e.kind === 'nc' || e.kind === 'tho');
       var sub = [e.spec, e.kind === 'ct' && (e.vlL || e.ncL) ? 'VL ' + fmt(e.vlL) + '–' + fmt(e.vlH) + ' + NC ' + fmt(e.ncL) + '–' + fmt(e.ncH) : '', e.note ? 'Loại trừ: ' + e.note : ''].filter(Boolean);
       html += '<tr class="pp-row" data-i="' + rows.indexOf(e) + '"><td class="c">' + esc(e.code) + '</td><td>' + (e.kind === 'tho' ? '<span class="tg">' + esc(e.type) + '</span><br>' : '') + esc(e.name) + sub.map(function (s) { return '<span class="sub">' + esc(s) + '</span>'; }).join('') + (e.bad ? '<span class="warn">⚠ DGHT ghi ' + fmt(e.low) + ' ≠ VL+NC ' + fmt(e.calcL) + '</span>' : '') + '</td><td>' + esc(e.unit) + '</td>' +
-        '<td class="n">' + fmt(e.low) + '</td><td class="n mid">' + fmt(e.mid) + '</td><td class="n">' + fmt(e.high) + '</td>' + (showAmt ? '<td class="n">' + (perM2 ? fmt(e.low * area) : '') + '</td><td class="n">' + (perM2 ? fmt(e.high * area) : '') + '</td>' : '') + '<td>' + esc(e.ncc || '') + (e.src ? '<span class="sub">Nguồn: ' + esc(e.src) + '</span>' : '') + '</td></tr>';
+        '<td class="n">' + fmt(e.low) + '</td><td class="n mid">' + fmt(e.mid) + '</td><td class="n">' + fmt(e.high) + '</td>' + (showAmt ? '<td class="n">' + (perM2 ? fmt(e.low * area) : '') + '</td><td class="n">' + (perM2 ? fmt(e.high * area) : '') + '</td>' : '') + '<td>' + esc(e.ncc || '') + (e.src ? '<span class="sub">Nguồn: ' + esc(e.src) + '</span>' : '') + '</td>' + (canEdit() ? '<td><button type="button" class="pr-btn pr-btn-ghost" data-edit="' + rows.indexOf(e) + '" style="padding:4px 10px;font-size:.6875rem;white-space:nowrap" title="Cập nhật giá thủ công">Sửa giá</button></td>' : '') + '</tr>';
     });
     if (!show.length) html += '<tr><td colspan="' + (showAmt ? 9 : 7) + '" class="pr-empty">Không có mục nào khớp bộ lọc.</td></tr>';
     html += '</tbody></table>' + (rows.length > show.length ? '<button type="button" class="pr-btn pr-btn-ghost pp-more" data-more>Hiện thêm (còn ' + (rows.length - show.length) + ' mục — hoặc thu hẹp bằng ô tìm kiếm)</button>' : '');
     w.querySelector('#ppTbl').innerHTML = html;
+  }
+
+  // ---- cập nhật giá THỦ CÔNG (chỉ quản lý): sửa giá 1 mục → ghi vào DG-* + lịch sử theo tháng ----
+  function canEdit() { return !!(opts.canEdit && opts.canEdit()); }
+  function who() { var u = opts.user && opts.user(); return u ? (u.name || u.id || '') : ''; }
+  function monthNow() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2); }
+  function openEdit(e) {
+    if (!canEdit() || !e || !e.code) return;
+    var old = document.getElementById('ppOv'); if (old) old.remove();
+    var srcs = (window.PricingRef && PricingRef.SOURCES) || [];
+    var ov = document.createElement('div'); ov.className = 'pp-ov'; ov.id = 'ppOv';
+    ov.innerHTML = '<div class="pp-box" style="max-width:560px"><h4><span>Cập nhật giá — ' + esc(e.name) + '<span style="display:block;font-weight:400;font-size:.75rem;color:var(--pr-muted);margin-top:3px;">' + esc(st.province) + ' · mã ' + esc(e.code) + ' · ' + esc(e.unit) + '</span></span><button class="x" aria-label="Đóng">&times;</button></h4>' +
+      '<div style="padding:16px 20px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+        '<div><span class="pr-label" style="font-size:.6875rem;color:var(--pr-muted);text-transform:uppercase;">Giá thấp hiện tại</span><div style="font:600 .95rem JetBrains Mono,monospace;margin-top:4px;">' + fmt(e.low) + '</div></div><div><span style="font-size:.6875rem;color:var(--pr-muted);text-transform:uppercase;">Giá cao hiện tại</span><div style="font:600 .95rem JetBrains Mono,monospace;margin-top:4px;">' + fmt(e.high) + '</div></div>' +
+        '<div><span style="font-size:.6875rem;color:var(--pr-muted);text-transform:uppercase;">Giá thấp MỚI</span><input class="pr-input mono" id="peLow" type="text" inputmode="numeric" data-money-input value="' + fmt(e.low) + '"></div><div><span style="font-size:.6875rem;color:var(--pr-muted);text-transform:uppercase;">Giá cao MỚI</span><input class="pr-input mono" id="peHigh" type="text" inputmode="numeric" data-money-input value="' + fmt(e.high) + '"></div>' +
+        '<div><span style="font-size:.6875rem;color:var(--pr-muted);text-transform:uppercase;">Nguồn</span><select class="pr-quote-select" id="peSrc"><option value="">— Chọn nguồn —</option>' + srcs.map(function (s) { return '<option value="' + esc(s[0]) + '">' + esc(s[0] + ' · ' + s[1]) + '</option>'; }).join('') + '<option value="Báo giá NCC">Báo giá nhà cung cấp</option><option value="Khác">Khác (ghi ở ghi chú)</option></select></div>' +
+        '<div><span style="font-size:.6875rem;color:var(--pr-muted);text-transform:uppercase;">Tháng áp dụng</span><input class="pr-input" id="peMonth" type="month" value="' + monthNow() + '"></div>' +
+        '<div style="grid-column:span 2"><span style="font-size:.6875rem;color:var(--pr-muted);text-transform:uppercase;">Ghi chú</span><input class="pr-input" id="peNote" type="text" placeholder="VD: theo báo giá đại lý ABC ngày …"></div>' +
+        '<div id="peWarn" style="grid-column:span 2;font-size:.75rem;color:var(--pr-muted);"></div>' +
+        '<div style="grid-column:span 2;display:flex;justify-content:space-between;gap:8px;"><button type="button" class="pr-btn pr-btn-ghost" id="peHist">Xem lịch sử giá</button><span style="display:flex;gap:8px;"><button type="button" class="pr-btn pr-btn-ghost" id="peX">Huỷ</button><button type="button" class="pr-btn pr-btn-primary" id="peSave">Lưu giá mới</button></span></div>' +
+        '<div id="peHistBody" style="grid-column:span 2"></div></div></div>';
+    document.body.appendChild(ov);
+    if (window.HiconiqueMoney && HiconiqueMoney.bindAll) HiconiqueMoney.bindAll(ov);
+    var close = function () { ov.remove(); }, g = function (id) { return ov.querySelector('#' + id); }, pv = function (id) { var v = g(id).value; return window.HiconiqueMoney ? HiconiqueMoney.parse(v) : num(v); };
+    ov.addEventListener('mousedown', function (ev) { if (ev.target === ov) close(); }); ov.querySelector('.x').addEventListener('click', close); g('peX').addEventListener('click', close);
+    var warn = function () { var l = pv('peLow'), h = pv('peHigh'), msgs = []; if (h && l > h) msgs.push('⚠ Giá thấp đang lớn hơn giá cao.'); if (e.low && l) { var pct = Math.round((l / e.low - 1) * 100); msgs.push('Giá thấp ' + (pct >= 0 ? '+' : '') + pct + '% so với hiện tại' + (Math.abs(pct) > 15 ? ' — ⚠ chênh lớn, kiểm tra lại nguồn.' : '.')); } g('peWarn').textContent = msgs.join(' '); };
+    g('peLow').addEventListener('input', warn); g('peHigh').addEventListener('input', warn);
+    g('peHist').addEventListener('click', function () {
+      var b = g('peHistBody'); b.innerHTML = '<div class="pr-empty" style="padding:10px">Đang tải lịch sử…</div>';
+      jget(api() + '?action=getPriceHistory&province=' + encodeURIComponent(st.province) + '&code=' + encodeURIComponent(e.code)).then(function (l) {
+        l = (Array.isArray(l) ? l : []).filter(function (x) { return !e.variant || !x.variant || x.variant === e.variant; }).slice(0, 12);
+        b.innerHTML = l.length ? '<table class="pp-tbl" style="min-width:0;margin-top:6px"><thead><tr><th>Tháng</th><th class="n">Thấp cũ → mới</th><th class="n">Cao cũ → mới</th><th>Nguồn</th></tr></thead><tbody>' + l.map(function (x) { return '<tr><td>' + esc(String(x.month).slice(0, 7)) + '</td><td class="n">' + fmt(x.oldLow) + ' → ' + fmt(x.newLow) + '</td><td class="n">' + fmt(x.oldHigh) + ' → ' + fmt(x.newHigh) + '</td><td>' + esc(x.source || '') + (x.updatedBy ? '<span class="sub">' + esc(x.updatedBy) + '</span>' : '') + '</td></tr>'; }).join('') + '</tbody></table>' : '<div class="pr-empty" style="padding:10px">Chưa có lần cập nhật nào được ghi lại.</div>';
+      }).catch(function (err) { b.textContent = 'Không tải được: ' + (err && err.message || err); });
+    });
+    g('peSave').addEventListener('click', function () {
+      var l = pv('peLow'), h = pv('peHigh');
+      if (!l || !h || l > h) { alert('Nhập giá thấp và giá cao hợp lệ (giá thấp ≤ giá cao).'); return; }
+      if (!g('peSrc').value) { alert('Chọn nguồn của giá mới (hoặc "Khác" và ghi chú).'); return; }
+      var btn = g('peSave'); btn.disabled = true; btn.textContent = 'Đang lưu…';
+      var payload = { kind: e.kind, province: st.province, code: e.code, variant: e.variant || '', low: l, high: h, month: g('peMonth').value || monthNow(), source: g('peSrc').value, note: g('peNote').value.trim(), by: who() };
+      jget(api() + '?action=updatePriceDb&data=' + encodeURIComponent(JSON.stringify(payload)), 2).then(function (res) {
+        if (res.error) throw new Error(res.error);
+        e.low = l; e.high = h; e.mid = mid(l, h); if (e.kind === 'ct') e.bad = !!((e.calcL || l) && (Math.abs(e.calcL - l) > 1000 || Math.abs(e.calcH - h) > 1000));
+        try { localStorage.removeItem(CACHE_KEY + st.province); localStorage.removeItem('hq_prov_prices_v2_' + st.province); } catch (x) { /* bỏ qua */ }
+        close(); render(); if (opts.onLoaded) opts.onLoaded(st.province);
+      }).catch(function (err) { btn.disabled = false; btn.textContent = 'Lưu giá mới'; alert('Không lưu được: ' + (err && err.message || err)); });
+    });
   }
 
   // ---- so sánh giá giữa các tỉnh ----

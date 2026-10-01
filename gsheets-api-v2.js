@@ -39,7 +39,10 @@ const SHEETS = {
   receivables: 'TC-Công nợ khách hàng',
   bsSnapshots: 'TC-Chỉ số cân đối kế toán',
   orders: 'TC-Đơn hàng',
-  units: 'TC-Đơn vị tính',   // 2026-10-01: đơn vị tính riêng thêm từ ô Đơn vị ở trang Đơn hàng (nhóm TC-)
+  units: 'TC-Đơn vị tính',
+  priceHistory: 'DG-Lịch sử giá',     // 2026-10-01: cập nhật đơn giá thủ công theo tháng (nhóm DG-)
+  priceSources: 'DG-Nguồn',          // trạng thái rà soát từng nguồn S01…S38 theo tháng
+  priceSettings: 'DG-Cài đặt',      // chỗ gắn khóa API cập nhật giá (CHƯA dùng — mọi việc đang thủ công)   // 2026-10-01: đơn vị tính riêng thêm từ ô Đơn vị ở trang Đơn hàng (nhóm TC-)
   // 2026-09-26: nhóm TTCS- (Tính toán chiếu sáng) cho trang lighting.html — xem
   // GHI_CHU_DU_AN.md mục 6.9. 3 sheet danh mục/cấu hình (đọc-only từ web, sửa
   // trực tiếp trên Sheet) + 1 sheet lưu phương án tính toán người dùng đã lưu.
@@ -273,6 +276,16 @@ const FIELD_MAP = {
     ['Trạng thái', 'status'], ['Ghi chú', 'note'], ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'],
     ['Ngày cập nhật', 'updatedAt'], ['Ngày duyệt', 'reviewedAt'], ['Mã người duyệt', 'reviewerId'],
     ['Khấu trừ BH người lao động', 'bhEmployee'], ['Chi tiết cơ cấu lương', 'breakdown']
+  ],
+  priceHistory: [
+    ['Mã', 'id'], ['Tháng', 'month'], ['Tỉnh/Thành', 'province'], ['Loại bảng', 'kind'], ['Mã mục', 'code'], ['Tên', 'name'], ['ĐVT', 'unit'], ['Biến thể', 'variant'],
+    ['Giá thấp cũ', 'oldLow'], ['Giá cao cũ', 'oldHigh'], ['Giá thấp mới', 'newLow'], ['Giá cao mới', 'newHigh'], ['Nguồn', 'source'], ['Ghi chú', 'note'], ['Người cập nhật', 'updatedBy'], ['Ngày tạo', 'createdAt']
+  ],
+  priceSources: [
+    ['Mã nguồn', 'id'], ['Tổ chức/NCC', 'org'], ['Nội dung', 'content'], ['URL', 'url'], ['Rà soát lần cuối (tháng)', 'checkedMonth'], ['Trạng thái', 'status'], ['Người rà soát', 'checkedBy'], ['Ghi chú', 'note'], ['Ngày cập nhật', 'updatedAt']
+  ],
+  priceSettings: [
+    ['Mã', 'id'], ['Giá trị', 'value'], ['Mô tả', 'note'], ['Ngày cập nhật', 'updatedAt']
   ],
   units: [
     ['Mã', 'id'], ['Đơn vị', 'unit'], ['Nhóm', 'group'], ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
@@ -788,6 +801,45 @@ function getPriceDbCompare(ss, kind, code) {
   if (!sh || sh.getLastRow() < 2) return { kind: kind, code: code, headers: [], rows: [] };
   const v = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getValues(), h = v[0].map(String), ci = h.indexOf('Mã');
   return { kind: kind, code: code, headers: h, rows: ci < 0 ? [] : v.slice(1).filter(function (r) { return String(r[ci]) === String(code); }) };
+}
+
+// ---- Cập nhật đơn giá THỦ CÔNG (không có tự động): sửa giá 1 mục của 1 tỉnh trong DG-*, ghi lịch sử theo tháng ----
+function updatePriceDb_(ss, d) {
+  const kind = d.kind, prov = d.province, code = d.code, variant = d.variant || '';
+  if (PRICE_DB_KEYS.indexOf(kind) === -1 || !prov || !code) return { error: 'Missing kind/province/code' };
+  const low = Number(d.low), high = Number(d.high);
+  if (!isFinite(low) || !isFinite(high) || low < 0 || high < 0) return { error: 'Gia khong hop le' };
+  const sh = findSheet(ss, PRICE_DB_SHEETS[kind]);
+  if (!sh || sh.getLastRow() < 2) return { error: 'Chua co sheet ' + PRICE_DB_SHEETS[kind] };
+  const res = withScriptLock_(function () {
+    const lc = sh.getLastColumn(), lr = sh.getLastRow(), headers = sh.getRange(1, 1, 1, lc).getDisplayValues()[0];
+    const ci = headers.indexOf('Mã');
+    const lowName = kind === 'tho' ? (variant === 'tg' ? 'Trọn gói thấp' : 'Phần thô thấp') : (kind === 'ct' ? 'DGHT thấp' : 'Giá thấp');
+    const highName = kind === 'tho' ? (variant === 'tg' ? 'Trọn gói cao' : 'Phần thô cao') : (kind === 'ct' ? 'DGHT cao' : 'Giá cao');
+    const li = headers.indexOf(lowName), hi = headers.indexOf(highName), ni = headers.indexOf(kind === 'vt' ? 'Vật tư/thiết bị' : (kind === 'ct' ? 'Công tác' : 'Loại nhà')), ui = headers.indexOf('ĐVT');
+    if (ci < 0 || li < 0 || hi < 0) return { error: 'Sheet DG- thieu cot' };
+    const pc = sh.getRange(2, 1, lr - 1, 1).getValues(), cc = sh.getRange(2, ci + 1, lr - 1, 1).getValues();
+    let row = -1;
+    for (let i = 0; i < pc.length; i++) { if (String(pc[i][0]) === String(prov) && String(cc[i][0]) === String(code)) { row = i + 2; break; } }
+    if (row < 0) return { error: 'Khong tim thay ' + code + ' o ' + prov };
+    const old = sh.getRange(row, 1, 1, lc).getValues()[0];
+    sh.getRange(row, li + 1).setValue(low); sh.getRange(row, hi + 1).setValue(high);
+    return { oldLow: Number(old[li]) || 0, oldHigh: Number(old[hi]) || 0, name: ni >= 0 ? String(old[ni]) : '', unit: ui >= 0 ? String(old[ui]) : '' };
+  });
+  if (res.error) return res;
+  const nowIso = new Date().toISOString();
+  addData(ss, SHEETS.priceHistory, { month: d.month || nowIso.slice(0, 7), province: prov, kind: kind, code: code, name: res.name, unit: res.unit, variant: variant, oldLow: res.oldLow, oldHigh: res.oldHigh, newLow: low, newHigh: high, source: d.source || '', note: d.note || '', updatedBy: d.by || '' });
+  return { ok: true, oldLow: res.oldLow, oldHigh: res.oldHigh };
+}
+function getPriceHistory_(ss, province, code) {
+  return getAllData(ss, SHEETS.priceHistory).filter(function (r) { return (!province || r.province === province) && (!code || String(r.code) === String(code)); });
+}
+// Cài đặt: KHÔNG trả khóa API ra ngoài — chỉ báo "đã gắn" + 4 ký tự cuối
+function getPriceSettings_(ss) {
+  return getAllData(ss, SHEETS.priceSettings).map(function (r) {
+    const secret = /key|token/i.test(String(r.id)), v = String(r.value || '');
+    return { id: r.id, note: r.note, updatedAt: r.updatedAt, value: secret ? '' : v, set: v !== '', masked: secret && v ? '••••' + v.slice(-4) : '' };
+  });
 }
 
 function sheetKeyFor(sheetName) {
@@ -1324,6 +1376,18 @@ function handleRequestImpl_(e) {
       result = getPriceDb(ss, params.province);
     } else if (action === 'getPriceDbProvinces') {
       result = getPriceDbProvinces(ss);
+    } else if (action === 'updatePriceDb') {
+      result = updatePriceDb_(ss, JSON.parse(params.data));
+    } else if (action === 'getPriceHistory') {
+      result = getPriceHistory_(ss, params.province, params.code);
+    } else if (action === 'getPriceSources') {
+      result = getAllData(ss, SHEETS.priceSources);
+    } else if (action === 'upsertPriceSource') {
+      result = addData(ss, SHEETS.priceSources, JSON.parse(params.data));
+    } else if (action === 'getPriceSettings') {
+      result = getPriceSettings_(ss);
+    } else if (action === 'savePriceSetting') {
+      result = (function (d) { return d && d.id ? (addData(ss, SHEETS.priceSettings, { id: d.id, value: d.value == null ? '' : String(d.value), note: d.note || '' }), { ok: true }) : { error: 'Missing id' }; })(JSON.parse(params.data));
     } else if (action === 'getPriceDbCompare') {
       result = getPriceDbCompare(ss, params.kind, params.code);
     } else if (action === 'getContractorComparisons') {
