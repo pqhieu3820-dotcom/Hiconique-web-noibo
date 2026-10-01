@@ -850,8 +850,9 @@ function tsHoursFormula_(headers, r) {
   const ix = function (name) { const i = headers.indexOf(name); return i < 0 ? '' : tsColLetter_(i + 1) + r; };
   const a = ix('Giờ vào ca sáng'), b = ix('Giờ ra ca sáng'), c = ix('Giờ vào ca chiều'), d = ix('Giờ ra ca chiều');
   if (!a || !b || !c || !d) return '';
-  const pair = function (x, y) { return 'IF(AND(' + x + '<>"",' + y + '<>""),MAX(0,TIMEVALUE(TEXT(' + y + ',"HH:mm"))-TIMEVALUE(TEXT(' + x + ',"HH:mm"))),0)'; };
-  return '=ROUND(24*(' + pair(a, b) + '+' + pair(c, d) + '),1)';
+  // DẤU PHẨY là dấu thập phân và DẤU CHẤM PHẨY là dấu ngăn đối số (Sheet đặt vùng Việt Nam) — dùng sai thì ra #ERROR!
+  const pair = function (x, y) { return 'IF(AND(ISNUMBER(' + x + ');ISNUMBER(' + y + '));MAX(0;(HOUR(' + y + ')-HOUR(' + x + '))+(MINUTE(' + y + ')-MINUTE(' + x + '))/60);0)'; };
+  return '=ROUND(' + pair(a, b) + '+' + pair(c, d) + ';1)';
 }
 // Chạy TAY 1 lần trong editor: đặt công thức cho mọi dòng chấm công hiện có.
 function setupTimesheetHoursFormula() {
