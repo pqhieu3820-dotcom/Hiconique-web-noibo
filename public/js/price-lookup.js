@@ -4,7 +4,7 @@
 (function (global) {
   'use strict';
 
-  var TTL = 6 * 3600 * 1000, KEY = 'hq_prov_prices_v1_';
+  var TTL = 6 * 3600 * 1000, KEY = 'hq_prov_prices_v2_';
   var mem = {}, loading = {}, provinceList = null;
 
   function api() { return typeof GSHEETS_CONFIG !== 'undefined' && GSHEETS_CONFIG.API_URL ? GSHEETS_CONFIG.API_URL : ''; }
@@ -48,14 +48,41 @@
     var seen = {}; return out.filter(function (x) { var k = x.kind + '|' + x.name + '|' + x.unit + '|' + x.low + '|' + x.high; if (seen[k]) return false; seen[k] = 1; return true; });
   }
 
+  // ---- đọc từ cơ sở dữ liệu gộp DG-* (getPriceDb: 4 bảng của 1 tỉnh, cột đầu "Tỉnh/Thành") → cùng dạng mục như parseRows ----
+  function fromDb(tables, province) {
+    var out = [];
+    var H = function (tb) { var h = (tb && tb.headers) || []; return function (n) { return h.indexOf(n); }; };
+    var val = function (r, i) { return i >= 0 && r[i] !== undefined && r[i] !== null ? String(r[i]).trim() : ''; };
+    var n = function (r, i) { var v = i >= 0 ? r[i] : 0; return typeof v === 'number' ? v : num(v); };
+    var t = tables || {}, f;
+    if (t.nc) { f = H(t.nc); (t.nc.rows || []).forEach(function (r) { var low = n(r, f('Giá thấp')), high = n(r, f('Giá cao')); if (!val(r, f('Loại nhà')) || (!low && !high)) return;
+      out.push({ name: val(r, f('Loại nhà')), spec: val(r, f('Quy mô/spec giả định')), unit: val(r, f('ĐVT')), code: val(r, f('Mã')), province: province, low: low || high, high: high || low, kind: 'Nhân công khoán', grp: '' }); }); }
+    if (t.tho) { f = H(t.tho); (t.tho.rows || []).forEach(function (r) { var nm = val(r, f('Loại nhà')); if (!nm) return;
+      var base = { spec: val(r, f('Quy mô/spec giả định')), unit: val(r, f('ĐVT')), code: val(r, f('Mã')), province: province };
+      var a = Object.assign({}, base, { name: nm + ' — phần thô', low: n(r, f('Phần thô thấp')), high: n(r, f('Phần thô cao')), kind: 'Phần thô' });
+      var b = Object.assign({}, base, { name: nm + ' — trọn gói hoàn thiện', low: n(r, f('Trọn gói thấp')), high: n(r, f('Trọn gói cao')), kind: 'Trọn gói' });
+      [a, b].forEach(function (x) { if (x.low || x.high) out.push(x); }); }); }
+    if (t.vt) { f = H(t.vt); (t.vt.rows || []).forEach(function (r) { var low = n(r, f('Giá thấp')), high = n(r, f('Giá cao')); if (!val(r, f('Vật tư/thiết bị')) || (!low && !high)) return;
+      out.push({ name: val(r, f('Vật tư/thiết bị')), spec: val(r, f('Spec kỹ thuật tối thiểu')), unit: val(r, f('ĐVT')), code: val(r, f('Mã')), province: province, low: low || high, high: high || low, kind: 'Vật tư', grp: val(r, f('Loại')) }); }); }
+    if (t.ct) { f = H(t.ct); (t.ct.rows || []).forEach(function (r) { var low = n(r, f('DGHT thấp')), high = n(r, f('DGHT cao')); if (!val(r, f('Công tác')) || (!low && !high)) return;
+      out.push({ name: val(r, f('Công tác')), spec: val(r, f('Phạm vi/spec')), unit: val(r, f('ĐVT')), code: val(r, f('Mã')), province: province, low: low || high, high: high || low, kind: 'Công tác', grp: val(r, f('Nhóm')) }); }); }
+    var seen = {}; return out.filter(function (x) { var k = x.kind + '|' + x.name + '|' + x.unit + '|' + x.low + '|' + x.high; if (seen[k]) return false; seen[k] = 1; return true; });
+  }
+
   function loadProvince(name) {
     if (!name) return Promise.resolve([]);
     if (mem[name]) return Promise.resolve(mem[name]);
     try { var c = JSON.parse(localStorage.getItem(KEY + name) || 'null'); if (c && Date.now() - c.t < TTL && c.items && c.items.length) { mem[name] = c.items; return Promise.resolve(c.items); } } catch (e) {}
     if (loading[name]) return loading[name];
     if (!api()) return Promise.resolve([]);
-    loading[name] = fetch(api() + '?action=getProvincePricing&province=' + encodeURIComponent(name), { redirect: 'follow' }).then(function (r) { return r.json(); }).then(function (d) {
-      var items = d && d.rows ? parseRows(d.rows, name) : [];
+    // 2026-10-01: ưu tiên cơ sở dữ liệu gộp DG-* (getPriceDb); chưa có/rỗng → dùng sheet gốc DGXD-<tỉnh> như cũ
+    loading[name] = fetch(api() + '?action=getPriceDb&province=' + encodeURIComponent(name), { redirect: 'follow' }).then(function (r) { return r.json(); }).then(function (d) {
+      var items = d && d.tables ? fromDb(d.tables, name) : [];
+      if (items.length) return items;
+      return fetch(api() + '?action=getProvincePricing&province=' + encodeURIComponent(name), { redirect: 'follow' }).then(function (r) { return r.json(); }).then(function (d2) { return d2 && d2.rows ? parseRows(d2.rows, name) : []; });
+    }).catch(function () {
+      return fetch(api() + '?action=getProvincePricing&province=' + encodeURIComponent(name), { redirect: 'follow' }).then(function (r) { return r.json(); }).then(function (d2) { return d2 && d2.rows ? parseRows(d2.rows, name) : []; });
+    }).then(function (items) {
       mem[name] = items;
       try { localStorage.setItem(KEY + name, JSON.stringify({ t: Date.now(), items: items })); } catch (e) {}
       delete loading[name]; return items;
