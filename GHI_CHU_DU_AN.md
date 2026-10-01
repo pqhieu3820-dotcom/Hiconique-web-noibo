@@ -2114,3 +2114,7 @@ Các dòng con của cơ cấu lương (phiếu lương trên web, phiếu đã 
 
 ### (dn) 01/10/2026 — Chấm công: bỏ toast trùng
 Bỏ thông báo nổi "✓ Chấm công đã lưu lên hệ thống" ở timesheet.html (đã có dòng trạng thái "Đã lưu lên hệ thống · giờ" dưới nút chấm công). sw v133.
+
+
+### (do) 01/10/2026 — Viết lại mô tả trang Đơn hàng
+Đoạn mô tả đầu trang orders.html viết lại ngắn gọn, gần gũi, dành cho mọi người (không dùng thuật ngữ kế toán). sw v134.
