@@ -8,6 +8,7 @@
  */
 var PricingProv = (function () {
   'use strict';
+  var PROVINCES = ['Tuyên Quang', 'Cao Bằng', 'Lào Cai', 'Điện Biên', 'Lai Châu', 'Sơn La', 'Lạng Sơn', 'Thái Nguyên', 'Phú Thọ', 'Bắc Ninh', 'Quảng Ninh', 'Hà Nội', 'Hải Phòng', 'Hưng Yên', 'Ninh Bình', 'Thanh Hóa', 'Nghệ An', 'Hà Tĩnh', 'Quảng Trị', 'Huế', 'Đà Nẵng', 'Quảng Ngãi', 'Gia Lai', 'Khánh Hòa', 'Đắk Lắk', 'Lâm Đồng', 'Đồng Nai', 'TP. Hồ Chí Minh', 'Tây Ninh', 'Đồng Tháp', 'Vĩnh Long', 'An Giang', 'Cần Thơ', 'Cà Mau'];
   var KINDS = [['all', 'Tất cả'], ['nc', 'Nhân công khoán'], ['tho', 'Phần thô & trọn gói'], ['vt', 'Vật tư – thiết bị'], ['ct', 'Công tác hoàn chỉnh']];
   var KIND_LABEL = { nc: 'Nhân công khoán', tho: 'Phần thô & trọn gói', vt: 'Vật tư – thiết bị', ct: 'Công tác hoàn chỉnh' };
   var data = {}, loading = {}, meta = {}, st = { province: '', kind: 'all', q: '', grp: '', area: 0, limit: 150 }, els = {}, opts = {};
@@ -225,5 +226,5 @@ var PricingProv = (function () {
     if (api()) jget(api() + '?action=getPriceDbProvinces').then(function (l) { (Array.isArray(l) ? l : []).forEach(function (x) { meta[x['Tỉnh/thành']] = x; }); if (st.province) render(); }).catch(function () { /* không có thông tin vùng thì thôi */ });
   }
   function entries(name) { return (data[name] || []).filter(function (e) { return e.kind === 'vt'; }).map(function (e) { return { name: e.name, unit: String(e.unit || '').toLowerCase().trim(), low: e.low, high: e.high }; }); }
-  return { mount: mount, select: select, entries: entries, load: load, jget: jget };
+  return { mount: mount, select: select, entries: entries, load: load, jget: jget, PROVINCES: PROVINCES };
 })();

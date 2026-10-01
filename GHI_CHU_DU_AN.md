@@ -2239,3 +2239,4 @@ Dòng chèn mới ở đầu bảng thừa hưởng dropdown Danh mục cũ từ
 
 ## 2026-10-01 — Trang Báo giá: khung 6 tab công cụ cố định trong trang, Google Sheet chỉ cấp dữ liệu
 - Tiến độ: 18 đầu việc mẫu có SẴN trong trang (không còn "Đang tạo 18 đầu việc mẫu…" và không còn ghi mẫu lên Sheet bằng `seedScheduleItems`); ngày/trạng thái đã lưu ghép theo số thứ tự; dòng mẫu chưa lưu tạo bản ghi ở lần bấm Lưu đầu; "Đặt lại" thay "Xoá" cho dòng mẫu; đầu việc thêm riêng vẫn xoá được. Nghiệm thu/Hồ sơ/Dòng tiền/So sánh nhà thầu/Phát sinh: dựng khung NGAY khi chọn dự án rồi mới điền dữ liệu (trước đây chờ tải xong mới hiện bảng). sw v160.
+- 2026-10-01 (tiếp): khung 6 tab công cụ dựng SẴN ngay khi mở trang, kể cả chưa chọn dự án; danh sách 34 tỉnh cố định trong js/pricing-prov.js (không đọc Sheet). Sheet chỉ cấp DỮ LIỆU. sw v161.

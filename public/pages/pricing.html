@@ -1151,26 +1151,12 @@
       wrap.textContent = msg;
     }
     function fetchProvinceList() {
-      if (!provinceApiReady()) { setProvinceWrapMessage('Chưa bật kết nối Google Sheets.'); return; }
-      var fill = function (names) {
-        var sel = document.getElementById('prProvinceSelect');
-        var projectSel = document.getElementById('project-province');
-        names.forEach(function (name) {
-          var opt = document.createElement('option');
-          opt.value = name;
-          opt.textContent = name;
-          sel.appendChild(opt);
-          if (projectSel) projectSel.appendChild(opt.cloneNode(true));
-        });
-      };
-      // 2026-10-01: danh sách tỉnh từ cơ sở dữ liệu gộp (sheet DG-Tỉnh thành); chưa có thì dùng danh sách cũ ở DGXD-Mục lục
-      PricingProv.jget(GSHEETS_CONFIG.API_URL + '?action=getPriceDbProvinces')
-        .then(function (list) {
-          var names = (Array.isArray(list) ? list : []).map(function (x) { return x['Tỉnh/thành']; }).filter(Boolean);
-          if (names.length) { fill(names); return; }
-          return PricingProv.jget(GSHEETS_CONFIG.API_URL + '?action=getProvinceList').then(function (l) { fill(Array.isArray(l) ? l : []); });
-        })
-        .catch(function (e) { console.error('Không tải được danh sách tỉnh:', e); });
+      // 34 tỉnh/thành CỐ ĐỊNH trong trang (js/pricing-prov.js) — không đọc danh sách từ Google Sheet nữa
+      var sel = document.getElementById('prProvinceSelect'), projectSel = document.getElementById('project-province');
+      PricingProv.PROVINCES.forEach(function (name) {
+        var opt = document.createElement('option'); opt.value = name; opt.textContent = name;
+        sel.appendChild(opt); if (projectSel) projectSel.appendChild(opt.cloneNode(true));
+      });
     }
     // Loại dự án — đồng bộ 2 chiều với dropdown "nguồn" (cột U ẩn) trên sheet Dự án,
     // y hệt cơ chế fetchProvinceList ở trên (xem getProjectTypes trong gsheets-api-v2.js).
@@ -1686,7 +1672,7 @@
     ];
     var currentContractorRecord = null;
     function loadContractors() {
-      if (!activeToolProjectId) return;
+      if (!activeToolProjectId) { renderContractors(); return; }   // khung hiện sẵn kể cả chưa chọn dự án
       var forP = activeToolProjectId;
       if (toolLoaded.ctr !== forP) currentContractorRecord = null;
       renderContractors();   // khung hiện ngay
@@ -1811,7 +1797,7 @@
     ];
     var currentCashflowRecord = null;
     function loadCashflow() {
-      if (!activeToolProjectId) return;
+      if (!activeToolProjectId) { renderCashflow(); return; }   // khung hiện sẵn kể cả chưa chọn dự án
       var forP = activeToolProjectId;
       if (toolLoaded.cf !== forP) currentCashflowRecord = null;
       renderCashflow();
@@ -1887,7 +1873,7 @@
     // ---------- Phát sinh ----------
     var changeOrdersList = [];
     function loadChangeOrders() {
-      if (!activeToolProjectId) return;
+      if (!activeToolProjectId) { renderChangeOrders(); return; }   // khung hiện sẵn kể cả chưa chọn dự án
       var forP = activeToolProjectId;
       if (toolLoaded.co !== forP) changeOrdersList = [];
       renderChangeOrders();
@@ -1977,7 +1963,7 @@
       el.innerHTML = html || ''; el.style.display = html ? '' : 'none';
     }
     function loadSchedule() {
-      if (!activeToolProjectId) return;
+      if (!activeToolProjectId) { renderSchedule(); return; }   // khung hiện sẵn kể cả chưa chọn dự án
       var forProject = activeToolProjectId;
       if (toolLoaded.sch !== forProject) scheduleList = [];
       renderSchedule();            // 18 đầu việc mẫu hiện NGAY (khung cố định trong trang)
@@ -2101,7 +2087,7 @@
     ];
     var acceptanceRecords = {};
     function loadAcceptance() {
-      if (!activeToolProjectId) return;
+      if (!activeToolProjectId) { renderAcceptance(); return; }   // khung hiện sẵn kể cả chưa chọn dự án
       var forP = activeToolProjectId;
       if (toolLoaded.acc !== forP) acceptanceRecords = {};
       renderAcceptance();
@@ -2172,7 +2158,7 @@
     ];
     var docRecords = {};
     function loadDocs() {
-      if (!activeToolProjectId) return;
+      if (!activeToolProjectId) { renderDocs(); return; }   // khung hiện sẵn kể cả chưa chọn dự án
       var forP = activeToolProjectId;
       if (toolLoaded.doc !== forP) docRecords = {};
       renderDocs();
@@ -2276,6 +2262,8 @@
     // Gọi initTab() ở đây — SAU khi activateTab đã bị đè đủ 2 lần (TOOL_TABS,
     // guide/sources) — để lần vào trang đầu tiên (khôi phục tab đã lưu) cũng
     // show/hide đúng thanh "Áp dụng cho dự án" như khi bấm tay đổi tab.
+    // 2026-10-01: dựng SẴN khung 6 tab công cụ ngay khi mở trang (không chờ chọn dự án / tải Sheet) — Sheet chỉ cấp dữ liệu điền vào.
+    [renderContractors, renderCashflow, renderChangeOrders, renderSchedule, renderAcceptance, renderDocs].forEach(function (fn) { try { fn(); } catch (e) { console.error('Dựng khung tab lỗi:', e); } });
     initTab();
 
     // ---------- Danh mục đơn giá ----------
