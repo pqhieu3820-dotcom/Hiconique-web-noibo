@@ -2192,3 +2192,8 @@ Dòng chèn mới ở đầu bảng thừa hưởng dropdown Danh mục cũ từ
 - Client (`task-data.js`): hàng đợi gửi `batchOps` khi có ≥2 lệnh chưa lỗi; lệnh lỗi tự quay về gửi đơn lẻ; máy chủ cũ không có batchOps → tự dùng cách cũ (`batchSupported_`). Console cảnh báo `[sync] … mất Nms (chờ khoá Mms)` nếu >6s; `HiconiqueMetrics.server` giữ số đo gần nhất.
 - Đọc: đã có getBundle + mã băm + cache 15s từ trước (không đổi). sw v147.
 - **Apps Script v120 đã deploy** (FIELD_MAP công nợ + batchOps + tăng tốc ghi). Kiểm tra thật: `batchOps` 2 lệnh xoá giả → máy chủ 0,85s, tổng ~2,4s; ping trả `caps:['batchOps']`. Live trước đó khác repo ở 1 dòng comment trong `updateData_impl` nên dán bằng khớp-theo-đoạn (hunks), không dán đè cả file.
+
+## 2026-10-01 — Kiểm kê cột/sheet không dùng
+- Kiểm kê (hàm chỉ đọc, đã gỡ): hầu hết cột trống là cột nhập tùy chọn/cột công thức phụ → GIỮ. Chỉ 2 cột chết ở `TLCC-Chấm công` (trống 18/18 dòng, không mã nào dùng): "Trạng thái xác thực" (`verifyStatus`), "Số điều kiện đạt" (`verifyPassCount`; tiêu đề trên Sheet lẫn ký tự Tab). Repo đã gỡ 2 mục này khỏi FIELD_MAP và gỡ action tạm `deleteTimesheetTest` — CHƯA deploy lên Apps Script (chờ Founder xoá 2 cột trên Sheet rồi deploy v121).
+- Tiêu đề lệch FIELD_MAP cần sửa tay trên Sheet: `TLCC-Phiếu lương` "Tổng sổ giờ" → "Tổng số giờ"; `TLCC-Hoa hồng dự án` "Phần trăm hoa hồng" → "Phần trăm"; `TLCC-Mức hoa hồng` "Phần trăm " (thừa dấu cách) → "Phần trăm".
+- Action server không client nào gọi (chưa gỡ, chờ quyết): deleteAcceptanceCheck, deleteCashFlowPlan, deleteContractorComparison, deleteProjectDocument, deleteStaffActivity.

@@ -200,7 +200,7 @@ const FIELD_MAP = {
     ['Tổng số giờ làm việc', 'totalHours'], ['Số giờ tăng ca', 'overtimeHours'],
     ['Trạng thái', 'status'], ['Ghi chú', 'note'], ['Vĩ độ checkin', 'checkinLat'], ['Kinh độ checkin', 'checkinLng'],
     ['Khoảng cách checkin', 'checkinDistance'], ['IP Checkin', 'checkinIp'], ['Trạng thái đạt vị trí', 'geoPass'],
-    ['Trạng thái đạt IP', 'ipPass'], ['Số điều kiện đạt', 'verifyPassCount'], ['Trạng thái xác thực', 'verifyStatus'],
+    ['Trạng thái đạt IP', 'ipPass'],
     // 2026-09-19: 2 cột này đã được client (checkIn() trong timesheet.html)
     // gán vào entry từ lâu nhưng CHƯA từng có trong FIELD_MAP nên bị rớt mất
     // khi ghi xuống Sheet (chỉ tồn tại tạm trong cache trình duyệt) — vá nốt.
@@ -1052,8 +1052,6 @@ function handleRequestImpl_(e) {
       result = updateData(ss, SHEETS.commissions, params.id, JSON.parse(params.data));
     } else if (action === 'deleteCommission') {
       result = deleteData(ss, SHEETS.commissions, params.id);
-    } else if (action === 'deleteTimesheetTest') {
-      result = String(params.id || '').indexOf('ZZ_TEST_') === 0 ? deleteData(ss, SHEETS.timesheet, params.id) : { error: 'Only ZZ_TEST_ ids' };
     } else if (action === 'getUnits') {
       result = getAllData(ss, SHEETS.units);
     } else if (action === 'addUnit') {
