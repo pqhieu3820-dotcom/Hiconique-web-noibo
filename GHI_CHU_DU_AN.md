@@ -2210,3 +2210,9 @@ Dòng chèn mới ở đầu bảng thừa hưởng dropdown Danh mục cũ từ
 - Nguyên nhân chậm: mỗi thông báo mới gửi push FCM NGAY TRONG ổ khoá ghi (đọc cả sheet thiết bị + 1 lệnh/thiết bị, ~10s) → 1 thao tác sinh nhiều thông báo (xoá giao dịch báo CEO/Founder…) giữ khoá cả phút, lệnh Xoá phải chờ. Sửa (`gsheets-api-v2.js`): `pushForNotificationRow_` chỉ gom vào `PENDING_PUSH_`; `flushPendingPush_` gửi 1 lần sau khi nhả khoá (đọc thiết bị 1 lần + `UrlFetchApp.fetchAll` song song). Hàm nền/trigger (ngoài handleRequest) gửi ngay. **Cần deploy Apps Script v121.**
 - Chip xanh không ẩn: CSS `#hqSyncChip{display:flex}` đè thuộc tính `hidden` → thêm `#hqSyncChip[hidden]{display:none!important}` và set style.display (`offline.js`). sw v153.
 - **Apps Script v121 đã deploy** (push không giữ khoá, bỏ action deleteTimesheetTest). Kiểm tra: batchOps 2 lệnh giả → máy chủ 1,8s. 2 mục FIELD_MAP verifyStatus/verifyPassCount CHƯA đưa lên live (chờ Founder xoá 2 cột trên Sheet).
+
+## 2026-10-01 — Gộp 34 sheet đơn giá DGXD-<tỉnh> thành cơ sở dữ liệu theo nội dung (DG-*)
+- Đọc hiểu: 34 sheet tỉnh có cấu trúc GIỐNG HỆT nhau (680 dòng×13 cột; chỉ khác số giá + 3 dòng tiêu đề có tên tỉnh), gồm 4 bảng xếp chồng: A Nhân công khoán (5 dòng), B Phần thô & trọn gói (4), C Vật tư–thiết bị (432), D Công tác hoàn chỉnh (219) — khớp số liệu ở `DGXD-Mục lục`.
+- Đã tạo 5 sheet MỚI (không đụng DGXD-*, vẫn giữ nguyên làm bản gốc): `DG-Tỉnh thành` (34 tỉnh: vùng, vùng giá cần tách, số mục), `DG-Nhân công khoán` (170 dòng), `DG-Phần thô & trọn gói` (136), `DG-Vật tư thiết bị` (14.688), `DG-Công tác hoàn chỉnh` (7.446). Cột đầu "Tỉnh/Thành"; giá là SỐ thật (#,##0), có lọc + cố định dòng/cột đầu; đặt ngay trước nhóm DGXD-*.
+- Tạo bằng `buildPriceDb(force)` (chạy tay trong editor; không ghi đè nếu DG-* đã có dữ liệu). Đọc: action `getPriceDbProvinces`, `getPriceDb&province=<tỉnh>` (4 bảng của 1 tỉnh).
+- sortSheetsByPrefix() chưa biết tiền tố DG-: đừng chạy lại mà không thêm DG- vào thứ tự.

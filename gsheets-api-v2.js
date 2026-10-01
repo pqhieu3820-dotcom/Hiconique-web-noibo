@@ -665,6 +665,122 @@ function getProvincePricing(ss, provinceName) {
   return { province: provinceName, rows: values };
 }
 
+// ===================== DG- : CƠ SỞ DỮ LIỆU ĐƠN GIÁ GỘP (2026-10-01) =====================
+// Trước đây: 34 sheet "DGXD-<tỉnh>" (mỗi sheet 680 dòng, 4 bảng xếp chồng A nhân công khoán / B phần thô & trọn gói / C vật tư-thiết bị / D công tác hoàn chỉnh,
+// cấu trúc GIỐNG HỆT nhau, chỉ khác số giá). Nay gộp theo NỘI DUNG, thêm cột "Tỉnh/Thành" ở đầu → 1 bảng phẳng lọc/pivot/VLOOKUP được, dùng cho kế toán báo giá.
+// 34 sheet DGXD-* GIỮ NGUYÊN (không sửa/xoá) làm bản gốc đối chiếu. Tạo bằng buildPriceDb() (chạy tay trong editor); các hàm đọc: getPriceDb / getPriceDbProvinces.
+var PRICE_DB_SHEETS = { prov: 'DG-Tỉnh thành', nc: 'DG-Nhân công khoán', tho: 'DG-Phần thô & trọn gói', vt: 'DG-Vật tư thiết bị', ct: 'DG-Công tác hoàn chỉnh' };
+var PRICE_DB_KEYS = ['nc', 'tho', 'vt', 'ct'];
+function priceDbIsNumCol_(h) { return /thấp|cao|^VL|^NC |^DGHT|Mức điển hình|Đơn giá|Giá /i.test(String(h)); }
+// Đọc 1 sheet tỉnh (lưới giá trị) → { nc|tho|vt|ct: { headers, rows } } (nhận diện bảng theo dòng tiêu đề, không phụ thuộc số dòng cố định)
+function priceDbParseSheet_(values, display) {
+  const out = {};
+  let mode = '', ncols = 0, codeIdx = 0;
+  values.forEach(function (row, r) {
+    const filled = row.filter(function (c) { return String(c === null || c === undefined ? '' : c).trim() !== ''; }).length;
+    if (!filled) return;
+    if (row.indexOf('ĐVT') !== -1 && (row.indexOf('Mã') !== -1 || row.indexOf('Nhóm') !== -1)) {
+      let m = '';
+      if (row.indexOf('Vật tư/thiết bị') !== -1) m = 'vt';
+      else if (row.indexOf('Công tác') !== -1) m = 'ct';
+      else if (row.indexOf('Phần thô thấp') !== -1) m = 'tho';
+      else if (row.indexOf('Giá thấp') !== -1 && row.indexOf('Loại nhà') !== -1) m = 'nc';
+      mode = m; if (!m) return;
+      let last = -1; row.forEach(function (c, i) { if (String(c).trim() !== '') last = i; });
+      ncols = last + 1; codeIdx = row.indexOf('Mã');
+      if (!out[m]) out[m] = { headers: row.slice(0, ncols).map(function (c) { return String(c).trim(); }), rows: [] };
+      return;
+    }
+    if (!mode) return;
+    if (filled <= 2) { if (/^[A-Z]\.\s/.test(String(row[0]))) mode = ''; return; }   // tiêu đề mục / ghi chú
+    if (String(row[codeIdx]).trim() === '') return;
+    const cells = [];
+    for (let c = 0; c < ncols; c++) {
+      const v = row[c];
+      cells.push(typeof v === 'number' ? v : (v instanceof Date ? String(display[r][c]) : (v === null || v === undefined ? '' : String(v))));
+    }
+    out[mode].rows.push(cells);
+  });
+  return out;
+}
+// Tạo 5 sheet DG-* từ các sheet DGXD-*. KHÔNG sửa/xoá DGXD-*. Sheet DG-* đã có dữ liệu thì BỎ QUA (không ghi đè) trừ khi force = true.
+function buildPriceDb(force) {
+  const ss = getSS_(), log = [];
+  const provinces = getProvinceList(ss);
+  if (!provinces.length) { Logger.log('buildPriceDb: khong doc duoc danh sach tinh'); return; }
+  const tables = {}, heads = {};
+  PRICE_DB_KEYS.forEach(function (k) { tables[k] = []; });
+  provinces.forEach(function (pv) {
+    const sh = findSheet(ss, PROVINCE_SHEET_PREFIX + pv);
+    if (!sh) { log.push('THIEU sheet ' + pv); return; }
+    const rng = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn());
+    const parsed = priceDbParseSheet_(rng.getValues(), rng.getDisplayValues());
+    PRICE_DB_KEYS.forEach(function (k) {
+      const tb = parsed[k]; if (!tb) { log.push('THIEU bang ' + k + ' o ' + pv); return; }
+      if (!heads[k]) heads[k] = tb.headers;
+      else if (JSON.stringify(heads[k]) !== JSON.stringify(tb.headers)) log.push('LECH tieu de bang ' + k + ' o ' + pv);
+      tb.rows.forEach(function (r) { tables[k].push([pv].concat(r)); });
+    });
+  });
+  const colors = { nc: '#4F6F52', tho: '#B08D57', vt: '#3B6B8C', ct: '#8C5A3B' };
+  PRICE_DB_KEYS.forEach(function (k) {
+    if (!heads[k]) return;
+    const name = PRICE_DB_SHEETS[k], headers = ['Tỉnh/Thành'].concat(heads[k]);
+    let sh = ss.getSheetByName(name);
+    if (sh && sh.getLastRow() > 1 && !force) { log.push('BO QUA ' + name + ' (da co ' + (sh.getLastRow() - 1) + ' dong, khong ghi de)'); return; }
+    if (!sh) sh = ss.insertSheet(name); else sh.clear();
+    const n = tables[k].length, w = headers.length;
+    sh.getRange(1, 1, 1, w).setValues([headers]).setFontWeight('bold').setBackground('#22272E').setFontColor('#FFFFFF').setWrap(true).setVerticalAlignment('middle');
+    headers.forEach(function (h, i) { sh.getRange(2, i + 1, Math.max(n, 1), 1).setNumberFormat(i > 0 && priceDbIsNumCol_(h) ? '#,##0' : '@'); });
+    for (let s = 0; s < n; s += 2000) { const part = tables[k].slice(s, s + 2000); sh.getRange(2 + s, 1, part.length, w).setValues(part); }
+    sh.setFrozenRows(1); sh.setFrozenColumns(1); sh.getRange(1, 1, n + 1, w).createFilter(); sh.setTabColor(colors[k]);
+    log.push('OK ' + name + ': ' + n + ' dong x ' + w + ' cot');
+  });
+  // Danh mục tỉnh/thành (từ DGXD-Mục lục: Vùng, vùng giá cần tách, số mục...)
+  const hub = findSheet(ss, HUB_SHEET_NAME);
+  if (hub) {
+    const pname = PRICE_DB_SHEETS.prov;
+    let sh = ss.getSheetByName(pname);
+    if (sh && sh.getLastRow() > 1 && !force) log.push('BO QUA ' + pname);
+    else {
+      const lr = hub.getLastRow(), hv = hub.getRange(9, 1, lr - 8, 8).getValues();
+      if (!sh) sh = ss.insertSheet(pname); else sh.clear();
+      sh.getRange(1, 1, hv.length, 8).setNumberFormat('@').setValues(hv.map(function (r) { return r.map(function (c) { return c === null ? '' : String(c); }); }));
+      sh.getRange(1, 1, 1, 8).setFontWeight('bold').setBackground('#22272E').setFontColor('#FFFFFF');
+      sh.setFrozenRows(1); sh.setTabColor('#7A7568');
+      log.push('OK ' + pname + ': ' + (hv.length - 1) + ' tinh');
+    }
+  }
+  // đặt 5 sheet DG-* ngay trước nhóm DGXD-* (cùng khu "đơn giá")
+  try {
+    const all = ss.getSheets(); let pos = 0;
+    all.forEach(function (s, i) { if (!pos && s.getName().indexOf(PROVINCE_SHEET_PREFIX) === 0) pos = i + 1; });
+    if (pos) ['prov', 'nc', 'tho', 'vt', 'ct'].forEach(function (k, i) { const s = ss.getSheetByName(PRICE_DB_SHEETS[k]); if (s) { ss.setActiveSheet(s); ss.moveActiveSheet(pos + i); } });
+  } catch (e) { log.push('khong xep duoc vi tri: ' + e); }
+  Logger.log('BUILD_PRICE_DB ' + log.join(' | '));
+}
+function getPriceDbProvinces(ss) {
+  const sh = findSheet(ss, PRICE_DB_SHEETS.prov);
+  if (!sh || sh.getLastRow() < 2) return [];
+  const v = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getDisplayValues(), h = v[0];
+  return v.slice(1).map(function (r) { const o = {}; h.forEach(function (x, i) { o[x] = r[i]; }); return o; });
+}
+// 1 tỉnh → 4 bảng { headers, rows } (cột đầu "Tỉnh/Thành"); dòng của 1 tỉnh nằm liền nhau nên chỉ đọc đúng khoảng đó
+function getPriceDb(ss, province) {
+  if (!province) return { error: 'Missing province' };
+  const res = { province: province, tables: {} };
+  PRICE_DB_KEYS.forEach(function (k) {
+    const sh = findSheet(ss, PRICE_DB_SHEETS[k]);
+    if (!sh || sh.getLastRow() < 2) return;
+    const lr = sh.getLastRow(), lc = sh.getLastColumn();
+    const names = sh.getRange(2, 1, lr - 1, 1).getValues();
+    let first = -1, last = -1;
+    for (let i = 0; i < names.length; i++) { if (String(names[i][0]) === province) { if (first < 0) first = i; last = i; } }
+    res.tables[k] = { headers: sh.getRange(1, 1, 1, lc).getDisplayValues()[0], rows: first < 0 ? [] : sh.getRange(first + 2, 1, last - first + 1, lc).getValues() };
+  });
+  return res;
+}
+
 function sheetKeyFor(sheetName) {
   return Object.keys(SHEETS).filter(function (k) { return SHEETS[k] === sheetName; })[0];
 }
@@ -1195,6 +1311,10 @@ function handleRequestImpl_(e) {
       result = getProjectTypes(ss);
     } else if (action === 'getProvincePricing') {
       result = getProvincePricing(ss, params.province);
+    } else if (action === 'getPriceDb') {
+      result = getPriceDb(ss, params.province);
+    } else if (action === 'getPriceDbProvinces') {
+      result = getPriceDbProvinces(ss);
     } else if (action === 'getContractorComparisons') {
       result = getAllData(ss, SHEETS.contractorComparisons);
     } else if (action === 'addContractorComparison') {
