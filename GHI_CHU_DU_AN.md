@@ -2110,3 +2110,7 @@ Mục 4 của bảng Cơ cấu lương & pháp lý, thẻ "Lương tối thiểu
 
 ### (dm) 01/10/2026 — Đổi ký hiệu nhánh "↳" thành "-"
 Các dòng con của cơ cấu lương (phiếu lương trên web, phiếu đã gửi, Giấy đề nghị .docx) dùng "- " thay cho "↳ ". sw v132.
+
+
+### (dn) 01/10/2026 — Chấm công: bỏ toast trùng
+Bỏ thông báo nổi "✓ Chấm công đã lưu lên hệ thống" ở timesheet.html (đã có dòng trạng thái "Đã lưu lên hệ thống · giờ" dưới nút chấm công). sw v133.

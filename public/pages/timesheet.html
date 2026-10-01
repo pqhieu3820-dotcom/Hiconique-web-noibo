@@ -2394,7 +2394,6 @@
           el.hidden = false;
           el.className = 'ts-sync-status ok';
           el.textContent = 'Đã lưu lên hệ thống' + (d.lastOkAt ? ' · ' + hm(d.lastOkAt) : '');
-          if (d.event === 'ok' && /timesheet/i.test(d.action || '')) showToast('✓ Chấm công đã lưu lên hệ thống', true);
         }
       });
       window.addEventListener('hiconique:sync-failed', function () {
