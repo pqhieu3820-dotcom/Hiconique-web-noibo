@@ -2130,3 +2130,7 @@ Bấm 1 bước (Lập đơn · Gửi kế toán · Đã ghi sổ · Thu đủ) 
 
 ### (dr) 01/10/2026 — Đơn hàng: gõ tên hạng mục → tra giá từ bảng giá tỉnh của công trình
 `js/price-lookup.js` (PriceLookup) + orders.html: ở phần Hạng mục có dải "Tra giá từ bảng giá tỉnh" — tỉnh tự lấy từ dự án đã chọn (trường Tỉnh/Thành của dự án; đổi tay được), mức giá Thấp/Trung bình/Cao. Gõ tên hạng mục (không cần dấu) → gợi ý ngay từ sheet tỉnh `DGXD-<tỉnh>` (đọc qua action `getProvincePricing`, cache 6h trong máy) gồm 4 bảng: Nhân công khoán, Phần thô/Trọn gói, Vật tư–thiết bị (cột Giá thấp/cao), Đơn giá công tác hoàn chỉnh (DGHT thấp/cao = VL+NC), cộng thêm Bảng giá dịch vụ (TC-Bảng giá dịch vụ). Chọn gợi ý (chuột hoặc ↑↓ Enter) → điền sẵn tên, đơn vị, đơn giá (+ mã tham chiếu `ref` lưu trong dòng hạng mục), nhảy sang ô số lượng. Không có tỉnh vẫn tra được Bảng giá dịch vụ chung. sw v137.
+
+
+### (ds) 01/10/2026 — Đơn hàng: cột "Danh mục có sẵn" → "Mã hạng mục"
+Bỏ dropdown "Danh mục có sẵn" (thừa vì đã gõ tên là tra giá); thay bằng ô **Mã hạng mục** — tự điền khi chọn gợi ý từ bảng giá tỉnh (VD W03, A06, C20), sửa tay được; lưu vào dòng hạng mục (`code`). Mã hiển thị thêm ở chi tiết đơn, hóa đơn in và Excel (thêm cột Mã). sw v138.

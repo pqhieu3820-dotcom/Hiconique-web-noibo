@@ -242,7 +242,7 @@
         <div class="od-sec-h" style="padding:0 24px;"><i>2</i>Hạng mục <span>· chọn từ Bảng giá dịch vụ hoặc nhập tay</span><button class="od-btn od-btn-ghost od-btn-sm" id="odAddRowBtn" style="margin-left:auto;">+ Thêm dòng</button></div>
         <div class="od-pricebar"><span class="od-pb-l">Tra giá từ bảng giá tỉnh:</span><select class="od-select" id="odProvince" style="max-width:200px"><option value="">— Theo dự án đã chọn —</option></select><select class="od-select" id="odTier" style="max-width:170px"><option value="mid">Giá trung bình</option><option value="low">Giá thấp</option><option value="high">Giá cao</option></select><span class="od-pb-s" id="odProvStatus">Gõ tên hạng mục để tìm nhanh — chọn là điền sẵn đơn vị &amp; đơn giá.</span></div>
         <table class="od-table">
-          <thead><tr><th style="width:20%;">Danh mục có sẵn</th><th>Tên hạng mục</th><th style="width:10%;">Đơn vị</th><th class="num" style="width:9%;">SL</th><th class="num" style="width:14%;">Đơn giá</th><th class="num" style="width:14%;">Thành tiền</th><th></th></tr></thead>
+          <thead><tr><th style="width:13%;">Mã hạng mục</th><th>Tên hạng mục</th><th style="width:10%;">Đơn vị</th><th class="num" style="width:9%;">SL</th><th class="num" style="width:14%;">Đơn giá</th><th class="num" style="width:14%;">Thành tiền</th><th></th></tr></thead>
           <tbody id="odItemRows"></tbody>
         </table>
         <div style="padding:12px 24px 0;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:flex-start;">
@@ -348,21 +348,13 @@
     var itemRowsEl = document.getElementById('odItemRows');
     var rowSeq = 0;
 
-    function catalogOptionsHtml() {
-      var html = '<option value="">— Nhập tay —</option>';
-      TaskManager.getPriceCatalog().forEach(function (it) {
-        html += '<option value="' + it.id + '">' + escapeHtml(it.category ? it.category + ' · ' + it.name : it.name) + '</option>';
-      });
-      return html;
-    }
-
     function addItemRow(prefill) {
       prefill = prefill || {};
       var tr = document.createElement('tr');
       tr.setAttribute('data-item-row', 'ir' + (++rowSeq));
       if (prefill.ref) tr.dataset.ref = prefill.ref;
       tr.innerHTML =
-        '<td><select class="od-select" data-i="catalog">' + catalogOptionsHtml() + '</select></td>' +
+        '<td><input class="od-input mono" data-i="code" value="' + escapeHtml(prefill.code || '') + '" placeholder="VD: W03"></td>' +
         '<td><input class="od-input" data-i="name" value="' + escapeHtml(prefill.name || '') + '" placeholder="Tên hạng mục"></td>' +
         '<td><input class="od-input" data-i="unit" value="' + escapeHtml(prefill.unit || '') + '" placeholder="m2/bộ..."></td>' +
         '<td class="num"><input class="od-input mono" data-i="qty" type="number" min="0" step="1" value="' + (Number(prefill.qty) || 1) + '"></td>' +
@@ -382,7 +374,8 @@
         var qty = parseFloat(tr.querySelector('[data-i="qty"]').value) || 0;
         var price = HiconiqueMoney.parse(tr.querySelector('[data-i="price"]').value);
         if (!name && qty === 0 && price === 0) return;
-        items.push({ name: name, unit: unit, qty: qty, price: price, lineTotal: qty * price, ref: tr.dataset.ref || '' });
+        var code = tr.querySelector('[data-i="code"]').value.trim();
+        items.push({ code: code, name: name, unit: unit, qty: qty, price: price, lineTotal: qty * price, ref: tr.dataset.ref || '' });
       });
       return items;
     }
@@ -481,23 +474,12 @@
       onStatus: function (m) { provStatus.textContent = m; },
       onPick: function (tr, e, price) {
         tr.querySelector('[data-i="name"]').value = e.name;
+        tr.querySelector('[data-i="code"]').value = e.code || '';
         tr.querySelector('[data-i="unit"]').value = e.unit || '';
         tr.querySelector('[data-i="price"]').value = HiconiqueMoney.format(price);
         tr.dataset.ref = (e.province ? e.province + ':' : '') + (e.code || e.kind);
         recalcTotals();
         var q = tr.querySelector('[data-i="qty"]'); if (q) { q.focus(); q.select(); }
-      }
-    });
-    itemRowsEl.addEventListener('change', function (e) {
-      if (e.target.matches('[data-i="catalog"]')) {
-        var tr = e.target.closest('tr');
-        var item = TaskManager.getPriceCatalog().find(function (it) { return it.id === e.target.value; });
-        if (item) {
-          tr.querySelector('[data-i="name"]').value = item.name || '';
-          tr.querySelector('[data-i="unit"]').value = item.unit || '';
-          tr.querySelector('[data-i="price"]').value = HiconiqueMoney.format(Number(item.unitPrice) || 0);
-        }
-        recalcTotals();
       }
     });
     itemRowsEl.addEventListener('click', function (e) {
@@ -725,7 +707,7 @@
         if (ph === 'paid') col = total;
         var pc = total ? Math.min(100, Math.round(col / total * 100)) : 0;
         var itemsRows = (Array.isArray(o.items) ? o.items : []).map(function (it) {
-          return '<tr><td>' + escapeHtml(it.name) + '</td><td>' + escapeHtml(it.unit || '') + '</td><td class="num">' + fmt(it.qty) + '</td><td class="num">' + fmt(it.price) + '</td><td class="num">' + fmt(it.lineTotal) + '</td></tr>';
+          return '<tr><td style="font-family:JetBrains Mono,monospace;font-size:.75rem;">' + escapeHtml(it.code || '') + '</td><td>' + escapeHtml(it.name) + '</td><td>' + escapeHtml(it.unit || '') + '</td><td class="num">' + fmt(it.qty) + '</td><td class="num">' + fmt(it.price) + '</td><td class="num">' + fmt(it.lineTotal) + '</td></tr>';
         }).join('');
         var editable = canEdit && (ph === 'draft' || ph === 'rejected');
         return '<tr>' +
@@ -746,7 +728,7 @@
           '</div></td>' +
         '</tr>' +
         '<tr class="od-detail-row" data-detail-for="' + o.id + '"><td colspan="7"><div class="od-detail-box"><div>' +
-          '<table class="od-detail-items"><thead><tr><th>Hạng mục</th><th>ĐV</th><th class="num">SL</th><th class="num">Đơn giá</th><th class="num">Thành tiền</th></tr></thead><tbody>' + itemsRows + '</tbody></table>' +
+          '<table class="od-detail-items"><thead><tr><th>Mã</th><th>Hạng mục</th><th>ĐV</th><th class="num">SL</th><th class="num">Đơn giá</th><th class="num">Thành tiền</th></tr></thead><tbody>' + itemsRows + '</tbody></table>' +
           '<div style="margin-top:10px;color:var(--od-muted);">Tạm tính ' + fmt(o.subtotal) + ' · Giảm giá ' + (o.discountPercent || 0) + '% · VAT ' + (o.vatPercent || 0) + '% · <b style="color:var(--od-bronze)">Tổng ' + fmt(total) + ' ₫</b><br>Thanh toán: ' + escapeHtml(o.paymentMethod || '—') + (o.revenueCategory ? ' · Doanh thu: ' + escapeHtml(o.revenueCategory) : '') + ' · Ghi chú: ' + escapeHtml(o.note || '—') + '</div>' +
           (ph === 'rejected' && o.financeNote ? '<div class="od-note-bad">Kế toán trả lại: ' + escapeHtml(o.financeNote) + '</div>' : '') +
         '</div><div>' + timelineHtml(o) + '</div></div></td></tr>';
@@ -796,7 +778,7 @@
     function printInvoice(o) {
       var items = Array.isArray(o.items) ? o.items : [];
       var itemsHtml = items.map(function (it, i) {
-        return '<tr><td>' + (i + 1) + '</td><td>' + escapeHtml(it.name) + '</td><td>' + escapeHtml(it.unit || '') + '</td><td class="num">' + fmt(it.qty) + '</td><td class="num">' + fmt(it.price) + '</td><td class="num">' + fmt(it.lineTotal) + '</td></tr>';
+        return '<tr><td>' + (i + 1) + '</td><td>' + escapeHtml(it.code || '') + '</td><td>' + escapeHtml(it.name) + '</td><td>' + escapeHtml(it.unit || '') + '</td><td class="num">' + fmt(it.qty) + '</td><td class="num">' + fmt(it.price) + '</td><td class="num">' + fmt(it.lineTotal) + '</td></tr>';
       }).join('');
       var pl = payLines(o);
       document.getElementById('odPrintInvoice').innerHTML =
@@ -804,7 +786,7 @@
         '<div class="od-print-meta">Số đơn hàng: <b>' + escapeHtml(o.orderNumber || o.id) + '</b> &nbsp;·&nbsp; Ngày: ' + escapeHtml(vnDate(o.createdAt)) + '</div>' +
         '<div class="od-print-meta">Khách hàng: <b>' + escapeHtml(o.clientName || '') + '</b>' + (o.clientPhone ? ' — ĐT: ' + escapeHtml(o.clientPhone) : '') + '</div>' +
         (o.clientAddress ? '<div class="od-print-meta">Địa chỉ: ' + escapeHtml(o.clientAddress) + '</div>' : '') +
-        '<table><thead><tr><th>#</th><th>Hạng mục</th><th>ĐV</th><th class="num">SL</th><th class="num">Đơn giá</th><th class="num">Thành tiền</th></tr></thead><tbody>' + itemsHtml + '</tbody></table>' +
+        '<table><thead><tr><th>#</th><th>Mã</th><th>Hạng mục</th><th>ĐV</th><th class="num">SL</th><th class="num">Đơn giá</th><th class="num">Thành tiền</th></tr></thead><tbody>' + itemsHtml + '</tbody></table>' +
         '<div class="od-print-totals">' +
           '<div><span>Tạm tính</span><span>' + fmt(o.subtotal) + '</span></div>' +
           '<div><span>Giảm giá (' + (o.discountPercent || 0) + '%)</span><span>-' + fmt(o.discountAmount) + '</span></div>' +
@@ -830,7 +812,7 @@
       ws.getCell('A5').value = 'Ngày: ' + vnDate(o.createdAt);
 
       var headerRow = 7;
-      ['Hạng mục', 'Đơn vị', 'Số lượng', 'Đơn giá', 'Thành tiền'].forEach(function (h, i) {
+      ['Mã', 'Hạng mục', 'Đơn vị', 'Số lượng', 'Đơn giá', 'Thành tiền'].forEach(function (h, i) {
         var cell = ws.getCell(headerRow, i + 1);
         cell.value = h;
         cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
@@ -838,26 +820,27 @@
       });
       var r = headerRow + 1;
       (Array.isArray(o.items) ? o.items : []).forEach(function (it) {
-        ws.getCell(r, 1).value = it.name;
-        ws.getCell(r, 2).value = it.unit;
-        ws.getCell(r, 3).value = it.qty;
-        ws.getCell(r, 4).value = it.price; ws.getCell(r, 4).numFmt = '#,##0';
-        ws.getCell(r, 5).value = it.lineTotal; ws.getCell(r, 5).numFmt = '#,##0';
+        ws.getCell(r, 1).value = it.code || '';
+        ws.getCell(r, 2).value = it.name;
+        ws.getCell(r, 3).value = it.unit;
+        ws.getCell(r, 4).value = it.qty;
+        ws.getCell(r, 5).value = it.price; ws.getCell(r, 5).numFmt = '#,##0';
+        ws.getCell(r, 6).value = it.lineTotal; ws.getCell(r, 6).numFmt = '#,##0';
         r++;
       });
       r++;
-      ws.getCell(r, 4).value = 'Tạm tính'; ws.getCell(r, 5).value = o.subtotal; ws.getCell(r, 5).numFmt = '#,##0'; r++;
-      ws.getCell(r, 4).value = 'Giảm giá ' + (o.discountPercent || 0) + '%'; ws.getCell(r, 5).value = -(o.discountAmount || 0); ws.getCell(r, 5).numFmt = '#,##0'; r++;
-      ws.getCell(r, 4).value = 'VAT ' + (o.vatPercent || 0) + '%'; ws.getCell(r, 5).value = o.vatAmount || 0; ws.getCell(r, 5).numFmt = '#,##0'; r++;
-      ws.getCell(r, 4).value = 'Tổng cộng'; ws.getCell(r, 4).font = { bold: true };
-      ws.getCell(r, 5).value = o.totalAmount; ws.getCell(r, 5).numFmt = '#,##0'; ws.getCell(r, 5).font = { bold: true }; r++;
+      ws.getCell(r, 5).value = 'Tạm tính'; ws.getCell(r, 6).value = o.subtotal; ws.getCell(r, 6).numFmt = '#,##0'; r++;
+      ws.getCell(r, 5).value = 'Giảm giá ' + (o.discountPercent || 0) + '%'; ws.getCell(r, 6).value = -(o.discountAmount || 0); ws.getCell(r, 6).numFmt = '#,##0'; r++;
+      ws.getCell(r, 5).value = 'VAT ' + (o.vatPercent || 0) + '%'; ws.getCell(r, 6).value = o.vatAmount || 0; ws.getCell(r, 6).numFmt = '#,##0'; r++;
+      ws.getCell(r, 5).value = 'Tổng cộng'; ws.getCell(r, 5).font = { bold: true };
+      ws.getCell(r, 6).value = o.totalAmount; ws.getCell(r, 6).numFmt = '#,##0'; ws.getCell(r, 6).font = { bold: true }; r++;
       var pl = payLines(o);
       if (pl.has) {
-        ws.getCell(r, 4).value = 'Đã thanh toán'; ws.getCell(r, 5).value = pl.col; ws.getCell(r, 5).numFmt = '#,##0'; r++;
-        ws.getCell(r, 4).value = 'Còn phải thanh toán'; ws.getCell(r, 5).value = pl.debt; ws.getCell(r, 5).numFmt = '#,##0'; r++;
+        ws.getCell(r, 5).value = 'Đã thanh toán'; ws.getCell(r, 6).value = pl.col; ws.getCell(r, 6).numFmt = '#,##0'; r++;
+        ws.getCell(r, 5).value = 'Còn phải thanh toán'; ws.getCell(r, 6).value = pl.debt; ws.getCell(r, 6).numFmt = '#,##0'; r++;
       }
-      ws.getColumn(1).width = 32; ws.getColumn(2).width = 10; ws.getColumn(3).width = 10;
-      ws.getColumn(4).width = 20; ws.getColumn(5).width = 16;
+      ws.getColumn(1).width = 12; ws.getColumn(2).width = 34; ws.getColumn(3).width = 10; ws.getColumn(4).width = 10;
+      ws.getColumn(5).width = 20; ws.getColumn(6).width = 16;
 
       (window.HiconiqueExcel ? HiconiqueExcel.standardize(wb) : wb).xlsx.writeBuffer().then(function (buffer) {
         var blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
