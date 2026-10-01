@@ -247,6 +247,44 @@
        ưu tiên lại 2 thuộc tính mà task-manager.css áp lên (opacity/visibility). */
     .modal-overlay:not([hidden]) { opacity: 1; visibility: visible; }
 
+    /* Dự toán xây dựng chi tiết (boq) */
+    .boq-head-btns, .boq-tool-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+    .boq-toolbar { display: grid; grid-template-columns: minmax(280px, 1fr) 190px auto; gap: 14px 18px; align-items: end; padding: 18px 28px 6px; }
+    .boq-status { padding: 4px 28px 14px; font-size: 0.75rem; color: var(--pr-muted); }
+    .boq-table-wrap { overflow-x: auto; }
+    .boq-table td { vertical-align: top; }
+    .boq-grp td { background: color-mix(in srgb, var(--pr-bronze) 9%, transparent); font-weight: 700; font-size: 0.8125rem; color: var(--pr-bronze); }
+    .boq-grp .boq-cnt { font-weight: 500; color: var(--pr-muted); font-size: 0.75rem; }
+    .boq-stt { color: var(--pr-muted); font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; }
+    .boq-name { font-weight: 600; line-height: 1.4; cursor: default; }
+    .boq-spec { font-size: 0.6875rem; color: var(--pr-muted); margin-top: 3px; line-height: 1.45; }
+    .boq-unit { color: var(--pr-muted); white-space: nowrap; }
+    .boq-in { text-align: right; font-family: 'JetBrains Mono', monospace; padding: 7px 10px; }
+    .boq-in.boq-edited { border-color: var(--pr-bronze); }
+    .boq-amt { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--pr-bronze); white-space: nowrap; }
+    .boq-act { white-space: nowrap; text-align: right; }
+    .boq-x { border: 1px solid var(--pr-border); background: transparent; color: var(--pr-muted); border-radius: 7px; width: 26px; height: 26px; cursor: pointer; font-size: 0.875rem; line-height: 1; margin-left: 4px; }
+    .boq-x:hover { border-color: var(--pr-bronze); color: var(--pr-bronze); }
+    .boq-empty { text-align: center; color: var(--pr-muted); padding: 40px 20px !important; line-height: 1.6; }
+    .boq-foot { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; padding: 20px 28px 24px; border-top: 1px solid var(--pr-border); background: var(--pr-bg); }
+    .boq-pcts { display: flex; flex-direction: column; gap: 10px; font-size: 0.8125rem; }
+    .boq-pcts label { display: flex; align-items: center; gap: 8px; }
+    .boq-pcts .pr-input { width: 80px; text-align: right; }
+    .boq-perm2 { font-size: 0.75rem; color: var(--pr-muted); margin-top: 4px; }
+    .boq-sums { min-width: 320px; display: flex; flex-direction: column; gap: 8px; }
+    .boq-sums > div { display: flex; justify-content: space-between; gap: 24px; font-size: 0.8125rem; }
+    .boq-sums b { font-family: 'JetBrains Mono', monospace; }
+    .boq-sums .boq-grand { border-top: 1px solid var(--pr-border); padding-top: 10px; margin-top: 4px; font-size: 1rem; font-weight: 700; }
+    .boq-sums .boq-grand b { color: var(--pr-bronze); font-size: 1.25rem; }
+    .boq-sug { position: fixed; z-index: 800; max-height: 360px; overflow-y: auto; background: var(--pr-surface); border: 1px solid var(--pr-border); border-radius: 12px; box-shadow: 0 14px 40px rgba(0,0,0,.35); padding: 6px; font-size: 0.8125rem; }
+    .boq-sug .it { padding: 8px 10px; border-radius: 8px; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; }
+    .boq-sug .it:hover { background: color-mix(in srgb, var(--pr-bronze) 14%, transparent); }
+    .boq-sug .nm { font-weight: 600; }
+    .boq-sug .pr { font-family: 'JetBrains Mono', monospace; color: var(--pr-bronze); white-space: nowrap; text-align: right; }
+    .boq-sug .mt { grid-column: 1 / -1; font-size: 0.6875rem; color: var(--pr-muted); line-height: 1.4; }
+    .boq-sug .tg { display: inline-block; font-size: 0.625rem; font-weight: 700; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--pr-bronze); color: var(--pr-bronze); margin-right: 6px; }
+    .boq-sug .em { padding: 12px; color: var(--pr-muted); }
+    @media (max-width: 900px) { .boq-toolbar { grid-template-columns: 1fr; } }
     .pr-tabs { display: flex; gap: 4px 6px; flex-wrap: wrap; margin-bottom: 24px; padding: 6px; background: var(--pr-surface); border: 1px solid var(--pr-border); border-radius: 14px; }
     .pr-tab-btn { padding: 10px 18px; border-radius: 10px; border: 1px solid transparent; background: transparent; color: var(--pr-muted); font-family: inherit; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: background .15s, color .15s; white-space: nowrap; }
     .pr-tab-btn:hover { color: var(--pr-text); background: color-mix(in srgb, var(--pr-bronze) 7%, transparent); }
@@ -328,7 +366,7 @@
       <div class="pr-card-head">
         <div>
           <div class="pr-card-title">Thông tin chung công trình</div>
-          <div class="pr-card-desc">Nhập 1 lần ở đây — tự điền sang Khái toán nhanh, Dự toán xây dựng, Khối lượng sơ bộ, Dự toán thiết kế. Lưu riêng theo từng dự án đang chọn.</div>
+          <div class="pr-card-desc">Nhập 1 lần ở đây — tự điền sang Khái toán nhanh, Dự toán theo m², Khối lượng sơ bộ, Dự toán thiết kế. Lưu riêng theo từng dự án đang chọn.</div>
         </div>
       </div>
       <div class="pr-site-grid">
@@ -580,7 +618,8 @@
     <div class="pr-tabs" id="prTabs" role="tablist">
       <button class="pr-tab-btn" data-tab="quick">Khái toán nhanh</button>
       <button class="pr-tab-btn" data-tab="province">Đơn giá theo tỉnh</button>
-      <button class="pr-tab-btn" data-tab="estimate">Dự toán xây dựng</button>
+      <button class="pr-tab-btn" data-tab="estimate">Dự toán theo m²</button>
+      <button class="pr-tab-btn" data-tab="boq">Dự toán xây dựng</button>
       <button class="pr-tab-btn" data-tab="design">Dự toán thiết kế</button>
       <button class="pr-tab-btn" data-tab="prelim">Khối lượng sơ bộ</button>
       <button class="pr-tab-btn" data-tab="contractors">So sánh nhà thầu</button>
@@ -631,12 +670,12 @@
       <div class="pr-card-head">
         <div>
           <div class="pr-card-title">Dự toán khối lượng chi tiết sơ bộ</div>
-          <div class="pr-card-desc">Định mức/m² tham khảo (bê tông, thép, cửa, điện nước...) nhân với tổng diện tích tầng ở tab "Dự toán xây dựng" ra khối lượng sơ bộ — đơn giá tham khảo tự lấy từ tỉnh đang chọn ở tab "Đơn giá theo tỉnh" (khớp theo từ khoá tên vật tư), có thể sửa tay nếu không khớp đúng ý.</div>
+          <div class="pr-card-desc">Định mức/m² tham khảo (bê tông, thép, cửa, điện nước...) nhân với tổng diện tích tầng ở tab "Dự toán theo m²" ra khối lượng sơ bộ — đơn giá tham khảo tự lấy từ tỉnh đang chọn ở tab "Đơn giá theo tỉnh" (khớp theo từ khoá tên vật tư), có thể sửa tay nếu không khớp đúng ý.</div>
         </div>
       </div>
       <div id="prPrelimQtyNotice" style="padding:14px 24px 0;font-size:0.8125rem;color:var(--pr-muted);"></div>
       <div class="pr-client-grid" style="grid-template-columns:repeat(2,1fr);">
-        <div><span class="pr-field-label">Tổng diện tích tầng (lấy từ Dự toán xây dựng)</span><div class="pr-amount" id="prelimFloorAreaRef" style="padding-top:8px;">0</div></div>
+        <div><span class="pr-field-label">Tổng diện tích tầng (lấy từ Dự toán theo m²)</span><div class="pr-amount" id="prelimFloorAreaRef" style="padding-top:8px;">0</div></div>
         <div><span class="pr-field-label">Số phòng vệ sinh</span><input type="number" min="0" step="1" class="pr-input mono" id="prelimToiletCount" value="2"></div>
       </div>
       <table class="pr-table">
@@ -710,6 +749,48 @@
       </table>
       <div class="pr-totals">
         <div class="pr-totals-row grand"><span>CHI PHÍ TỔNG THỂ + ÉP CỌC</span><span class="pr-amount" id="estGrandTotalWithPile">0</span></div>
+      </div>
+    </div>
+    </div>
+
+    <div class="pr-tab-panel" data-tab-panel="boq">
+    <div class="pr-card" id="prBoqCard">
+      <div class="pr-card-head">
+        <div>
+          <div class="pr-card-title">Dự toán xây dựng chi tiết</div>
+          <div class="pr-card-desc">Lập bảng dự toán từng hạng mục: tìm hạng mục trong cơ sở dữ liệu giá <b>DG-*</b> của tỉnh/thành công trình → đơn giá tự điền → nhập khối lượng → ra thành tiền, chi phí chung, lợi nhuận, VAT. Lưu riêng theo từng dự án đang chọn.</div>
+        </div>
+        <div class="boq-head-btns">
+          <button class="pr-btn pr-btn-sm" id="boqExcel" type="button">Xuất Excel</button>
+          <button class="pr-btn pr-btn-sm" id="boqPrint" type="button">In / PDF</button>
+        </div>
+      </div>
+      <div class="boq-toolbar">
+        <div class="boq-search-wrap"><span class="pr-field-label">Thêm hạng mục từ DG-*</span><input type="text" class="pr-input" id="boqSearch" placeholder="Gõ tên hạng mục: sơn, gạch ốp lát, điện, đóng trần, nhân công…" autocomplete="off"></div>
+        <div><span class="pr-field-label">Mức đơn giá</span><select class="pr-input" id="boqTier"><option value="low">Giá thấp</option><option value="mid" selected>Giá trung bình</option><option value="high">Giá cao</option></select></div>
+        <div class="boq-tool-btns"><button class="pr-btn pr-btn-sm" id="boqSuggest" type="button">✦ Gợi ý theo diện tích dự án</button><button class="pr-btn pr-btn-sm" id="boqAddBlank" type="button">+ Dòng tự nhập</button><button class="pr-btn pr-btn-sm" id="boqClear" type="button">Xoá hết</button></div>
+      </div>
+      <div class="boq-status" id="boqStatus"></div>
+      <div class="boq-table-wrap">
+        <table class="pr-table boq-table">
+          <thead><tr><th style="width:44px">STT</th><th>Hạng mục</th><th style="width:70px">ĐVT</th><th class="num" style="width:130px">Khối lượng</th><th class="num" style="width:150px">Đơn giá (₫)</th><th class="num" style="width:160px">Thành tiền (₫)</th><th style="width:70px"></th></tr></thead>
+          <tbody id="boqRows"></tbody>
+        </table>
+      </div>
+      <div class="boq-foot">
+        <div class="boq-pcts">
+          <label>Chi phí chung <input type="number" class="pr-input" id="boqOverhead" min="0" step="0.5" value="0"> %</label>
+          <label>Lợi nhuận định mức <input type="number" class="pr-input" id="boqProfit" min="0" step="0.5" value="0"> %</label>
+          <label>Thuế VAT <input type="number" class="pr-input" id="boqVat" min="0" step="0.5" value="8"> %</label>
+          <div class="boq-perm2" id="boqPerM2"></div>
+        </div>
+        <div class="boq-sums">
+          <div><span>Cộng chi phí trực tiếp</span><b id="boqSub">0</b></div>
+          <div><span>Chi phí chung</span><b id="boqOhAmt">0</b></div>
+          <div><span>Lợi nhuận định mức</span><b id="boqPfAmt">0</b></div>
+          <div><span>Thuế VAT</span><b id="boqVatAmt">0</b></div>
+          <div class="boq-grand"><span>TỔNG DỰ TOÁN</span><b id="boqTotal">0</b></div>
+        </div>
       </div>
     </div>
     </div>
@@ -1109,6 +1190,8 @@
   <script src="/js/khai-toan.js" defer></script>
   <script src="/js/pricing-prov.js"></script>
   <script src="/js/pricing-ref.js"></script>
+  <script src="/js/price-lookup.js"></script>
+  <script src="/js/pricing-boq.js"></script>
   <script>
   (function () {
     'use strict';
@@ -1414,7 +1497,7 @@
 
     // ---------- Thông tin chung công trình: nhập 1 lần, "phát" sang mọi tab tính toán ----------
     // Ô nhập ở đầu trang -> điền vào ô tương ứng của từng tab rồi gọi sự kiện input để tab đó tự tính
-    // lại (Dự toán xây dựng: dài/rộng/tầng/tum; Khối lượng sơ bộ: số WC; Khái toán: diện tích sàn, PN,
+    // lại (Dự toán theo m²: dài/rộng/tầng/tum; Khối lượng sơ bộ: số WC; Khái toán: diện tích sàn, PN,
     // WC, phong cách, ngày khởi công). Ngược lại, sửa tay ở tab con thì ô chung cập nhật theo để không lệch.
     // Lưu theo từng dự án (localStorage 'pr-site-info:<id>'); đổi dự án thì nạp thông tin đã lưu của dự án đó.
     var SITE_FIELDS = {

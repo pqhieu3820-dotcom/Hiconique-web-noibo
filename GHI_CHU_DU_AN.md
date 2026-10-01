@@ -2294,3 +2294,8 @@ Dòng chèn mới ở đầu bảng thừa hưởng dropdown Danh mục cũ từ
 
 ## 2026-10-01 — Báo giá dịch vụ: trang rộng hơn, tab/thẻ rõ ràng hơn
 - `pricing.html`: khung trang tối đa 1560px (trước 1100px); lưới Khái toán 330/1fr/370; thanh tab dạng viên thuốc trong khung (tab đang chọn tô màu đồng), chữ lớn hơn; thẻ/bảng đệm rộng hơn. sw v178.
+
+## 2026-10-01 — Báo giá dịch vụ: đổi tên tab + tab MỚI "Dự toán xây dựng" (chi tiết theo DG-*)
+- Tab cũ đổi tên **"Dự toán theo m²"** (data-tab=estimate); các chỗ nhắc tên đã sửa theo.
+- Tab mới **"Dự toán xây dựng"** (`data-tab=boq`, `js/pricing-boq.js`, dùng `PriceLookup` + đơn giá DG-* của tỉnh/thành dự án): tìm hạng mục (nhân công khoán / phần thô / trọn gói / vật tư-thiết bị / công tác hoàn chỉnh) → thêm vào bảng, đơn giá tự điền theo mức Thấp/TB/Cao (sửa tay được, ↺ về giá DG), nhập khối lượng → thành tiền, tổng nhóm, chi phí chung / lợi nhuận / VAT (mặc định 0/0/8%), suất đầu tư triệu/m². "Gợi ý theo diện tích dự án" thêm mục Phần thô × diện tích sàn. Lưu theo từng dự án trong localStorage `pr-boq:<id>` (chỉ trên máy này). Xuất Excel (ExcelJS) + In/PDF A4 ngang. sw v179.
+- Kế hoạch tiếp: mô hình 3D kiểu SketchUp trên web (Three.js) để lấy khối lượng (dài/rộng/cao/thể tích) đẩy vào cột Khối lượng của tab này — chờ người dùng xác nhận phạm vi.
