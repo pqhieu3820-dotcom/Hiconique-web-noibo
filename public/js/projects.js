@@ -142,9 +142,24 @@
   // radio mặc định không quan trọng bằng).
   function getHangMucSlugs(category) {
     if (!category) return [];
-    var t = String(category).trim().toLowerCase();
-    return HANG_MUC_LIST.filter(function (h) { return t.indexOf(h.label.toLowerCase()) !== -1; })
-      .map(function (h) { return h.slug; });
+    var tokens = String(category).split(/\s*[&;+]\s*/).map(function (s) { return s.trim().toLowerCase(); }).filter(Boolean);
+    var found = {};
+    tokens.forEach(function (tk) {
+      var exact = HANG_MUC_LIST.filter(function (h) { return h.label.toLowerCase() === tk; });
+      var hits = exact.length ? exact : HANG_MUC_LIST.filter(function (h) { return tk.indexOf(h.label.toLowerCase()) !== -1; });
+      // bỏ nhãn ngắn nằm trong nhãn dài đã khớp (VD "Thi công" trong "Giám sát thi công")
+      hits = hits.filter(function (h) { return !hits.some(function (o) { return o !== h && o.label.toLowerCase().indexOf(h.label.toLowerCase()) !== -1; }); });
+      hits.forEach(function (h) { found[h.slug] = true; });
+    });
+    return HANG_MUC_LIST.filter(function (h) { return found[h.slug]; }).map(function (h) { return h.slug; });
+  }
+
+  // Hạng mục dự án CÓ THỂ NHIỀU (công trình làm 2-3 hạng mục cùng lúc) → lưu `category` = nhãn nối bằng " & " theo thứ tự HANG_MUC_LIST.
+  function categoryFromSlugs(slugs) {
+    return HANG_MUC_LIST.filter(function (h) { return slugs.indexOf(h.slug) !== -1; }).map(function (h) { return h.label; }).join(' & ');
+  }
+  function buildDocNumbers(slugs, shortCode) {
+    return slugs.map(function (s) { return buildDocNumber(s, shortCode); }).filter(Boolean);
   }
 
   // Số hồ sơ/hợp đồng tự sinh: {ngày}{tháng}HĐ{mã hạng mục}/{mã dự án}-HICON{năm}
@@ -1835,12 +1850,21 @@
 
     // Type cards behavior
     var typeCards = form.querySelectorAll('.type-card');
+    function selectedSlugs() { var s = []; typeCards.forEach(function (c) { if (c.classList.contains('active')) s.push(c.dataset.type); }); return s; }
+    function setCards(slugs) {
+      typeCards.forEach(function (c) {
+        var on = slugs.indexOf(c.dataset.type) !== -1;
+        c.classList.toggle('active', on);
+        var cb = c.querySelector('input'); if (cb) cb.checked = on;
+      });
+    }
     typeCards.forEach(function (card) {
-      card.addEventListener('click', function () {
-        typeCards.forEach(function (c) { c.classList.remove('active'); });
-        card.classList.add('active');
-        var radio = card.querySelector('input[type="radio"]');
-        if (radio) radio.checked = true;
+      card.addEventListener('click', function (e) {
+        e.preventDefault();   // tự quản lý bật/tắt (tránh checkbox trong thẻ bị bật/tắt 2 lần)
+        var on = !card.classList.contains('active');
+        if (!on && selectedSlugs().length <= 1) return;   // luôn giữ ít nhất 1 hạng mục
+        card.classList.toggle('active', on);
+        var cb = card.querySelector('input'); if (cb) cb.checked = on;
         updateDocNumberPreview();
       });
     });
@@ -1853,11 +1877,9 @@
     var copyBtn = document.getElementById('docNumberCopyBtn');
     function updateDocNumberPreview() {
       if (!codeInput || !previewWrap || !previewEl) return;
-      var activeCard = form.querySelector('.type-card.active');
-      var slug = activeCard ? activeCard.dataset.type : 'design';
-      var docNumber = buildDocNumber(slug, codeInput.value.trim());
-      previewWrap.hidden = !docNumber;
-      if (docNumber) previewEl.textContent = docNumber;
+      var nums = buildDocNumbers(selectedSlugs(), codeInput.value.trim());
+      previewWrap.hidden = !nums.length;
+      if (nums.length) previewEl.textContent = nums.join('   ·   ');
     }
     if (codeInput) {
       codeInput.addEventListener('input', function () {
@@ -1887,13 +1909,7 @@
       var submitBtn = document.getElementById('projectSubmitBtn');
       if (submitBtn) submitBtn.textContent = 'Tạo dự án';
       // Reset type cards visual
-      typeCards.forEach(function (c) { c.classList.remove('active'); });
-      var defaultCard = form.querySelector('.type-card[data-type="design"]');
-      if (defaultCard) {
-        defaultCard.classList.add('active');
-        var radio = defaultCard.querySelector('input[type="radio"]');
-        if (radio) radio.checked = true;
-      }
+      setCards(['design']);
       // Reset color
       var colorInput = document.getElementById('project-color');
       if (colorInput) colorInput.value = '#B08D57';
@@ -1915,8 +1931,8 @@
       var name = document.getElementById('project-name').value.trim();
       if (!name) return;
 
-      var catInput = form.querySelector('input[name="project-type"]:checked');
-      var catVal = catInput ? catInput.value : 'design';
+      var chosenSlugs = selectedSlugs();
+      if (!chosenSlugs.length) chosenSlugs = ['design'];
 
       var data = {
         name: name,
@@ -1948,11 +1964,11 @@
       // wasn't changed (older/seed projects store a full Vietnamese label
       // like "Thiết kế nội thất" — this page's radios only know the short
       // codes, so re-saving unchanged would otherwise downgrade that label).
-      if (editingId && form.dataset.originalCategory && matchHangMucCard(form.dataset.originalCategory) === catVal) {
-        data.category = form.dataset.originalCategory;
+      var origSlugs = form.dataset.originalCategory ? getHangMucSlugs(form.dataset.originalCategory) : [];
+      if (editingId && form.dataset.originalCategory && origSlugs.length && origSlugs.slice().sort().join(',') === chosenSlugs.slice().sort().join(',')) {
+        data.category = form.dataset.originalCategory;   // không đổi hạng mục → giữ nguyên chuỗi gốc
       } else {
-        var typeLabelEl = form.querySelector('.type-card.active .type-label');
-        data.category = typeLabelEl ? typeLabelEl.textContent.trim() : catVal;
+        data.category = categoryFromSlugs(chosenSlugs);
       }
 
       var ok = false;
@@ -2001,18 +2017,19 @@
     document.getElementById('project-desc').value = project.description || '';
     document.getElementById('project-color').value = project.color || '#B08D57';
 
-    var cat = matchHangMucCard(project.category || project.type);
+    var catSlugs = getHangMucSlugs(project.category || project.type);
+    if (!catSlugs.length) catSlugs = [matchHangMucCard(project.category || project.type)];
     form.querySelectorAll('.type-card').forEach(function (c) {
-      c.classList.toggle('active', c.dataset.type === cat);
+      var on = catSlugs.indexOf(c.dataset.type) !== -1;
+      c.classList.toggle('active', on);
+      var cb = c.querySelector('input'); if (cb) cb.checked = on;
     });
-    var radio = form.querySelector('input[name="project-type"][value="' + cat + '"]');
-    if (radio) radio.checked = true;
     var previewWrapEl = document.getElementById('docNumberPreviewWrap');
     var previewTextEl = document.getElementById('docNumberPreview');
     if (previewWrapEl && previewTextEl) {
-      var docNumber = buildDocNumber(cat, project.shortCode || '');
-      previewWrapEl.hidden = !docNumber;
-      if (docNumber) previewTextEl.textContent = docNumber;
+      var docNums = buildDocNumbers(catSlugs, project.shortCode || '');
+      previewWrapEl.hidden = !docNums.length;
+      if (docNums.length) previewTextEl.textContent = docNums.join('   ·   ');
     }
 
     var memberIds = Array.isArray(project.members)

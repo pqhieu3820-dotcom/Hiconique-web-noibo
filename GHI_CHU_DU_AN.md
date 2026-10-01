@@ -2150,3 +2150,7 @@ Bỏ dropdown "Danh mục có sẵn" (thừa vì đã gõ tên là tra giá); th
 
 ### (dv) 01/10/2026 — Ô Đơn vị: đổi font nút về Inter
 Nút đơn vị trong bảng gợi ý dùng font Inter (weight 500) như phần còn lại của web, thay cho font mono đậm; placeholder ô còn "Đơn vị". sw v141.
+
+
+### (dw) 01/10/2026 — Dự án: chọn NHIỀU hạng mục
+Form Thêm/Sửa dự án (projects.html + projects.js, và form tạo dự án ở pricing.html): thẻ Hạng mục chuyển từ chọn 1 (radio) sang **chọn nhiều** (bấm để bật/tắt, luôn giữ ít nhất 1 thẻ). `category` lưu = nhãn các hạng mục nối bằng " & " theo thứ tự danh sách (VD "Thiết kế & Thi công & Nội thất"); sửa dự án tự bật đúng các thẻ; không đổi hạng mục thì giữ nguyên chuỗi gốc. **Số hồ sơ/hợp đồng tự sinh: mỗi hạng mục 1 số** (cách nhau " · "). `getHangMucSlugs()` (đếm/lọc sidebar) giờ tách theo " & " và khớp nhãn chính xác trước — "Giám sát thi công" không còn bị tính thêm vào "Thi công". sw v142.
