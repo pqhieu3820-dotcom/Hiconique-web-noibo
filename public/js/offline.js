@@ -414,6 +414,10 @@ var Offline = (function () {
   // 2026-09-30: THAO TÁC GHI TRỰC TIẾP (không qua hàng đợi ghi, VD Lưu giờ làm việc, cấp quyền…) cũng hiện trên khung trạng thái.
   // Bọc window.fetch: yêu cầu ghi tới Apps Script (action save/add/update/delete… hoặc POST) mà lúc bắt đầu hàng đợi đang TRỐNG thì tính là "đang lưu",
   // xong → "Đã đồng bộ", lỗi mạng → khung lỗi. Yêu cầu do chính hàng đợi gửi (lúc đó hàng đợi không rỗng) bỏ qua để không đếm đôi.
+  // Chỉ hiện khung khi NGƯỜI DÙNG vừa thao tác (click/gõ phím/chạm/gửi form trong 20s gần nhất). Ghi nền (nhịp online, theo dõi hoạt động, làm mới tự động…) không hiện.
+  var lastInputAt = 0, userWriteUntil = 0;
+  ['click', 'keydown', 'input', 'change', 'submit', 'touchstart', 'pointerdown'].forEach(function (ev) { document.addEventListener(ev, function () { lastInputAt = Date.now(); }, true); });
+  function recentInput() { return Date.now() - lastInputAt < 20000; }
   var direct = 0, directAt = [];   // directAt: mốc bắt đầu từng lệnh ghi trực tiếp; lệnh treo >40s thôi không tính (tránh khung 'Đang lưu' hiện mãi)
   (function wrapFetch() {
     if (typeof window.fetch !== 'function' || window.__hqFetchWrapped) return;
@@ -424,7 +428,7 @@ var Offline = (function () {
       var api = (typeof GSHEETS_CONFIG !== 'undefined' && GSHEETS_CONFIG) ? GSHEETS_CONFIG.API_URL : '';   // const toàn cục (không nằm trên window)
       var isWrite = api && url.indexOf(api) === 0 && !READ.test(url) && (WRITE.test(url) || (init && /^POST$/i.test(init.method || '')));
       // nhịp nền (đang online lastActiveAt, gửi keepalive) không phải thao tác của người dùng → không hiện khung
-      if (!isWrite || readQueue_().length || (init && init.keepalive)) return orig.apply(this, arguments);
+      if (!isWrite || readQueue_().length || (init && init.keepalive) || !recentInput()) return orig.apply(this, arguments);
       var t0 = Date.now(); direct++; directAt.push(t0); failed = false; render();
       function finish(ok) {
         direct = Math.max(0, direct - 1); var di = directAt.indexOf(t0); if (di !== -1) directAt.splice(di, 1);
@@ -485,7 +489,7 @@ var Offline = (function () {
     document.body.appendChild(el); return el;
   }
   function render() {
-    var now = Date.now(), q = readQueue_().filter(function (o) { return (o.tries || 0) > 0 || now - (o.ts || 0) < 120000; });   // lệnh tồn cũ chưa từng gửi (chờ mạng/khóa tab) không làm khung hiện mãi
+    var now = Date.now(), q = readQueue_().filter(function (o) { return (o.tries || 0) > 0 || (now < userWriteUntil && now - (o.ts || 0) < 120000); });   // lệnh tồn cũ chưa từng gửi (chờ mạng/khóa tab) không làm khung hiện mãi
     var liveDirect = directAt.filter(function (s) { return now - s < 40000; }).length, n = q.length + liveDirect, M = window.HiconiqueMetrics || {};
     var w = M.writeMs || [], aw = w.length ? w.reduce(function (a, b) { return a + b; }, 0) / w.length : 0;
     if (!failed && n === 0 && now > doneUntil) { if (el) el.hidden = true; return; }
@@ -507,7 +511,8 @@ var Offline = (function () {
   window.addEventListener('hiconique:sync-state', function (e) {
     var d = e.detail || {};
     if (d.event) { last = { event: d.event, reason: d.reason || '', tries: d.tries || 0 }; if (d.event === 'ok' || d.event === 'queued') failed = false; }
-    if (d.event === 'ok' && !readQueue_().length) doneUntil = Date.now() + 3000;   // hiện "Đã đồng bộ" 3s rồi ẩn
+    if (d.event === 'queued' && recentInput()) userWriteUntil = Date.now() + 120000;
+    if (d.event === 'ok' && !readQueue_().length && Date.now() < userWriteUntil) doneUntil = Date.now() + 3000;   // hiện "Đã đồng bộ" 3s rồi ẩn
     render();
   });
   window.addEventListener('hiconique:sync-failed', function () { failed = true; render(); });

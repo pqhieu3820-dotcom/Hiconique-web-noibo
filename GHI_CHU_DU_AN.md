@@ -2076,3 +2076,7 @@ Chạy `sortSheetsByPrefix()` (Apps Script, đã thêm vào repo + editor): gom 
 - **Bản tổng hợp chỉnh sửa được:** sheet mới **TLCC-Cơ cấu lương** (nằm cạnh nhóm TLCC-) + nút **Cơ cấu lương & pháp lý** ở thẻ lương nhân viên (quản lý): bảng khoản/mức/trần miễn thuế/bật/thứ tự/ghi chú pháp lý, công thức, thử tính nhanh, cơ sở pháp lý. Lưu → Sheet; thêm khoản hỗ trợ mới được. Mặc định nằm ở `SalaryStructure.DEFAULTS` (js/salary-structure.js, id cố định salc_*).
 - **Phiếu lương:** thêm cột `Khấu trừ BH người lao động` (bhEmployee) + `Chi tiết cơ cấu lương` (breakdown JSON snapshot → phiếu cũ không đổi khi sửa cơ cấu sau này). Phiếu cũ (không có snapshot) hiển thị như trước. Web: form tự tính + hiển thị chi tiết từng khoản; phiếu đã gửi có thẻ "Chi tiết cơ cấu lương". Giấy đề nghị .docx: dòng 1 có các dòng con 1.1–1.5 và dòng 6 BH người lao động; số tiền = thực lãnh.
 - Apps Script **v115** (SHEETS/FIELD_MAP salaryComponents + payslips, get/add/update/deleteSalaryComponent). sw v125.
+
+
+### (df) 01/10/2026 — Khung đồng bộ chỉ hiện khi NGƯỜI DÙNG thao tác
+Vẫn thấy khung "Đã đồng bộ" hiện mãi vì các lệnh ghi nền (qua hàng đợi/không keepalive) cũng bật khung. `offline.js`: ghi nhận lần thao tác cuối (click/gõ/chạm/gửi form); chỉ hiện khung khi lệnh ghi bắt đầu trong 20s sau thao tác; lệnh xếp hàng chỉ tính khi có thao tác gần đây (hoặc đang thử lại/lỗi → vẫn hiện đỏ). "Đã đồng bộ" hiện 3s rồi ẩn. sw v126.
