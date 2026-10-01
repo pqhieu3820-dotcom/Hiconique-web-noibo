@@ -2154,3 +2154,7 @@ Nút đơn vị trong bảng gợi ý dùng font Inter (weight 500) như phần 
 
 ### (dw) 01/10/2026 — Dự án: chọn NHIỀU hạng mục
 Form Thêm/Sửa dự án (projects.html + projects.js, và form tạo dự án ở pricing.html): thẻ Hạng mục chuyển từ chọn 1 (radio) sang **chọn nhiều** (bấm để bật/tắt, luôn giữ ít nhất 1 thẻ). `category` lưu = nhãn các hạng mục nối bằng " & " theo thứ tự danh sách (VD "Thiết kế & Thi công & Nội thất"); sửa dự án tự bật đúng các thẻ; không đổi hạng mục thì giữ nguyên chuỗi gốc. **Số hồ sơ/hợp đồng tự sinh: mỗi hạng mục 1 số** (cách nhau " · "). `getHangMucSlugs()` (đếm/lọc sidebar) giờ tách theo " & " và khớp nhãn chính xác trước — "Giám sát thi công" không còn bị tính thêm vào "Thi công". sw v142.
+
+
+### (dx) 01/10/2026 — Khung đồng bộ: hiện 3s rồi KHÔNG nhắc lại trong 60s
+`offline.js`: sau khi hiện "Đã đồng bộ" đúng 3s rồi ẩn, vào "thời gian yên lặng" 60s — các lệnh ghi nền/liên tiếp trong khoảng này KHÔNG bật lại khung (cả "Đang lưu" lẫn "Đã đồng bộ"); chỉ lỗi/đang thử lại mới hiện ngay. (Production lúc này chạy v141 — đã có bản chặn ghi nền theo thao tác người dùng nhưng vẫn lặp vì các lệnh ghi liên tiếp.) sw v143.

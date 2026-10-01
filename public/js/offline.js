@@ -406,7 +406,9 @@ var Offline = (function () {
 // Đặt trong offline.js vì file này được nạp ở MỌI trang (kể cả trang tạo sau này, miễn có <script src="/js/offline.js">) — không cần thêm gì riêng cho từng trang.
 (function () {
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
-  var last = { event: '', reason: '', tries: 0 }, failed = false, doneUntil = 0, el = null;
+  var last = { event: '', reason: '', tries: 0 }, failed = false, doneUntil = 0, quietUntil = 0, el = null;
+  // "Đã đồng bộ" chỉ hiện 3s rồi ẩn và KHÔNG nhắc lại trong 60s kế tiếp (dù còn lệnh ghi nền); lỗi/thử lại vẫn hiện ngay.
+  function armDone() { var n = Date.now(); if (n < quietUntil) return; doneUntil = n + 3000; quietUntil = n + 63000; }
   function readQueue_() {
     if (typeof readWriteQueue_ === 'function') return readWriteQueue_();   // có cả hàng đợi giữ trong RAM khi localStorage đầy
     try { var a = JSON.parse(localStorage.getItem('hiconique_write_queue') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
@@ -433,7 +435,7 @@ var Offline = (function () {
       function finish(ok) {
         direct = Math.max(0, direct - 1); var di = directAt.indexOf(t0); if (di !== -1) directAt.splice(di, 1);
         var M = window.HiconiqueMetrics; if (M) { M.writeMs = (M.writeMs || []).concat(Date.now() - t0).slice(-10); }
-        if (!ok) { failed = true; } else if (direct === 0 && !readQueue_().length) doneUntil = Date.now() + 3000;
+        if (!ok) { failed = true; } else if (direct === 0 && !readQueue_().length) armDone();
         render();
       }
       return orig.apply(this, arguments).then(function (res) { finish(true); return res; }, function (err) { finish(false); throw err; });
@@ -492,7 +494,8 @@ var Offline = (function () {
     var now = Date.now(), q = readQueue_().filter(function (o) { return (o.tries || 0) > 0 || (now < userWriteUntil && now - (o.ts || 0) < 120000); });   // lệnh tồn cũ chưa từng gửi (chờ mạng/khóa tab) không làm khung hiện mãi
     var liveDirect = directAt.filter(function (s) { return now - s < 40000; }).length, n = q.length + liveDirect, M = window.HiconiqueMetrics || {};
     var w = M.writeMs || [], aw = w.length ? w.reduce(function (a, b) { return a + b; }, 0) / w.length : 0;
-    if (!failed && n === 0 && now > doneUntil) { if (el) el.hidden = true; return; }
+    var inQuiet = now < quietUntil && now > doneUntil && !failed && last.event !== 'retry';
+    if (!failed && (n === 0 || inQuiet) && now > doneUntil) { if (el) el.hidden = true; return; }
     if (!ensure()) return;
     var top = ''; if (q.length > 3) { var c = {}; q.forEach(function (o) { c[o.action] = (c[o.action] || 0) + 1; }); var k = Object.keys(c).sort(function (a, b) { return c[b] - c[a]; })[0]; top = ' · nhiều nhất: ' + k + ' ×' + c[k]; }
     var l1, cls = '', icon = '', eta = '';
@@ -512,7 +515,7 @@ var Offline = (function () {
     var d = e.detail || {};
     if (d.event) { last = { event: d.event, reason: d.reason || '', tries: d.tries || 0 }; if (d.event === 'ok' || d.event === 'queued') failed = false; }
     if (d.event === 'queued' && recentInput()) userWriteUntil = Date.now() + 120000;
-    if (d.event === 'ok' && !readQueue_().length && Date.now() < userWriteUntil) doneUntil = Date.now() + 3000;   // hiện "Đã đồng bộ" 3s rồi ẩn
+    if (d.event === 'ok' && !readQueue_().length && Date.now() < userWriteUntil) armDone();   // hiện "Đã đồng bộ" 3s rồi ẩn
     render();
   });
   window.addEventListener('hiconique:sync-failed', function () { failed = true; render(); });
