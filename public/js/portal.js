@@ -225,6 +225,22 @@
       'commission': ['commissions', 'commissionRates', 'projects', 'members'], 'notices': ['notices', 'notifications'],
       'team': ['members'], 'profile': ['members'], 'staff-monitor': ['timesheet', 'members'], 'pricing': ['priceCatalog']
     };
+    // Dữ liệu RIÊNG của từng trang (ngoài 16 bảng chung): ⟳ cũng đọc lại; reload:true = trang không tự vẽ lại theo sự kiện → tải lại trang sau khi đọc xong
+    var PAGE_EXTRA = {
+      'crm': { loaders: ['loadCrmData'] }, 'equipment': { loaders: ['loadEquipment', 'loadPcReports'] },
+      'spc': { loaders: ['loadSpcData'], reload: true }, 'lighting': { loaders: ['loadLightingData'], reload: true },
+      'staff-monitor': { loaders: ['loadStaffActivity', 'loadAppUsage'] }, 'finance': { loaders: ['loadFinanceAccess', 'loadUnits'] },
+      'orders': { loaders: ['loadUnits'] }, 'payslip': { loaders: ['loadSalaryComponents'] }, 'commission': { loaders: ['loadSalaryComponents'] },
+      'khai-toan': { loaders: ['loadFinanceAccess'] }
+    };
+    function pageKey() { var m = location.pathname.match(/\/pages\/([^\/.]+)/); return m ? m[1] : null; }
+    function runExtras(done) {
+      var ex = PAGE_EXTRA[pageKey()];
+      if (!ex) { done(false); return; }
+      var fns = ex.loaders.filter(function (n) { return typeof TaskManager[n] === 'function'; }), left = fns.length;
+      if (!left) { done(false); return; }
+      fns.forEach(function (n) { try { TaskManager[n](function () { if (--left === 0) done(!!ex.reload); }); } catch (e) { if (--left === 0) done(!!ex.reload); } });
+    }
     function pageTypes() {
       var m = location.pathname.match(/\/pages\/([^\/.]+)/);
       if (!m) return null;                       // trang chủ → đủ 16 bảng
@@ -237,12 +253,16 @@
       btn.disabled = true;
       if (window.HiconiqueSyncChip) { HiconiqueSyncChip.busy(); }
       TaskManager.refreshFromGSheets(function (ok) {
+        runExtras(function (reloadPage) {
         btn.classList.remove('spinning');
         btn.disabled = false;
         // Sự kiện 'hiconique:data-refreshed' (task-data.js) đã tự lo việc
         // vẽ lại đúng phần dữ liệu của từng trang — không cần gọi gì thêm ở
         // đây, tránh mỗi trang phải tự biết portal.js đang làm gì.
         if (window.HiconiqueSyncChip) { if (ok === false) HiconiqueSyncChip.bad(); else HiconiqueSyncChip.ok(); } else showReloadToast();
+        if (reloadPage) setTimeout(function () { location.reload(); }, 900);
+        else try { window.dispatchEvent(new CustomEvent('hiconique:data-refreshed')); } catch (e) {}
+        });
       }, { force: true, types: pageTypes() });   // bấm Làm mới = nhận đúng dữ liệu trên Google Sheet
     });
 

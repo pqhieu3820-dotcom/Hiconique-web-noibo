@@ -2263,3 +2263,4 @@ Dòng chèn mới ở đầu bảng thừa hưởng dropdown Danh mục cũ từ
 
 ## 2026-10-01 — Nút ⟳ trên thanh đầu: chỉ làm mới dữ liệu của trang đang mở
 - `refreshFromGSheets(cb, {force:true, types:[...]})` (task-data.js): chỉ đọc/ghi các loại dữ liệu trong `types` (gói `getBundle` nhỏ hơn nhiều → nhanh). portal.js ánh xạ trang → loại dữ liệu (`PAGE_TYPES`; trang lạ = members+notifications). Ở TRANG CHỦ ⟳ vẫn làm mới đủ 16 bảng. Vào trang từ trang chủ và tải lại trang đã tự cập nhật sẵn. sw v166.
+- 2026-10-01 (sw v167): ⟳ ở mọi trang con cũng đọc lại dữ liệu RIÊNG của trang (`PAGE_EXTRA` trong portal.js: CRM, Thiết bị, SPC, Chiếu sáng, Giám sát nhân viên, Sổ tài chính, Đơn hàng, Phiếu lương, Hoa hồng, Khai toán). SPC & Chiếu sáng không tự vẽ lại theo sự kiện nên tự tải lại trang sau khi đọc xong; các trang khác phát sự kiện `hiconique:data-refreshed` để vẽ lại.
