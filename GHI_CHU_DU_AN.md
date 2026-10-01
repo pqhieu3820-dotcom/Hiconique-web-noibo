@@ -2106,3 +2106,7 @@ Mục 4 của bảng Cơ cấu lương & pháp lý, thẻ "Lương tối thiểu
 
 ### (dl) 01/10/2026 — Lăn chuột đổi tháng: chỉ ở cụm mũi tên/nhãn + giới hạn tháng phiếu lương
 `month-nav.js`: lăn chuột đổi tháng CHỈ khi con trỏ ở mũi tên trái/phải hoặc nhãn "Tháng X Năm YYYY" (trước đây cả cụm, kể cả nút Hôm nay / Xem nhanh Docx / Xuất Docx nằm cùng hàng). Thêm tuỳ chọn `mount(input, {max})`: chặn mũi tên phải, lăn xuống, bảng chọn nhanh (ô tháng sau mốc bị khoá), "Hôm nay". Trang Phiếu lương dùng `max = THÁNG TRƯỚC` (làm phiếu đầu tháng sau → hôm nay tháng 10 chỉ chọn tới 9/2026) và mặc định mở tháng trước. Áp dụng cho cả finance/commission (chỉ phần lăn ở cụm mũi tên/nhãn). sw v131.
+
+
+### (dm) 01/10/2026 — Đổi ký hiệu nhánh "↳" thành "-"
+Các dòng con của cơ cấu lương (phiếu lương trên web, phiếu đã gửi, Giấy đề nghị .docx) dùng "- " thay cho "↳ ". sw v132.

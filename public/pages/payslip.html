@@ -469,7 +469,7 @@
       var dd = Math.min(Number(days) || 0, STD_DAYS);
       return bd.items.map(function (x) {
         var note = x.kind === 'bh' ? 'cố định ' + fmt(x.full) : x.kind === 'allowance' ? 'trần ' + fmt(x.full) + ' × ' + dd + '/' + STD_DAYS + ' công' : 'phần còn lại';
-        return '<div class="pl-breakdown-row pl-bd-sub" data-item="' + x.id + '" title="Nhấp đúp vào số tiền để sửa — tổng vẫn giữ đủ"><span>↳ ' + x.name + (x.kind === 'bh' ? SalaryStructure.infoBtn() : '') + (x.edited ? ' ✎' : '') + ' <span style="color:var(--pl-muted);font-size:.75rem;">· ' + note + '</span></span><span class="pl-bd-amt" data-amt="' + x.id + '">' + fmt(x.earned) + '</span></div>';
+        return '<div class="pl-breakdown-row pl-bd-sub" data-item="' + x.id + '" title="Nhấp đúp vào số tiền để sửa — tổng vẫn giữ đủ"><span>- ' + x.name + (x.kind === 'bh' ? SalaryStructure.infoBtn() : '') + (x.edited ? ' ✎' : '') + ' <span style="color:var(--pl-muted);font-size:.75rem;">· ' + note + '</span></span><span class="pl-bd-amt" data-amt="' + x.id + '">' + fmt(x.earned) + '</span></div>';
       }).join('');
     }
 
@@ -478,7 +478,7 @@
       if (!sn) return '';
       var d = Number(sn.days) || 0;
       return '<div class="pl-form-card" style="margin-top:16px"><div class="pl-form-title">Chi tiết cơ cấu lương</div><div class="pl-breakdown">' +
-        '<div class="pl-breakdown-row pl-bd-head"><span>Lương theo ngày công (' + d + '/' + (sn.std || STD_DAYS) + ' công)</span><span>' + fmt(sn.workPay) + '</span></div>' + SalaryStructure.rowsHtml(sn.items.map(function (x) { return { n: '↳ ' + x.n, k: x.k, f: x.f, e: x.e }; }), d, sn.std || STD_DAYS) +
+        '<div class="pl-breakdown-row pl-bd-head"><span>Lương theo ngày công (' + d + '/' + (sn.std || STD_DAYS) + ' công)</span><span>' + fmt(sn.workPay) + '</span></div>' + SalaryStructure.rowsHtml(sn.items.map(function (x) { return { n: '- ' + x.n, k: x.k, f: x.f, e: x.e }; }), d, sn.std || STD_DAYS) +
         '<div class="pl-breakdown-row"><span>Tăng ca (OT)</span><span>' + fmt(s.otAmount) + '</span></div><div class="pl-breakdown-row"><span>Hoa hồng dự án</span><span>' + fmt(s.commissionAmount) + '</span></div><div class="pl-breakdown-row"><span>Thưởng khác</span><span>' + fmt(s.otherBonus) + '</span></div>' +
         '<div class="pl-breakdown-row minus"><span>Khấu trừ</span><span>− ' + fmt(s.deduction) + '</span></div><div class="pl-breakdown-row minus"><span>BHXH, BHYT, BHTN người lao động (10,5% × ' + fmt(sn.bhBase) + ')</span><span>− ' + fmt(s.bhEmployee) + '</span></div></div>' +
         '<div class="pl-total-row"><span class="pl-total-label">Thực lãnh</span><span class="pl-total-value">' + fmt(s.totalAmount) + '</span></div>' +
