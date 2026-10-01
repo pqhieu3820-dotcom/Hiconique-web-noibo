@@ -457,15 +457,18 @@
     function setProvince(name) {
       if (name && !Array.prototype.some.call(provSel.options, function (o) { return o.value === name; })) { var op = document.createElement('option'); op.value = name; op.textContent = name; provSel.appendChild(op); }
       provSel.value = name || '';
+      if (name) { try { localStorage.setItem('od-last-province', name); } catch (e) {} }   // nhớ tỉnh đã dùng → lần sau tự nạp đơn giá DG-* ngay
       if (name) { provStatus.textContent = PriceLookup.isLoaded(name) ? 'Đã nạp ' + PriceLookup.count(name) + ' mục bảng giá ' + name : 'Đang tải bảng giá ' + name + '…'; PriceLookup.loadProvince(name).then(function (it) { provStatus.textContent = it.length ? 'Đã nạp ' + it.length + ' mục bảng giá ' + name + ' — gõ tên hạng mục để tìm' : 'Chưa đọc được bảng giá ' + name; }); }
       else provStatus.textContent = 'Chưa chọn tỉnh — dự án chưa gán tỉnh/thành. Vẫn tra được Bảng giá dịch vụ chung.';
     }
     function syncProvinceFromProject() {
       var pid = document.getElementById('odProjectId').value, p = pid ? TaskManager.getProjects().find(function (x) { return x.id === pid; }) : null;
-      setProvince(p && p.province ? p.province : (provSel.value || ''));
+      var saved = ''; try { saved = localStorage.getItem('od-last-province') || ''; } catch (e) {}
+      setProvince(p && p.province ? p.province : (provSel.value || saved || ''));
     }
     PriceLookup.loadProvinceList().then(function (list) {
       var cur = provSel.value; list.forEach(function (n) { if (!Array.prototype.some.call(provSel.options, function (o) { return o.value === n; })) { var op = document.createElement('option'); op.value = n; op.textContent = n; provSel.appendChild(op); } }); provSel.value = cur;
+      if (!provSel.value) { var sv = ''; try { sv = localStorage.getItem('od-last-province') || ''; } catch (e) {} if (sv) setProvince(sv); }
     });
     provSel.addEventListener('change', function () { setProvince(provSel.value); });
     document.getElementById('odProjectId').addEventListener('change', syncProvinceFromProject);

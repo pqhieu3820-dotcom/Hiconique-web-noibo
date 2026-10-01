@@ -220,5 +220,14 @@
     w.document.close(); w.focus(); setTimeout(function () { w.print(); }, 300);
   });
 
+  // Nhận hạng mục + khối lượng từ tab "Mô hình 3D" (cùng mã + tên + đơn giá thì cộng dồn khối lượng thay vì thêm dòng mới)
+  window.HiconiqueBoq = {
+    addLine: function (e, qty) {
+      var ex = state.lines.filter(function (l) { return !l.edited && l.name === e.name && (l.code || '') === (e.code || ''); })[0];
+      if (ex) ex.qty = Math.round(qty * 100) / 100;   // lần đẩy sau ghi đè khối lượng của chính dòng đó (mô hình là nguồn)
+      else state.lines.push({ id: 'b' + Date.now() + (seq++), code: e.code || '', name: e.name, spec: 'Từ mô hình 3D', unit: e.unit || '', qty: qty, low: e.low, high: e.high, kind: e.kind || 'Hạng mục khác', edited: false, price: 0 });
+      save(); render();
+    }
+  };
   load();
 })();

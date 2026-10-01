@@ -285,6 +285,43 @@
     .boq-sug .tg { display: inline-block; font-size: 0.625rem; font-weight: 700; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--pr-bronze); color: var(--pr-bronze); margin-right: 6px; }
     .boq-sug .em { padding: 12px; color: var(--pr-muted); }
     @media (max-width: 900px) { .boq-toolbar { grid-template-columns: 1fr; } }
+    /* Mô hình 3D (model3d) */
+    .m3d-toolbar { display: flex; flex-wrap: wrap; gap: 12px 22px; align-items: flex-end; padding: 16px 28px 8px; }
+    .m3d-tools, .m3d-views { display: flex; gap: 6px; flex-wrap: wrap; }
+    .m3d-tool, .m3d-tool2 { padding: 8px 13px; border-radius: 9px; border: 1px solid var(--pr-border); background: transparent; color: var(--pr-text); font-family: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; }
+    .m3d-tool:hover, .m3d-tool2:hover { border-color: var(--pr-bronze); color: var(--pr-bronze); }
+    .m3d-tool.active { background: color-mix(in srgb, var(--pr-bronze) 16%, transparent); border-color: var(--pr-bronze); color: var(--pr-bronze); }
+    .m3d-set { display: flex; gap: 10px; flex-wrap: wrap; }
+    .m3d-set label, .m3d-props label { display: flex; flex-direction: column; gap: 4px; font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--pr-muted); }
+    .m3d-set .pr-input { width: 112px; padding: 7px 9px; text-transform: none; letter-spacing: 0; font-weight: 500; }
+    .m3d-main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; padding: 8px 28px 6px; }
+    .m3d-canvas { position: relative; height: 560px; border: 1px solid var(--pr-border); border-radius: 12px; overflow: hidden; background: #EEF1F5; }
+    .m3d-loading { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; color: #555; font-size: 0.875rem; text-align: center; padding: 20px; }
+    .m3d-side { display: flex; flex-direction: column; gap: 8px; max-height: 560px; overflow-y: auto; }
+    .m3d-ptitle { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--pr-bronze); }
+    .m3d-list { border: 1px solid var(--pr-border); border-radius: 10px; max-height: 150px; overflow-y: auto; background: var(--pr-bg); }
+    .m3d-li { display: flex; align-items: center; gap: 8px; padding: 7px 10px; font-size: 0.8125rem; cursor: pointer; border-bottom: 1px solid var(--pr-border); }
+    .m3d-li:last-child { border-bottom: none; }
+    .m3d-li:hover, .m3d-li.on { background: color-mix(in srgb, var(--pr-bronze) 13%, transparent); }
+    .m3d-li .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .m3d-li .v { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--pr-muted); }
+    .m3d-dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+    .m3d-props { display: flex; flex-direction: column; gap: 8px; }
+    .m3d-props .pr-input { padding: 7px 9px; text-transform: none; letter-spacing: 0; font-weight: 500; }
+    .m3d-grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .m3d-metrics { font-size: 0.75rem; color: var(--pr-muted); line-height: 1.7; padding: 8px 10px; border: 1px dashed var(--pr-border); border-radius: 8px; }
+    .m3d-metrics b { color: var(--pr-bronze); font-family: 'JetBrains Mono', monospace; }
+    .m3d-hint { font-size: 0.75rem; color: var(--pr-muted); line-height: 1.6; }
+    .m3d-pbtn { display: flex; gap: 8px; flex-wrap: wrap; }
+    .m3d-itinfo { font-size: 0.6875rem; color: var(--pr-bronze); margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
+    .m3d-status { padding: 8px 28px 12px; font-size: 0.8125rem; color: var(--pr-bronze); min-height: 1.6em; }
+    .m3d-sum .m3d-itsearch { min-width: 240px; }
+    .m3d-sum .m3d-bs { min-width: 170px; }
+    .m3d-amt { font-weight: 600; color: var(--pr-bronze); font-family: 'JetBrains Mono', monospace; }
+    .m3d-muted { color: var(--pr-muted); font-size: 0.75rem; }
+    .m3d-foot { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; align-items: center; padding: 14px 28px 20px; border-top: 1px solid var(--pr-border); background: var(--pr-bg); font-size: 0.8125rem; }
+    .m3d-foot b { color: var(--pr-bronze); font-size: 1.0625rem; font-family: 'JetBrains Mono', monospace; }
+    @media (max-width: 1000px) { .m3d-main { grid-template-columns: 1fr; } .m3d-canvas { height: 420px; } }
     .pr-tabs { display: flex; gap: 4px 6px; flex-wrap: wrap; margin-bottom: 24px; padding: 6px; background: var(--pr-surface); border: 1px solid var(--pr-border); border-radius: 14px; }
     .pr-tab-btn { padding: 10px 18px; border-radius: 10px; border: 1px solid transparent; background: transparent; color: var(--pr-muted); font-family: inherit; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: background .15s, color .15s; white-space: nowrap; }
     .pr-tab-btn:hover { color: var(--pr-text); background: color-mix(in srgb, var(--pr-bronze) 7%, transparent); }
@@ -620,6 +657,7 @@
       <button class="pr-tab-btn" data-tab="province">Đơn giá theo tỉnh</button>
       <button class="pr-tab-btn" data-tab="estimate">Dự toán theo m²</button>
       <button class="pr-tab-btn" data-tab="boq">Dự toán xây dựng</button>
+      <button class="pr-tab-btn" data-tab="model3d">Mô hình 3D</button>
       <button class="pr-tab-btn" data-tab="design">Dự toán thiết kế</button>
       <button class="pr-tab-btn" data-tab="prelim">Khối lượng sơ bộ</button>
       <button class="pr-tab-btn" data-tab="contractors">So sánh nhà thầu</button>
@@ -792,6 +830,60 @@
           <div class="boq-grand"><span>TỔNG DỰ TOÁN</span><b id="boqTotal">0</b></div>
         </div>
       </div>
+    </div>
+    </div>
+
+    <div class="pr-tab-panel" data-tab-panel="model3d">
+    <div class="pr-card" id="prM3dCard">
+      <div class="pr-card-head">
+        <div>
+          <div class="pr-card-title">Mô hình 3D lấy khối lượng nhà ở</div>
+          <div class="pr-card-desc">Dựng nhanh móng · tường · sàn · mái · lỗ mở bằng khối (kiểu SketchUp) → ra thể tích, diện tích, chiều dài → gán đơn giá DG-* → đưa sang <b>Dự toán xây dựng</b>. Xuất <b>.dae</b> (SketchUp nhập trực tiếp) hoặc nhập <b>.dae/.obj</b> từ SketchUp để gán vật liệu &amp; ra đơn giá.</div>
+        </div>
+        <div class="boq-head-btns">
+          <button class="pr-btn pr-btn-sm" id="m3dImport" type="button">⇪ Nhập .dae / .obj</button>
+          <button class="pr-btn pr-btn-sm" id="m3dDae" type="button">⇩ Xuất .dae (SketchUp)</button>
+          <button class="pr-btn pr-btn-sm" id="m3dObj" type="button">Xuất .obj</button>
+          <button class="pr-btn pr-btn-sm" id="m3dCsv" type="button">Xuất khối lượng (.csv)</button>
+          <button class="pr-btn pr-btn-primary pr-btn-sm" id="m3dPush" type="button">→ Đưa sang Dự toán xây dựng</button>
+        </div>
+      </div>
+      <input type="file" id="m3dFile" accept=".dae,.obj" hidden>
+      <div class="m3d-toolbar">
+        <div class="m3d-tools">
+          <button class="m3d-tool active" data-tool="select" type="button" title="Chọn (V)">⬚ Chọn</button>
+          <button class="m3d-tool" data-tool="move" type="button" title="Di chuyển (M)">✥ Di chuyển</button>
+          <button class="m3d-tool" data-tool="pull" type="button" title="Đẩy/Kéo chiều cao (P)">⇕ Đẩy/Kéo</button>
+          <button class="m3d-tool" data-tool="rect" type="button" title="Hình chữ nhật (R)">▭ Chữ nhật</button>
+          <button class="m3d-tool" data-tool="wall" type="button" title="Vẽ tường (W)">▮ Tường</button>
+          <button class="m3d-tool2" id="m3dUndo" type="button" title="Hoàn tác (Ctrl+Z)">↶ Hoàn tác</button>
+        </div>
+        <div class="m3d-set">
+          <label>Loại<select class="pr-input" id="m3dType"></select></label>
+          <label>Cao độ đáy (m)<input class="pr-input" id="m3dElev" type="number" step="0.05"></label>
+          <label>Cao (m)<input class="pr-input" id="m3dH" type="number" step="0.05"></label>
+          <label>Dày tường (m)<input class="pr-input" id="m3dThick" type="number" step="0.01"></label>
+          <label>Lưới<select class="pr-input" id="m3dGrid"><option value="0.05">5 cm</option><option value="0.1" selected>10 cm</option><option value="0.5">50 cm</option><option value="1">1 m</option></select></label>
+          <label>Tỉ lệ nhập file<input class="pr-input" id="m3dImpScale" type="number" step="0.001" value="1" title="Nhân kích thước khi nhập (1 = giữ nguyên; nếu file bé/lớn quá do đơn vị mm/inch thì đổi)"></label>
+        </div>
+        <div class="m3d-views"><button class="m3d-tool2" data-m3dview="iso" type="button">3D</button><button class="m3d-tool2" data-m3dview="top" type="button">Trên</button><button class="m3d-tool2" data-m3dview="front" type="button">Trước</button><button class="m3d-tool2" data-m3dview="right" type="button">Phải</button></div>
+      </div>
+      <div class="m3d-main">
+        <div class="m3d-canvas" id="m3dCanvasWrap"><div class="m3d-loading" id="m3dLoading">Đang tải bộ dựng 3D…</div></div>
+        <div class="m3d-side">
+          <div class="m3d-ptitle">Cấu kiện</div>
+          <div class="m3d-list" id="m3dList"></div>
+          <div class="m3d-props" id="m3dProps"></div>
+        </div>
+      </div>
+      <div class="m3d-status" id="m3dStatus"></div>
+      <div class="boq-table-wrap">
+        <table class="pr-table m3d-sum">
+          <thead><tr><th>Loại</th><th class="num">Số cấu kiện</th><th class="num">V (m³)</th><th class="num">A (m²)</th><th class="num">W (m²)</th><th class="num">L (m)</th><th style="min-width:260px">Đơn giá DG-* gán theo loại</th><th style="min-width:180px">Tính theo</th><th class="num">Khối lượng</th><th class="num">Thành tiền (₫)</th></tr></thead>
+          <tbody id="m3dSumRows"></tbody>
+        </table>
+      </div>
+      <div class="m3d-foot"><span class="m3d-muted">V: thể tích · A: diện tích mặt trên/đáy · W: diện tích mặt tường 2 phía (đã trừ lỗ mở) · L: chiều dài. Lỗ mở (cửa) vẽ cắt qua tường để tự trừ.</span><span>Tổng tạm tính: <b id="m3dTotal">0</b> ₫ <button class="pr-btn pr-btn-sm" id="m3dClear" type="button" style="margin-left:10px">Xoá mô hình</button></span></div>
     </div>
     </div>
 
@@ -1192,6 +1284,7 @@
   <script src="/js/pricing-ref.js"></script>
   <script src="/js/price-lookup.js"></script>
   <script src="/js/pricing-boq.js"></script>
+  <script src="/js/model3d.js"></script>
   <script>
   (function () {
     'use strict';
