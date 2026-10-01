@@ -334,6 +334,7 @@
       return hourly * TaskManager.OT_MULTIPLIER;
     }
 
+    var slipOv = {};   // giá trị sửa tay (nhấp đúp) các thông số tự động của phiếu, theo người+tháng
     function renderForm() {
       var user = getUser();
       var area = document.getElementById('plFormArea');
@@ -341,9 +342,14 @@
       var month = monthInput.value || currentMonthStr();
 
       var existing = TaskManager.getPayslips({ memberId: user.id, month: month })[0];
-      var stats = TaskManager.getMonthlyTimesheetStats(user.id, month);
+      var stats = Object.assign({}, TaskManager.getMonthlyTimesheetStats(user.id, month));
       var baseSalary = Number(user.baseSalary) || 0;
       var commissionAmount = TaskManager.getMemberCommissionTotal(user.id, month);
+      var ovKey = user.id + '|' + month, ov = slipOv[ovKey] || (slipOv[ovKey] = {});
+      if (ov.workDays != null) stats.workDays = ov.workDays;
+      if (ov.totalHours != null) stats.totalHours = ov.totalHours;
+      if (ov.otAuto != null) stats.overtimeHours = ov.otAuto;
+      if (ov.commission != null) commissionAmount = ov.commission;
       var itemOv = {};   // nhấp đúp sửa tay từng khoản (giữ tổng = tiền công)
       var bd = computeBd(baseSalary, stats.workDays, itemOv), workPay = bd.workPay, bhEmployee = bhOf(bd);
 
@@ -370,20 +376,20 @@
       }
 
       var otHoursAuto = stats.overtimeHours;
-      var otRate = computeOtRate(baseSalary);
+      var otRate = ov.otRate != null ? ov.otRate : computeOtRate(baseSalary);
 
       area.innerHTML =
         '<div class="pl-form-card">' +
           '<div class="pl-form-title">Tạo phiếu lương tháng ' + month + '</div>' +
           '<div class="pl-grid">' +
-            '<div><span class="pl-field-label">Ngày công</span><div class="pl-field-value">' + stats.workDays + ' ngày</div></div>' +
-            '<div><span class="pl-field-label">Tổng giờ làm</span><div class="pl-field-value">' + stats.totalHours.toFixed(1) + 'h</div></div>' +
-            '<div><span class="pl-field-label">Giờ OT tự động (chấm công)</span><div class="pl-field-value">' + otHoursAuto.toFixed(1) + 'h</div></div>' +
+            '<div><span class="pl-field-label">Ngày công</span><div class="pl-field-value pl-editable" data-edit="workDays" title="Nhấp đúp để sửa">' + stats.workDays + ' ngày</div></div>' +
+            '<div><span class="pl-field-label">Tổng giờ làm</span><div class="pl-field-value pl-editable" data-edit="totalHours" title="Nhấp đúp để sửa">' + stats.totalHours.toFixed(1) + 'h</div></div>' +
+            '<div><span class="pl-field-label">Giờ OT tự động (chấm công)</span><div class="pl-field-value pl-editable" data-edit="otAuto" title="Nhấp đúp để sửa">' + otHoursAuto.toFixed(1) + 'h</div></div>' +
           '</div>' +
           '<div class="pl-grid">' +
             '<div><span class="pl-field-label">Giờ OT bổ sung (nhập tay)</span><input type="number" min="0" step="0.5" class="pl-input" id="plOtManual" value="0"></div>' +
-            '<div><span class="pl-field-label">Đơn giá OT / giờ (x' + TaskManager.OT_MULTIPLIER + ')</span><div class="pl-field-value">' + fmt(Math.round(otRate)) + '</div></div>' +
-            '<div><span class="pl-field-label">Hoa hồng dự án (tự động)</span><div class="pl-field-value">' + fmt(commissionAmount) + '</div></div>' +
+            '<div><span class="pl-field-label">Đơn giá OT / giờ (x' + TaskManager.OT_MULTIPLIER + ')</span><div class="pl-field-value pl-editable" data-edit="otRate" title="Nhấp đúp để sửa">' + fmt(Math.round(otRate)) + '</div></div>' +
+            '<div><span class="pl-field-label">Hoa hồng dự án (tự động)</span><div class="pl-field-value pl-editable" data-edit="commission" title="Nhấp đúp để sửa">' + fmt(commissionAmount) + '</div></div>' +
           '</div>' +
           '<div class="pl-grid">' +
             '<div><span class="pl-field-label">Thưởng khác</span><input type="text" inputmode="numeric" class="pl-input" id="plOtherBonus" data-money-input value="0"></div>' +
@@ -427,6 +433,33 @@
         document.getElementById(id).addEventListener('input', recalcTotal);
       });
       if (typeof HiconiqueMoney !== 'undefined') HiconiqueMoney.bindAll(document);
+      // Nhấp đúp vào ô viền đỏ (thông số tự động) để sửa tay; Enter/click ra ngoài = lưu, Esc = huỷ. Các ô đã nhập (OT bổ sung, thưởng, khấu trừ, ghi chú) được giữ lại.
+      var EDIT_RAW = { workDays: function () { return stats.workDays; }, totalHours: function () { return stats.totalHours; }, otAuto: function () { return otHoursAuto; }, otRate: function () { return Math.round(otRate); }, commission: function () { return commissionAmount; } };
+      area.querySelectorAll('.pl-editable').forEach(function (cell) {
+        cell.style.cursor = 'text';
+        cell.addEventListener('dblclick', function () {
+          if (cell.querySelector('input')) return;
+          var key = cell.getAttribute('data-edit');
+          cell.innerHTML = '<input class="pl-bd-edit" inputmode="decimal" style="width:100%" value="' + String(EDIT_RAW[key]()).replace('.', ',') + '">';
+          var inp = cell.firstChild; inp.focus(); inp.select();
+          function commit(save) {
+            if (inp._done) return; inp._done = 1;
+            var raw = String(inp.value).trim(), money = key === 'otRate' || key === 'commission', v = money ? parseFloat(raw.replace(/[.\s]/g, '').replace(',', '.')) : parseFloat(raw.replace(',', '.'));
+            if (!save || isNaN(v) || v < 0) { renderFormKeep(); return; }
+            ov[key] = key === 'workDays' ? Math.round(v * 2) / 2 : v;
+            renderFormKeep();
+          }
+          inp.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') commit(true); else if (ev.key === 'Escape') commit(false); });
+          inp.addEventListener('blur', function () { commit(true); });
+        });
+      });
+      function renderFormKeep() {
+        var ids = ['plOtManual', 'plOtherBonus', 'plDeduction', 'plOtherBonusNote', 'plDeductionNote', 'plNote'], keep = {};
+        ids.forEach(function (id) { var e = document.getElementById(id); if (e) keep[id] = e.value; });
+        renderForm();
+        ids.forEach(function (id) { var e = document.getElementById(id); if (e && keep[id] != null) e.value = keep[id]; });
+        if (typeof recalcTotal === 'function') { try { document.getElementById('plOtManual').dispatchEvent(new Event('input')); } catch (e) {} }
+      }
       document.getElementById('bdItems').addEventListener('dblclick', function (e) {
         var cell = e.target.closest('[data-amt]'); if (!cell || cell.querySelector('input')) return;
         var id = cell.getAttribute('data-amt'), cur = (bd.items.filter(function (x) { return x.id === id; })[0] || {}).earned || 0;
