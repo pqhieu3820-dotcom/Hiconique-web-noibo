@@ -22,6 +22,7 @@
   <script src="/js/auth.js"></script>
   <script src="/js/money-input.js"></script>
   <script src="/js/price-lookup.js"></script>
+  <script src="/js/unit-picker.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js" defer></script>
   <script src="/js/excel-standard.js" defer></script>
   <style>
@@ -356,7 +357,7 @@
       tr.innerHTML =
         '<td><input class="od-input mono" data-i="code" value="' + escapeHtml(prefill.code || '') + '" placeholder="VD: W03"></td>' +
         '<td><input class="od-input" data-i="name" value="' + escapeHtml(prefill.name || '') + '" placeholder="Tên hạng mục"></td>' +
-        '<td><input class="od-input" data-i="unit" value="' + escapeHtml(prefill.unit || '') + '" placeholder="m2/bộ..."></td>' +
+        '<td><input class="od-input" data-i="unit" autocomplete="off" value="' + escapeHtml(prefill.unit || '') + '" placeholder="Chọn / gõ…"></td>' +
         '<td class="num"><input class="od-input mono" data-i="qty" type="number" min="0" step="1" value="' + (Number(prefill.qty) || 1) + '"></td>' +
         '<td class="num"><input class="od-input mono" data-i="price" type="text" inputmode="numeric" data-money-input value="' + (prefill.price ? HiconiqueMoney.format(prefill.price) : '') + '"></td>' +
         '<td class="num od-amount" data-i="lineTotal">0</td>' +
@@ -466,6 +467,7 @@
     });
     provSel.addEventListener('change', function () { setProvince(provSel.value); });
     document.getElementById('odProjectId').addEventListener('change', syncProvinceFromProject);
+    UnitPicker.attach({ container: itemRowsEl });   // ô Đơn vị: xổ bảng đơn vị xây dựng/thiết kế, gõ 1-2 chữ là lọc
     PriceLookup.attach({
       container: itemRowsEl,
       getProvince: function () { return provSel.value; },

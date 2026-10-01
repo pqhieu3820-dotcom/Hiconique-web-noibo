@@ -68,7 +68,7 @@ self.addEventListener('notificationclick', function (event) {
   );
 });
 
-const CACHE_VERSION = 'hiconique-shell-v138';
+const CACHE_VERSION = 'hiconique-shell-v139';
 
 const PRECACHE_URLS = [
   '/',
@@ -129,6 +129,7 @@ const PRECACHE_URLS = [
   '/js/spc-page.js',
   '/js/salary-structure.js',
   '/js/price-lookup.js',
+  '/js/unit-picker.js',
   '/js/task-manager-app.js'
 ];
 

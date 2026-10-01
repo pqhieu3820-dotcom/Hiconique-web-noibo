@@ -2134,3 +2134,10 @@ Bấm 1 bước (Lập đơn · Gửi kế toán · Đã ghi sổ · Thu đủ) 
 
 ### (ds) 01/10/2026 — Đơn hàng: cột "Danh mục có sẵn" → "Mã hạng mục"
 Bỏ dropdown "Danh mục có sẵn" (thừa vì đã gõ tên là tra giá); thay bằng ô **Mã hạng mục** — tự điền khi chọn gợi ý từ bảng giá tỉnh (VD W03, A06, C20), sửa tay được; lưu vào dòng hạng mục (`code`). Mã hiển thị thêm ở chi tiết đơn, hóa đơn in và Excel (thêm cột Mã). sw v138.
+
+
+### (dt) 01/10/2026 — Đơn hàng: ô Đơn vị có bảng đơn vị mẫu ngành xây dựng/thiết kế
+`js/unit-picker.js` (UnitPicker): bấm vào ô Đơn vị → xổ danh sách ~110 đơn vị theo nhóm (Diện tích: m2, m2 sàn, m2 sàn quy đổi, m2 VL…; Chiều dài: m, md…; Thể tích; Khối lượng; Số lượng/Đóng gói: bao 25kg, thùng 18L, bộ/25kg…; Thiết bị/công trình: điểm, vị trí, phòng, tầng…; Nhân công/thời gian: công, ca máy, cây/tháng…; Thiết kế/hồ sơ: bộ hồ sơ, bản vẽ, phối cảnh, buổi, đợt…; Tính tiền: trọn gói, khoán, 
+
+### (dt) 01/10/2026 — Đơn hàng: ô Đơn vị có bảng đơn vị mẫu ngành xây dựng/thiết kế
+`js/unit-picker.js` (UnitPicker): bấm vào ô Đơn vị → xổ danh sách ~110 đơn vị theo nhóm (Diện tích: m2, m2 sàn, m2 sàn quy đổi, m2 VL…; Chiều dài: m, md…; Thể tích; Khối lượng; Số lượng/Đóng gói: bao 25kg, thùng 18L, bộ/25kg…; Thiết bị/công trình: điểm, vị trí, phòng, tầng…; Nhân công/thời gian: công, ca máy, cây/tháng…; Thiết kế/hồ sơ: bộ hồ sơ, bản vẽ, phối cảnh, buổi, đợt…; Tính tiền: trọn gói, khoán, %). Gõ 1-2 chữ là lọc (không cần dấu, hiểu cả tên gọi: "met vuong", "cong"), ↑↓ Enter hoặc bấm chuột chọn rồi nhảy sang ô Số lượng; vẫn gõ tự do. Thêm đơn vị mới: sửa mảng UNITS trong unit-picker.js. sw v139.
