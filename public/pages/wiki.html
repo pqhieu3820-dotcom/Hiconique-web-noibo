@@ -455,7 +455,16 @@
     function normCode(s) { return String(s || '').trim().toUpperCase().replace(/\s+/g, ''); }
     function allDocs() { return TaskManager.getDocuments().reduce(function (a, g) { return a.concat(g.items); }, []); }
     function driveIdOf(url) { var m = /\/(?:d|folders)\/([A-Za-z0-9_-]{15,})/.exec(url || '') || /[?&]id=([A-Za-z0-9_-]{15,})/.exec(url || ''); return m ? m[1] : ''; }
-    function normUrl(u) { return String(u || '').trim().replace(/[?#].*$/, '').replace(/\/+$/, '').toLowerCase(); }
+    // So sánh link trùng: đọc TRỌN chuỗi. Giữ phần tham số phân biệt nội dung (VD YouTube ?list=…, ?v=…, Drive ?id=…) — chỉ bỏ tham số theo dõi
+    // (utm_*, si, feature, usp, fbclid…) và dấu # cuối. Tên miền không phân biệt hoa/thường, còn đường dẫn + mã (VD id video) PHÂN BIỆT hoa/thường.
+    function normUrl(u) {
+      u = String(u || '').trim(); if (!u || u === '#') return '';
+      var m = /^(https?:\/\/)?([^\/?#]+)([^?#]*)(\?[^#]*)?/i.exec(u); if (!m) return u;
+      var host = m[2].toLowerCase().replace(/^www\./, ''), path = (m[3] || '').replace(/\/+$/, '');
+      var DROP = /^(utm_[a-z]+|si|feature|usp|pp|fbclid|gclid|ref|share|mc_[a-z]+)$/i;
+      var q = (m[4] || '').slice(1).split('&').filter(function (kv) { return kv && !DROP.test(kv.split('=')[0]); }).sort().join('&');
+      return host + path + (q ? '?' + q : '');
+    }
     function linkKind(u) {
       u = String(u || '').toLowerCase();
       if (!u || u === '#') return null;
