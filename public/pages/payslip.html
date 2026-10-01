@@ -24,6 +24,7 @@
   <script src="/js/money-input.js"></script>
   <script src="/js/salary-structure.js"></script>
   <script src="/js/payslip-docx.js"></script>
+  <script src="/js/payroll-report.js"></script>
   <style>
     :root {
       --pl-bg: var(--color-bg);
@@ -230,6 +231,12 @@
     <div class="pl-salary-card" id="plSalaryCard" style="display:none;">
       <div class="pl-list-head" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;"><span>Tổng lương hợp đồng nhân viên <span style="font-weight:400;color:var(--pl-muted);font-size:.8125rem;">(chia nhỏ theo cơ cấu lương)</span></span><button type="button" class="pl-btn pl-btn-ghost pl-btn-sm" id="plStructBtn">Cơ cấu lương &amp; pháp lý</button></div>
       <div id="plSalaryRows"></div>
+    </div>
+
+    <div class="pl-salary-card" id="plReportCard" style="display:none;">
+      <div class="pl-list-head" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;"><span>Bảng thanh toán tiền lương toàn công ty <span id="plReportSub" style="font-weight:400;color:var(--pl-muted);font-size:.8125rem;"></span></span>
+        <span style="display:flex;gap:8px;flex-wrap:wrap;"><button type="button" class="pl-btn pl-btn-primary pl-btn-sm" data-rep="view">Xem · Word/PDF</button><button type="button" class="pl-btn pl-btn-ghost pl-btn-sm" data-rep="excel">Xuất Excel</button></span></div>
+      <div style="padding:14px 20px;font-size:.8125rem;color:var(--pl-muted);line-height:1.6;">Mẫu số 02-LĐTL (Thông tư 133/2016/TT-BTC): danh sách toàn bộ nhân viên trong tháng đang chọn — lương hợp đồng, các khoản theo cơ cấu, làm thêm, hoa hồng, khấu trừ BHXH/BHYT/BHTN, thực lĩnh, chữ ký. Lấy từ phiếu lương đã gửi; nhân viên chưa có phiếu thì dự tính theo ngày công (đánh dấu *).</div>
     </div>
 
     <div class="pl-list-card">
@@ -564,9 +571,27 @@
       });
     }
 
+    function renderReportCard() {
+      var user = getUser(), card = document.getElementById('plReportCard');
+      if (!card) return;
+      if (!user || !isManager(user)) { card.style.display = 'none'; return; }
+      card.style.display = 'block';
+      var m = monthInput.value || currentMonthStr();
+      try { var d = PayrollReport.collect(m, { TaskManager: TaskManager, SalaryStructure: SalaryStructure, user: user }), tt = PayrollReport.totals(d); document.getElementById('plReportSub').textContent = '· ' + d.rows.length + ' nhân viên · thực lĩnh ' + fmt(tt.net) + ' đ'; } catch (e) { document.getElementById('plReportSub').textContent = ''; }
+      card.querySelectorAll('[data-rep]').forEach(function (b) {
+        if (b._b) return; b._b = 1;
+        b.addEventListener('click', function () {
+          if (typeof PayrollReport === 'undefined' || typeof PayslipDocx === 'undefined') { alert('Chưa tải xong bộ xuất báo cáo. Thử lại sau vài giây.'); return; }
+          var ctx = { TaskManager: TaskManager, SalaryStructure: SalaryStructure, user: getUser() }, mm = monthInput.value || currentMonthStr();
+          b.disabled = true;
+          Promise.resolve(b.getAttribute('data-rep') === 'excel' ? PayrollReport.excel(mm, ctx) : PayrollReport.view(mm, ctx)).catch(function (e) { alert('Không tạo được file: ' + (e && e.message || e)); }).then(function () { b.disabled = false; });
+        });
+      });
+    }
     function renderAll() {
       renderForm();
       renderSalaryCard();
+      renderReportCard();
       renderList();
     }
 

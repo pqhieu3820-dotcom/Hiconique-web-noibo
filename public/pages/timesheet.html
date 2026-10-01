@@ -2354,7 +2354,7 @@
       setGeoStatus(null);
       updateShiftUI();
       renderCalendar();
-      showToast('✓ Đã ghi Check in lúc ' + time + (late ? ' (muộn)' : '') + ' — đang lưu lên hệ thống…', true);
+      // (bỏ thông báo trên đầu — đã có chip đồng bộ ở góc dưới) showToast('✓ Đã ghi Check in lúc ' + time + (late ? ' (muộn)' : '') + ' — đang lưu lên hệ thống…', true);
     }
 
     function doShiftCheckOut(shift, time, early) {
@@ -2367,7 +2367,7 @@
       if (noteInput && early) noteInput.value = '';
       updateShiftUI();
       renderCalendar();
-      showToast('✓ Đã ghi Check out lúc ' + time + (early ? ' (sớm)' : '') + ' — đang lưu lên hệ thống…', true);
+      // (bỏ thông báo trên đầu — đã có chip đồng bộ ở góc dưới) showToast('✓ Đã ghi Check out lúc ' + time + (early ? ' (sớm)' : '') + ' — đang lưu lên hệ thống…', true);
     }
 
     // 2026-09-29: trạng thái đồng bộ lên Google Sheet (hàng đợi ghi bền vững trong task-data.js) —
