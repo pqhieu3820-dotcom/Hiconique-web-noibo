@@ -2268,3 +2268,4 @@ Dòng chèn mới ở đầu bảng thừa hưởng dropdown Danh mục cũ từ
 
 ## 2026-10-01 — Phiếu lương: nhấp đúp sửa tay các ô viền đỏ
 - `payslip.html` form "Tạo phiếu lương": Ngày công, Tổng giờ làm, Giờ OT tự động, Đơn giá OT/giờ, Hoa hồng dự án vẫn viền đỏ nhưng nhấp đúp để sửa (Enter/click ra ngoài = lưu, Esc = huỷ). Giá trị sửa nhớ theo người+tháng (`slipOv`), tính lại bảng chia nhỏ + tổng; các ô đã nhập (OT bổ sung, thưởng, khấu trừ, ghi chú) giữ nguyên. Phiếu gửi đi dùng giá trị đã sửa. sw v169.
+- 2026-10-01 (sw v170): ô nhấp đúp ở phiếu lương không còn khung đôi (input trong suốt nằm trong viền đỏ); số sửa làm tròn 1 chữ số thập phân (tiền: số nguyên).

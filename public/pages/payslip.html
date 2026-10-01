@@ -111,6 +111,7 @@
     .pl-bd-sub span:first-child { padding-left: 14px; color: var(--pl-muted); }
     .pl-breakdown-row span span { font-family: inherit !important; font-weight: 400 !important; color: var(--pl-muted) !important; }
     .pl-bd-amt { cursor: text; border-radius: 6px; padding: 1px 6px; } .pl-bd-amt:hover { background: color-mix(in srgb, var(--pl-bronze) 14%, transparent); }
+    .pl-inline-edit { width: 100%; border: 0; outline: 0; background: transparent; padding: 0; margin: 0; font: inherit; color: inherit; text-align: left; }
     .pl-bd-edit { width: 130px; text-align: right; padding: 4px 8px; border: 1px solid var(--pl-bronze); border-radius: 6px; background: var(--pl-bg); color: var(--pl-text); font: inherit; }
     .pl-bd-note { font-size: 0.75rem; color: var(--pl-muted); margin: 0 0 14px; line-height: 1.55; }
     .pl-bd-warn { color: var(--pl-danger); }
@@ -440,13 +441,14 @@
         cell.addEventListener('dblclick', function () {
           if (cell.querySelector('input')) return;
           var key = cell.getAttribute('data-edit');
-          cell.innerHTML = '<input class="pl-bd-edit" inputmode="decimal" style="width:100%" value="' + String(EDIT_RAW[key]()).replace('.', ',') + '">';
+          var cur = Number(EDIT_RAW[key]()) || 0, curTxt = (key === 'otRate' || key === 'commission') ? String(Math.round(cur)) : String(Math.round(cur * 10) / 10).replace('.', ',');
+          cell.innerHTML = '<input class="pl-inline-edit" inputmode="decimal" value="' + curTxt + '">';
           var inp = cell.firstChild; inp.focus(); inp.select();
           function commit(save) {
             if (inp._done) return; inp._done = 1;
             var raw = String(inp.value).trim(), money = key === 'otRate' || key === 'commission', v = money ? parseFloat(raw.replace(/[.\s]/g, '').replace(',', '.')) : parseFloat(raw.replace(',', '.'));
             if (!save || isNaN(v) || v < 0) { renderFormKeep(); return; }
-            ov[key] = key === 'workDays' ? Math.round(v * 2) / 2 : v;
+            ov[key] = money ? Math.round(v) : Math.round(v * 10) / 10;
             renderFormKeep();
           }
           inp.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') commit(true); else if (ev.key === 'Escape') commit(false); });
