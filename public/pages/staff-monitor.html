@@ -52,8 +52,12 @@
     .sm-seg button.active { background: color-mix(in srgb, var(--sm-bronze) 16%, transparent); color: var(--sm-bronze); }
     .sm-input { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--sm-border); background: var(--sm-bg); color: var(--sm-text); font-family: inherit; font-size: 0.8125rem; }
     .sm-btn { padding: 8px 14px; border-radius: 9px; border: 1px solid var(--sm-border); background: transparent; color: var(--sm-text); font-family: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; }
-    .sm-range-label { font-size: 0.8125rem; font-weight: 600; color: var(--sm-bronze); padding: 0 4px; }
-    .sm-range-label:empty { display: none; }
+    /* Ô ngày kích thước CỐ ĐỊNH: hiện ngày hoặc khoảng ngày (7 ngày / Tháng này); input date thật nằm trong suốt đè lên để bấm mở lịch */
+    .sm-datebox { position: relative; display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; width: 236px; height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--sm-border); border-radius: 8px; background: var(--sm-bg); color: var(--sm-text); font-size: 0.8125rem; font-weight: 600; cursor: pointer; flex: none; }
+    .sm-datebox.range { color: var(--sm-bronze); border-color: color-mix(in srgb, var(--sm-bronze) 55%, var(--sm-border)); }
+    .sm-datetext { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+    .sm-date-native { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+    .sm-toolbar, .sm-kpis, .sm-datebox { overflow-anchor: none; }
     .sm-agent-actions { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; }
     .sm-agent-actions .sm-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; line-height: 1.2; white-space: nowrap; box-sizing: border-box; }
     .sm-agent-actions .sm-btn svg { display: inline-block; flex: none; width: 13px; height: 13px; margin: 0; vertical-align: 0; }
@@ -156,8 +160,7 @@
 
     <div class="sm-toolbar">
       <div class="sm-seg" id="smRange"><button data-r="today" class="active">Hôm nay</button><button data-r="7d">7 ngày</button><button data-r="month">Tháng này</button></div>
-      <input class="sm-input" type="date" id="smDate" title="Xem một ngày cụ thể (lăn chuột để đổi ngày)">
-      <span class="sm-range-label" id="smRangeLabel"></span>
+      <div class="sm-datebox" id="smDateBox" title="Bấm để chọn ngày · lăn chuột để đổi ngày"><span class="sm-datetext" id="smDateText">dd/mm/yyyy</span><span class="sm-dateico" aria-hidden="true">📅</span><input type="date" id="smDate" class="sm-date-native" aria-label="Chọn ngày xem"></div>
       <button class="sm-btn" id="smReport" type="button" title="Báo cáo tổng hợp toàn bộ nhân viên trong khoảng đang xem">▤ Báo cáo tổng</button>
       <span class="sm-spacer"></span>
       <button class="sm-btn" id="smReload" type="button">↻ Tải lại dữ liệu</button>

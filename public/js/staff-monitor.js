@@ -103,7 +103,9 @@
   function render() {
     if (!TM) return;
     var rows = collect();
-    if ($('smRangeLabel')) { var rd = rangeDates(); $('smRangeLabel').textContent = rd.length > 1 ? '📅 ' + rangeText() : ''; }
+    syncDateBox();
+    // Giữ chiều cao vùng bảng không bao giờ co lại → các khối phía trên (ô ngày, nút…) đứng yên khi lăn chuột đổi ngày
+    var tbEl = $('smTable'); tracked.maxH = Math.max(tracked.maxH || 0, tbEl.offsetHeight); tbEl.style.minHeight = tracked.maxH + 'px';
     var me = user();
     var isMgr = !!me && TM.canManageNotifications(me);
     var attention = rows.filter(function (r) { return r.flags.some(function (f) { return f.c === 'bad'; }); }).length;
@@ -150,6 +152,14 @@
     var f = function (d) { var p = d.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; };
     return ds.length === 1 ? f(ds[0]) : 'từ ' + f(ds[0]) + ' đến ' + f(ds[ds.length - 1]);
   }
+  // Ô ngày cố định: hiện 1 ngày (dd/mm/yyyy) hoặc khoảng ngày khi xem 7 ngày / Tháng này
+  function syncDateBox() {
+    var ds = rangeDates(), f = function (d) { var p = d.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; };
+    var txt = ds.length <= 1 ? (ds.length ? f(ds[0]) : 'dd/mm/yyyy') : f(ds[0]) + ' – ' + f(ds[ds.length - 1]);
+    $('smDateText').textContent = txt;
+    $('smDateBox').classList.toggle('range', ds.length > 1);
+    if (ds.length === 1) $('smDate').value = ds[0]; else $('smDate').value = '';
+  }
   function reportData() {
     var rows = collect();
     var head = ['Nhân viên', 'Chức vụ', 'Ngày có chấm công', 'Giờ chấm công', 'Hoạt động Hub', 'Không thao tác', 'Rời tab', 'Tỉ lệ hoạt động', 'Việc đang làm', 'Quá hạn', 'Cập nhật tiến độ', 'Dấu hiệu'];
@@ -160,29 +170,56 @@
     });
     var tot = rows.reduce(function (a, r) { a.c += r.sum.checked; a.a += r.sum.active; a.i += r.sum.idle; a.w += r.sum.away; a.u += r.sum.updates; a.o += r.overdue; a.d += r.doing; a.wd += r.sum.workDays; return a; }, { c: 0, a: 0, i: 0, w: 0, u: 0, o: 0, d: 0, wd: 0 });
     var foot = ['Tổng cộng (' + rows.length + ' người)', '', tot.wd, fmtDur(tot.c), fmtDur(tot.a), fmtDur(tot.i), fmtDur(tot.w), tot.c ? Math.round(Math.min(1, tot.a / tot.c) * 100) + '%' : '—', tot.d, tot.o, tot.u, ''];
-    return { head: head, body: body, foot: foot, title: 'Báo cáo tổng hợp hoạt động nhân viên', range: rangeText() };
+    // Chi tiết từng người theo từng ngày trong khoảng
+    var dayHead = ['Ngày', 'Giờ chấm công', 'Hoạt động Hub', 'Không thao tác', 'Rời tab', 'Tỉ lệ hoạt động', 'Cập nhật tiến độ'];
+    var people = rows.map(function (r) {
+      var days = r.dates.map(function (dt) {
+        var b = r.byDay[dt];
+        var pct = b.checked > 0 && b.hasAct ? Math.round(Math.min(1, b.active / b.checked) * 100) + '%' : '—';
+        var p = dt.split('-');
+        return [p[2] + '/' + p[1] + '/' + p[0], b.checked ? fmtDur(b.checked) : '—', b.hasAct ? fmtDur(b.active) : '—', b.hasAct ? fmtDur(b.idle) : '—', b.hasAct ? fmtDur(b.away) : '—', pct, b.updates];
+      });
+      return { name: (r.member.name || r.member.id) + (r.member.role ? ' (' + r.member.role + ')' : ''), flags: r.flags.map(function (f) { return f.t; }), days: days,
+        note: 'Việc đang làm: ' + r.doing + ' · Đang mở: ' + r.open + ' · Quá hạn: ' + r.overdue };
+    });
+    var attention = rows.filter(function (r) { return r.flags.some(function (f) { return f.c === 'bad'; }); }).length;
+    var kpi = 'Có chấm công: ' + rows.filter(function (r) { return r.sum.workDays > 0; }).length + '/' + rows.length + ' · Cần trao đổi: ' + attention + ' · Việc quá hạn: ' + tot.o;
+    return { head: head, body: body, foot: foot, dayHead: dayHead, people: people, kpi: kpi, title: 'Báo cáo tổng hợp hoạt động nhân viên', range: rangeText() };
   }
-  function reportTableHtml(d) {
+  function reportTableHtml(d, withDays) {
     var cell = function (v, h) { return '<' + (h ? 'th' : 'td') + '>' + esc(String(v)) + '</' + (h ? 'th' : 'td') + '>'; };
-    return '<table class="sm-table" style="font-size:.8125rem"><thead><tr>' + d.head.map(function (h) { return cell(h, 1); }).join('') + '</tr></thead><tbody>' +
-      d.body.map(function (r) { return '<tr>' + r.map(function (v) { return cell(v); }).join('') + '</tr>'; }).join('') +
-      '<tr style="font-weight:700">' + d.foot.map(function (v) { return cell(v); }).join('') + '</tr></tbody></table>';
+    var tbl = function (head, body, foot) {
+      return '<table class="sm-table" style="font-size:.8125rem"><thead><tr>' + head.map(function (h) { return cell(h, 1); }).join('') + '</tr></thead><tbody>' +
+        body.map(function (r) { return '<tr>' + r.map(function (v) { return cell(v); }).join('') + '</tr>'; }).join('') +
+        (foot ? '<tr style="font-weight:700">' + foot.map(function (v) { return cell(v); }).join('') + '</tr>' : '') + '</tbody></table>';
+    };
+    var html = '<div class="rp-sum">' + esc(d.kpi) + '</div><h3 class="rp-h">I. Tổng hợp theo nhân viên</h3>' + tbl(d.head, d.body, d.foot);
+    if (withDays !== false) {
+      html += '<h3 class="rp-h">II. Chi tiết từng nhân viên theo ngày</h3>' + d.people.map(function (p) {
+        return '<div class="rp-person"><div class="rp-name">' + esc(p.name) + '</div><div class="rp-note">' + esc(p.note) + (p.flags.length ? ' · Dấu hiệu: ' + esc(p.flags.join('; ')) : '') + '</div>' + tbl(d.dayHead, p.days) + '</div>';
+      }).join('');
+    }
+    return html;
   }
   function openReport() {
     var d = reportData();
     $('smModalTitle').textContent = d.title + ' — ' + d.range;
     $('smModal').querySelector('.sm-modal').style.maxWidth = '1180px';
-    $('smModalBody').innerHTML = '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;"><button class="sm-btn" id="smRepPrint" type="button">In / Lưu PDF</button><button class="sm-btn" id="smRepCsv" type="button">Tải Excel (.csv)</button></div><div style="overflow:auto;max-height:65vh;">' + reportTableHtml(d) + '</div>' +
+    $('smModalBody').innerHTML = '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;"><button class="sm-btn" id="smRepPrint" type="button">In / Lưu PDF</button><button class="sm-btn" id="smRepCsv" type="button">Tải Excel (.csv)</button></div>' +
+      '<style>.rp-sum{font-size:.8125rem;font-weight:600;color:var(--sm-bronze);margin-bottom:8px}.rp-h{font-size:.9375rem;margin:16px 0 8px}.rp-person{margin-bottom:14px}.rp-name{font-weight:700;margin-bottom:2px}.rp-note{font-size:.75rem;color:var(--sm-muted);margin-bottom:6px}</style>' +
+      '<div style="overflow:auto;max-height:68vh;">' + reportTableHtml(d) + '</div>' +
       '<p class="sm-muted" style="margin:10px 0 0;font-size:.75rem;">Tỉ lệ hoạt động = phút có thao tác trong Hub ÷ giờ chấm công. Người làm việc chủ yếu ngoài Hub sẽ có tỉ lệ thấp — đối chiếu với tiến độ công việc trước khi kết luận.</p>';
     $('smModal').classList.add('active');
     $('smRepPrint').addEventListener('click', function () {
       var w = window.open('', '_blank'); if (!w) { alert('Trình duyệt chặn cửa sổ in. Hãy cho phép pop-up.'); return; }
-      w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>' + esc(d.title) + '</title><style>body{font-family:Arial,sans-serif;padding:18px;color:#111}h2{margin:0 0 4px}p{margin:0 0 12px;color:#555;font-size:13px}table{border-collapse:collapse;width:100%;font-size:11px}th,td{border:1px solid #999;padding:5px 6px;text-align:left}th{background:#eee}@page{size:A4 landscape;margin:10mm}</style></head><body><h2>' + esc(d.title.toUpperCase()) + '</h2><p>Khoảng thời gian: ' + esc(d.range) + ' · Xuất lúc ' + new Date().toLocaleString('vi-VN') + '</p>' + reportTableHtml(d).replace(' class="sm-table"', '') + '</body></html>');
+      w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>' + esc(d.title) + '</title><style>body{font-family:Arial,sans-serif;padding:18px;color:#111}h2{margin:0 0 4px}p{margin:0 0 12px;color:#555;font-size:13px}table{border-collapse:collapse;width:100%;font-size:11px;margin-bottom:6px}th,td{border:1px solid #999;padding:5px 6px;text-align:left}th{background:#eee}.rp-sum{font-weight:700;margin:6px 0}.rp-h{font-size:14px;margin:16px 0 8px}.rp-name{font-weight:700;margin-top:10px}.rp-note{font-size:11px;color:#555;margin-bottom:4px}.rp-person{page-break-inside:avoid}@page{size:A4 landscape;margin:10mm}</style></head><body><h2>' + esc(d.title.toUpperCase()) + '</h2><p>Khoảng thời gian: ' + esc(d.range) + ' · Xuất lúc ' + new Date().toLocaleString('vi-VN') + '</p>' + reportTableHtml(d).split(' class="sm-table"').join('') + '</body></html>');
       w.document.close(); w.focus(); setTimeout(function () { w.print(); }, 300);
     });
     $('smRepCsv').addEventListener('click', function () {
       var q = function (v) { v = String(v == null ? '' : v); return /[";\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
-      var lines = [[d.title + ' — ' + d.range]].concat([d.head], d.body, [d.foot]).map(function (r) { return r.map(q).join(';'); });
+      var out = [[d.title + ' — ' + d.range], [d.kpi], [], ['I. TỔNG HỢP THEO NHÂN VIÊN'], d.head].concat(d.body, [d.foot, [], ['II. CHI TIẾT TỪNG NHÂN VIÊN THEO NGÀY']]);
+      d.people.forEach(function (p) { out.push([], [p.name], [p.note + (p.flags.length ? ' · Dấu hiệu: ' + p.flags.join('; ') : '')], d.dayHead); p.days.forEach(function (r) { out.push(r); }); });
+      var lines = out.map(function (r) { return r.map(q).join(';'); });
       var blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
       var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'bao-cao-hoat-dong-nhan-vien-' + ymd(new Date()) + '.csv';
       document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
@@ -282,13 +319,15 @@
       render();
     });
     // Lăn chuột trên ô ngày: lên = ngày kế, xuống = ngày trước (không vượt quá hôm nay); ô trống thì bắt đầu từ hôm nay
-    $('smDate').addEventListener('wheel', function (e) {
+    $('smDateBox').addEventListener('click', function () { try { if ($('smDate').showPicker) $('smDate').showPicker(); } catch (er) { /* trình duyệt cũ: input date tự xử lý */ } });
+    $('smDateBox').addEventListener('wheel', function (e) {
       e.preventDefault();
-      var cur = this.value ? new Date(this.value + 'T00:00:00') : new Date(); cur.setHours(0, 0, 0, 0);
+      var dEl = $('smDate');
+      var cur = state.date ? new Date(state.date + 'T00:00:00') : new Date(); cur.setHours(0, 0, 0, 0);
       cur.setDate(cur.getDate() + (e.deltaY < 0 ? 1 : -1));
       var now = new Date(); now.setHours(0, 0, 0, 0); if (cur > now) cur = now;
-      this.value = ymd(cur);
-      this.dispatchEvent(new Event('change'));
+      dEl.value = ymd(cur);
+      dEl.dispatchEvent(new Event('change'));
     }, { passive: false });
     $('smDate').value = ymd(new Date());   // mặc định đang xem "Hôm nay" → hiện ngày hôm nay
     $('smReload').addEventListener('click', reload);
