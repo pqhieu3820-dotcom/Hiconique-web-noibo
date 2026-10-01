@@ -442,7 +442,8 @@
           if (cell.querySelector('input')) return;
           var key = cell.getAttribute('data-edit');
           var cur = Number(EDIT_RAW[key]()) || 0, curTxt = (key === 'otRate' || key === 'commission') ? String(Math.round(cur)) : String(Math.round(cur * 10) / 10).replace('.', ',');
-          cell.innerHTML = '<input class="pl-inline-edit" inputmode="decimal" value="' + curTxt + '">';
+          var isMoney = key === 'otRate' || key === 'commission';
+          cell.innerHTML = '<input class="pl-inline-edit" inputmode="' + (isMoney ? 'numeric' : 'decimal') + '"' + (isMoney ? ' data-money-input' : '') + ' value="' + (isMoney ? HiconiqueMoney.format(curTxt) : curTxt) + '">';
           var inp = cell.firstChild; inp.focus(); inp.select();
           function commit(save) {
             if (inp._done) return; inp._done = 1;
@@ -465,7 +466,7 @@
       document.getElementById('bdItems').addEventListener('dblclick', function (e) {
         var cell = e.target.closest('[data-amt]'); if (!cell || cell.querySelector('input')) return;
         var id = cell.getAttribute('data-amt'), cur = (bd.items.filter(function (x) { return x.id === id; })[0] || {}).earned || 0;
-        cell.innerHTML = '<input class="pl-bd-edit" inputmode="numeric" value="' + fmt(cur) + '">';
+        cell.innerHTML = '<input class="pl-bd-edit" inputmode="numeric" data-money-input value="' + fmt(cur) + '">';
         var inp = cell.firstChild; inp.focus(); inp.select();
         function commit(ok) { if (inp._done) return; inp._done = 1; if (ok) { var v = parseInt(String(inp.value).replace(/[^\d]/g, ''), 10); if (!isNaN(v)) itemOv[id] = v; } redrawItems(); }
         inp.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') commit(true); else if (ev.key === 'Escape') commit(false); });

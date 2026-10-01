@@ -2269,3 +2269,7 @@ Dòng chèn mới ở đầu bảng thừa hưởng dropdown Danh mục cũ từ
 ## 2026-10-01 — Phiếu lương: nhấp đúp sửa tay các ô viền đỏ
 - `payslip.html` form "Tạo phiếu lương": Ngày công, Tổng giờ làm, Giờ OT tự động, Đơn giá OT/giờ, Hoa hồng dự án vẫn viền đỏ nhưng nhấp đúp để sửa (Enter/click ra ngoài = lưu, Esc = huỷ). Giá trị sửa nhớ theo người+tháng (`slipOv`), tính lại bảng chia nhỏ + tổng; các ô đã nhập (OT bổ sung, thưởng, khấu trừ, ghi chú) giữ nguyên. Phiếu gửi đi dùng giá trị đã sửa. sw v169.
 - 2026-10-01 (sw v170): ô nhấp đúp ở phiếu lương không còn khung đôi (input trong suốt nằm trong viền đỏ); số sửa làm tròn 1 chữ số thập phân (tiền: số nguyên).
+
+## 2026-10-01 — Dấu chấm hàng nghìn tự động cho MỌI ô tiền (kể cả ô tạo sau này)
+- `money-input.js`: thêm bộ nghe sự kiện `input` ở cấp document — ô có `[data-money-input]`, hoặc ô text `inputmode="numeric"` có id/name/data-f/class chứa từ khoá tiền (price, amount, budget, salary, bonus, deduction, commission, debt, fee, cost, money, taxcap, tien, luong, gia…) tự hiện dấu chấm khi gõ, không cần gọi `bindAll`. Ô không phải tiền không bị đụng; loại trừ 1 ô khớp nhầm bằng `data-no-money`. Ô tiền mới tạo: dùng `inputmode="numeric"` + tên có từ khoá (hoặc `data-money-input`) là đủ.
+- Phiếu lương: ô nhấp đúp (đơn giá OT, hoa hồng, các khoản lương) có dấu chấm khi gõ. `crm.html` nạp thêm money-input.js (ô Ngân sách). sw v171.

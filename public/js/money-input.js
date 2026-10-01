@@ -43,7 +43,11 @@ var HiconiqueMoney = (function () {
     input.setAttribute('autocomplete', 'off');
     if (input.value) input.value = format(input.value);
 
-    input.addEventListener('input', function () {
+    input.addEventListener('input', function () { liveFormat(input); });
+  }
+
+  function liveFormat(input) {
+    {
       var caret = input.selectionStart == null ? input.value.length : input.selectionStart;
       // Đếm số CHỮ SỐ (không tính dấu chấm) đứng trước con trỏ TRƯỚC khi
       // format lại — dùng để đặt con trỏ về đúng chỗ sau khi dấu chấm bị
@@ -57,9 +61,29 @@ var HiconiqueMoney = (function () {
         if (formatted[pos] !== '.') seen++;
         pos++;
       }
-      input.setSelectionRange(pos, pos);
-    });
+      try { input.setSelectionRange(pos, pos); } catch (e) { /* kiểu input không hỗ trợ */ }
+    }
   }
+
+  // 2026-10-01 (QUY TẮC CỐ ĐỊNH): MỌI ô tiền đều tự hiện dấu chấm hàng nghìn khi gõ — kể cả ô tạo động sau này (modal, dòng bảng, ô nhấp đúp sửa).
+  // Nhận diện bằng ủy quyền sự kiện ở cấp document (không cần gọi bindAll): input có [data-money-input], hoặc (input text/numeric) có id/name/data-f/class chứa
+  // từ khoá tiền (price, amount, budget, salary, bonus, deduction, commission, debt, fee, cost, money, taxcap, tien, luong...). Ô KHÔNG phải tiền
+  // (số lượng, giờ, IP…) thì không đụng tới; muốn loại trừ 1 ô khớp nhầm → thêm data-no-money.
+  var MONEY_RE = /price|amount|budget|salary|bonus|deduction|commission|debt|fee|cost|money|taxcap|payment|revenue|tien|luong|gia(?![a-z])|dongia|thanhtien/i;
+  function isMoneyInput(el) {
+    if (!el || el.tagName !== 'INPUT' || el.hasAttribute('data-no-money')) return false;
+    if (el.hasAttribute('data-money-input')) return true;
+    var ty = (el.type || 'text').toLowerCase();
+    if (ty !== 'text' && ty !== 'tel' && ty !== 'number') return false;
+    if (ty === 'number') return false;   // ô type=number giữ nguyên (không có dấu chấm)
+    var key = [el.id, el.name, el.getAttribute('data-f'), el.getAttribute('data-field'), el.className].join(' ');
+    return MONEY_RE.test(key) && (el.getAttribute('inputmode') === 'numeric' || el.hasAttribute('data-money-input'));
+  }
+  document.addEventListener('input', function (e) {
+    var el = e.target;
+    if (!el || el.dataset && el.dataset.hqMoneyBound) return;   // đã có bộ nghe riêng (bind) thì thôi
+    if (isMoneyInput(el)) liveFormat(el);
+  }, true);
 
   // Gắn cho MỌI input có [data-money-input] trong 1 vùng (mặc định cả
   // document) — tiện gọi 1 lần sau khi render xong 1 form/modal thay vì
