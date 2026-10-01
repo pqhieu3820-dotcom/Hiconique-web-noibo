@@ -18,14 +18,20 @@ var HiconiqueMonthNav = (function () {
 
   function pad2(n) { return String(n).padStart(2, '0'); }
 
-  function mount(inputEl) {
+  // opts.max: 'YYYY-MM' (hoặc hàm trả về) = tháng muộn nhất được chọn — mũi tên, lăn chuột, bảng chọn nhanh và "Hôm nay" đều bị chặn ở mốc này.
+  function mount(inputEl, opts) {
+    opts = opts || {};
     if (!inputEl || inputEl.dataset.hqMounted) return null;
     inputEl.dataset.hqMounted = '1';
     uid++;
     var idPrefix = 'hqMonthNav' + uid;
 
+    function maxKey() { var m = typeof opts.max === 'function' ? opts.max() : opts.max; return /^\d{4}-\d{2}$/.test(m || '') ? m : ''; }
+    function keyOf(y, m) { return y + '-' + pad2(m); }
+    function over(y, m) { var mk = maxKey(); return !!mk && keyOf(y, m) > mk; }
     var seed = inputEl.value ? new Date(inputEl.value + '-01') : new Date();
     var state = { year: seed.getFullYear(), month: seed.getMonth() + 1 };
+    if (over(state.year, state.month)) { var mk0 = maxKey().split('-'); state.year = Number(mk0[0]); state.month = Number(mk0[1]); }
     var pickerYear = state.year;
 
     inputEl.style.display = 'none';
@@ -64,6 +70,7 @@ var HiconiqueMonthNav = (function () {
     }
 
     function setMonth(y, m, silent) {
+      if (over(y, m)) { var mk = maxKey().split('-'); y = Number(mk[0]); m = Number(mk[1]); }
       state.year = y;
       state.month = m;
       commit(silent);
@@ -75,31 +82,35 @@ var HiconiqueMonthNav = (function () {
       commit();
     });
     wrap.querySelector('#' + idPrefix + 'Next').addEventListener('click', function () {
-      state.month++;
-      if (state.month > 12) { state.month = 1; state.year++; }
+      var y = state.year, m = state.month + 1; if (m > 12) { m = 1; y++; }
+      if (over(y, m)) return;
+      state.year = y; state.month = m;
       commit();
     });
     wrap.querySelector('#' + idPrefix + 'Today').addEventListener('click', function () {
       var t = new Date();
       setMonth(t.getFullYear(), t.getMonth() + 1);
     });
-    wrap.addEventListener('wheel', function (e) {
+    // Lăn chuột đổi tháng CHỈ ở cụm mũi tên + nhãn tháng (không tác động các nút khác như Xuất Docx nằm cùng hàng)
+    function onWheel(e) {
       e.preventDefault();
       if (e.deltaY > 0) {
-        state.month++;
-        if (state.month > 12) { state.month = 1; state.year++; }
+        var y = state.year, m = state.month + 1; if (m > 12) { m = 1; y++; }
+        if (over(y, m)) return;
+        state.year = y; state.month = m;
       } else {
         state.month--;
         if (state.month < 1) { state.month = 12; state.year--; }
       }
       commit();
-    }, { passive: false });
+    }
+    ['Prev', 'Picker', 'Next'].forEach(function (k) { wrap.querySelector('#' + idPrefix + k).addEventListener('wheel', onWheel, { passive: false }); });
 
     function renderGrid() {
       yearLabelEl.textContent = pickerYear;
       grid.innerHTML = MONTH_NAMES.map(function (label, i) {
-        var isCurrent = pickerYear === state.year && i + 1 === state.month;
-        return '<button type="button" class="timeline-month-cell' + (isCurrent ? ' active' : '') + '" data-month="' + i + '">' + label + '</button>';
+        var isCurrent = pickerYear === state.year && i + 1 === state.month, dis = over(pickerYear, i + 1);
+        return '<button type="button" class="timeline-month-cell' + (isCurrent ? ' active' : '') + '" data-month="' + i + '"' + (dis ? ' disabled style="opacity:.35;cursor:not-allowed"' : '') + '>' + label + '</button>';
       }).join('');
     }
     btn.addEventListener('click', function (e) {
@@ -116,12 +127,13 @@ var HiconiqueMonthNav = (function () {
     });
     wrap.querySelector('#' + idPrefix + 'YearNext').addEventListener('click', function (e) {
       e.stopPropagation();
+      if (maxKey() && pickerYear + 1 > Number(maxKey().slice(0, 4))) return;
       pickerYear++;
       renderGrid();
     });
     grid.addEventListener('click', function (e) {
       var cell = e.target.closest('.timeline-month-cell');
-      if (!cell) return;
+      if (!cell || cell.disabled) return;
       setMonth(pickerYear, parseInt(cell.dataset.month, 10) + 1);
       panel.hidden = true;
       picker.classList.remove('open');

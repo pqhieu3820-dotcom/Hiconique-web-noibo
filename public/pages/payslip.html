@@ -264,8 +264,10 @@
     }
 
     var monthInput = document.getElementById('plMonthInput');
-    monthInput.value = currentMonthStr();
-    HiconiqueMonthNav.mount(monthInput);
+    // Phiếu lương làm vào ĐẦU tháng sau → chỉ chọn được tới THÁNG TRƯỚC (hôm nay tháng 10 thì tối đa tháng 9/2026); mặc định = tháng trước.
+    function latestSlipMonth() { var d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+    monthInput.value = latestSlipMonth();
+    HiconiqueMonthNav.mount(monthInput, { max: latestSlipMonth });
 
     // ---- Giấy đề nghị thanh toán lương (.docx): Xuất + Xem nhanh, đặt cạnh nút "Hôm nay" ----
     function currentSlipData() {
