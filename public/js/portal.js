@@ -220,13 +220,14 @@
       if (typeof TaskManager === 'undefined' || !TaskManager.refreshFromGSheets) return;
       btn.classList.add('spinning');
       btn.disabled = true;
-      TaskManager.refreshFromGSheets(function () {
+      if (window.HiconiqueSyncChip) HiconiqueSyncChip.busy();
+      TaskManager.refreshFromGSheets(function (ok) {
         btn.classList.remove('spinning');
         btn.disabled = false;
         // Sự kiện 'hiconique:data-refreshed' (task-data.js) đã tự lo việc
         // vẽ lại đúng phần dữ liệu của từng trang — không cần gọi gì thêm ở
         // đây, tránh mỗi trang phải tự biết portal.js đang làm gì.
-        showReloadToast();
+        if (window.HiconiqueSyncChip) { if (ok === false) HiconiqueSyncChip.bad(); else HiconiqueSyncChip.ok(); } else showReloadToast();
       }, { force: true });   // bấm Làm mới = nhận đúng dữ liệu trên Google Sheet
     });
 

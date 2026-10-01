@@ -499,7 +499,28 @@ var Offline = (function () {
     el.style.cssText = '';
     document.body.appendChild(el); return el;
   }
+  // 2026-10-01: nút ⟳ "Làm mới" ở thanh đầu trang dùng CÙNG khung kính này (đang làm mới → xanh "Đã làm mới dữ liệu" 3s) thay cho thông báo nâu cũ.
+  var manual = null;
+  var ICONS_M = {
+    busy: '<span class="ic busy"><svg viewBox="0 0 24 24"><circle class="tr" cx="12" cy="12" r="9.5"/><circle class="ar" cx="12" cy="12" r="9.5" pathLength="60"/></svg></span>',
+    ok: '<span class="ic ok"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.6 4.6L19 7.5"/></svg></span>',
+    bad: '<span class="ic bad"><svg viewBox="0 0 24 24"><path class="st" d="M12 5.8v7.4"/><circle class="dt" cx="12" cy="17.6" r="1.7"/></svg></span>'
+  };
+  function drawManual() {
+    if (!ensure()) return;
+    var key = manual.kind + '|' + manual.l1;
+    el.hidden = false; el.style.display = ''; el.setAttribute('data-st', manual.kind);
+    if (el._key === key && el.querySelector('.l2')) return;
+    el._key = key;
+    el.innerHTML = ICONS_M[manual.kind] + '<div class="tx"><div class="l1 ' + (manual.kind === 'busy' ? '' : manual.kind) + '">' + manual.l1 + '</div><div class="l2">' + (manual.l2 || '') + '</div></div>';
+  }
+  window.HiconiqueSyncChip = {
+    busy: function (l1, l2) { manual = { kind: 'busy', l1: l1 || 'Đang làm mới dữ liệu…', l2: l2 || 'Đang lấy dữ liệu mới nhất từ Google Sheet', until: 0 }; drawManual(); },
+    ok: function (l1, l2, hold) { manual = { kind: 'ok', l1: l1 || 'Đã làm mới dữ liệu', l2: l2 || 'Dữ liệu trên màn hình khớp Google Sheet', until: Date.now() + (hold || 3000) }; el && (el._key = ''); drawManual(); },
+    bad: function (l1, l2, hold) { manual = { kind: 'bad', l1: l1 || 'Chưa làm mới được', l2: l2 || 'Kiểm tra mạng rồi thử lại', until: Date.now() + (hold || 5000) }; el && (el._key = ''); drawManual(); }
+  };
   function render() {
+    if (manual) { if (!manual.until || Date.now() < manual.until) { drawManual(); return; } manual = null; if (el) el._key = ''; }
     var now = Date.now(), q = readQueue_().filter(function (o) { return (o.tries || 0) > 0 || (now < userWriteUntil && now - (o.ts || 0) < 120000); });   // lệnh tồn cũ chưa từng gửi (chờ mạng/khóa tab) không làm khung hiện mãi
     var liveDirect = directAt.filter(function (s) { return now - s < 40000; }).length, n = q.length + liveDirect, M = window.HiconiqueMetrics || {};
     var w = M.writeMs || [], aw = w.length ? w.reduce(function (a, b) { return a + b; }, 0) / w.length : 0;
