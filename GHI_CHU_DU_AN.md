@@ -2197,3 +2197,5 @@ Dòng chèn mới ở đầu bảng thừa hưởng dropdown Danh mục cũ từ
 - Kiểm kê (hàm chỉ đọc, đã gỡ): hầu hết cột trống là cột nhập tùy chọn/cột công thức phụ → GIỮ. Chỉ 2 cột chết ở `TLCC-Chấm công` (trống 18/18 dòng, không mã nào dùng): "Trạng thái xác thực" (`verifyStatus`), "Số điều kiện đạt" (`verifyPassCount`; tiêu đề trên Sheet lẫn ký tự Tab). Repo đã gỡ 2 mục này khỏi FIELD_MAP và gỡ action tạm `deleteTimesheetTest` — CHƯA deploy lên Apps Script (chờ Founder xoá 2 cột trên Sheet rồi deploy v121).
 - Tiêu đề lệch FIELD_MAP cần sửa tay trên Sheet: `TLCC-Phiếu lương` "Tổng sổ giờ" → "Tổng số giờ"; `TLCC-Hoa hồng dự án` "Phần trăm hoa hồng" → "Phần trăm"; `TLCC-Mức hoa hồng` "Phần trăm " (thừa dấu cách) → "Phần trăm".
 - Action server không client nào gọi (chưa gỡ, chờ quyết): deleteAcceptanceCheck, deleteCashFlowPlan, deleteContractorComparison, deleteProjectDocument, deleteStaffActivity.
+
+## 2026-10-01 — Công nợ: nút Xoá ngay trên từng dòng danh sách (có hộp xác nhận; trước chỉ xoá được trong Chi tiết). sw v148.

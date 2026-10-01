@@ -1410,10 +1410,17 @@
           '<td style="white-space:nowrap;display:flex;gap:6px;">' +
             (d.outstanding > 0 ? '<button class="fn-btn fn-btn-primary fn-btn-sm" data-debtpay="' + d.id + '">' + (recv ? 'Thu tiền' : 'Trả tiền') + '</button>' : '') +
             '<button class="fn-btn fn-btn-ghost fn-btn-sm" data-debtview="' + d.id + '">Chi tiết</button>' +
+            '<button class="fn-btn fn-btn-ghost fn-btn-sm" data-debtdel="' + d.id + '">Xoá</button>' +
           '</td></tr>';
       }).join('');
       rows.querySelectorAll('[data-debtpay]').forEach(function (b) { b.addEventListener('click', function () { openDebtPay(b.getAttribute('data-debtpay')); }); });
       rows.querySelectorAll('[data-debtview]').forEach(function (b) { b.addEventListener('click', function () { openDebtDetail(b.getAttribute('data-debtview')); }); });
+      rows.querySelectorAll('[data-debtdel]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var d = debtById(b.getAttribute('data-debtdel')); if (!d) return;
+          fnConfirm('Xoá công nợ này?', 'Xoá khoản <b>' + fmt(d.amount) + ' ₫</b> của <b>' + escapeHtml(d.clientName || '') + '</b>' + (d.paidAmount > 0 ? ' (đã ' + (d.direction === 'receivable' ? 'thu' : 'trả') + ' ' + fmt(d.paidAmount) + ' ₫)' : '') + ' khỏi danh sách và Google Sheet. Các phiếu thu/chi đã ghi trong sổ giao dịch <b>không</b> bị xoá.', 'Xoá công nợ', function () { TaskManager.deleteReceivable(d.id, user); renderAll(); }, true);
+        });
+      });
     }
     function debtById(id) { return TaskManager.getDebts().filter(function (d) { return d.id === id; })[0]; }
     function debtModal(id, title, bodyHtml, width) {
