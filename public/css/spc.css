@@ -135,3 +135,12 @@
 .spc-toast.bad { border-left-color: #C75B5B; }
 .spc-toast.out { opacity: 0; }
 @media (max-width: 600px) { .spc-two, .spc-two2 { grid-template-columns: 1fr; } .spc-toolbar .spc-btn.pri { width: 100%; } }
+
+.spc-opt { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--color-text-faint); }
+.spc-linkrow { display: grid; grid-template-columns: 1fr 1.4fr 34px; gap: 8px; margin-bottom: 8px; }
+.spc-lkdel { border: 1px solid var(--color-border); background: none; border-radius: 8px; color: var(--color-text-faint); font-size: 1.2rem; line-height: 1; cursor: pointer; }
+.spc-lkdel:hover { border-color: #C75B5B; color: #C75B5B; }
+.spc-addlink { background: none; border: 1px dashed var(--color-bronze); color: var(--color-bronze); border-radius: 8px; padding: 7px 12px; font: 600 .75rem Inter, sans-serif; cursor: pointer; }
+.spc-addlink:hover { background: var(--color-bronze); color: #fff; }
+.spc-link { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 600px) { .spc-linkrow { grid-template-columns: 1fr 34px; } .spc-linkrow .lk-url { grid-column: 1 / 2; } }

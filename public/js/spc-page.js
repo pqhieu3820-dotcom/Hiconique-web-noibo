@@ -28,15 +28,30 @@
     if (r.section !== 'height' && !has(r.valueMin) && !has(r.valueMax)) return '';
     return String(has(r.valueMin) ? r.valueMin : '') + (has(r.valueMin) && has(r.valueMax) ? ' — ' : '') + String(has(r.valueMax) ? r.valueMax : '') + ' ' + (r.unit || '');
   }
+  function linksOf(r) {
+    var arr = [];
+    if (r.links) { try { var p = typeof r.links === 'string' ? JSON.parse(r.links) : r.links; if (Array.isArray(p)) arr = p; } catch (e) { arr = []; } }
+    if (!arr.length && (r.linkLabel || r.linkUrl)) arr = [{ label: r.linkLabel || '', url: r.linkUrl || '' }];
+    return arr.filter(function (x) { return x && (x.label || x.url); });
+  }
+  function hostOf(u) { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return 'Xem tài liệu'; } }
   function linkHtml(r) {
-    var url = String(r.linkUrl || '').trim(), label = r.linkLabel || (url ? 'Xem tài liệu' : '');
-    if (!label) return '';
-    if (/^https?:\/\//i.test(url)) return '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(label) + ' ↗</a>';
-    return '<span class="spc-link-off">' + esc(label) + '</span>';
+    var ls = linksOf(r);
+    if (!ls.length) return '';
+    return ls.map(function (l) {
+      var url = String(l.url || '').trim(), label = l.label || (url ? hostOf(url) : '');
+      if (/^https?:\/\//i.test(url)) return '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(label) + ' ↗</a>';
+      return '<span class="spc-link-off">' + esc(label) + '</span>';
+    }).join('');
+  }
+  function linksText(r) { return linksOf(r).map(function (l) { return (l.label || '') + ' ' + (l.url || ''); }).join(' '); }
+  function linkRowHtml(l) {
+    return '<div class="spc-linkrow"><input class="lk-label" maxlength="80" placeholder="Tên liên kết (VD: Bản vẽ chi tiết)" value="' + esc(l.label || '') + '">' +
+      '<input class="lk-url" placeholder="https://…" value="' + esc(l.url || '') + '"><button type="button" class="spc-lkdel" aria-label="Xóa link" title="Xóa link">×</button></div>';
   }
   function matches(r) {
     if (state.q) {
-      var hay = [r.code, r.title, r.note, r.linkLabel, fmtText(r)].join(' ').toLowerCase();
+      var hay = [r.code, r.title, r.note, linksText(r), fmtText(r)].join(' ').toLowerCase();
       if (hay.indexOf(state.q.toLowerCase()) === -1) return false;
     }
     if (state.filter === 'mine') return r.createdBy === (user() && user().id) || r.pendingBy === (user() && user().id);
@@ -68,8 +83,10 @@
     return h;
   }
   function summ(old, p) {
-    var out = [], map = { title: 'Tên', note: 'Mô tả', linkLabel: 'Tên liên kết', linkUrl: 'Link', unit: 'Đơn vị' };
+    var out = [], map = { title: 'Tên', note: 'Mô tả', unit: 'Đơn vị' };
     Object.keys(p).forEach(function (k) {
+      if (k === 'links') { var a = linksText(old), b = linksText({ links: p.links }); if (a !== b) out.push('Link: ' + linksOf({ links: p.links }).length + ' liên kết (' + (linksOf({ links: p.links }).map(function (l) { return l.label || hostOf(l.url); }).join(', ') || 'đã xóa hết') + ')'); return; }
+      if (k === 'linkLabel' || k === 'linkUrl') return;
       if (String(p[k] == null ? '' : p[k]) === String(old[k] == null ? '' : old[k])) return;
       if (k === 'valueMin' || k === 'valueMax') out.push((k === 'valueMin' ? 'Giá trị nhỏ nhất ' : 'Giá trị lớn nhất ') + (old[k] === '' || old[k] == null ? '—' : old[k]) + ' → ' + (p[k] === '' ? '—' : p[k]));
       else if (map[k]) out.push(map[k] + ': "' + (old[k] || '—') + '" → "' + (p[k] || '—') + '"');
@@ -142,19 +159,29 @@
       '<div><label>Giá trị lớn nhất</label><input id="sfMax" type="number" step="any" value="' + esc(r.valueMax === undefined ? '' : r.valueMax) + '"></div>' +
       '<div><label>Đơn vị</label><input id="sfUnit" maxlength="12" value="' + esc(r.unit || 'mm') + '"></div></div></div>' +
       '<label>Mô tả / ghi chú *</label><textarea id="sfNote" rows="4" required placeholder="Phạm vi áp dụng, lưu ý kỹ thuật…">' + esc(r.note || '') + '</textarea>' +
-      '<div class="spc-two2"><div><label>Tên liên kết (tuỳ chọn)</label><input id="sfLinkLabel" maxlength="80" placeholder="VD: Notion · Mạng vật liệu" value="' + esc(r.linkLabel || '') + '"></div>' +
-      '<div><label>Đường dẫn (tuỳ chọn)</label><input id="sfLinkUrl" placeholder="https://…" value="' + esc(r.linkUrl || '') + '"></div></div>' +
+      '<label>Link đính kèm <span class="spc-opt">(tuỳ chọn · thêm nhiều link)</span></label><div id="sfLinks"></div>' +
+      '<button type="button" class="spc-addlink" id="sfAddLink">+ Thêm link</button>' +
       '<div class="spc-mf"><button type="button" class="spc-btn" data-close>Hủy</button><button type="submit" class="spc-btn pri">' + (f ? (edit ? 'Lưu thay đổi' : 'Thêm quy chuẩn') : 'Gửi đề xuất') + '</button></div></form>');
     $('sfSection').value = r.section || 'height';
+    var box = $('sfLinks'), init = linksOf(r);
+    (init.length ? init : [{}]).forEach(function (l) { box.insertAdjacentHTML('beforeend', linkRowHtml(l)); });
+    $('sfAddLink').addEventListener('click', function () { box.insertAdjacentHTML('beforeend', linkRowHtml({})); box.lastChild.querySelector('.lk-label').focus(); });
+    box.addEventListener('click', function (e) { var d = e.target.closest('.spc-lkdel'); if (!d) return; if (box.children.length > 1) d.parentNode.remove(); else d.parentNode.querySelectorAll('input').forEach(function (i) { i.value = ''; }); });
     function sync() { $('sfValRow').style.display = $('sfSection').value === 'height' ? '' : 'none'; }
     $('sfSection').addEventListener('change', sync); sync();
     ov.addEventListener('click', function (e) { if (e.target.closest('[data-close]')) closeModal(); });
     $('spcForm').addEventListener('submit', function (e) {
       e.preventDefault();
-      var url = $('sfLinkUrl').value.trim();
-      if (url && !/^https?:\/\//i.test(url)) { toast('Đường dẫn phải bắt đầu bằng http:// hoặc https://', false); return; }
+      var links = [], bad = false;
+      Array.prototype.forEach.call(document.querySelectorAll('#sfLinks .spc-linkrow'), function (row) {
+        var lb = row.querySelector('.lk-label').value.trim(), u = row.querySelector('.lk-url').value.trim();
+        if (!lb && !u) return;
+        if (u && !/^https?:\/\//i.test(u)) { bad = true; return; }
+        links.push({ label: lb, url: u });
+      });
+      if (bad) { toast('Đường dẫn phải bắt đầu bằng http:// hoặc https://', false); return; }
       var h = $('sfSection').value === 'height';
-      var data = { section: h ? 'height' : 'material', title: $('sfTitle').value, note: $('sfNote').value, linkLabel: $('sfLinkLabel').value, linkUrl: url,
+      var data = { section: h ? 'height' : 'material', title: $('sfTitle').value, note: $('sfNote').value, links: links, linkLabel: links[0] ? links[0].label : '', linkUrl: links[0] ? links[0].url : '',
         valueMin: h ? $('sfMin').value : '', valueMax: h ? $('sfMax').value : '', unit: h ? ($('sfUnit').value || 'mm') : '' };
       if (h && data.valueMin !== '' && data.valueMax !== '' && Number(data.valueMin) > Number(data.valueMax)) { toast('Giá trị nhỏ nhất không được lớn hơn giá trị lớn nhất.', false); return; }
       var u = user(), res;

@@ -252,7 +252,7 @@ const FIELD_MAP = {
   ],
   spcStandards: [
     ['Mã', 'id'], ['Mã SPC', 'code'], ['Nhóm', 'section'], ['Tên quy chuẩn', 'title'], ['Giá trị nhỏ nhất', 'valueMin'],
-    ['Giá trị lớn nhất', 'valueMax'], ['Đơn vị', 'unit'], ['Mô tả', 'note'], ['Tên liên kết', 'linkLabel'], ['Đường dẫn', 'linkUrl'],
+    ['Giá trị lớn nhất', 'valueMax'], ['Đơn vị', 'unit'], ['Mô tả', 'note'], ['Tên liên kết', 'linkLabel'], ['Đường dẫn', 'linkUrl'], ['Danh sách link', 'links'],
     ['Trạng thái', 'status'], ['Loại chờ duyệt', 'pendingType'], ['Nội dung đề xuất', 'pending'], ['Người đề xuất', 'pendingBy'],
     ['Ngày đề xuất', 'pendingAt'], ['Ghi chú duyệt', 'reviewNote'], ['Người duyệt', 'approvedBy'], ['Ngày duyệt', 'approvedAt'],
     ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']

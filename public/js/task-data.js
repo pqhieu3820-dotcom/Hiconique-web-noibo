@@ -2391,7 +2391,7 @@ var TaskManager = (function() {
     { id: 'spc_default_11', code: 'SPC-011', section: 'material', title: 'Veneer óc chó', note: 'Chiều dày tiêu chuẩn 0.6mm. Cán phẳng trên MDF hoặc ván ép. Bảo quản tránh ánh nắng trực tiếp.', linkLabel: 'Notion · Mạng vật liệu' },
     { id: 'spc_default_12', code: 'SPC-012', section: 'material', title: 'Vải bọc nội thất', note: 'Yêu cầu chống cháy tiêu chuẩn NFPA 260 cho dự án thương mại. Không dùng vải có chứa PVC cho nội thất nhà ở.', linkLabel: 'Notion · Bộ tiêu chuẩn' }
   ];
-  var SPC_FIELDS = ['section', 'title', 'valueMin', 'valueMax', 'unit', 'note', 'linkLabel', 'linkUrl'];
+  var SPC_FIELDS = ['section', 'title', 'valueMin', 'valueMax', 'unit', 'note', 'linkLabel', 'linkUrl', 'links'];   // links = JSON [{label,url}] (nhiều link); linkLabel/linkUrl giữ link đầu tiên để tương thích
   function loadSpcData(callback) {
     getFromGSheets('spcStandards', function (items) {
       if (items && items.length) localStorage.setItem(STORAGE_KEYS.spcStandards, JSON.stringify(items));
@@ -2428,6 +2428,7 @@ var TaskManager = (function() {
     var o = {};
     SPC_FIELDS.forEach(function (k) {
       if (d[k] === undefined) return;
+      if (k === 'links') { o[k] = Array.isArray(d[k]) ? JSON.stringify(d[k]) : String(d[k] || ''); return; }
       o[k] = (k === 'valueMin' || k === 'valueMax') ? (d[k] === '' || d[k] === null ? '' : Number(d[k])) : String(d[k]).trim();
     });
     return o;
