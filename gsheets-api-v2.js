@@ -1535,6 +1535,7 @@ function addDataBatch_impl(ss, sheetName, dataList) {
     sheet.insertRowsBefore(firstNewRow, rows.length);
     sheet.getRange(firstNewRow, 1, rows.length, headers.length).setValues(rows);
     fillComputedHelperFormulas(sheet, headers, firstNewRow, rows.length);
+    clearFinanceCategoryValidation_(sheet, sheetName, headers, firstNewRow, rows.length);
   }
   if (sheetName === SHEETS.notifications) dataList.forEach(function (d) { pushForNotificationRow_(ss, d); });
   return dataList;
@@ -1633,6 +1634,14 @@ function withScriptLock_(fn) {
   }
 }
 
+// 2026-10-01: sheet TC-Tài chính công ty — dòng MỚI không mang dropdown cột Danh mục (chèn dòng ở đầu bảng thừa hưởng dropdown cũ từ dòng bên cạnh → danh mục mới
+// (VD thêm ở trang Sổ tài chính) bị Sheet báo "không có trong danh sách"). Xoá validation của ô Danh mục ở các dòng vừa chèn.
+function clearFinanceCategoryValidation_(sheet, sheetName, headers, firstRow, numRows) {
+  if (sheetName !== SHEETS.financeEntries) return;
+  const c = headers.indexOf(enToViHeader(sheetName, 'category')) + 1;
+  if (c > 0) sheet.getRange(firstRow, c, numRows, 1).clearDataValidations();
+}
+
 function addData(ss, sheetName, data) { return withScriptLock_(function () { return addData_impl(ss, sheetName, data); }); }
 function updateData(ss, sheetName, id, updates) { return withScriptLock_(function () { return updateData_impl(ss, sheetName, id, updates); }); }
 function deleteData(ss, sheetName, id) { return withScriptLock_(function () { return deleteData_impl(ss, sheetName, id); }); }
@@ -1693,6 +1702,7 @@ function addData_impl(ss, sheetName, data) {
   sheet.getRange(newRowNum, 1, 1, row.length).setValues([row]);
   textForcedCols.forEach(function (tf) { writeTextForcedCell(sheet.getRange(newRowNum, tf.col), tf.val); });
   fillComputedHelperFormulas(sheet, headers, newRowNum, 1);
+  clearFinanceCategoryValidation_(sheet, sheetName, headers, newRowNum, 1);
   if (sheetName === SHEETS.notifications) pushForNotificationRow_(ss, data);
   return data;
 }
@@ -4167,7 +4177,7 @@ function financeOnEdit_(e) {
   const tCol = headers.indexOf(enToViHeader(SHEETS.financeEntries, 'type')) + 1;
   const cCol = headers.indexOf(enToViHeader(SHEETS.financeEntries, 'category')) + 1;
   if (!tCol || !cCol || e.range.getColumn() !== tCol) return;
-  sheet.getRange(row, cCol).setDataValidation(financeCatRuleFor_(e.value));
+  // 2026-10-01: KHÔNG tự gắn dropdown Danh mục theo Loại nữa (danh mục mới thêm trên web không nằm trong dropdown cũ → báo lỗi). Giữ hàm để onEdit gọi không lỗi.
 }
 
 const EQUIPMENT_CATEGORIES = ['Máy tính', 'Máy in – Photo', 'Vật tư', 'Thiết bị mạng', 'Màn hình & ngoại vi', 'Văn phòng phẩm', 'Dụng cụ đo đạc', 'Máy móc & dụng cụ thi công', 'Giàn giáo & cốp pha', 'Bảo hộ lao động', 'Nội thất văn phòng', 'Thiết bị khác'];

@@ -2166,3 +2166,7 @@ Form Thêm/Sửa dự án (projects.html + projects.js, và form tạo dự án 
 - **Sửa Apps Script v118:** thêm `findRowById_()` — tìm số dòng THEO MÃ (cột A) ngay lúc ghi/xoá, dùng cho `updateData_impl` và `deleteData_impl` (xoá nhầm dòng cũng bị chặn); `tryLock` 10s → 20s. Thêm action tạm `deleteTimesheetTest` (chỉ xoá mã bắt đầu `ZZ_TEST_`, dùng dọn dòng thử).
 - **Sửa client (task-data.js):** `healTimesheetFromLocal_()` — mỗi lần tải dữ liệu, với chấm công của CHÍNH người đăng nhập (3 ngày gần nhất), nếu máy có giờ vào/ra mà Sheet đang trống → tự xếp lệnh cập nhật đẩy lại (mỗi giờ 1 lần/phiên).
 - **Đã khôi phục dữ liệu CEO:** đẩy lại dòng 01/10 (sáng 11:27–11:27 tự đóng ca, chiều vào 13:25, đi muộn "Đi công trường", ghi chú) và dòng 30/09 (vào chiều 13:17). Dòng của NV khác (VD NV_VK_210593) nếu thiếu giờ thì tự đẩy lại khi họ mở web. sw v144.
+
+
+### (dz) 01/10/2026 — TC-Tài chính công ty: dòng mới KHÔNG có dropdown cột Danh mục
+Dòng chèn mới ở đầu bảng thừa hưởng dropdown Danh mục cũ từ dòng bên cạnh → danh mục mới thêm trên web bị Sheet báo "không có trong danh sách". Apps Script **v119**: `clearFinanceCategoryValidation_()` xoá validation ô Danh mục của các dòng vừa thêm (addData + addDataBatch, chỉ sheet TC-Tài chính công ty); `financeOnEdit_()` không còn tự gắn dropdown Danh mục theo Loại khi sửa cột Loại. Các ô cũ vẫn còn dropdown cho tới khi tự xoá thủ công (Dữ liệu › Quy tắc xác thực dữ liệu).
