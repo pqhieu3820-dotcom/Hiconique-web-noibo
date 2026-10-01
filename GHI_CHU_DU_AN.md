@@ -2291,3 +2291,6 @@ Dòng chèn mới ở đầu bảng thừa hưởng dropdown Danh mục cũ từ
 ## 2026-10-01 — Khái toán nhanh: bảng tiến độ kiểu "Kế hoạch tiến độ thi công"
 - Thẻ "Kế hoạch tiến độ dự kiến" (cột 3 tab Khái toán nhanh): danh sách giai đoạn thay bằng bảng rút gọn (hạng mục + nhãn Thô/Gỗ & Hoàn thiện + số ngày, thời gian + thanh tiến trình cam/xanh). Bấm vào thẻ → cửa sổ bảng ĐẦY ĐỦ như bản PDF (tóm tắt 4 ô + 5 cột), nút Xuất PDF trong đó in riêng đúng trang tiến độ; nút Xuất PDF của bảng khái toán vẫn in 2 trang (trang 2 = bảng này). Thẻ bảng đầy đủ cũ ở cuối tab được thay bằng cửa sổ này. `khai-toan.js` (`scheduleCompactHtml`), `pricing.html`, sw v176.
 - 2026-10-01 (sw v177, Giám sát NV): "Tháng này" hiện cả tháng ("01/10/2026 – 31/10/2026"); icon lịch là SVG đường nét thay emoji, chữ ô ngày dùng font trang (không tabular/đậm). Báo cáo tổng: modal rộng tới 96vw/1480px, cột Dấu hiệu rộng ≥340px mỗi dấu hiệu 1 dòng, các cột số không xuống dòng.
+
+## 2026-10-01 — Báo giá dịch vụ: trang rộng hơn, tab/thẻ rõ ràng hơn
+- `pricing.html`: khung trang tối đa 1560px (trước 1100px); lưới Khái toán 330/1fr/370; thanh tab dạng viên thuốc trong khung (tab đang chọn tô màu đồng), chữ lớn hơn; thẻ/bảng đệm rộng hơn. sw v178.

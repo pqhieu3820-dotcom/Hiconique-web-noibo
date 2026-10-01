@@ -30,7 +30,7 @@
       --pr-text: var(--color-text); --pr-muted: var(--color-text-muted); --pr-bronze: var(--color-bronze);
     }
     body { background: var(--pr-bg); color: var(--pr-text); font-family: 'Inter', -apple-system, sans-serif; min-height: 100vh; }
-    .pr-container { max-width: 1100px; }
+    .pr-container { max-width: min(1560px, calc(100vw - 48px)); }   /* 2026-10-01: trang rộng hơn cho các bảng/tab dễ nhìn */
 
     .pr-card { background: var(--pr-surface); border: 1px solid var(--pr-border); border-radius: 18px; overflow: hidden; margin-bottom: 28px; }
     .pr-card-head { padding: 18px 24px; border-bottom: 1px solid var(--pr-border); background: var(--pr-bg); display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
@@ -77,7 +77,7 @@
     [data-tab-panel="quick"] { --kt-bg: var(--color-bg); --kt-surface: var(--color-surface); --kt-border: var(--color-border);
       --kt-text: var(--color-text); --kt-muted: var(--color-text-muted); --kt-bronze: var(--color-bronze); --kt-green: #4F6F52; --kt-blue: #3B6B8C; }
 
-    .kt-grid { display: grid; grid-template-columns: 290px minmax(0, 1fr) 290px; gap: 18px; align-items: start; }
+    .kt-grid { display: grid; grid-template-columns: 330px minmax(0, 1fr) 370px; gap: 22px; align-items: start; }
     .kt-col { display: flex; flex-direction: column; gap: 20px; }
 
     .kt-card { background: var(--kt-surface); border: 1px solid var(--kt-border); border-radius: 16px; overflow: hidden; }
@@ -225,7 +225,7 @@
       .kt-print-doc .kt-sch-bar { background: #E5E8EF; }
     }
 
-    @media (max-width: 1180px) { .kt-grid { grid-template-columns: 290px minmax(0, 1fr); } .kt-grid > .kt-col:last-child { grid-column: 1 / -1; } }
+    @media (max-width: 1240px) { .kt-grid { grid-template-columns: 310px minmax(0, 1fr); } .kt-grid > .kt-col:last-child { grid-column: 1 / -1; } }
     @media (max-width: 820px) { .kt-grid { grid-template-columns: 1fr; } }
 
     [data-tab-panel="quick"] .kt-card-head { flex-wrap: wrap; }
@@ -247,10 +247,14 @@
        ưu tiên lại 2 thuộc tính mà task-manager.css áp lên (opacity/visibility). */
     .modal-overlay:not([hidden]) { opacity: 1; visibility: visible; }
 
-    .pr-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; border-bottom: 1px solid var(--pr-border); }
-    .pr-tab-btn { padding: 10px 16px; border-radius: 10px 10px 0 0; border: 1px solid transparent; border-bottom: none; background: transparent; color: var(--pr-muted); font-family: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; transition: all 0.15s; margin-bottom: -1px; }
-    .pr-tab-btn:hover { color: var(--pr-text); }
-    .pr-tab-btn.active { color: var(--pr-bronze); background: var(--pr-surface); border-color: var(--pr-border); }
+    .pr-tabs { display: flex; gap: 4px 6px; flex-wrap: wrap; margin-bottom: 24px; padding: 6px; background: var(--pr-surface); border: 1px solid var(--pr-border); border-radius: 14px; }
+    .pr-tab-btn { padding: 10px 18px; border-radius: 10px; border: 1px solid transparent; background: transparent; color: var(--pr-muted); font-family: inherit; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: background .15s, color .15s; white-space: nowrap; }
+    .pr-tab-btn:hover { color: var(--pr-text); background: color-mix(in srgb, var(--pr-bronze) 7%, transparent); }
+    .pr-tab-btn.active { color: var(--pr-bronze); background: color-mix(in srgb, var(--pr-bronze) 14%, transparent); border-color: color-mix(in srgb, var(--pr-bronze) 35%, transparent); }
+    .pr-card, .kt-card { box-shadow: 0 1px 2px rgba(0,0,0,.03); }
+    .pr-card-head { padding: 20px 28px; }
+    .pr-table th { padding: 12px 28px; }
+    .pr-table td { padding: 13px 28px; }
     .pr-tab-panel { display: none; }
     .pr-tab-panel.active { display: block; }
     @media print { .pr-tabs { display: none !important; } .pr-tab-panel { display: block !important; } }
