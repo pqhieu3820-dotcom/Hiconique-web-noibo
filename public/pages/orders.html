@@ -26,25 +26,46 @@
   <style>
     :root {
       --od-bg: var(--color-bg); --od-surface: var(--color-surface); --od-border: var(--color-border);
-      --od-text: var(--color-text); --od-muted: var(--color-text-muted); --od-bronze: var(--color-bronze);
-      --od-green: #4F6F52; --od-red: #A04848; --od-blue: #3B6B8C;
+      --od-text: var(--color-text); --od-muted: var(--color-text-muted); --od-faint: var(--color-text-faint); --od-bronze: var(--color-bronze);
+      --od-green: #4F8A5B; --od-red: #C75B5B; --od-blue: #4B7FA6; --od-amber: #C28A3A;
     }
     body { background: var(--od-bg); color: var(--od-text); font-family: 'Inter', -apple-system, sans-serif; min-height: 100vh; }
     .od-container { max-width: 1180px; }
 
-    .od-summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
-    .od-summary-card { background: var(--od-surface); border: 1px solid var(--od-border); border-radius: 14px; padding: 18px 20px; }
+    /* ---- tổng quan ---- */
+    .od-summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+    .od-summary-card { background: var(--od-surface); border: 1px solid var(--od-border); border-radius: 14px; padding: 18px 20px; position: relative; overflow: hidden; }
+    .od-summary-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--od-accent, var(--od-border)); }
     .od-summary-label { font-size: 0.6875rem; color: var(--od-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
-    .od-summary-value { font-size: 1.375rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+    .od-summary-value { font-size: 1.375rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; line-height: 1.1; }
+    .od-summary-sub { font-size: 0.75rem; color: var(--od-faint); margin-top: 6px; }
 
+    /* ---- luồng xử lý ---- */
+    .od-flow { display: flex; align-items: stretch; gap: 0; margin-bottom: 28px; background: var(--od-surface); border: 1px solid var(--od-border); border-radius: 14px; overflow: hidden; }
+    .od-step { flex: 1; padding: 14px 18px; border: none; background: none; color: inherit; text-align: left; cursor: pointer; font-family: inherit; position: relative; border-right: 1px solid var(--od-border); transition: background .15s; }
+    .od-step:last-child { border-right: none; }
+    .od-step:hover { background: color-mix(in srgb, var(--od-bronze) 7%, transparent); }
+    .od-step.on { background: color-mix(in srgb, var(--od-bronze) 12%, transparent); }
+    .od-step-n { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--od-bronze); color: #fff; font-size: 0.75rem; font-weight: 700; margin-right: 8px; }
+    .od-step-t { font-size: 0.8125rem; font-weight: 600; }
+    .od-step-d { font-size: 0.6875rem; color: var(--od-muted); margin-top: 4px; line-height: 1.4; }
+    .od-step-c { position: absolute; right: 14px; top: 12px; font: 700 1rem 'JetBrains Mono', monospace; color: var(--od-bronze); }
+
+    /* ---- thẻ chung ---- */
     .od-card { background: var(--od-surface); border: 1px solid var(--od-border); border-radius: 18px; overflow: hidden; margin-bottom: 28px; }
     .od-card-head { padding: 18px 24px; border-bottom: 1px solid var(--od-border); background: var(--od-bg); display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
     .od-card-title { font-size: 1rem; font-weight: 600; }
     .od-card-desc { font-size: 0.8125rem; color: var(--od-muted); margin-top: 4px; }
+    .od-sec { padding: 18px 24px; border-bottom: 1px solid var(--od-border); }
+    .od-sec:last-child { border-bottom: none; }
+    .od-sec-h { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; font-size: 0.8125rem; font-weight: 700; letter-spacing: .02em; }
+    .od-sec-h i { display: inline-flex; width: 22px; height: 22px; border-radius: 50%; background: var(--od-bronze); color: #fff; font-style: normal; font-size: .75rem; align-items: center; justify-content: center; }
+    .od-sec-h span { font-weight: 400; color: var(--od-muted); font-size: .75rem; }
 
     .od-btn { padding: 9px 16px; border-radius: 9px; border: none; font-family: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; }
-    .od-btn-primary { background: var(--od-bronze); color: #0B0D10; }
-    .od-btn-primary:hover { background: #C7A464; }
+    .od-btn-primary { background: var(--od-bronze); color: #fff; }
+    .od-btn-primary:hover { filter: brightness(1.08); }
+    .od-btn-primary:disabled { opacity: .5; cursor: not-allowed; }
     .od-btn-ghost { background: transparent; border: 1px solid var(--od-border); color: var(--od-text); }
     .od-btn-ghost:hover { border-color: var(--od-bronze); color: var(--od-bronze); }
     .od-btn-danger { background: transparent; border: 1px solid var(--od-border); color: var(--od-red); }
@@ -52,47 +73,87 @@
     .od-btn-sm { padding: 6px 11px; font-size: 0.75rem; border-radius: 7px; }
     .od-toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
 
-    .od-client-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; padding: 20px 24px; border-bottom: 1px solid var(--od-border); }
+    .od-grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .od-grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
     .od-field-label { display: block; font-size: 0.6875rem; color: var(--od-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
-    .od-input, .od-select { width: 100%; padding: 8px 10px; border-radius: 7px; border: 1px solid var(--od-border); background: var(--od-bg); color: var(--od-text); font-family: inherit; font-size: 0.8125rem; }
+    .od-input, .od-select { width: 100%; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--od-border); background: var(--od-bg); color: var(--od-text); font-family: inherit; font-size: 0.8125rem; box-sizing: border-box; }
+    .od-input:focus, .od-select:focus { outline: none; border-color: var(--od-bronze); }
     .od-input.mono { font-family: 'JetBrains Mono', monospace; }
+    .od-input[readonly] { opacity: .75; }
 
     .od-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
-    .od-table th { text-align: left; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--od-muted); font-weight: 600; padding: 10px 24px; background: var(--od-bg); border-bottom: 1px solid var(--od-border); }
+    .od-table th { text-align: left; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--od-muted); font-weight: 600; padding: 10px 16px; background: var(--od-bg); border-bottom: 1px solid var(--od-border); }
     .od-table th.num, .od-table td.num { text-align: right; }
-    .od-table td { padding: 10px 24px; border-bottom: 1px solid var(--od-border); vertical-align: middle; }
+    .od-table td { padding: 10px 16px; border-bottom: 1px solid var(--od-border); vertical-align: middle; }
+    #odOrderRows td:first-child { white-space: nowrap; }
     .od-table tr:last-child td { border-bottom: none; }
     .od-amount { font-family: 'JetBrains Mono', monospace; color: var(--od-bronze); font-weight: 600; white-space: nowrap; }
     .od-empty { padding: 32px 24px; text-align: center; color: var(--od-muted); font-size: 0.875rem; }
 
-    .od-totals { padding: 18px 24px; }
-    .od-totals-row { display: flex; justify-content: flex-end; align-items: center; gap: 12px; padding: 6px 0; font-size: 0.8125rem; color: var(--od-muted); }
+    .od-totals { padding: 6px 0 0; }
+    .od-totals-row { display: flex; justify-content: flex-end; align-items: center; gap: 12px; padding: 5px 0; font-size: 0.8125rem; color: var(--od-muted); }
     .od-totals-row.grand { font-size: 1.125rem; font-weight: 700; color: var(--od-bronze); border-top: 1px solid var(--od-border); margin-top: 8px; padding-top: 14px; }
     .od-totals-row input { width: 70px; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--od-border); background: var(--od-bg); color: var(--od-text); font-family: 'JetBrains Mono', monospace; font-size: 0.8125rem; text-align: right; }
 
-    .od-status { font-size: 0.6875rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; border: 1px solid; }
-    .od-status.draft { color: var(--od-muted); border-color: var(--od-border); background: var(--od-bg); }
-    .od-status.confirmed { color: var(--od-blue); border-color: color-mix(in srgb, var(--od-blue) 40%, transparent); background: color-mix(in srgb, var(--od-blue) 10%, transparent); }
-    .od-status.paid { color: var(--od-green); border-color: color-mix(in srgb, var(--od-green) 40%, transparent); background: color-mix(in srgb, var(--od-green) 10%, transparent); }
-    .od-status.cancelled { color: var(--od-red); border-color: color-mix(in srgb, var(--od-red) 40%, transparent); background: color-mix(in srgb, var(--od-red) 10%, transparent); }
+    /* thanh toán & công nợ */
+    .od-pay { display: grid; grid-template-columns: 1.15fr 1fr; gap: 20px; }
+    .od-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .od-chip { padding: 5px 11px; border-radius: 999px; border: 1px solid var(--od-border); background: var(--od-bg); color: var(--od-muted); font: 600 .75rem Inter, sans-serif; cursor: pointer; }
+    .od-chip:hover { border-color: var(--od-bronze); color: var(--od-bronze); }
+    .od-split { display: flex; height: 10px; border-radius: 6px; overflow: hidden; background: var(--od-bg); border: 1px solid var(--od-border); margin: 10px 0 8px; }
+    .od-split i { display: block; height: 100%; transition: width .2s; }
+    .od-split .c { background: var(--od-green); } .od-split .d { background: var(--od-amber); }
+    .od-preview { padding: 14px 16px; border: 1px dashed var(--od-bronze); border-radius: 12px; background: color-mix(in srgb, var(--od-bronze) 5%, transparent); font-size: .8125rem; line-height: 1.7; }
+    .od-preview b { font-family: 'JetBrains Mono', monospace; }
+    .od-warn { color: var(--od-red); font-size: .75rem; margin-top: 6px; min-height: 1em; }
 
+    /* trạng thái */
+    .od-status { font-size: 0.6875rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; border: 1px solid; display: inline-block; }
+    .od-status.draft { color: var(--od-muted); border-color: var(--od-border); background: var(--od-bg); }
+    .od-status.pending { color: var(--od-amber); border-color: color-mix(in srgb, var(--od-amber) 45%, transparent); background: color-mix(in srgb, var(--od-amber) 10%, transparent); }
+    .od-status.debt { color: var(--od-blue); border-color: color-mix(in srgb, var(--od-blue) 40%, transparent); background: color-mix(in srgb, var(--od-blue) 10%, transparent); }
+    .od-status.paid { color: var(--od-green); border-color: color-mix(in srgb, var(--od-green) 40%, transparent); background: color-mix(in srgb, var(--od-green) 10%, transparent); }
+    .od-status.rejected, .od-status.cancelled { color: var(--od-red); border-color: color-mix(in srgb, var(--od-red) 40%, transparent); background: color-mix(in srgb, var(--od-red) 10%, transparent); }
+    .od-prog { width: 110px; height: 6px; border-radius: 4px; background: var(--od-bg); border: 1px solid var(--od-border); overflow: hidden; margin-top: 5px; }
+    .od-prog i { display: block; height: 100%; background: var(--od-green); }
+
+    /* danh sách */
+    .od-listbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 14px 24px; border-bottom: 1px solid var(--od-border); }
+    .od-tabs { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+    .od-tab { padding: 7px 13px; border-radius: 999px; border: 1px solid var(--od-border); background: var(--od-bg); color: var(--od-muted); font: 600 .75rem Inter, sans-serif; cursor: pointer; }
+    .od-tab.on { background: var(--od-bronze); border-color: var(--od-bronze); color: #fff; }
+    .od-tab b { font-family: 'JetBrains Mono', monospace; margin-left: 4px; opacity: .85; }
+    .od-search { width: 220px; }
     .od-detail-row { display: none; }
     .od-detail-row.open { display: table-row; }
-    .od-detail-box { padding: 16px 24px; background: var(--od-bg); font-size: 0.8125rem; }
-    .od-detail-items { width: 100%; border-collapse: collapse; margin-top: 8px; }
-    .od-detail-items td, .od-detail-items th { padding: 6px 10px; border-bottom: 1px solid var(--od-border); }
-    .od-linked-tag { font-size: 0.6875rem; color: var(--od-green); margin-top: 6px; }
+    .od-detail-box { padding: 18px 24px; background: var(--od-bg); font-size: 0.8125rem; display: grid; grid-template-columns: 1.6fr 1fr; gap: 24px; }
+    .od-detail-items { width: 100%; border-collapse: collapse; }
+    .od-detail-items td, .od-detail-items th { padding: 6px 10px; border-bottom: 1px solid var(--od-border); text-align: left; }
+    .od-detail-items th.num, .od-detail-items td.num { text-align: right; }
+    .od-tl { list-style: none; margin: 0; padding: 0; }
+    .od-tl li { position: relative; padding: 0 0 14px 22px; color: var(--od-muted); font-size: .75rem; line-height: 1.5; }
+    .od-tl li::before { content: ""; position: absolute; left: 4px; top: 4px; width: 9px; height: 9px; border-radius: 50%; background: var(--od-border); }
+    .od-tl li::after { content: ""; position: absolute; left: 8px; top: 15px; bottom: -2px; width: 1px; background: var(--od-border); }
+    .od-tl li:last-child::after { display: none; }
+    .od-tl li.done::before { background: var(--od-green); } .od-tl li.cur::before { background: var(--od-amber); } .od-tl li.bad::before { background: var(--od-red); }
+    .od-tl b { color: var(--od-text); font-weight: 600; }
+    .od-note-bad { padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--od-red) 40%, transparent); border-radius: 8px; color: var(--od-red); font-size: .75rem; margin-top: 8px; }
 
     .od-print-invoice { display: none; }
 
     @media (max-width: 1000px) {
       .od-summary-grid { grid-template-columns: repeat(2, 1fr); }
-      .od-client-grid { grid-template-columns: 1fr 1fr; }
+      .od-grid4 { grid-template-columns: 1fr 1fr; } .od-grid3 { grid-template-columns: 1fr 1fr; }
+      .od-pay { grid-template-columns: 1fr; }
+      .od-flow { flex-wrap: wrap; } .od-step { flex: 1 1 45%; border-bottom: 1px solid var(--od-border); }
+      .od-detail-box { grid-template-columns: 1fr; }
       .od-table thead { display: none; }
       .od-table tr:not(.od-detail-row) { display: grid; grid-template-columns: 1fr; row-gap: 4px; padding: 10px 0; }
-      .od-table td { border-bottom: none; padding: 2px 24px; }
+      .od-table td { border-bottom: none; padding: 2px 16px; }
       .od-table tr:not(.od-detail-row):not(:last-child) { border-bottom: 1px solid var(--od-border); }
+      .od-search { width: 100%; }
     }
+    @media (max-width: 560px) { .od-grid4, .od-grid3 { grid-template-columns: 1fr; } .od-summary-grid { grid-template-columns: 1fr 1fr; } .od-step { flex: 1 1 100%; } }
 
     /* In hoá đơn PDF: chỉ hiện bản in sạch, ẩn toàn bộ UI còn lại. */
     @media print {
@@ -104,7 +165,7 @@
       .od-print-invoice th.num, .od-print-invoice td.num { text-align: right; }
       .od-print-invoice h1 { font-size: 20px; margin: 0 0 4px; }
       .od-print-invoice .od-print-meta { font-size: 13px; color: #444; margin-bottom: 4px; }
-      .od-print-invoice .od-print-totals { margin-top: 12px; width: 320px; margin-left: auto; }
+      .od-print-invoice .od-print-totals { margin-top: 12px; width: 340px; margin-left: auto; }
       .od-print-invoice .od-print-totals div { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
       .od-print-invoice .od-print-totals div.grand { font-weight: 700; font-size: 15px; border-top: 1px solid #999; margin-top: 6px; padding-top: 8px; }
     }
@@ -141,59 +202,85 @@
   <div class="subpage-inner od-container">
     <p class="eyebrow">— Đơn hàng &amp; Hóa đơn</p>
     <h1 class="subpage-title">Đơn hàng <span class="subpage-title-italic">&amp; hóa đơn</span></h1>
-    <p class="subpage-lede">Ai cũng tạo được đơn hàng cho khách của mình — nhập hạng mục, số lượng, đơn giá tự tính tổng, xuất hóa đơn Excel/PDF. Khi đánh dấu "Đã thu tiền", hệ thống tự động ghi một khoản Doanh thu tương ứng vào Sổ tài chính công ty.</p>
+    <p class="subpage-lede">Lập đơn hàng cho khách của mình, chọn luôn phần <b>thu ngay</b> và phần <b>công nợ</b> rồi gửi kế toán. Kế toán duyệt trong Sổ tài chính → hệ thống tự ghi <b>phiếu thu</b> và <b>công nợ phải thu</b> tương ứng; khi thu nợ xong, đơn tự chuyển "Đã thu đủ".</p>
 
     <div class="od-summary-grid" id="odSummaryGrid"></div>
+    <div class="od-flow" id="odFlow"></div>
 
-    <div class="od-card">
+    <div class="od-card" id="odFormCard">
       <div class="od-card-head">
         <div>
           <div class="od-card-title" id="odFormTitle">Tạo đơn hàng mới</div>
-          <div class="od-card-desc">Chọn hạng mục từ Bảng giá dịch vụ hoặc nhập tay — tổng tiền tự nhảy theo số lượng và đơn giá.</div>
+          <div class="od-card-desc" id="odFormDesc">Điền khách hàng → hạng mục → cách thanh toán. Tổng tiền và công nợ tự tính.</div>
         </div>
         <div class="od-toolbar">
           <button class="od-btn od-btn-ghost od-btn-sm" id="odResetFormBtn" hidden>Huỷ sửa</button>
-          <button class="od-btn od-btn-ghost od-btn-sm" id="odAddRowBtn">+ Thêm dòng</button>
         </div>
       </div>
 
-      <div class="od-client-grid">
-        <div><span class="od-field-label">Tên khách hàng</span><input type="text" class="od-input" id="odClientName" placeholder="Anh/Chị..."></div>
-        <div><span class="od-field-label">SĐT khách hàng</span><input type="text" class="od-input" id="odClientPhone" placeholder="09xx xxx xxx"></div>
-        <div><span class="od-field-label">Địa chỉ</span><input type="text" class="od-input" id="odClientAddress" placeholder="Địa chỉ giao hàng/thi công"></div>
-        <div><span class="od-field-label">Dự án liên quan</span><select class="od-select" id="odProjectId"><option value="">— Không gắn dự án —</option></select></div>
+      <div class="od-sec">
+        <div class="od-sec-h"><i>1</i>Khách hàng <span>· ai mua, ở đâu, thuộc dự án nào</span></div>
+        <div class="od-grid4">
+          <div><span class="od-field-label">Tên khách hàng *</span><input type="text" class="od-input" id="odClientName" placeholder="Anh/Chị..."></div>
+          <div><span class="od-field-label">SĐT khách hàng</span><input type="text" class="od-input" id="odClientPhone" placeholder="09xx xxx xxx"></div>
+          <div><span class="od-field-label">Địa chỉ</span><input type="text" class="od-input" id="odClientAddress" placeholder="Địa chỉ giao hàng/thi công"></div>
+          <div><span class="od-field-label">Dự án liên quan</span><select class="od-select" id="odProjectId"><option value="">— Không gắn dự án —</option></select></div>
+        </div>
       </div>
 
-      <table class="od-table">
-        <thead><tr><th style="width:20%;">Danh mục có sẵn</th><th>Tên hạng mục</th><th style="width:10%;">Đơn vị</th><th class="num" style="width:9%;">SL</th><th class="num" style="width:14%;">Đơn giá</th><th class="num" style="width:14%;">Thành tiền</th><th></th></tr></thead>
-        <tbody id="odItemRows"></tbody>
-      </table>
-      <div style="padding:14px 24px;"><button class="od-btn od-btn-ghost od-btn-sm" id="odAddRowBtn2">+ Thêm dòng</button></div>
-
-      <div class="od-totals">
-        <div class="od-totals-row"><span>Tạm tính</span><span class="od-amount" id="odSubtotal">0</span></div>
-        <div class="od-totals-row"><span>Giảm giá</span><span><input type="number" min="0" max="100" step="1" id="odDiscountPercent" value="0"> %</span></div>
-        <div class="od-totals-row"><span>VAT</span><span><input type="number" min="0" max="100" step="1" id="odVatPercent" value="0"> %</span></div>
-        <div class="od-totals-row grand"><span>Tổng cộng</span><span class="od-amount" id="odGrandTotal">0</span></div>
+      <div class="od-sec" style="padding-left:0;padding-right:0;">
+        <div class="od-sec-h" style="padding:0 24px;"><i>2</i>Hạng mục <span>· chọn từ Bảng giá dịch vụ hoặc nhập tay</span><button class="od-btn od-btn-ghost od-btn-sm" id="odAddRowBtn" style="margin-left:auto;">+ Thêm dòng</button></div>
+        <table class="od-table">
+          <thead><tr><th style="width:20%;">Danh mục có sẵn</th><th>Tên hạng mục</th><th style="width:10%;">Đơn vị</th><th class="num" style="width:9%;">SL</th><th class="num" style="width:14%;">Đơn giá</th><th class="num" style="width:14%;">Thành tiền</th><th></th></tr></thead>
+          <tbody id="odItemRows"></tbody>
+        </table>
+        <div style="padding:12px 24px 0;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:flex-start;">
+          <button class="od-btn od-btn-ghost od-btn-sm" id="odAddRowBtn2">+ Thêm dòng</button>
+          <div class="od-totals" style="min-width:300px;">
+            <div class="od-totals-row"><span>Tạm tính</span><span class="od-amount" id="odSubtotal">0</span></div>
+            <div class="od-totals-row"><span>Giảm giá</span><span><input type="number" min="0" max="100" step="1" id="odDiscountPercent" value="0"> %</span></div>
+            <div class="od-totals-row"><span>VAT</span><span><input type="number" min="0" max="100" step="1" id="odVatPercent" value="0"> %</span></div>
+            <div class="od-totals-row grand"><span>Tổng cộng</span><span class="od-amount" id="odGrandTotal">0</span></div>
+          </div>
+        </div>
       </div>
 
-      <div class="od-client-grid" style="border-top:1px solid var(--od-border);border-bottom:none;">
-        <div><span class="od-field-label">Trạng thái</span><select class="od-select" id="odStatus">
-          <option value="draft">Nháp</option>
-          <option value="confirmed">Đã xác nhận</option>
-          <option value="paid">Đã thanh toán</option>
-          <option value="cancelled">Đã huỷ</option>
-        </select></div>
-        <div><span class="od-field-label">Phương thức thanh toán</span><input type="text" class="od-input" id="odPaymentMethod" placeholder="Tiền mặt / Chuyển khoản..."></div>
-        <div style="grid-column: span 2;"><span class="od-field-label">Ghi chú</span><input type="text" class="od-input" id="odNote" placeholder="Ghi chú thêm về đơn hàng..."></div>
+      <div class="od-sec">
+        <div class="od-sec-h"><i>3</i>Thanh toán &amp; công nợ <span>· phân loại ngay để kế toán chỉ cần duyệt</span></div>
+        <div class="od-pay">
+          <div>
+            <div class="od-grid3">
+              <div><span class="od-field-label">Phương thức thanh toán</span><select class="od-select" id="odPaymentMethod"><option>Tiền mặt</option><option>Chuyển khoản</option><option>Quẹt thẻ / ví điện tử</option><option>Khác</option></select></div>
+              <div><span class="od-field-label">Thu ngay (đã nhận)</span><input type="text" inputmode="numeric" class="od-input mono" id="odCollected" data-money-input value="0"></div>
+              <div><span class="od-field-label">Công nợ còn lại</span><input type="text" class="od-input mono" id="odDebt" readonly value="0"></div>
+            </div>
+            <div class="od-chips" id="odChips"><button type="button" class="od-chip" data-pct="100">Thu đủ</button><button type="button" class="od-chip" data-pct="50">Cọc 50%</button><button type="button" class="od-chip" data-pct="30">Cọc 30%</button><button type="button" class="od-chip" data-pct="0">Chưa thu (nợ toàn bộ)</button></div>
+            <div class="od-split" id="odSplit"><i class="c" style="width:0"></i><i class="d" style="width:0"></i></div>
+            <div class="od-grid3" id="odDebtFields">
+              <div><span class="od-field-label">Loại công nợ</span><select class="od-select" id="odDebtKind"></select></div>
+              <div><span class="od-field-label">Hạn thanh toán nợ</span><input type="date" class="od-input" id="odDebtDue"></div>
+              <div><span class="od-field-label">Danh mục doanh thu</span><select class="od-select" id="odRevCat"></select></div>
+            </div>
+            <div class="od-warn" id="odWarn"></div>
+          </div>
+          <div>
+            <div class="od-preview" id="odPreview"></div>
+            <div style="margin-top:12px;"><span class="od-field-label">Ghi chú</span><input type="text" class="od-input" id="odNote" placeholder="Ghi chú thêm về đơn hàng..."></div>
+          </div>
+        </div>
       </div>
-      <div style="padding:0 24px 20px;"><button class="od-btn od-btn-primary" id="odSaveBtn">Lưu đơn hàng</button></div>
+
+      <div class="od-sec" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div style="font-size:.75rem;color:var(--od-muted);" id="odFormHint">Lưu nháp để làm tiếp sau, hoặc gửi kế toán để duyệt ghi sổ.</div>
+        <div class="od-toolbar"><button class="od-btn od-btn-ghost" id="odSaveDraftBtn">Lưu nháp</button><button class="od-btn od-btn-primary" id="odSubmitBtn">Lập hóa đơn &amp; gửi kế toán</button></div>
+      </div>
     </div>
 
     <div class="od-card">
-      <div class="od-card-head"><div class="od-card-title">Danh sách đơn hàng</div></div>
+      <div class="od-card-head"><div><div class="od-card-title">Danh sách đơn hàng</div><div class="od-card-desc">Theo dõi từng đơn từ lúc lập tới khi thu đủ tiền.</div></div></div>
+      <div class="od-listbar"><div class="od-tabs" id="odTabs"></div><input type="search" class="od-input od-search" id="odSearch" placeholder="Tìm số ĐH, khách hàng…"></div>
       <table class="od-table">
-        <thead><tr><th>Số ĐH</th><th>Khách hàng</th><th>Ngày tạo</th><th>Người tạo</th><th class="num">Tổng tiền</th><th>Trạng thái</th><th></th></tr></thead>
+        <thead><tr><th>Số ĐH</th><th>Khách hàng</th><th>Người lập</th><th class="num">Tổng tiền</th><th>Đã thu / công nợ</th><th>Trạng thái</th><th></th></tr></thead>
         <tbody id="odOrderRows"></tbody>
       </table>
     </div>
@@ -212,6 +299,7 @@
     'use strict';
 
     function fmt(n) { return Math.round(Number(n) || 0).toLocaleString('vi-VN'); }
+    function vnDate(s) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || '')); return m ? m[3] + '/' + m[2] + '/' + m[1] : (s || ''); }
     function getUser() {
       var session = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
       if (!session) return null;
@@ -223,28 +311,34 @@
         return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
       });
     }
+    function memberName(id) { var m = id ? TaskManager.getMember(id) : null; return m ? m.name : (id || '—'); }
+    function todayStr() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 
-    var STATUS_LABEL = { draft: 'Nháp', confirmed: 'Đã xác nhận', paid: 'Đã thanh toán', cancelled: 'Đã huỷ' };
+    var PHASE_LABEL = { draft: 'Nháp', pending: 'Chờ kế toán duyệt', rejected: 'Bị trả lại', debt: 'Đã ghi sổ · còn nợ', paid: 'Đã thu đủ', cancelled: 'Đã huỷ' };
     var user;
     var editingOrderId = null;
+    var filter = 'all', query = '';
+    var collectedManual = false;
 
-    // ---------- Dòng dự án cho dropdown ----------
+    // ---------- Dropdown ----------
     function renderProjectOptions() {
       var sel = document.getElementById('odProjectId');
       var current = sel.value;
-      var projects = TaskManager.getProjects();
       sel.innerHTML = '<option value="">— Không gắn dự án —</option>' +
-        projects.map(function (p) { return '<option value="' + p.id + '"' + (p.id === current ? ' selected' : '') + '>' + escapeHtml(p.name) + '</option>'; }).join('');
+        TaskManager.getProjects().map(function (p) { return '<option value="' + p.id + '"' + (p.id === current ? ' selected' : '') + '>' + escapeHtml(p.name) + '</option>'; }).join('');
+    }
+    function fillStaticSelects() {
+      document.getElementById('odDebtKind').innerHTML = TaskManager.DEBT_KINDS.map(function (k) { return '<option>' + escapeHtml(k) + '</option>'; }).join('');
+      document.getElementById('odRevCat').innerHTML = TaskManager.REVENUE_CATEGORIES.map(function (k) { return '<option>' + escapeHtml(k) + '</option>'; }).join('');
     }
 
-    // ---------- Dòng hạng mục trong form ----------
+    // ---------- Dòng hạng mục ----------
     var itemRowsEl = document.getElementById('odItemRows');
     var rowSeq = 0;
 
     function catalogOptionsHtml() {
-      var items = TaskManager.getPriceCatalog();
       var html = '<option value="">— Nhập tay —</option>';
-      items.forEach(function (it) {
+      TaskManager.getPriceCatalog().forEach(function (it) {
         html += '<option value="' + it.id + '">' + escapeHtml(it.category ? it.category + ' · ' + it.name : it.name) + '</option>';
       });
       return html;
@@ -252,9 +346,8 @@
 
     function addItemRow(prefill) {
       prefill = prefill || {};
-      var id = 'ir' + (++rowSeq);
       var tr = document.createElement('tr');
-      tr.setAttribute('data-item-row', id);
+      tr.setAttribute('data-item-row', 'ir' + (++rowSeq));
       tr.innerHTML =
         '<td><select class="od-select" data-i="catalog">' + catalogOptionsHtml() + '</select></td>' +
         '<td><input class="od-input" data-i="name" value="' + escapeHtml(prefill.name || '') + '" placeholder="Tên hạng mục"></td>' +
@@ -281,6 +374,7 @@
       return items;
     }
 
+    var lastTotal = 0;
     function recalcTotals() {
       var subtotal = 0;
       itemRowsEl.querySelectorAll('tr[data-item-row]').forEach(function (tr) {
@@ -298,8 +392,50 @@
       var grandTotal = afterDiscount + vatAmount;
       document.getElementById('odSubtotal').textContent = fmt(subtotal);
       document.getElementById('odGrandTotal').textContent = fmt(grandTotal);
+      var prev = lastTotal; lastTotal = grandTotal;
+      // chưa tự sửa "Thu ngay" thì mặc định = thu đủ theo tổng mới
+      if (!collectedManual) document.getElementById('odCollected').value = HiconiqueMoney.format(Math.round(grandTotal));
+      recalcPay();
       return { subtotal: subtotal, discountPct: discountPct, discountAmount: discountAmount, vatPct: vatPct, vatAmount: vatAmount, grandTotal: grandTotal };
     }
+
+    // ---------- Thanh toán & công nợ ----------
+    function accountOf(method) { return /tiền mặt/i.test(method) ? '111' : '112'; }
+    function payState() {
+      var total = Math.round(lastTotal), col = HiconiqueMoney.parse(document.getElementById('odCollected').value);
+      var over = col > total;
+      if (over) col = total;
+      return { total: total, collected: col, debt: Math.max(0, total - col), over: over };
+    }
+    function recalcPay() {
+      var s = payState();
+      document.getElementById('odDebt').value = fmt(s.debt);
+      var pc = s.total ? Math.round(s.collected / s.total * 100) : 0;
+      document.getElementById('odSplit').innerHTML = '<i class="c" style="width:' + pc + '%"></i><i class="d" style="width:' + (s.total ? 100 - pc : 0) + '%"></i>';
+      var hasDebt = s.debt > 0;
+      var df = document.getElementById('odDebtFields');
+      document.getElementById('odDebtKind').disabled = !hasDebt;
+      document.getElementById('odDebtDue').disabled = !hasDebt;
+      if (hasDebt && !document.getElementById('odDebtDue').value) { var d = new Date(); d.setDate(d.getDate() + 15); document.getElementById('odDebtDue').value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+      var method = document.getElementById('odPaymentMethod').value, acc = accountOf(method);
+      var cat = document.getElementById('odRevCat').value;
+      document.getElementById('odPreview').innerHTML =
+        '<b style="font-family:Inter">Khi kế toán duyệt, hệ thống sẽ ghi:</b><br>' +
+        (s.collected > 0 ? '① <b>Phiếu thu ' + fmt(s.collected) + ' ₫</b> — TK ' + acc + (acc === '111' ? ' (tiền mặt)' : ' (ngân hàng)') + ' · Doanh thu «' + escapeHtml(cat) + '»<br>' : '① <span style="color:var(--od-muted)">Không có phiếu thu (chưa thu tiền)</span><br>') +
+        (hasDebt ? '② <b>Công nợ phải thu ' + fmt(s.debt) + ' ₫</b> — ' + escapeHtml(document.getElementById('odDebtKind').value) + ' · hạn ' + vnDate(document.getElementById('odDebtDue').value) : '② <span style="color:var(--od-green)">Không còn công nợ — thu đủ</span>');
+      var w = '';
+      if (s.over) w = 'Số thu ngay không được lớn hơn tổng tiền — đã đưa về bằng tổng.';
+      else if (hasDebt && !document.getElementById('odDebtDue').value) w = 'Nhập hạn thanh toán cho phần công nợ.';
+      document.getElementById('odWarn').textContent = w;
+    }
+    document.getElementById('odChips').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-pct]'); if (!b) return;
+      collectedManual = true;
+      document.getElementById('odCollected').value = HiconiqueMoney.format(Math.round(lastTotal * Number(b.getAttribute('data-pct')) / 100));
+      recalcPay();
+    });
+    document.getElementById('odCollected').addEventListener('input', function () { collectedManual = true; recalcPay(); });
+    ['odPaymentMethod', 'odDebtKind', 'odDebtDue', 'odRevCat'].forEach(function (id) { document.getElementById(id).addEventListener('input', recalcPay); document.getElementById(id).addEventListener('change', recalcPay); });
 
     itemRowsEl.addEventListener('input', function (e) {
       if (e.target.matches('[data-i="qty"], [data-i="price"]')) recalcTotals();
@@ -322,26 +458,28 @@
       btn.closest('tr').remove();
       recalcTotals();
     });
-    ['odDiscountPercent', 'odVatPercent'].forEach(function (id) {
-      document.getElementById(id).addEventListener('input', recalcTotals);
-    });
+    ['odDiscountPercent', 'odVatPercent'].forEach(function (id) { document.getElementById(id).addEventListener('input', recalcTotals); });
     document.getElementById('odAddRowBtn').addEventListener('click', function () { addItemRow(); });
     document.getElementById('odAddRowBtn2').addEventListener('click', function () { addItemRow(); });
 
     // ---------- Form: reset / load để sửa ----------
     function resetForm() {
-      editingOrderId = null;
+      editingOrderId = null; collectedManual = false; lastTotal = 0;
       document.getElementById('odFormTitle').textContent = 'Tạo đơn hàng mới';
+      document.getElementById('odFormDesc').textContent = 'Điền khách hàng → hạng mục → cách thanh toán. Tổng tiền và công nợ tự tính.';
       document.getElementById('odResetFormBtn').hidden = true;
-      document.getElementById('odSaveBtn').textContent = 'Lưu đơn hàng';
+      document.getElementById('odSaveDraftBtn').textContent = 'Lưu nháp';
       document.getElementById('odClientName').value = '';
       document.getElementById('odClientPhone').value = '';
       document.getElementById('odClientAddress').value = '';
       document.getElementById('odProjectId').value = '';
       document.getElementById('odDiscountPercent').value = 0;
       document.getElementById('odVatPercent').value = 0;
-      document.getElementById('odStatus').value = 'draft';
-      document.getElementById('odPaymentMethod').value = '';
+      document.getElementById('odPaymentMethod').value = 'Tiền mặt';
+      document.getElementById('odCollected').value = '0';
+      document.getElementById('odDebtKind').selectedIndex = 0;
+      document.getElementById('odDebtDue').value = '';
+      document.getElementById('odRevCat').selectedIndex = 0;
       document.getElementById('odNote').value = '';
       itemRowsEl.innerHTML = '';
       addItemRow();
@@ -350,34 +488,41 @@
     function loadOrderIntoForm(order) {
       editingOrderId = order.id;
       document.getElementById('odFormTitle').textContent = 'Sửa đơn hàng ' + (order.orderNumber || '');
+      document.getElementById('odFormDesc').textContent = TaskManager.orderPhase(order) === 'rejected' && order.financeNote ? 'Kế toán trả lại: ' + order.financeNote : 'Chỉnh sửa rồi lưu nháp hoặc gửi kế toán.';
       document.getElementById('odResetFormBtn').hidden = false;
-      document.getElementById('odSaveBtn').textContent = 'Cập nhật đơn hàng';
+      document.getElementById('odSaveDraftBtn').textContent = 'Cập nhật nháp';
       document.getElementById('odClientName').value = order.clientName || '';
       document.getElementById('odClientPhone').value = order.clientPhone || '';
       document.getElementById('odClientAddress').value = order.clientAddress || '';
       document.getElementById('odProjectId').value = order.projectId || '';
       document.getElementById('odDiscountPercent').value = order.discountPercent || 0;
       document.getElementById('odVatPercent').value = order.vatPercent || 0;
-      document.getElementById('odStatus').value = order.status || 'draft';
-      document.getElementById('odPaymentMethod').value = order.paymentMethod || '';
+      document.getElementById('odPaymentMethod').value = order.paymentMethod || 'Tiền mặt';
       document.getElementById('odNote').value = order.note || '';
+      if (order.debtKind) document.getElementById('odDebtKind').value = order.debtKind;
+      if (order.revenueCategory) document.getElementById('odRevCat').value = order.revenueCategory;
+      document.getElementById('odDebtDue').value = order.debtDueDate ? String(order.debtDueDate).slice(0, 10) : '';
       itemRowsEl.innerHTML = '';
+      collectedManual = true;
       var items = Array.isArray(order.items) ? order.items : [];
       if (items.length === 0) addItemRow();
       items.forEach(function (it) { addItemRow(it); });
-      recalcTotals();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      var tot = recalcTotals();
+      document.getElementById('odCollected').value = HiconiqueMoney.format(order.collectedAmount != null && order.collectedAmount !== '' ? Number(order.collectedAmount) || 0 : Math.round(tot.grandTotal));
+      recalcPay();
+      document.getElementById('odFormCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     document.getElementById('odResetFormBtn').addEventListener('click', resetForm);
 
-    document.getElementById('odSaveBtn').addEventListener('click', function () {
+    function collectFormData() {
       var clientName = document.getElementById('odClientName').value.trim();
       var items = readItemRows();
-      if (!clientName) { alert('Nhập tên khách hàng.'); return; }
-      if (items.length === 0) { alert('Thêm ít nhất 1 hạng mục.'); return; }
-      var totals = recalcTotals();
-      var data = {
+      if (!clientName) { alert('Nhập tên khách hàng.'); return null; }
+      if (items.length === 0) { alert('Thêm ít nhất 1 hạng mục.'); return null; }
+      var totals = recalcTotals(), pay = payState();
+      var method = document.getElementById('odPaymentMethod').value;
+      return {
         clientName: clientName,
         clientPhone: document.getElementById('odClientPhone').value.trim(),
         clientAddress: document.getElementById('odClientAddress').value.trim(),
@@ -389,40 +534,75 @@
         vatPercent: totals.vatPct,
         vatAmount: totals.vatAmount,
         totalAmount: totals.grandTotal,
-        status: document.getElementById('odStatus').value,
-        paymentMethod: document.getElementById('odPaymentMethod').value.trim(),
+        paymentMethod: method,
+        account: accountOf(method),
+        collectedAmount: pay.collected,
+        debtAmount: pay.debt,
+        debtKind: document.getElementById('odDebtKind').value,
+        debtDueDate: pay.debt > 0 ? document.getElementById('odDebtDue').value : '',
+        revenueCategory: document.getElementById('odRevCat').value,
         note: document.getElementById('odNote').value.trim()
       };
-      var wasPaidBefore = false;
-      if (editingOrderId) {
-        var existing = TaskManager.getOrders().find(function (o) { return o.id === editingOrderId; });
-        wasPaidBefore = existing && existing.status === 'paid';
-        TaskManager.updateOrder(editingOrderId, data, user);
-        if (data.status === 'paid' && !wasPaidBefore) TaskManager.markOrderPaid(editingOrderId, user);
-      } else {
-        var created = TaskManager.createOrder(data, user);
-        if (created && data.status === 'paid') TaskManager.markOrderPaid(created.id, user);
-      }
-      resetForm();
-      renderAll();
-    });
+    }
 
-    // ---------- Danh sách đơn hàng ----------
+    function save(submit) {
+      var data = collectFormData(); if (!data) return;
+      if (submit && data.debtAmount > 0 && !data.debtDueDate) { alert('Nhập hạn thanh toán cho phần công nợ trước khi gửi kế toán.'); return; }
+      var id = editingOrderId;
+      if (id) {
+        data.status = 'draft'; data.financeStatus = ''; data.financeNote = '';
+        if (!TaskManager.updateOrder(id, data, user)) { alert('Không sửa được đơn này.'); return; }
+      } else {
+        data.status = 'draft';
+        var created = TaskManager.createOrder(data, user);
+        if (!created) { alert('Không tạo được đơn hàng.'); return; }
+        id = created.id;
+      }
+      if (submit) TaskManager.submitOrderToFinance(id, user);
+      resetForm(); renderAll();
+      if (submit) { filter = 'pending'; renderAll(); toast('Đã gửi kế toán — chờ duyệt ghi sổ.'); } else toast('Đã lưu nháp.');
+    }
+    document.getElementById('odSaveDraftBtn').addEventListener('click', function () { save(false); });
+    document.getElementById('odSubmitBtn').addEventListener('click', function () { save(true); });
+
+    function toast(msg) {
+      var el = document.createElement('div');
+      el.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:700;max-width:420px;padding:12px 18px;background:var(--color-surface);border:1px solid var(--color-border);border-left:4px solid var(--color-bronze);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);font-size:.875rem;color:var(--color-text);';
+      el.textContent = msg; document.body.appendChild(el); setTimeout(function () { el.remove(); }, 3200);
+    }
+
+    // ---------- Tổng quan + luồng ----------
+    function phaseOf(o) { return TaskManager.orderPhase(o); }
     function renderSummary() {
       var orders = TaskManager.getOrders();
-      var thisMonth = new Date().toISOString().slice(0, 7);
-      var paid = orders.filter(function (o) { return o.status === 'paid'; });
-      var pending = orders.filter(function (o) { return o.status === 'confirmed' || o.status === 'draft'; });
-      var revenueThisMonth = paid.filter(function (o) { return (o.updatedAt || o.createdAt || '').slice(0, 7) === thisMonth; })
-        .reduce(function (s, o) { return s + (Number(o.totalAmount) || 0); }, 0);
-      var totalPaidAmount = paid.reduce(function (s, o) { return s + (Number(o.totalAmount) || 0); }, 0);
-
+      var thisMonth = todayStr().slice(0, 7);
+      var pend = orders.filter(function (o) { return phaseOf(o) === 'pending'; });
+      var debt = orders.filter(function (o) { return phaseOf(o) === 'debt'; });
+      var sum = function (arr, f) { return arr.reduce(function (s, o) { return s + (Number(f(o)) || 0); }, 0); };
+      var booked = orders.filter(function (o) { var p = phaseOf(o); return (p === 'debt' || p === 'paid') && String(o.financeReviewedAt || o.updatedAt || o.createdAt || '').slice(0, 7) === thisMonth; });
       document.getElementById('odSummaryGrid').innerHTML =
-        '<div class="od-summary-card"><div class="od-summary-label">Tổng số đơn hàng</div><div class="od-summary-value">' + orders.length + '</div></div>' +
-        '<div class="od-summary-card"><div class="od-summary-label">Chờ xử lý / xác nhận</div><div class="od-summary-value" style="color:var(--od-blue);">' + pending.length + '</div></div>' +
-        '<div class="od-summary-card"><div class="od-summary-label">Tổng tiền đã thu</div><div class="od-summary-value" style="color:var(--od-green);">' + fmt(totalPaidAmount) + '</div></div>' +
-        '<div class="od-summary-card"><div class="od-summary-label">Doanh thu tháng này (từ đơn hàng)</div><div class="od-summary-value" style="color:var(--od-bronze);">' + fmt(revenueThisMonth) + '</div></div>';
+        '<div class="od-summary-card" style="--od-accent:var(--od-bronze)"><div class="od-summary-label">Tổng số đơn hàng</div><div class="od-summary-value">' + orders.length + '</div><div class="od-summary-sub">Tổng giá trị ' + fmt(sum(orders, function (o) { return phaseOf(o) === 'cancelled' ? 0 : o.totalAmount; })) + ' ₫</div></div>' +
+        '<div class="od-summary-card" style="--od-accent:var(--od-amber)"><div class="od-summary-label">Chờ kế toán duyệt</div><div class="od-summary-value" style="color:var(--od-amber)">' + pend.length + '</div><div class="od-summary-sub">' + fmt(sum(pend, function (o) { return o.totalAmount; })) + ' ₫ chờ ghi sổ</div></div>' +
+        '<div class="od-summary-card" style="--od-accent:var(--od-blue)"><div class="od-summary-label">Công nợ còn phải thu</div><div class="od-summary-value" style="color:var(--od-blue)">' + fmt(sum(debt, function (o) { return o.debtAmount; })) + '</div><div class="od-summary-sub">' + debt.length + ' đơn đã ghi sổ còn nợ</div></div>' +
+        '<div class="od-summary-card" style="--od-accent:var(--od-green)"><div class="od-summary-label">Doanh thu ghi sổ tháng này</div><div class="od-summary-value" style="color:var(--od-green)">' + fmt(sum(booked, function (o) { return o.collectedAmount != null && o.collectedAmount !== '' ? o.collectedAmount : o.totalAmount; })) + '</div><div class="od-summary-sub">' + booked.length + ' đơn (phần đã thu)</div></div>';
+
+      var cnt = function (p) { return orders.filter(function (o) { return phaseOf(o) === p; }).length; };
+      var steps = [
+        ['draft', 'Lập đơn', 'Nháp, bị trả lại', cnt('draft') + cnt('rejected')],
+        ['pending', 'Gửi kế toán', 'Chờ duyệt ghi sổ', cnt('pending')],
+        ['debt', 'Đã ghi sổ', 'Phiếu thu + công nợ', cnt('debt')],
+        ['paid', 'Thu đủ', 'Đóng đơn', cnt('paid')]
+      ];
+      document.getElementById('odFlow').innerHTML = steps.map(function (s, i) {
+        var on = filter === s[0] || (s[0] === 'draft' && filter === 'rejected');
+        return '<button type="button" class="od-step' + (on ? ' on' : '') + '" data-flow="' + s[0] + '"><span class="od-step-c">' + s[3] + '</span><div><span class="od-step-n">' + (i + 1) + '</span><span class="od-step-t">' + s[1] + '</span></div><div class="od-step-d">' + s[2] + '</div></button>';
+      }).join('');
     }
+    document.getElementById('odFlow').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-flow]'); if (!b) return;
+      filter = filter === b.getAttribute('data-flow') ? 'all' : b.getAttribute('data-flow');
+      renderAll();
+    });
 
     function projectName(id) {
       if (!id) return '—';
@@ -430,95 +610,125 @@
       return p ? p.name : '—';
     }
 
+    // ---------- Danh sách ----------
+    function renderTabs(orders) {
+      var tabs = [['all', 'Tất cả'], ['draft', 'Nháp'], ['pending', 'Chờ duyệt'], ['rejected', 'Bị trả lại'], ['debt', 'Còn công nợ'], ['paid', 'Đã thu đủ']];
+      document.getElementById('odTabs').innerHTML = tabs.map(function (t) {
+        var n = t[0] === 'all' ? orders.length : orders.filter(function (o) { return phaseOf(o) === t[0]; }).length;
+        return '<button type="button" class="od-tab' + (filter === t[0] ? ' on' : '') + '" data-tab="' + t[0] + '">' + t[1] + '<b>' + n + '</b></button>';
+      }).join('');
+    }
+    document.getElementById('odTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (!b) return; filter = b.getAttribute('data-tab'); renderAll(); });
+    document.getElementById('odSearch').addEventListener('input', function (e) { query = e.target.value.trim().toLowerCase(); renderOrderList(); });
+
+    function timelineHtml(o) {
+      var ph = phaseOf(o), li = [];
+      li.push('<li class="done"><b>Lập đơn</b> · ' + escapeHtml(memberName(o.createdBy)) + ' · ' + escapeHtml(vnDate(o.createdAt)) + '</li>');
+      if (o.submittedAt || ph === 'pending' || ph === 'debt' || ph === 'paid') li.push('<li class="' + (ph === 'pending' ? 'cur' : 'done') + '"><b>Gửi kế toán</b>' + (o.submittedAt ? ' · ' + escapeHtml(vnDate(o.submittedAt)) : '') + (ph === 'pending' ? ' — đang chờ duyệt' : '') + '</li>');
+      if (ph === 'rejected') li.push('<li class="bad"><b>Bị trả lại</b> · ' + escapeHtml(memberName(o.financeReviewedBy)) + (o.financeNote ? ' — ' + escapeHtml(o.financeNote) : '') + '</li>');
+      if (ph === 'debt' || ph === 'paid') li.push('<li class="done"><b>Đã ghi sổ</b> · ' + escapeHtml(memberName(o.financeReviewedBy)) + (o.financeReviewedAt ? ' · ' + escapeHtml(vnDate(o.financeReviewedAt)) : '') + '<br>Thu ngay ' + fmt(o.collectedAmount != null && o.collectedAmount !== '' ? o.collectedAmount : o.totalAmount) + ' ₫' + (o.linkedFinanceEntryId ? ' (đã có phiếu thu)' : '') + '</li>');
+      if (ph === 'debt') li.push('<li class="cur"><b>Công nợ ' + fmt(o.debtAmount) + ' ₫</b> · ' + escapeHtml(o.debtKind || '') + (o.debtDueDate ? ' · hạn ' + escapeHtml(vnDate(o.debtDueDate)) : '') + '</li>');
+      if (ph === 'paid') li.push('<li class="done"><b>Đã thu đủ</b></li>');
+      if (ph === 'cancelled') li.push('<li class="bad"><b>Đã huỷ</b></li>');
+      return '<ul class="od-tl">' + li.join('') + '</ul>';
+    }
+
     function renderOrderList() {
-      var orders = TaskManager.getOrders();
+      var all = TaskManager.getOrders();
+      renderTabs(all);
+      var orders = all.filter(function (o) {
+        if (filter !== 'all' && phaseOf(o) !== filter) return false;
+        if (query && [o.orderNumber, o.clientName, o.clientPhone, memberName(o.createdBy)].join(' ').toLowerCase().indexOf(query) === -1) return false;
+        return true;
+      });
       var rows = document.getElementById('odOrderRows');
       if (orders.length === 0) {
-        rows.innerHTML = '<tr><td colspan="7" class="od-empty">Chưa có đơn hàng nào. Tạo đơn hàng đầu tiên ở form phía trên.</td></tr>';
+        rows.innerHTML = '<tr><td colspan="7" class="od-empty">' + (all.length ? 'Không có đơn phù hợp bộ lọc.' : 'Chưa có đơn hàng nào. Tạo đơn hàng đầu tiên ở form phía trên.') + '</td></tr>';
         return;
       }
       rows.innerHTML = orders.map(function (o) {
-        var canEdit = TaskManager.canEditOrder(o, user);
+        var ph = phaseOf(o), canEdit = TaskManager.canEditOrder(o, user);
+        var total = Number(o.totalAmount) || 0, col = o.collectedAmount != null && o.collectedAmount !== '' ? Number(o.collectedAmount) || 0 : (o.status === 'paid' ? total : 0);
+        if (ph === 'paid') col = total;
+        var pc = total ? Math.min(100, Math.round(col / total * 100)) : 0;
         var itemsRows = (Array.isArray(o.items) ? o.items : []).map(function (it) {
           return '<tr><td>' + escapeHtml(it.name) + '</td><td>' + escapeHtml(it.unit || '') + '</td><td class="num">' + fmt(it.qty) + '</td><td class="num">' + fmt(it.price) + '</td><td class="num">' + fmt(it.lineTotal) + '</td></tr>';
         }).join('');
+        var editable = canEdit && (ph === 'draft' || ph === 'rejected');
         return '<tr>' +
-          '<td>' + escapeHtml(o.orderNumber || o.id) + '</td>' +
+          '<td><b>' + escapeHtml(o.orderNumber || o.id) + '</b><br><span style="color:var(--od-faint);font-size:.6875rem;">' + escapeHtml(vnDate(o.createdAt)) + '</span></td>' +
           '<td>' + escapeHtml(o.clientName || '') + (o.projectId ? '<br><span style="color:var(--od-muted);font-size:0.75rem;">Dự án: ' + escapeHtml(projectName(o.projectId)) + '</span>' : '') + '</td>' +
-          '<td>' + escapeHtml((o.createdAt || '').slice(0, 10)) + '</td>' +
-          '<td>' + escapeHtml(o.createdBy || '') + '</td>' +
-          '<td class="num od-amount">' + fmt(o.totalAmount) + '</td>' +
-          '<td><span class="od-status ' + (o.status || 'draft') + '">' + STATUS_LABEL[o.status] + '</span></td>' +
-          '<td>' +
-            '<div class="od-toolbar">' +
-              '<button class="od-btn od-btn-ghost od-btn-sm" data-toggle-detail="' + o.id + '">Xem</button>' +
-              '<button class="od-btn od-btn-ghost od-btn-sm" data-print-invoice="' + o.id + '">In hóa đơn</button>' +
-              '<button class="od-btn od-btn-ghost od-btn-sm" data-export-excel="' + o.id + '">Xuất Excel</button>' +
-              (o.status !== 'paid' && o.status !== 'cancelled' ? '<button class="od-btn od-btn-primary od-btn-sm" data-mark-paid="' + o.id + '">Đã thu tiền</button>' : '') +
-              (canEdit ? '<button class="od-btn od-btn-ghost od-btn-sm" data-edit-order="' + o.id + '">Sửa</button>' : '') +
-              (canEdit ? '<button class="od-btn od-btn-danger od-btn-sm" data-delete-order="' + o.id + '">Xoá</button>' : '') +
-            '</div>' +
-          '</td>' +
+          '<td>' + escapeHtml(memberName(o.createdBy)) + '</td>' +
+          '<td class="num od-amount">' + fmt(total) + '</td>' +
+          '<td><span style="font-size:.75rem;color:var(--od-muted)">Thu ' + fmt(col) + ' · Nợ ' + fmt(Math.max(0, total - col)) + '</span><div class="od-prog"><i style="width:' + pc + '%"></i></div></td>' +
+          '<td><span class="od-status ' + ph + '">' + PHASE_LABEL[ph] + '</span></td>' +
+          '<td><div class="od-toolbar">' +
+            '<button class="od-btn od-btn-ghost od-btn-sm" data-toggle-detail="' + o.id + '">Chi tiết</button>' +
+            '<button class="od-btn od-btn-ghost od-btn-sm" data-print-invoice="' + o.id + '">In</button>' +
+            '<button class="od-btn od-btn-ghost od-btn-sm" data-export-excel="' + o.id + '">Excel</button>' +
+            (editable && ph === 'draft' ? '<button class="od-btn od-btn-primary od-btn-sm" data-submit-order="' + o.id + '">Gửi kế toán</button>' : '') +
+            (canEdit && ph === 'pending' ? '<button class="od-btn od-btn-ghost od-btn-sm" data-recall-order="' + o.id + '">Thu hồi</button>' : '') +
+            (editable ? '<button class="od-btn od-btn-ghost od-btn-sm" data-edit-order="' + o.id + '">Sửa</button>' : '') +
+            (canEdit && (ph === 'draft' || ph === 'rejected') ? '<button class="od-btn od-btn-danger od-btn-sm" data-delete-order="' + o.id + '">Xoá</button>' : '') +
+          '</div></td>' +
         '</tr>' +
-        '<tr class="od-detail-row" data-detail-for="' + o.id + '"><td colspan="7"><div class="od-detail-box">' +
+        '<tr class="od-detail-row" data-detail-for="' + o.id + '"><td colspan="7"><div class="od-detail-box"><div>' +
           '<table class="od-detail-items"><thead><tr><th>Hạng mục</th><th>ĐV</th><th class="num">SL</th><th class="num">Đơn giá</th><th class="num">Thành tiền</th></tr></thead><tbody>' + itemsRows + '</tbody></table>' +
-          '<div style="margin-top:8px;color:var(--od-muted);">Giảm giá ' + (o.discountPercent || 0) + '% · VAT ' + (o.vatPercent || 0) + '% · Ghi chú: ' + escapeHtml(o.note || '—') + '</div>' +
-          (o.linkedFinanceEntryId ? '<div class="od-linked-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;flex-shrink:0;vertical-align:-2px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Đã liên kết vào Sổ tài chính công ty (Giao dịch)</div>' : '') +
-        '</div></td></tr>';
+          '<div style="margin-top:10px;color:var(--od-muted);">Tạm tính ' + fmt(o.subtotal) + ' · Giảm giá ' + (o.discountPercent || 0) + '% · VAT ' + (o.vatPercent || 0) + '% · <b style="color:var(--od-bronze)">Tổng ' + fmt(total) + ' ₫</b><br>Thanh toán: ' + escapeHtml(o.paymentMethod || '—') + (o.revenueCategory ? ' · Doanh thu: ' + escapeHtml(o.revenueCategory) : '') + ' · Ghi chú: ' + escapeHtml(o.note || '—') + '</div>' +
+          (ph === 'rejected' && o.financeNote ? '<div class="od-note-bad">Kế toán trả lại: ' + escapeHtml(o.financeNote) + '</div>' : '') +
+        '</div><div>' + timelineHtml(o) + '</div></div></td></tr>';
       }).join('');
 
       rows.querySelectorAll('[data-toggle-detail]').forEach(function (btn) {
+        btn.addEventListener('click', function () { rows.querySelector('[data-detail-for="' + btn.getAttribute('data-toggle-detail') + '"]').classList.toggle('open'); });
+      });
+      rows.querySelectorAll('[data-submit-order]').forEach(function (btn) {
         btn.addEventListener('click', function () {
-          var id = btn.getAttribute('data-toggle-detail');
-          var detailRow = rows.querySelector('[data-detail-for="' + id + '"]');
-          detailRow.classList.toggle('open');
+          var o = all.find(function (x) { return x.id === btn.getAttribute('data-submit-order'); });
+          if (!o) return;
+          if ((Number(o.debtAmount) || 0) > 0 && !o.debtDueDate) { alert('Đơn còn công nợ nhưng chưa có hạn thanh toán — bấm Sửa để bổ sung.'); return; }
+          if (!confirm('Gửi đơn ' + (o.orderNumber || '') + ' (' + fmt(o.totalAmount) + ' ₫) cho kế toán duyệt ghi sổ?')) return;
+          TaskManager.submitOrderToFinance(o.id, user); toast('Đã gửi kế toán.'); renderAll();
         });
       });
-      rows.querySelectorAll('[data-mark-paid]').forEach(function (btn) {
+      rows.querySelectorAll('[data-recall-order]').forEach(function (btn) {
         btn.addEventListener('click', function () {
-          var id = btn.getAttribute('data-mark-paid');
-          var o = orders.find(function (x) { return x.id === id; });
-          if (!confirm('Xác nhận đã thu ' + fmt(o.totalAmount) + ' từ ' + o.clientName + '? Hệ thống sẽ tự tạo 1 khoản Doanh thu tương ứng trong Sổ tài chính công ty.')) return;
-          TaskManager.markOrderPaid(id, user);
-          renderAll();
+          if (!confirm('Thu hồi đơn về nháp để chỉnh sửa?')) return;
+          TaskManager.updateOrder(btn.getAttribute('data-recall-order'), { financeStatus: '', status: 'draft' }, user); renderAll();
         });
       });
       rows.querySelectorAll('[data-edit-order]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          var o = orders.find(function (x) { return x.id === btn.getAttribute('data-edit-order'); });
-          if (o) loadOrderIntoForm(o);
-        });
+        btn.addEventListener('click', function () { var o = all.find(function (x) { return x.id === btn.getAttribute('data-edit-order'); }); if (o) loadOrderIntoForm(o); });
       });
       rows.querySelectorAll('[data-delete-order]').forEach(function (btn) {
         btn.addEventListener('click', function () {
-          if (!confirm('Xoá đơn hàng này? Khoản Doanh thu đã liên kết (nếu có) sẽ KHÔNG bị xoá theo — cần xoá tay ở Sổ tài chính nếu cần.')) return;
-          TaskManager.deleteOrder(btn.getAttribute('data-delete-order'), user);
-          renderAll();
+          if (!confirm('Xoá đơn hàng này?')) return;
+          TaskManager.deleteOrder(btn.getAttribute('data-delete-order'), user); renderAll();
         });
       });
       rows.querySelectorAll('[data-print-invoice]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          var o = orders.find(function (x) { return x.id === btn.getAttribute('data-print-invoice'); });
-          if (o) printInvoice(o);
-        });
+        btn.addEventListener('click', function () { var o = all.find(function (x) { return x.id === btn.getAttribute('data-print-invoice'); }); if (o) printInvoice(o); });
       });
       rows.querySelectorAll('[data-export-excel]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          var o = orders.find(function (x) { return x.id === btn.getAttribute('data-export-excel'); });
-          if (o) exportOrderExcel(o);
-        });
+        btn.addEventListener('click', function () { var o = all.find(function (x) { return x.id === btn.getAttribute('data-export-excel'); }); if (o) exportOrderExcel(o); });
       });
     }
 
     // ---------- In hoá đơn PDF ----------
+    function payLines(o) {
+      var total = Number(o.totalAmount) || 0, ph = phaseOf(o);
+      var col = ph === 'paid' ? total : (o.collectedAmount != null && o.collectedAmount !== '' ? Number(o.collectedAmount) || 0 : 0);
+      return { col: col, debt: Math.max(0, total - col), has: o.collectedAmount != null && o.collectedAmount !== '' || ph === 'paid' };
+    }
     function printInvoice(o) {
       var items = Array.isArray(o.items) ? o.items : [];
       var itemsHtml = items.map(function (it, i) {
         return '<tr><td>' + (i + 1) + '</td><td>' + escapeHtml(it.name) + '</td><td>' + escapeHtml(it.unit || '') + '</td><td class="num">' + fmt(it.qty) + '</td><td class="num">' + fmt(it.price) + '</td><td class="num">' + fmt(it.lineTotal) + '</td></tr>';
       }).join('');
+      var pl = payLines(o);
       document.getElementById('odPrintInvoice').innerHTML =
         '<h1>HÓA ĐƠN BÁN HÀNG — HICONIQUE</h1>' +
-        '<div class="od-print-meta">Số đơn hàng: <b>' + escapeHtml(o.orderNumber || o.id) + '</b> &nbsp;·&nbsp; Ngày: ' + escapeHtml((o.createdAt || '').slice(0, 10)) + '</div>' +
+        '<div class="od-print-meta">Số đơn hàng: <b>' + escapeHtml(o.orderNumber || o.id) + '</b> &nbsp;·&nbsp; Ngày: ' + escapeHtml(vnDate(o.createdAt)) + '</div>' +
         '<div class="od-print-meta">Khách hàng: <b>' + escapeHtml(o.clientName || '') + '</b>' + (o.clientPhone ? ' — ĐT: ' + escapeHtml(o.clientPhone) : '') + '</div>' +
         (o.clientAddress ? '<div class="od-print-meta">Địa chỉ: ' + escapeHtml(o.clientAddress) + '</div>' : '') +
         '<table><thead><tr><th>#</th><th>Hạng mục</th><th>ĐV</th><th class="num">SL</th><th class="num">Đơn giá</th><th class="num">Thành tiền</th></tr></thead><tbody>' + itemsHtml + '</tbody></table>' +
@@ -527,6 +737,7 @@
           '<div><span>Giảm giá (' + (o.discountPercent || 0) + '%)</span><span>-' + fmt(o.discountAmount) + '</span></div>' +
           '<div><span>VAT (' + (o.vatPercent || 0) + '%)</span><span>+' + fmt(o.vatAmount) + '</span></div>' +
           '<div class="grand"><span>Tổng cộng</span><span>' + fmt(o.totalAmount) + '</span></div>' +
+          (pl.has ? '<div><span>Đã thanh toán' + (o.paymentMethod ? ' (' + escapeHtml(o.paymentMethod) + ')' : '') + '</span><span>' + fmt(pl.col) + '</span></div><div><span>Còn phải thanh toán' + (pl.debt > 0 && o.debtDueDate ? ' (hạn ' + escapeHtml(vnDate(o.debtDueDate)) + ')' : '') + '</span><span>' + fmt(pl.debt) + '</span></div>' : '') +
         '</div>' +
         '<p style="margin-top:24px;font-size:12px;color:#666;">Cảm ơn quý khách đã sử dụng dịch vụ của HICONIQUE.</p>';
       setTimeout(function () { window.print(); }, 50);
@@ -543,7 +754,7 @@
       ws.getCell('A2').value = 'Khách hàng: ' + (o.clientName || '—');
       ws.getCell('A3').value = 'SĐT: ' + (o.clientPhone || '—');
       ws.getCell('A4').value = 'Địa chỉ: ' + (o.clientAddress || '—');
-      ws.getCell('A5').value = 'Ngày: ' + (o.createdAt || '').slice(0, 10);
+      ws.getCell('A5').value = 'Ngày: ' + vnDate(o.createdAt);
 
       var headerRow = 7;
       ['Hạng mục', 'Đơn vị', 'Số lượng', 'Đơn giá', 'Thành tiền'].forEach(function (h, i) {
@@ -566,9 +777,14 @@
       ws.getCell(r, 4).value = 'Giảm giá ' + (o.discountPercent || 0) + '%'; ws.getCell(r, 5).value = -(o.discountAmount || 0); ws.getCell(r, 5).numFmt = '#,##0'; r++;
       ws.getCell(r, 4).value = 'VAT ' + (o.vatPercent || 0) + '%'; ws.getCell(r, 5).value = o.vatAmount || 0; ws.getCell(r, 5).numFmt = '#,##0'; r++;
       ws.getCell(r, 4).value = 'Tổng cộng'; ws.getCell(r, 4).font = { bold: true };
-      ws.getCell(r, 5).value = o.totalAmount; ws.getCell(r, 5).numFmt = '#,##0'; ws.getCell(r, 5).font = { bold: true };
+      ws.getCell(r, 5).value = o.totalAmount; ws.getCell(r, 5).numFmt = '#,##0'; ws.getCell(r, 5).font = { bold: true }; r++;
+      var pl = payLines(o);
+      if (pl.has) {
+        ws.getCell(r, 4).value = 'Đã thanh toán'; ws.getCell(r, 5).value = pl.col; ws.getCell(r, 5).numFmt = '#,##0'; r++;
+        ws.getCell(r, 4).value = 'Còn phải thanh toán'; ws.getCell(r, 5).value = pl.debt; ws.getCell(r, 5).numFmt = '#,##0'; r++;
+      }
       ws.getColumn(1).width = 32; ws.getColumn(2).width = 10; ws.getColumn(3).width = 10;
-      ws.getColumn(4).width = 16; ws.getColumn(5).width = 16;
+      ws.getColumn(4).width = 20; ws.getColumn(5).width = 16;
 
       (window.HiconiqueExcel ? HiconiqueExcel.standardize(wb) : wb).xlsx.writeBuffer().then(function (buffer) {
         var blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -596,16 +812,15 @@
       if (typeof TaskManager === 'undefined' || typeof Auth === 'undefined') { setTimeout(boot, 150); return; }
       if (Auth.getCurrentUser && !Auth.getCurrentUser()) { Auth.showLoginModal(); return; }
       user = getUser();
+      fillStaticSelects();
       resetForm();
       renderAll();
       setTimeout(renderAll, 1200); // re-render khi dữ liệu GSheets async về
     }
     boot();
 
-    // 2026-09-19: cung bug "cap nhat xong nhung khong hien" - renderAll()
-    // chi chay luc tai trang, khong tu ve lai khi TaskManager.refreshFromGSheets()
-    // cap nhat ngam moi 20s (VD ai do vua danh dau "Da thu tien" o may khac).
-    window.addEventListener('hiconique:data-refreshed', renderAll);
+    // renderAll() chỉ chạy lúc tải trang → vẽ lại khi dữ liệu nền cập nhật (VD kế toán vừa duyệt ở máy khác).
+    window.addEventListener('hiconique:data-refreshed', function () { if (user) renderAll(); });
   })();
   </script>
 </body>

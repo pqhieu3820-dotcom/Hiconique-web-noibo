@@ -3460,6 +3460,98 @@ var TaskManager = (function() {
     return updated;
   }
 
+  // ===================== WORKFLOW ĐƠN HÀNG → SỔ TÀI CHÍNH (orders.html ⇄ finance.html) =====================
+  // 1) Người lập đơn nhập hạng mục + phần THU NGAY + phần CÔNG NỢ (loại nợ, hạn) + danh mục doanh thu + phương thức → "Gửi kế toán" (financeStatus='pending').
+  // 2) Kế toán/người có quyền Sổ tài chính (canManageFinance) vào mục "Đơn hàng chờ ghi sổ": chỉnh lại phân loại nếu cần → DUYỆT: tự tạo 1 phiếu thu
+  //    (financeEntries, doanh thu = phần thu ngay) + 1 công nợ phải thu (receivables, = phần còn lại); hoặc TỪ CHỐI (kèm lý do) → trả lại cho người lập sửa.
+  // 3) Khi công nợ được đánh dấu "Đã thu" ở Sổ tài chính → settleOrderForReceivable() cập nhật đơn thành "Đã thu đủ".
+  // Doanh thu ghi nhận theo TIỀN THỰC THU (đồng bộ cách Sổ tài chính hiện hành): phần thu ngay ghi lúc duyệt, phần nợ ghi khi thu nợ.
+  var DEBT_KINDS = ['Phải thu thông thường', 'Thanh toán theo đợt / tiến độ', 'Giữ lại bảo hành', 'Tạm ứng — thu bù sau'];
+  var REVENUE_CATEGORIES = ['Thiết kế', 'Thi công', 'Nội thất / đồ rời', 'Tư vấn / giám sát', 'Vật tư', 'Khác'];
+  function ordFin_(o) { return o.financeStatus || ''; }
+  function orderPhase(o) {
+    if (o.status === 'cancelled') return 'cancelled';
+    var fs = ordFin_(o);
+    if (fs === 'pending') return 'pending';
+    if (fs === 'rejected') return 'rejected';
+    if (fs === 'booked') return (Number(o.debtAmount) || 0) > 0 && o.status !== 'paid' ? 'debt' : 'paid';
+    if (o.status === 'paid') return 'paid';          // đơn cũ (trước workflow) đã đánh dấu thu tiền
+    return 'draft';
+  }
+  function ordVoucherNo_(dateStr) {
+    var ym = String(dateStr || '').slice(2, 7).replace('-', '');
+    var head = 'PT-' + ym + '-', max = 0;
+    getAll(STORAGE_KEYS.financeEntries).forEach(function (e) { if (e.voucherNo && String(e.voucherNo).indexOf(head) === 0) { var n = parseInt(String(e.voucherNo).slice(head.length), 10); if (n > max) max = n; } });
+    return head + ('00' + (max + 1)).slice(-3);
+  }
+  function ordNotify_(scopes, title, message) {
+    try {
+      (scopes || []).filter(Boolean).forEach(function (s) {
+        var n = add(STORAGE_KEYS.notifications, { title: title, message: message, type: 'info', scope: s, active: true, recurring: false, createdBy: 'SYSTEM' });
+        if (n) syncToGSheets('notifications', 'add', n);
+      });
+    } catch (e) {}
+  }
+  function submitOrderToFinance(id, user) {
+    var o = getById(STORAGE_KEYS.orders, id);
+    if (!o || !canEditOrder(o, user)) return null;
+    var total = Number(o.totalAmount) || 0, col = Math.max(0, Math.min(total, Number(o.collectedAmount) || 0));
+    var upd = { financeStatus: 'pending', status: 'confirmed', collectedAmount: col, debtAmount: Math.max(0, total - col), submittedAt: new Date().toISOString(), financeNote: '', financeReviewedBy: '', financeReviewedAt: '' };
+    var u = update(STORAGE_KEYS.orders, id, upd);
+    if (!u) return null;
+    syncToGSheets('orders', 'update', upd, id);
+    ordNotify_(financeRecipients_(user).map(function (m) { return m.id; }), 'Đơn hàng chờ ghi sổ',
+      (user.name || user.id) + ' gửi đơn ' + (o.orderNumber || o.id) + ' (' + (o.clientName || 'Khách lẻ') + ') ' + total.toLocaleString('vi-VN') + ' ₫ — thu ngay ' + col.toLocaleString('vi-VN') + ', công nợ ' + (total - col).toLocaleString('vi-VN') + '. Vào Sổ tài chính › Đơn hàng chờ ghi sổ để duyệt.');
+    return u;
+  }
+  // p: { revenueCategory, date, account('111'|'112'), counterAccount, voucherNo, collectedAmount, debtDueDate, debtKind, note }
+  function approveOrderToFinance(id, p, user) {
+    if (!canManageFinance(user)) return null;
+    var o = getById(STORAGE_KEYS.orders, id);
+    if (!o || ordFin_(o) === 'booked') return null;
+    p = p || {};
+    var total = Number(o.totalAmount) || 0, col = Math.max(0, Math.min(total, Number(p.collectedAmount != null ? p.collectedAmount : o.collectedAmount) || 0)), debt = Math.max(0, total - col);
+    var date = p.date || todayStr(), cat = p.revenueCategory || o.revenueCategory || 'Đơn hàng';
+    var upd = { financeStatus: 'booked', status: debt > 0 ? 'confirmed' : 'paid', collectedAmount: col, debtAmount: debt, revenueCategory: cat, account: p.account || o.account || '111',
+      debtDueDate: p.debtDueDate || o.debtDueDate || '', debtKind: p.debtKind || o.debtKind || DEBT_KINDS[0], financeNote: p.note || '', financeReviewedBy: user.id, financeReviewedAt: new Date().toISOString() };
+    var desc = 'Đơn hàng ' + (o.orderNumber || o.id) + ' — ' + (o.clientName || 'Khách lẻ');
+    if (col > 0) {
+      var entry = createFinanceEntry({ type: 'revenue', category: cat, description: desc + (debt > 0 ? ' (thu trước)' : ''), amount: col, date: date, month: date.slice(0, 7), voucherDate: date,
+        voucherNo: p.voucherNo || ordVoucherNo_(date), account: upd.account, counterAccount: p.counterAccount || '511 — Doanh thu bán hàng & cung cấp dịch vụ', actor: o.clientName || '', note: 'Từ đơn hàng ' + (o.orderNumber || o.id) }, user);
+      if (entry) upd.linkedFinanceEntryId = entry.id;
+    }
+    if (debt > 0) {
+      var rc = createReceivable({ clientName: o.clientName || '', projectId: o.projectId || '', description: desc + ' — ' + upd.debtKind, amount: debt, dueDate: upd.debtDueDate || date, status: 'unpaid',
+        orderId: o.id, orderNumber: o.orderNumber || '', kind: upd.debtKind, note: p.note || '' }, user);
+      if (rc) upd.linkedReceivableId = rc.id;
+    }
+    var u = update(STORAGE_KEYS.orders, id, upd);
+    if (u) syncToGSheets('orders', 'update', upd, id);
+    if (o.createdBy && o.createdBy !== user.id) ordNotify_([o.createdBy], 'Đơn hàng đã được ghi sổ', 'Đơn ' + (o.orderNumber || o.id) + ' đã được ' + (user.name || 'kế toán') + ' duyệt: thu ' + col.toLocaleString('vi-VN') + ' ₫' + (debt > 0 ? ', công nợ ' + debt.toLocaleString('vi-VN') + ' ₫ (' + upd.debtKind + ').' : ' — đã thu đủ.'));
+    return u;
+  }
+  function rejectOrderFinance(id, reason, user) {
+    if (!canManageFinance(user)) return null;
+    var o = getById(STORAGE_KEYS.orders, id);
+    if (!o || ordFin_(o) !== 'pending') return null;
+    var upd = { financeStatus: 'rejected', status: 'draft', financeNote: reason || '', financeReviewedBy: user.id, financeReviewedAt: new Date().toISOString() };
+    var u = update(STORAGE_KEYS.orders, id, upd);
+    if (u) syncToGSheets('orders', 'update', upd, id);
+    if (o.createdBy && o.createdBy !== user.id) ordNotify_([o.createdBy], 'Đơn hàng bị trả lại', 'Đơn ' + (o.orderNumber || o.id) + ' chưa được ghi sổ' + (reason ? ': ' + reason : '.') + ' Mở Đơn hàng để sửa và gửi lại.');
+    return u;
+  }
+  // Công nợ gắn với đơn hàng đã thu → đóng đơn
+  function settleOrderForReceivable(r, user) {
+    if (!r || !r.orderId) return null;
+    var o = getById(STORAGE_KEYS.orders, r.orderId);
+    if (!o) return null;
+    var upd = { status: 'paid', collectedAmount: Number(o.totalAmount) || 0, debtAmount: 0 };
+    var u = update(STORAGE_KEYS.orders, o.id, upd);
+    if (u) syncToGSheets('orders', 'update', upd, o.id);
+    if (o.createdBy && user && o.createdBy !== user.id) ordNotify_([o.createdBy], 'Đơn hàng đã thu đủ', 'Công nợ đơn ' + (o.orderNumber || o.id) + ' (' + (o.clientName || '') + ') đã được thu — đơn chuyển "Đã thu đủ".');
+    return u;
+  }
+
   // Phiếu lương — nhân viên tự tạo cho chính mình mỗi tháng, CEO/quản lý duyệt.
   var OT_MULTIPLIER = 1.5;
   var STANDARD_MONTHLY_HOURS = 208; // 26 công x 8 giờ/ngày — quy ước tính đơn giá giờ OT
@@ -3769,6 +3861,13 @@ var TaskManager = (function() {
     updateOrder: updateOrder,
     deleteOrder: deleteOrder,
     markOrderPaid: markOrderPaid,
+    orderPhase: orderPhase,
+    submitOrderToFinance: submitOrderToFinance,
+    approveOrderToFinance: approveOrderToFinance,
+    rejectOrderFinance: rejectOrderFinance,
+    settleOrderForReceivable: settleOrderForReceivable,
+    DEBT_KINDS: DEBT_KINDS,
+    REVENUE_CATEGORIES: REVENUE_CATEGORIES,
     canEditOrder: canEditOrder,
 
     // Phiếu lương

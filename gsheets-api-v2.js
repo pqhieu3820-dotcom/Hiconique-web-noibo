@@ -373,7 +373,8 @@ const FIELD_MAP = {
   receivables: [
     ['Mã CN', 'id'], ['Khách hàng', 'clientName'], ['Mã dự án', 'projectId'], ['Mô tả', 'description'],
     ['Số tiền', 'amount'], ['Hạn thanh toán', 'dueDate'], ['Trạng thái', 'status'], ['Ghi chú', 'note'],
-    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
+    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt'],
+    ['Mã đơn hàng', 'orderId'], ['Số đơn hàng', 'orderNumber'], ['Loại công nợ', 'kind']
   ],
   // Ảnh chụp bảng cân đối kế toán theo năm, nhập tay 1 lần/năm — phục vụ
   // riêng "Sổ tay CFO" trong finance.html (thanh khoản, đòn bẩy, Altman
@@ -400,7 +401,10 @@ const FIELD_MAP = {
     ['Tiền giảm giá', 'discountAmount'], ['VAT %', 'vatPercent'], ['Tiền VAT', 'vatAmount'],
     ['Tổng cộng', 'totalAmount'], ['Trạng thái', 'status'], ['Phương thức thanh toán', 'paymentMethod'],
     ['Ghi chú', 'note'], ['Mã giao dịch liên kết', 'linkedFinanceEntryId'],
-    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
+    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt'],
+    ['Trạng thái sổ', 'financeStatus'], ['Thu ngay', 'collectedAmount'], ['Công nợ', 'debtAmount'], ['Hạn công nợ', 'debtDueDate'], ['Loại công nợ', 'debtKind'],
+    ['Danh mục doanh thu', 'revenueCategory'], ['Tài khoản quỹ', 'account'], ['Ghi chú kế toán', 'financeNote'], ['Người duyệt sổ', 'financeReviewedBy'],
+    ['Ngày duyệt sổ', 'financeReviewedAt'], ['Mã công nợ liên kết', 'linkedReceivableId'], ['Ngày gửi kế toán', 'submittedAt']
   ],
   // 6 sheet công cụ theo dự án dưới đây (2026-09-09) đi cùng các tab mới trong
   // pricing.html — mỗi tab lấy TEMPLATE cố định (tên nhóm công việc, tiêu chí
