@@ -2032,3 +2032,7 @@ Và cần đã `git push` thành công ít nhất 1 lần trên máy mới (đ�
 
 ### (cv) 01/10/2026 — Sửa báo trùng link sai ở Kiểm soát mã hiệu & link
 Nguyên nhân: `normUrl` cắt toàn bộ query string nên các playlist YouTube `youtube.com/playlist?list=…` khác nhau bị coi là cùng một link, và còn hạ chữ thường phần id (id YouTube phân biệt hoa/thường). Sửa: so sánh toàn bộ chuỗi — host không phân biệt hoa/thường (bỏ `www.`), path và tham số giữ nguyên hoa/thường, chỉ bỏ tham số theo dõi (utm_*, si, feature, fbclid, gclid, ref, share…), sắp xếp tham số. sw v116.
+
+
+### (cw) 01/10/2026 — Khung "Đang lưu lên Google Sheet" hiện mãi
+Nguyên nhân: khung đếm cả lệnh ghi trực tiếp bị treo (fetch không phản hồi) và lệnh tồn cũ trong hàng đợi chưa từng gửi được (chờ mạng/khóa tab khác). Sửa (`offline.js`): lệnh trực tiếp treo >40s không tính; lệnh hàng đợi chỉ tính khi mới (<2 phút) hoặc đã từng thử lại (lỗi vẫn hiện khung đỏ). Chỉ hiện khi đang có thao tác thật. sw v117.
