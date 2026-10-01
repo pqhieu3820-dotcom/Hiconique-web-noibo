@@ -2126,3 +2126,7 @@ Bấm từng bước ở thanh luồng (Lập đơn · Gửi kế toán · Đã 
 
 ### (dq) 01/10/2026 — Đơn hàng: danh sách hiện ngay dưới thanh 4 bước
 Bấm 1 bước (Lập đơn · Gửi kế toán · Đã ghi sổ · Thu đủ) → danh sách đơn của bước đó + thống kê (số đơn, tổng tiền, đã thu, còn nợ) hiện NGAY dưới thanh luồng, không cuộn trang; nút Đóng/bấm lại bước để ẩn. Danh sách chính bên dưới (tab lọc) giữ độc lập. sw v136.
+
+
+### (dr) 01/10/2026 — Đơn hàng: gõ tên hạng mục → tra giá từ bảng giá tỉnh của công trình
+`js/price-lookup.js` (PriceLookup) + orders.html: ở phần Hạng mục có dải "Tra giá từ bảng giá tỉnh" — tỉnh tự lấy từ dự án đã chọn (trường Tỉnh/Thành của dự án; đổi tay được), mức giá Thấp/Trung bình/Cao. Gõ tên hạng mục (không cần dấu) → gợi ý ngay từ sheet tỉnh `DGXD-<tỉnh>` (đọc qua action `getProvincePricing`, cache 6h trong máy) gồm 4 bảng: Nhân công khoán, Phần thô/Trọn gói, Vật tư–thiết bị (cột Giá thấp/cao), Đơn giá công tác hoàn chỉnh (DGHT thấp/cao = VL+NC), cộng thêm Bảng giá dịch vụ (TC-Bảng giá dịch vụ). Chọn gợi ý (chuột hoặc ↑↓ Enter) → điền sẵn tên, đơn vị, đơn giá (+ mã tham chiếu `ref` lưu trong dòng hạng mục), nhảy sang ô số lượng. Không có tỉnh vẫn tra được Bảng giá dịch vụ chung. sw v137.

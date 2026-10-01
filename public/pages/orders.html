@@ -21,6 +21,7 @@
   <script src="/js/task-data.js"></script>
   <script src="/js/auth.js"></script>
   <script src="/js/money-input.js"></script>
+  <script src="/js/price-lookup.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js" defer></script>
   <script src="/js/excel-standard.js" defer></script>
   <style>
@@ -130,6 +131,8 @@
     .od-flowpanel { margin: -14px 0 28px; background: var(--od-surface); border: 1px solid var(--od-border); border-radius: 14px; overflow: hidden; animation: odFp .18s ease; }
     .od-flowpanel[hidden] { display: none; }
     @keyframes odFp { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+    .od-pricebar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 0 24px 12px; font-size: .75rem; }
+    .od-pb-l { color: var(--od-muted); font-weight: 600; } .od-pb-s { color: var(--od-faint); }
     .od-detail-row { display: none; }
     .od-detail-row.open { display: table-row; }
     .od-detail-box { padding: 18px 24px; background: var(--od-bg); font-size: 0.8125rem; display: grid; grid-template-columns: 1.6fr 1fr; gap: 24px; }
@@ -237,6 +240,7 @@
 
       <div class="od-sec" style="padding-left:0;padding-right:0;">
         <div class="od-sec-h" style="padding:0 24px;"><i>2</i>Hạng mục <span>· chọn từ Bảng giá dịch vụ hoặc nhập tay</span><button class="od-btn od-btn-ghost od-btn-sm" id="odAddRowBtn" style="margin-left:auto;">+ Thêm dòng</button></div>
+        <div class="od-pricebar"><span class="od-pb-l">Tra giá từ bảng giá tỉnh:</span><select class="od-select" id="odProvince" style="max-width:200px"><option value="">— Theo dự án đã chọn —</option></select><select class="od-select" id="odTier" style="max-width:170px"><option value="mid">Giá trung bình</option><option value="low">Giá thấp</option><option value="high">Giá cao</option></select><span class="od-pb-s" id="odProvStatus">Gõ tên hạng mục để tìm nhanh — chọn là điền sẵn đơn vị &amp; đơn giá.</span></div>
         <table class="od-table">
           <thead><tr><th style="width:20%;">Danh mục có sẵn</th><th>Tên hạng mục</th><th style="width:10%;">Đơn vị</th><th class="num" style="width:9%;">SL</th><th class="num" style="width:14%;">Đơn giá</th><th class="num" style="width:14%;">Thành tiền</th><th></th></tr></thead>
           <tbody id="odItemRows"></tbody>
@@ -356,6 +360,7 @@
       prefill = prefill || {};
       var tr = document.createElement('tr');
       tr.setAttribute('data-item-row', 'ir' + (++rowSeq));
+      if (prefill.ref) tr.dataset.ref = prefill.ref;
       tr.innerHTML =
         '<td><select class="od-select" data-i="catalog">' + catalogOptionsHtml() + '</select></td>' +
         '<td><input class="od-input" data-i="name" value="' + escapeHtml(prefill.name || '') + '" placeholder="Tên hạng mục"></td>' +
@@ -377,7 +382,7 @@
         var qty = parseFloat(tr.querySelector('[data-i="qty"]').value) || 0;
         var price = HiconiqueMoney.parse(tr.querySelector('[data-i="price"]').value);
         if (!name && qty === 0 && price === 0) return;
-        items.push({ name: name, unit: unit, qty: qty, price: price, lineTotal: qty * price });
+        items.push({ name: name, unit: unit, qty: qty, price: price, lineTotal: qty * price, ref: tr.dataset.ref || '' });
       });
       return items;
     }
@@ -446,7 +451,42 @@
     ['odPaymentMethod', 'odDebtKind', 'odDebtDue', 'odRevCat'].forEach(function (id) { document.getElementById(id).addEventListener('input', recalcPay); document.getElementById(id).addEventListener('change', recalcPay); });
 
     itemRowsEl.addEventListener('input', function (e) {
+      if (e.target.matches('[data-i="name"]')) delete e.target.closest('tr').dataset.ref;
       if (e.target.matches('[data-i="qty"], [data-i="price"]')) recalcTotals();
+    });
+
+    // ---------- Tra giá từ bảng giá tỉnh của dự án ----------
+    var provSel = document.getElementById('odProvince'), tierSel = document.getElementById('odTier'), provStatus = document.getElementById('odProvStatus');
+    var provPending = '';
+    function setProvince(name) {
+      if (name && !Array.prototype.some.call(provSel.options, function (o) { return o.value === name; })) { var op = document.createElement('option'); op.value = name; op.textContent = name; provSel.appendChild(op); }
+      provSel.value = name || '';
+      if (name) { provStatus.textContent = PriceLookup.isLoaded(name) ? 'Đã nạp ' + PriceLookup.count(name) + ' mục bảng giá ' + name : 'Đang tải bảng giá ' + name + '…'; PriceLookup.loadProvince(name).then(function (it) { provStatus.textContent = it.length ? 'Đã nạp ' + it.length + ' mục bảng giá ' + name + ' — gõ tên hạng mục để tìm' : 'Chưa đọc được bảng giá ' + name; }); }
+      else provStatus.textContent = 'Chưa chọn tỉnh — dự án chưa gán tỉnh/thành. Vẫn tra được Bảng giá dịch vụ chung.';
+    }
+    function syncProvinceFromProject() {
+      var pid = document.getElementById('odProjectId').value, p = pid ? TaskManager.getProjects().find(function (x) { return x.id === pid; }) : null;
+      setProvince(p && p.province ? p.province : (provSel.value || ''));
+    }
+    PriceLookup.loadProvinceList().then(function (list) {
+      var cur = provSel.value; list.forEach(function (n) { if (!Array.prototype.some.call(provSel.options, function (o) { return o.value === n; })) { var op = document.createElement('option'); op.value = n; op.textContent = n; provSel.appendChild(op); } }); provSel.value = cur;
+    });
+    provSel.addEventListener('change', function () { setProvince(provSel.value); });
+    document.getElementById('odProjectId').addEventListener('change', syncProvinceFromProject);
+    PriceLookup.attach({
+      container: itemRowsEl,
+      getProvince: function () { return provSel.value; },
+      getTier: function () { return tierSel.value; },
+      getCatalog: function () { return TaskManager.getPriceCatalog(); },
+      onStatus: function (m) { provStatus.textContent = m; },
+      onPick: function (tr, e, price) {
+        tr.querySelector('[data-i="name"]').value = e.name;
+        tr.querySelector('[data-i="unit"]').value = e.unit || '';
+        tr.querySelector('[data-i="price"]').value = HiconiqueMoney.format(price);
+        tr.dataset.ref = (e.province ? e.province + ':' : '') + (e.code || e.kind);
+        recalcTotals();
+        var q = tr.querySelector('[data-i="qty"]'); if (q) { q.focus(); q.select(); }
+      }
     });
     itemRowsEl.addEventListener('change', function (e) {
       if (e.target.matches('[data-i="catalog"]')) {
@@ -481,6 +521,7 @@
       document.getElementById('odClientPhone').value = '';
       document.getElementById('odClientAddress').value = '';
       document.getElementById('odProjectId').value = '';
+      if (typeof syncProvinceFromProject === 'function') { provSel.value = ''; syncProvinceFromProject(); }
       document.getElementById('odDiscountPercent').value = 0;
       document.getElementById('odVatPercent').value = 0;
       document.getElementById('odPaymentMethod').value = 'Tiền mặt';
@@ -503,6 +544,7 @@
       document.getElementById('odClientPhone').value = order.clientPhone || '';
       document.getElementById('odClientAddress').value = order.clientAddress || '';
       document.getElementById('odProjectId').value = order.projectId || '';
+      syncProvinceFromProject();
       document.getElementById('odDiscountPercent').value = order.discountPercent || 0;
       document.getElementById('odVatPercent').value = order.vatPercent || 0;
       document.getElementById('odPaymentMethod').value = order.paymentMethod || 'Tiền mặt';
