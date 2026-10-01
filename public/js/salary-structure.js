@@ -27,7 +27,7 @@
 
   // Khoản mặc định (id cố định để không nhân đôi). kind: bh | allowance | performance | setting
   var DEFAULTS = [
-    { id: 'salc_bh', code: 'LUONG_BH', name: 'Lương đóng BHXH (tối thiểu vùng I)', kind: 'bh', amount: LEGAL.minWageRegion1, insured: true, taxCap: '', active: true, order: 1,
+    { id: 'salc_bh', code: 'LUONG_BH', name: 'Lương đóng BHXH (vùng I)', kind: 'bh', amount: LEGAL.minWageRegion1, insured: true, taxCap: '', active: true, order: 1,
       note: 'Mức lương làm căn cứ đóng BH = tối thiểu vùng I 5.310.000 (NĐ 293/2025). KHÔNG tính theo công: lấy trọn cục này trước. (Lao động qua đào tạo có thể cần 5.681.700 — sửa ở đây nếu hợp đồng quy định.)' },
     { id: 'salc_xang', code: 'HT_XANG_XE', name: 'Hỗ trợ xăng xe', kind: 'allowance', amount: 700000, insured: false, taxCap: '', active: true, order: 2,
       note: 'Trần 700.000 đ/tháng khi đủ 26 công; ít công hơn thì giảm theo tỷ lệ công (khoản duy nhất tính theo công). Ghi mục riêng trong HĐLĐ.' },
@@ -119,15 +119,42 @@
   }
 
   // ---------- giao diện: bảng chi tiết (dùng ở form + phiếu đã gửi) ----------
+  // ---------- dấu (i): bảng lương tối thiểu vùng (NĐ 293/2025/NĐ-CP) ----------
+  var MINWAGE = [['Vùng I', 5310000, 25500], ['Vùng II', 4730000, 22700], ['Vùng III', 4140000, 20000], ['Vùng IV', 3700000, 17800]];
+  function infoBtn() { return ' <button type="button" class="ss-info" data-minwage-info aria-label="Thông tin lương tối thiểu vùng" title="Mức lương tối thiểu vùng">i</button>'; }
+  function showMinWageInfo(anchor) {
+    var old = document.getElementById('ssInfoPop'); if (old) { var was = old._for === anchor; old.remove(); if (was) return; }
+    if (!document.getElementById('ssInfoCss')) {
+      var st = document.createElement('style'); st.id = 'ssInfoCss';
+      st.textContent = '.ss-info{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;margin-left:6px;border-radius:50%;border:1px solid var(--color-bronze);background:none;color:var(--color-bronze);font:700 .6875rem Georgia,serif;font-style:italic;line-height:1;cursor:pointer;padding:0;vertical-align:1px}.ss-info:hover{background:var(--color-bronze);color:#fff}' +
+        '#ssInfoPop{position:absolute;z-index:700;width:min(420px,calc(100vw - 24px));padding:16px 18px;border-radius:14px;border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text);box-shadow:0 18px 50px rgba(0,0,0,.4);font:400 .8125rem/1.5 Inter,sans-serif}' +
+        '#ssInfoPop b.t{display:block;margin-bottom:10px;font-weight:600}#ssInfoPop table{width:100%;border-collapse:collapse}#ssInfoPop th{text-align:left;font-size:.6875rem;font-weight:600;color:var(--color-text-muted);padding:6px 4px;border-bottom:1px solid var(--color-border)}#ssInfoPop td{padding:8px 4px;border-bottom:1px solid var(--color-border)}#ssInfoPop td:nth-child(n+2){font-family:"JetBrains Mono",monospace;white-space:nowrap}#ssInfoPop tr.on td{color:var(--color-bronze);font-weight:700}#ssInfoPop small{display:block;margin-top:10px;color:var(--color-text-muted)}';
+      document.head.appendChild(st);
+    }
+    var pop = document.createElement('div'); pop.id = 'ssInfoPop'; pop._for = anchor;
+    pop.innerHTML = '<b class="t">Mức lương tối thiểu vùng hiện hành (áp dụng từ ngày 01/01/2026 theo Nghị định 293/2025/NĐ-CP)</b><table><thead><tr><th>Phân vùng</th><th>Lương tối thiểu tháng</th><th>Lương tối thiểu giờ</th></tr></thead><tbody>' +
+      MINWAGE.map(function (r, i) { return '<tr' + (i === 0 ? ' class="on"' : '') + '><td>' + r[0] + '</td><td>' + fmt(r[1]) + ' đồng</td><td>' + fmt(r[2]) + ' đồng</td></tr>'; }).join('') + '</tbody></table><small>HICONIQUE đóng BHXH theo mức Vùng I (5.310.000 đồng/tháng).</small>';
+    document.body.appendChild(pop);
+    var r = anchor.getBoundingClientRect(), pw = pop.offsetWidth;
+    pop.style.top = (window.scrollY + r.bottom + 8) + 'px';
+    pop.style.left = Math.max(12, Math.min(window.scrollX + r.left - 12, window.scrollX + document.documentElement.clientWidth - pw - 12)) + 'px';
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-minwage-info]');
+    if (b) { e.preventDefault(); e.stopPropagation(); showMinWageInfo(b); return; }
+    var pop = document.getElementById('ssInfoPop'); if (pop && !pop.contains(e.target)) pop.remove();
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { var p = document.getElementById('ssInfoPop'); if (p) p.remove(); } });
+
   function itemNote(x, days, std) {
     var k = x.k || x.kind, f = x.f != null ? x.f : x.full;
-    if (k === 'bh') return 'cố định ' + fmt(f) + ' (không theo công)';
+    if (k === 'bh') return 'cố định ' + fmt(f);
     if (k === 'allowance') return 'trần ' + fmt(f) + ' × ' + days + '/' + std + ' công';
-    return 'phần còn lại (không theo công)';
+    return 'phần còn lại';
   }
   function rowsHtml(items, days, std) {
     return items.map(function (x) {
-      return '<div class="pl-breakdown-row pl-bd-sub"><span>' + esc(x.n || x.name) + ' <span style="color:var(--pl-muted);font-size:.75rem;">· ' + itemNote(x, days, std || LEGAL.stdDays) + '</span></span><span>' + fmt(x.e != null ? x.e : x.earned) + '</span></div>';
+      return '<div class="pl-breakdown-row pl-bd-sub"><span>' + esc(x.n || x.name) + ((x.k || x.kind) === 'bh' ? infoBtn() : '') + ' <span style="color:var(--pl-muted);font-size:.75rem;">· ' + itemNote(x, days, std || LEGAL.stdDays) + '</span></span><span>' + fmt(x.e != null ? x.e : x.earned) + '</span></div>';
     }).join('');
   }
 
@@ -154,7 +181,7 @@
     var ov = document.createElement('div'); ov.id = 'ssOv';
     ov.innerHTML = '<div class="ss-box"><div class="ss-h"><div><div class="ss-t">Cơ cấu lương · bản tổng hợp</div><div class="ss-s">Chia lương hợp đồng thành lương đóng BHXH (tối thiểu vùng I) + các khoản hỗ trợ + lương hiệu quả. Dữ liệu lưu ở Sheet <b>TLCC-Cơ cấu lương</b> — sửa ở đây hoặc trực tiếp trên Sheet đều được.</div></div><button type="button" class="ss-x" data-x aria-label="Đóng">×</button></div>' +
       '<div class="ss-b"><h4>1. Danh mục khoản & mức trần (đủ 26 công)</h4><div id="ssTable"></div><div class="ss-f" style="justify-content:space-between"><button type="button" class="ss-btn" id="ssAdd">+ Thêm khoản hỗ trợ</button><span id="ssWarn" class="ss-warn"></span></div>' +
-      '<h4>2. Công thức tính</h4><div class="ss-form"><b>Tổng tiền công</b> W = Tổng lương hợp đồng ÷ 26 × số công (tối đa 26 công) — không đổi so với cách tính cũ.<br><b>Lương đóng BH</b> = 5.310.000 (tối thiểu vùng I) <b>trọn cục, KHÔNG tính theo công</b> (nếu W nhỏ hơn thì lấy hết W).<br><b>Hỗ trợ</b> (xăng xe, điện thoại, ăn trưa…) = trần × số công ÷ 26 — <b>chỉ khoản này tính theo công</b>, ưu tiên lớn nhất, không vượt phần W còn lại (xăng xe 700.000: đủ 26 công nhận 700.000; 20 công nhận 538.462).<br><b>Lương hiệu quả (KPI)</b> = phần còn lại của W, KHÔNG theo công; hỗ trợ đã đủ phần còn lại thì KPI = 0.<br><b>Sửa tay:</b> trên phiếu lương, nhấp đúp vào số tiền của từng khoản để chỉnh — tổng luôn giữ đúng W (KPI tự hấp thụ chênh lệch; sửa KPI thì chênh dồn vào các khoản hỗ trợ).<br><b>BH người lao động</b> = 10,5% × lương đóng BH (đủ tháng; không đóng nếu &lt; 14 công). <b>BH doanh nghiệp đóng thêm</b> = 21,5% × lương đóng BH.<br><b>Thực lãnh</b> = tiền công + OT + hoa hồng + thưởng − khấu trừ − BH người lao động.</div>' +
+      '<h4>2. Công thức tính</h4><div class="ss-form"><b>Tổng tiền công</b> W = Tổng lương hợp đồng ÷ 26 × số công (tối đa 26 công) — không đổi so với cách tính cũ.<br><b>Lương đóng BH</b> = 5.310.000 (vùng I) <b>trọn cục, không chia theo công</b> (nếu W nhỏ hơn thì lấy hết W).<br><b>Hỗ trợ</b> (xăng xe, điện thoại, ăn trưa…) = trần × số công ÷ 26 — <b>chỉ khoản này tính theo công</b>, ưu tiên lớn nhất, không vượt phần W còn lại (xăng xe 700.000: đủ 26 công nhận 700.000; 20 công nhận 538.462).<br><b>Lương hiệu quả (KPI)</b> = phần còn lại của W, KHÔNG theo công; hỗ trợ đã đủ phần còn lại thì KPI = 0.<br><b>Sửa tay:</b> trên phiếu lương, nhấp đúp vào số tiền của từng khoản để chỉnh — tổng luôn giữ đúng W (KPI tự hấp thụ chênh lệch; sửa KPI thì chênh dồn vào các khoản hỗ trợ).<br><b>BH người lao động</b> = 10,5% × lương đóng BH (đủ tháng; không đóng nếu &lt; 14 công). <b>BH doanh nghiệp đóng thêm</b> = 21,5% × lương đóng BH.<br><b>Thực lãnh</b> = tiền công + OT + hoa hồng + thưởng − khấu trừ − BH người lao động.</div>' +
       '<h4>3. Thử tính nhanh</h4><div class="ss-ex"><div><label style="font-size:.6875rem;color:var(--color-text-muted)">Tổng lương hợp đồng</label><input id="ssExP" class="ss-num" value="15.000.000"></div><div><label style="font-size:.6875rem;color:var(--color-text-muted)">Số công</label><input id="ssExD" class="ss-num" value="26"></div></div><div id="ssEx"></div>' +
       '<h4>4. Cơ sở pháp lý (tham khảo)</h4><div class="ss-legal">' + LEGAL_NOTES.map(function (n) { return '<div><b>' + esc(n[0]) + '</b>' + esc(n[1]) + '</div>'; }).join('') + '</div>' +
       '<div class="ss-f"><button type="button" class="ss-btn" data-x>Đóng</button><button type="button" class="ss-btn pri" id="ssSave">Lưu cơ cấu lương</button></div></div></div>';
@@ -222,5 +249,5 @@
     });
   }
 
-  global.SalaryStructure = { LEGAL: LEGAL, LEGAL_NOTES: LEGAL_NOTES, DEFAULTS: DEFAULTS, compute: compute, snapshot: snapshot, parseSnapshot: parseSnapshot, dedOn: dedOn, rowsHtml: rowsHtml, openEditor: openEditor, fmt: fmt };
+  global.SalaryStructure = { infoBtn: infoBtn, showMinWageInfo: showMinWageInfo, LEGAL: LEGAL, LEGAL_NOTES: LEGAL_NOTES, DEFAULTS: DEFAULTS, compute: compute, snapshot: snapshot, parseSnapshot: parseSnapshot, dedOn: dedOn, rowsHtml: rowsHtml, openEditor: openEditor, fmt: fmt };
 })(window);

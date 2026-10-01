@@ -2094,3 +2094,7 @@ Vẫn thấy khung "Đã đồng bộ" hiện mãi vì các lệnh ghi nền (qu
 - **Chỉ các khoản hỗ trợ tính theo công** (trần × công ÷ 26), ưu tiên lớn nhất, bị chặn bởi phần W còn lại. **Lương hiệu quả (KPI) = phần còn lại, KHÔNG theo công**; hỗ trợ đã đủ hết phần còn lại thì KPI = 0. Tổng tiền công W = tổng lương hợp đồng ÷ 26 × công (không đổi). Ví dụ 30tr: 26 công → BH 5.310.000 + hỗ trợ 1.730.000 + KPI 22.960.000; 20 công → BH 5.310.000 + hỗ trợ 1.330.769 + KPI 16.436.154.
 - **Nhấp đúp để sửa tay** số tiền từng khoản trên phiếu (form tạo phiếu): tổng luôn giữ đúng W — sửa BH/hỗ trợ thì KPI hấp thụ chênh lệch; sửa KPI thì chênh dồn vào các khoản hỗ trợ chưa đạt trần (đã đủ trần thì KPI không giảm thêm được). Khoản đã sửa có dấu ✎. Số sửa được lưu vào snapshot phiếu.
 - Mặc định `salc_bh` = 5.310.000 (trước là 5.681.700); ghi chú: lao động qua đào tạo có thể cần +7% = 5.681.700 nếu hợp đồng quy định (kế toán xác nhận). Chuỗi mô tả trong phiếu/docx đổi: BH "cố định, không theo công"; hỗ trợ "trần × công/26"; KPI "phần còn lại". sw v128.
+
+
+### (di) 01/10/2026 — Dấu (i) lương tối thiểu vùng ở dòng Lương đóng BHXH
+Dòng "Lương đóng BHXH (vùng I)" trên phiếu có nút **i**: bấm mở bảng mức lương tối thiểu vùng hiện hành (từ 01/01/2026, NĐ 293/2025/NĐ-CP): Vùng I 5.310.000 / 25.500; II 4.730.000 / 22.700; III 4.140.000 / 20.000; IV 3.700.000 / 17.800 (đồng/tháng · đồng/giờ), Vùng I tô nổi. Bỏ chữ "tối thiểu" khỏi tên khoản và bỏ "không theo công" ở mô tả BH/KPI (phiếu + docx). `SalaryStructure.infoBtn()/showMinWageInfo()`. sw v129.

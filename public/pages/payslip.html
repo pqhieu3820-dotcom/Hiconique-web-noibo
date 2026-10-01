@@ -393,7 +393,7 @@
             '<div class="pl-breakdown-row minus"><span>Khấu trừ</span><span id="bdDeduction">− ' + fmt(0) + '</span></div>' +
             '<div class="pl-breakdown-row minus"><span>BHXH, BHYT, BHTN người lao động <span style="color:var(--pl-muted);font-size:.75rem;">(10,5% × lương đóng BH ' + fmt(bd.bhBase) + (stats.workDays < 14 ? ' · dưới 14 công: không đóng' : '') + ')</span></span><span id="bdBh">− ' + fmt(bhEmployee) + '</span></div>' +
           '</div>' +
-          '<div class="pl-bd-note">Doanh nghiệp đóng thêm 21,5% × ' + fmt(bd.bhBase) + ' = <b>' + fmt(bd.bhEmployer) + '</b> (không trừ vào lương). ' + (bd.warnings.length ? '<span class="pl-bd-warn">⚠ ' + bd.warnings.join(' ') + '</span>' : '<span style="color:var(--pl-success)">✓ Lương đóng BH ≥ mức tối thiểu vùng I.</span>') + '</div>' +
+          '<div class="pl-bd-note">Doanh nghiệp đóng thêm 21,5% × ' + fmt(bd.bhBase) + ' = <b>' + fmt(bd.bhEmployer) + '</b> (không trừ vào lương). ' + (bd.warnings.length ? '<span class="pl-bd-warn">⚠ ' + bd.warnings.join(' ') + '</span>' : '<span style="color:var(--pl-success)">✓ Lương đóng BH đạt mức vùng I.</span>') + '</div>' +
           '<div class="pl-total-row"><span class="pl-total-label">Tổng đề xuất thanh toán</span><span class="pl-total-value" id="plTotalPreview">' + fmt(workPay) + '</span></div>' +
           '<div><span class="pl-field-label">Ghi chú chung</span><textarea class="pl-input pl-note-input" id="plNote" rows="2" style="width:100%;" placeholder="Ghi chú thêm cho người duyệt (tuỳ chọn)"></textarea></div>' +
           '<div style="margin-top:16px; text-align:right;"><button class="pl-btn pl-btn-primary" id="plSubmitBtn">Gửi đề xuất lương</button></div>' +
@@ -466,8 +466,8 @@
     function itemRowsHtml(bd, days) {
       var dd = Math.min(Number(days) || 0, STD_DAYS);
       return bd.items.map(function (x) {
-        var note = x.kind === 'bh' ? 'cố định ' + fmt(x.full) + ' · không theo công' : x.kind === 'allowance' ? 'trần ' + fmt(x.full) + ' × ' + dd + '/' + STD_DAYS + ' công' : 'phần còn lại · không theo công';
-        return '<div class="pl-breakdown-row pl-bd-sub" data-item="' + x.id + '" title="Nhấp đúp vào số tiền để sửa — tổng vẫn giữ đủ"><span>↳ ' + x.name + (x.edited ? ' ✎' : '') + ' <span style="color:var(--pl-muted);font-size:.75rem;">· ' + note + '</span></span><span class="pl-bd-amt" data-amt="' + x.id + '">' + fmt(x.earned) + '</span></div>';
+        var note = x.kind === 'bh' ? 'cố định ' + fmt(x.full) : x.kind === 'allowance' ? 'trần ' + fmt(x.full) + ' × ' + dd + '/' + STD_DAYS + ' công' : 'phần còn lại';
+        return '<div class="pl-breakdown-row pl-bd-sub" data-item="' + x.id + '" title="Nhấp đúp vào số tiền để sửa — tổng vẫn giữ đủ"><span>↳ ' + x.name + (x.kind === 'bh' ? SalaryStructure.infoBtn() : '') + (x.edited ? ' ✎' : '') + ' <span style="color:var(--pl-muted);font-size:.75rem;">· ' + note + '</span></span><span class="pl-bd-amt" data-amt="' + x.id + '">' + fmt(x.earned) + '</span></div>';
       }).join('');
     }
 
