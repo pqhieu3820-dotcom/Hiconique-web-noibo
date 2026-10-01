@@ -55,7 +55,9 @@
     /* Ô ngày kích thước CỐ ĐỊNH: hiện ngày hoặc khoảng ngày (7 ngày / Tháng này); input date thật nằm trong suốt đè lên để bấm mở lịch */
     .sm-datebox { position: relative; display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; width: 236px; height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--sm-border); border-radius: 8px; background: var(--sm-bg); color: var(--sm-text); font-size: 0.8125rem; font-weight: 600; cursor: pointer; flex: none; }
     .sm-datebox.range { color: var(--sm-bronze); border-color: color-mix(in srgb, var(--sm-bronze) 55%, var(--sm-border)); }
-    .sm-datetext { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+    .sm-datetext { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: inherit; font-weight: 500; letter-spacing: 0; }
+    .sm-dateico { width: 16px; height: 16px; flex: none; color: var(--sm-muted); }
+    .sm-datebox:hover .sm-dateico, .sm-datebox.range .sm-dateico { color: var(--sm-bronze); }
     .sm-date-native { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
     .sm-toolbar, .sm-kpis, .sm-datebox { overflow-anchor: none; }
     .sm-agent-actions { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; }
@@ -160,7 +162,7 @@
 
     <div class="sm-toolbar">
       <div class="sm-seg" id="smRange"><button data-r="today" class="active">Hôm nay</button><button data-r="7d">7 ngày</button><button data-r="month">Tháng này</button></div>
-      <div class="sm-datebox" id="smDateBox" title="Bấm để chọn ngày · lăn chuột để đổi ngày"><span class="sm-datetext" id="smDateText">dd/mm/yyyy</span><span class="sm-dateico" aria-hidden="true">📅</span><input type="date" id="smDate" class="sm-date-native" aria-label="Chọn ngày xem"></div>
+      <div class="sm-datebox" id="smDateBox" title="Bấm để chọn ngày · lăn chuột để đổi ngày"><span class="sm-datetext" id="smDateText">dd/mm/yyyy</span><svg class="sm-dateico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><input type="date" id="smDate" class="sm-date-native" aria-label="Chọn ngày xem"></div>
       <button class="sm-btn" id="smReport" type="button" title="Báo cáo tổng hợp toàn bộ nhân viên trong khoảng đang xem">▤ Báo cáo tổng</button>
       <span class="sm-spacer"></span>
       <button class="sm-btn" id="smReload" type="button">↻ Tải lại dữ liệu</button>

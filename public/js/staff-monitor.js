@@ -156,8 +156,12 @@
   function syncDateBox() {
     var ds = rangeDates(), f = function (d) { var p = d.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; };
     var txt = ds.length <= 1 ? (ds.length ? f(ds[0]) : 'dd/mm/yyyy') : f(ds[0]) + ' – ' + f(ds[ds.length - 1]);
+    var isRange = ds.length > 1;
+    if (!state.date && state.range === 'month') {   // Tháng này: luôn hiện CẢ THÁNG (từ ngày 1 đến ngày cuối tháng), dù dữ liệu mới tới hôm nay
+      var nw = new Date(); txt = f(ymd(new Date(nw.getFullYear(), nw.getMonth(), 1))) + ' – ' + f(ymd(new Date(nw.getFullYear(), nw.getMonth() + 1, 0))); isRange = true;
+    }
     $('smDateText').textContent = txt;
-    $('smDateBox').classList.toggle('range', ds.length > 1);
+    $('smDateBox').classList.toggle('range', isRange);
     if (ds.length === 1) $('smDate').value = ds[0]; else $('smDate').value = '';
   }
   function reportData() {
@@ -166,7 +170,7 @@
     var body = rows.map(function (r) {
       return [r.member.name || r.member.id, r.member.role || '', r.sum.workDays, r.sum.checked ? fmtDur(r.sum.checked) : '—', r.sum.actDays ? fmtDur(r.sum.active) : '—',
         r.sum.actDays ? fmtDur(r.sum.idle) : '—', r.sum.actDays ? fmtDur(r.sum.away) : '—', r.ratio == null ? '—' : Math.round(r.ratio * 100) + '%',
-        r.doing, r.overdue, r.sum.updates, r.flags.map(function (f) { return f.t; }).join('; ')];
+        r.doing, r.overdue, r.sum.updates, r.flags.map(function (f) { return f.t; })];
     });
     var tot = rows.reduce(function (a, r) { a.c += r.sum.checked; a.a += r.sum.active; a.i += r.sum.idle; a.w += r.sum.away; a.u += r.sum.updates; a.o += r.overdue; a.d += r.doing; a.wd += r.sum.workDays; return a; }, { c: 0, a: 0, i: 0, w: 0, u: 0, o: 0, d: 0, wd: 0 });
     var foot = ['Tổng cộng (' + rows.length + ' người)', '', tot.wd, fmtDur(tot.c), fmtDur(tot.a), fmtDur(tot.i), fmtDur(tot.w), tot.c ? Math.round(Math.min(1, tot.a / tot.c) * 100) + '%' : '—', tot.d, tot.o, tot.u, ''];
@@ -187,9 +191,9 @@
     return { head: head, body: body, foot: foot, dayHead: dayHead, people: people, kpi: kpi, title: 'Báo cáo tổng hợp hoạt động nhân viên', range: rangeText() };
   }
   function reportTableHtml(d, withDays) {
-    var cell = function (v, h) { return '<' + (h ? 'th' : 'td') + '>' + esc(String(v)) + '</' + (h ? 'th' : 'td') + '>'; };
+    var cell = function (v, h) { var tg = h ? 'th' : 'td'; return '<' + tg + '>' + (Array.isArray(v) ? v.map(function (x) { return '<div class="rp-flag">' + esc(x) + '</div>'; }).join('') : esc(String(v))) + '</' + tg + '>'; };
     var tbl = function (head, body, foot) {
-      return '<table class="sm-table" style="font-size:.8125rem"><thead><tr>' + head.map(function (h) { return cell(h, 1); }).join('') + '</tr></thead><tbody>' +
+      return '<table class="sm-table rp-tbl" style="font-size:.8125rem"><thead><tr>' + head.map(function (h) { return cell(h, 1); }).join('') + '</tr></thead><tbody>' +
         body.map(function (r) { return '<tr>' + r.map(function (v) { return cell(v); }).join('') + '</tr>'; }).join('') +
         (foot ? '<tr style="font-weight:700">' + foot.map(function (v) { return cell(v); }).join('') + '</tr>' : '') + '</tbody></table>';
     };
@@ -204,9 +208,9 @@
   function openReport() {
     var d = reportData();
     $('smModalTitle').textContent = d.title + ' — ' + d.range;
-    $('smModal').querySelector('.sm-modal').style.maxWidth = '1180px';
+    $('smModal').querySelector('.sm-modal').style.maxWidth = 'min(1480px, 96vw)';
     $('smModalBody').innerHTML = '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;"><button class="sm-btn" id="smRepPrint" type="button">In / Lưu PDF</button><button class="sm-btn" id="smRepCsv" type="button">Tải Excel (.csv)</button></div>' +
-      '<style>.rp-sum{font-size:.8125rem;font-weight:600;color:var(--sm-bronze);margin-bottom:8px}.rp-h{font-size:.9375rem;margin:16px 0 8px}.rp-person{margin-bottom:14px}.rp-name{font-weight:700;margin-bottom:2px}.rp-note{font-size:.75rem;color:var(--sm-muted);margin-bottom:6px}</style>' +
+      '<style>.rp-sum{font-size:.8125rem;font-weight:600;color:var(--sm-bronze);margin-bottom:8px}.rp-h{font-size:.9375rem;margin:16px 0 8px}.rp-person{margin-bottom:14px}.rp-name{font-weight:700;margin-bottom:2px}.rp-note{font-size:.75rem;color:var(--sm-muted);margin-bottom:6px}.rp-tbl th,.rp-tbl td{white-space:nowrap;vertical-align:top;padding:9px 12px}.rp-tbl td:last-child{white-space:normal;min-width:340px}.rp-flag{padding:1px 0;line-height:1.45}.rp-flag+.rp-flag{border-top:1px dashed var(--sm-border);margin-top:3px;padding-top:4px}</style>' +
       '<div style="overflow:auto;max-height:68vh;">' + reportTableHtml(d) + '</div>' +
       '<p class="sm-muted" style="margin:10px 0 0;font-size:.75rem;">Tỉ lệ hoạt động = phút có thao tác trong Hub ÷ giờ chấm công. Người làm việc chủ yếu ngoài Hub sẽ có tỉ lệ thấp — đối chiếu với tiến độ công việc trước khi kết luận.</p>';
     $('smModal').classList.add('active');
@@ -216,7 +220,7 @@
       w.document.close(); w.focus(); setTimeout(function () { w.print(); }, 300);
     });
     $('smRepCsv').addEventListener('click', function () {
-      var q = function (v) { v = String(v == null ? '' : v); return /[";\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+      var q = function (v) { if (Array.isArray(v)) v = v.join('; '); v = String(v == null ? '' : v); return /[";\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
       var out = [[d.title + ' — ' + d.range], [d.kpi], [], ['I. TỔNG HỢP THEO NHÂN VIÊN'], d.head].concat(d.body, [d.foot, [], ['II. CHI TIẾT TỪNG NHÂN VIÊN THEO NGÀY']]);
       d.people.forEach(function (p) { out.push([], [p.name], [p.note + (p.flags.length ? ' · Dấu hiệu: ' + p.flags.join('; ') : '')], d.dayHead); p.days.forEach(function (r) { out.push(r); }); });
       var lines = out.map(function (r) { return r.map(q).join(';'); });
