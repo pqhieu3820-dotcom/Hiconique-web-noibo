@@ -2118,3 +2118,7 @@ Bỏ thông báo nổi "✓ Chấm công đã lưu lên hệ thống" ở timesh
 
 ### (do) 01/10/2026 — Viết lại mô tả trang Đơn hàng
 Đoạn mô tả đầu trang orders.html viết lại ngắn gọn, gần gũi, dành cho mọi người (không dùng thuật ngữ kế toán). sw v134.
+
+
+### (dp) 01/10/2026 — Đơn hàng: bấm 4 bước để xem danh sách
+Bấm từng bước ở thanh luồng (Lập đơn · Gửi kế toán · Đã ghi sổ · Thu đủ) → lọc danh sách đơn theo bước đó và tự cuộn xuống danh sách; có khung thống kê (số đơn, tổng tiền, đã thu, còn nợ) + nút "Xem tất cả". Bước 1 gồm cả Nháp và Bị trả lại. sw v135.

@@ -124,6 +124,9 @@
     .od-tab.on { background: var(--od-bronze); border-color: var(--od-bronze); color: #fff; }
     .od-tab b { font-family: 'JetBrains Mono', monospace; margin-left: 4px; opacity: .85; }
     .od-search { width: 220px; }
+    .od-liststat { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding: 14px 24px; border-bottom: 1px solid var(--od-border); background: color-mix(in srgb, var(--od-bronze) 6%, transparent); font-size: .8125rem; }
+    .od-liststat .ttl { font-weight: 700; } .od-liststat .kv { color: var(--od-muted); } .od-liststat .kv b { color: var(--od-text); font-family: 'JetBrains Mono', monospace; margin-left: 4px; }
+    .od-liststat .clr { margin-left: auto; }
     .od-detail-row { display: none; }
     .od-detail-row.open { display: table-row; }
     .od-detail-box { padding: 18px 24px; background: var(--od-bg); font-size: 0.8125rem; display: grid; grid-template-columns: 1.6fr 1fr; gap: 24px; }
@@ -278,6 +281,7 @@
 
     <div class="od-card">
       <div class="od-card-head"><div><div class="od-card-title">Danh sách đơn hàng</div><div class="od-card-desc">Theo dõi từng đơn từ lúc lập tới khi thu đủ tiền.</div></div></div>
+      <div class="od-liststat" id="odListStat"></div>
       <div class="od-listbar"><div class="od-tabs" id="odTabs"></div><input type="search" class="od-input od-search" id="odSearch" placeholder="Tìm số ĐH, khách hàng…"></div>
       <table class="od-table">
         <thead><tr><th>Số ĐH</th><th>Khách hàng</th><th>Người lập</th><th class="num">Tổng tiền</th><th>Đã thu / công nợ</th><th>Trạng thái</th><th></th></tr></thead>
@@ -588,13 +592,13 @@
 
       var cnt = function (p) { return orders.filter(function (o) { return phaseOf(o) === p; }).length; };
       var steps = [
-        ['draft', 'Lập đơn', 'Nháp, bị trả lại', cnt('draft') + cnt('rejected')],
+        ['draft_rej', 'Lập đơn', 'Nháp, bị trả lại', cnt('draft') + cnt('rejected')],
         ['pending', 'Gửi kế toán', 'Chờ duyệt ghi sổ', cnt('pending')],
         ['debt', 'Đã ghi sổ', 'Phiếu thu + công nợ', cnt('debt')],
         ['paid', 'Thu đủ', 'Đóng đơn', cnt('paid')]
       ];
       document.getElementById('odFlow').innerHTML = steps.map(function (s, i) {
-        var on = filter === s[0] || (s[0] === 'draft' && filter === 'rejected');
+        var on = filter === s[0];
         return '<button type="button" class="od-step' + (on ? ' on' : '') + '" data-flow="' + s[0] + '"><span class="od-step-c">' + s[3] + '</span><div><span class="od-step-n">' + (i + 1) + '</span><span class="od-step-t">' + s[1] + '</span></div><div class="od-step-d">' + s[2] + '</div></button>';
       }).join('');
     }
@@ -602,6 +606,7 @@
       var b = e.target.closest('[data-flow]'); if (!b) return;
       filter = filter === b.getAttribute('data-flow') ? 'all' : b.getAttribute('data-flow');
       renderAll();
+      document.getElementById('odListStat').scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
 
     function projectName(id) {
@@ -637,10 +642,16 @@
       var all = TaskManager.getOrders();
       renderTabs(all);
       var orders = all.filter(function (o) {
-        if (filter !== 'all' && phaseOf(o) !== filter) return false;
+        var ph0 = phaseOf(o);
+        if (filter === 'draft_rej' ? (ph0 !== 'draft' && ph0 !== 'rejected') : (filter !== 'all' && ph0 !== filter)) return false;
         if (query && [o.orderNumber, o.clientName, o.clientPhone, memberName(o.createdBy)].join(' ').toLowerCase().indexOf(query) === -1) return false;
         return true;
       });
+      var FL = { all: 'Tất cả đơn hàng', draft_rej: 'Bước 1 · Lập đơn (nháp, bị trả lại)', pending: 'Bước 2 · Gửi kế toán (chờ duyệt)', debt: 'Bước 3 · Đã ghi sổ (còn công nợ)', paid: 'Bước 4 · Thu đủ', draft: 'Nháp', rejected: 'Bị trả lại' };
+      var sumT = 0, sumC = 0;
+      orders.forEach(function (o) { var tt = Number(o.totalAmount) || 0, ph1 = phaseOf(o); sumT += tt; sumC += ph1 === 'paid' ? tt : (o.collectedAmount != null && o.collectedAmount !== '' ? Number(o.collectedAmount) || 0 : 0); });
+      document.getElementById('odListStat').innerHTML = '<span class="ttl">' + FL[filter] + '</span><span class="kv">Số đơn<b>' + orders.length + '</b></span><span class="kv">Tổng tiền<b>' + fmt(sumT) + ' ₫</b></span><span class="kv">Đã thu<b>' + fmt(sumC) + ' ₫</b></span><span class="kv">Còn nợ<b>' + fmt(Math.max(0, sumT - sumC)) + ' ₫</b></span>' + (filter !== 'all' ? '<button type="button" class="od-btn od-btn-ghost od-btn-sm clr" id="odClrFilter">Xem tất cả</button>' : '');
+      var clr = document.getElementById('odClrFilter'); if (clr) clr.addEventListener('click', function () { filter = 'all'; renderAll(); });
       var rows = document.getElementById('odOrderRows');
       if (orders.length === 0) {
         rows.innerHTML = '<tr><td colspan="7" class="od-empty">' + (all.length ? 'Không có đơn phù hợp bộ lọc.' : 'Chưa có đơn hàng nào. Tạo đơn hàng đầu tiên ở form phía trên.') + '</td></tr>';
