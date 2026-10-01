@@ -2277,3 +2277,4 @@ Dòng chèn mới ở đầu bảng thừa hưởng dropdown Danh mục cũ từ
 ## 2026-10-01 — Phiếu lương: ô OT/hoa hồng trên cùng luôn đúng chấm công + % tiền nhận (thử việc/thực tập)
 - Ô "Giờ OT (tự động)" và "Hoa hồng dự án" trên cùng luôn lấy số thật theo chấm công/hoa hồng, không đổi khi sửa tay trong form.
 - Bảng "Tổng lương hợp đồng nhân viên": thêm ô **%** tiền nhận (mặc định 100) cạnh ô lương; nhấn Lưu là lưu cả lương + %. Lưu vào cột Members `salaryPercent` (header Sheet NS-Thành viên: **"Tỷ lệ nhận lương (%)"** — người dùng tự thêm cột này vào Sheet; FIELD_MAP đã có). Lương cơ bản thực nhận = lương hợp đồng × % (`TaskManager.effectiveBaseSalary`): tiền công theo ngày công, đơn giá OT, BHXH, bảng lương toàn công ty đều tính trên số này. sw v172.
+- 2026-10-01: ĐÃ deploy Apps Script **v128** (FIELD_MAP members + `salaryPercent` ↔ cột 'Tỷ lệ nhận lương (%)'). Người dùng cần thêm cột này vào Sheet NS-Thành viên thì % mới lưu lên Sheet (chưa có cột = chỉ lưu trên máy).
