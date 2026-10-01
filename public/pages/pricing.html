@@ -158,6 +158,21 @@
     .kt-scenario-actions { display: flex; gap: 6px; margin-top: 8px; }
 
     /* Bảng "Kế hoạch tiến độ thi công" — dùng chung màn hình + PDF */
+    .kt-sch-click { cursor: pointer; transition: border-color .15s; }
+    .kt-sch-click:hover { border-color: var(--kt-bronze, #B08D57); }
+    .kt-sch-open { font-size: 0.6875rem; font-weight: 600; color: var(--kt-bronze, #B08D57); white-space: nowrap; }
+    .kt-sch-compact { width: 100%; border-collapse: collapse; margin-top: 4px; }
+    .kt-sch-compact th { text-align: left; font-size: 0.625rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--kt-muted); padding: 6px 4px; border-bottom: 1px solid var(--kt-border); }
+    .kt-sch-compact td { padding: 8px 4px; border-bottom: 1px solid var(--kt-border); vertical-align: top; font-size: 0.6875rem; }
+    .kt-sch-compact tr:last-child td { border-bottom: none; }
+    .kt-sch-compact .nm { font-weight: 600; line-height: 1.35; font-size: 0.75rem; }
+    .kt-sch-compact .kt-sch-badge { margin-top: 4px; font-size: 0.625rem; padding: 1px 6px; }
+    .kt-sch-compact .tm { font-family: 'JetBrains Mono', monospace; color: var(--kt-muted); white-space: nowrap; margin-bottom: 5px; }
+    .kt-sch-compact .kt-sch-bar { min-width: 70px; }
+    .kt-sch-overlay { position: fixed; inset: 0; z-index: 400; background: rgba(0,0,0,.55); display: none; align-items: flex-start; justify-content: center; padding: 28px 16px; overflow: auto; }
+    .kt-sch-overlay.active { display: flex; }
+    .kt-sch-modal { background: var(--kt-surface, #fff); border: 1px solid var(--kt-border); border-radius: 14px; width: 100%; max-width: 980px; }
+    .kt-sch-mhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--kt-border); }
     .kt-sch-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 12px 18px; margin-bottom: 14px; border: 1px solid var(--kt-border); border-radius: 10px; background: var(--kt-bg); }
     .kt-sch-summary b { display: block; font-size: 1.05rem; color: #B45309; font-weight: 700; }
     .kt-sch-summary span { display: block; font-size: 0.6875rem; color: var(--kt-muted); text-transform: uppercase; letter-spacing: 0.03em; margin-top: 2px; }
@@ -851,8 +866,8 @@
 
       <!-- CỘT 3: TIẾN ĐỘ + PHƯƠNG ÁN -->
       <div class="kt-col">
-        <div class="kt-card">
-          <div class="kt-card-head"><div class="kt-card-title">Kế hoạch tiến độ dự kiến</div></div>
+        <div class="kt-card kt-sch-click" id="ktSchCard" role="button" tabindex="0" title="Bấm để xem bảng Kế hoạch tiến độ thi công đầy đủ / xuất PDF">
+          <div class="kt-card-head"><div class="kt-card-title">Kế hoạch tiến độ dự kiến</div><span class="kt-sch-open">Xem bảng đầy đủ ›</span></div>
           <div class="kt-card-body">
             <div class="kt-tl-summary">
               <div class="kt-tl-box"><div class="kt-tl-num" id="ktTlDays">—</div><div class="kt-tl-label">Ngày thi công</div></div>
@@ -879,9 +894,11 @@
         </div>
       </div>
     </div>
-    <div class="kt-card" style="margin-top:18px;">
-      <div class="kt-card-head"><div class="kt-card-title">Kế hoạch tiến độ thi công</div></div>
-      <div class="kt-card-body" id="ktScheduleFull"></div>
+    <div class="kt-sch-overlay" id="ktSchModal" role="dialog" aria-modal="true">
+      <div class="kt-sch-modal">
+        <div class="kt-sch-mhead"><div class="kt-card-title">Kế hoạch tiến độ thi công</div><div style="display:flex;gap:8px;"><button class="kt-btn kt-btn-ghost kt-btn-sm" id="ktSchPdf" type="button">Xuất PDF</button><button class="kt-btn kt-btn-ghost kt-btn-sm" id="ktSchClose" type="button">Đóng</button></div></div>
+        <div class="kt-card-body" id="ktScheduleFull"></div>
+      </div>
     </div>
     <div class="kt-print-doc" id="ktPrintDoc"></div>
     </div>

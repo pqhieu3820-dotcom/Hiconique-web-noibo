@@ -513,6 +513,18 @@
     }).join('');
     return '<table class="kt-sch-table"><thead><tr><th>Hạng mục công việc</th><th>Giai đoạn</th><th>Thời lượng</th><th>Thời gian</th><th>Tiến trình</th></tr></thead><tbody>' + rows + '</tbody></table>';
   }
+  // Bảng rút gọn (thẻ "Kế hoạch tiến độ dự kiến"): cùng dữ liệu & màu thanh với bảng đầy đủ / PDF, xếp vừa cột hẹp
+  function scheduleCompactHtml(tl) {
+    var t0 = tl.startDate.getTime(), span = 1;
+    tl.stages.forEach(function (s) { span = Math.max(span, (s.end.getTime() - t0) / 86400000 + 1); });
+    return '<table class="kt-sch-compact"><thead><tr><th>Hạng mục</th><th>Thời gian · tiến trình</th></tr></thead><tbody>' + tl.stages.map(function (s) {
+      var left = Math.max(0, (s.start.getTime() - t0) / 86400000) / span * 100;
+      var width = Math.max(1.5, ((s.end.getTime() - s.start.getTime()) / 86400000 + 1) / span * 100);
+      var rough = s.phase === 'rough';
+      return '<tr><td><div class="nm">' + s.num + '. ' + escapeHtml(s.name) + '</div><span class="kt-sch-badge">' + (rough ? 'Thô' : 'Gỗ &amp; Hoàn thiện') + ' · ' + s.days + ' ngày</span></td>' +
+        '<td><div class="tm">' + fmtDate(s.start) + ' → ' + fmtDate(s.end) + '</div><div class="kt-sch-bar"><span style="left:' + left.toFixed(2) + '%;width:' + width.toFixed(2) + '%;background:' + (rough ? '#F97316' : '#3B82F6') + ';"></span></div></td></tr>';
+    }).join('') + '</tbody></table>';
+  }
   function scheduleSummaryHtml(tl) {
     var months = (tl.calendarDays / 30).toFixed(1).replace('.0', '');
     return '<div class="kt-sch-summary">' +
@@ -558,9 +570,7 @@
     document.getElementById('ktTlBar').innerHTML =
       '<span style="width:' + tl.roughPct + '%; background:#C9852F;"></span>' +
       '<span style="width:' + (100 - tl.roughPct) + '%; background:#3B6B8C;"></span>';
-    document.getElementById('ktStages').innerHTML = tl.stages.map(function (s) {
-      return '<div class="kt-stage"><div class="kt-stage-num">' + s.num + '</div><div><div class="kt-stage-name">' + escapeHtml(s.name) + '</div><div class="kt-stage-date">' + fmtDate(s.start) + ' → ' + fmtDate(s.end) + '</div></div></div>';
-    }).join('');
+    document.getElementById('ktStages').innerHTML = scheduleCompactHtml(tl);
 
     var schEl = document.getElementById('ktScheduleFull');
     if (schEl) schEl.innerHTML = scheduleSummaryHtml(tl) + scheduleTableHtml(tl) + '<p class="kt-sch-note">* Toàn bộ thông tin khái toán và kế hoạch tiến độ chỉ mang tính chất tham khảo.</p>';
@@ -723,6 +733,25 @@
       if (!confirm('Xoá toàn bộ phương án đã lưu trên máy này?')) return;
       saveScenarios([]);
       renderScenarios();
+    });
+    // Bấm thẻ "Kế hoạch tiến độ dự kiến" → cửa sổ bảng đầy đủ (như bản PDF); Xuất PDF trong đó chỉ in đúng trang tiến độ
+    var schCard = document.getElementById('ktSchCard'), schModal = document.getElementById('ktSchModal');
+    function openSch() { recalc(); schModal.classList.add('active'); }
+    function closeSch() { schModal.classList.remove('active'); }
+    schCard.addEventListener('click', openSch);
+    schCard.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSch(); } });
+    document.getElementById('ktSchClose').addEventListener('click', closeSch);
+    schModal.addEventListener('click', function (e) { if (e.target === schModal) closeSch(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSch(); });
+    document.getElementById('ktSchPdf').addEventListener('click', function () {
+      var r = recalc();
+      document.getElementById('ktPrintDoc').innerHTML = '<section class="kt-p-page"><h1>KẾ HOẠCH TIẾN ĐỘ THI CÔNG</h1><div class="kt-p-sub">Quy trình quản lý tiêu chuẩn.</div>' + scheduleSummaryHtml(r.tl) + scheduleTableHtml(r.tl) +
+        '<p class="kt-p-note" style="text-align:center;">* Lưu ý: Toàn bộ thông tin khái toán và kế hoạch tiến độ chỉ mang tính chất tham khảo.</p></section>';
+      closeSch();
+      document.body.classList.add('kt-printing');
+      var done = function () { document.body.classList.remove('kt-printing'); window.removeEventListener('afterprint', done); };
+      window.addEventListener('afterprint', done);
+      setTimeout(function () { window.print(); }, 120);
     });
     document.getElementById('ktPrintBtn').addEventListener('click', function () {
       buildPrintDoc();
