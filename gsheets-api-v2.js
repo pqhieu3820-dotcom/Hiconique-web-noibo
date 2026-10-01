@@ -842,6 +842,29 @@ function getPriceSettings_(ss) {
   });
 }
 
+// Tổng số giờ làm việc (cột "Tổng số giờ làm việc" của TLCC-Chấm công) là CÔNG THỨC trong Sheet:
+//   (ra ca sáng − vào ca sáng) + (ra ca chiều − vào ca chiều), tính giờ, làm tròn 1 chữ số; cặp thiếu giờ vào hoặc ra thì tính 0.
+// Sửa tay giờ vào/ra trên Sheet → cột này tự đổi. Server KHÔNG ghi đè cột này nữa (bỏ qua key totalHours của sheet chấm công).
+function tsColLetter_(n) { var s = ''; while (n > 0) { var m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; }
+function tsHoursFormula_(headers, r) {
+  const ix = function (name) { const i = headers.indexOf(name); return i < 0 ? '' : tsColLetter_(i + 1) + r; };
+  const a = ix('Giờ vào ca sáng'), b = ix('Giờ ra ca sáng'), c = ix('Giờ vào ca chiều'), d = ix('Giờ ra ca chiều');
+  if (!a || !b || !c || !d) return '';
+  const pair = function (x, y) { return 'IF(AND(' + x + '<>"",' + y + '<>""),MAX(0,TIMEVALUE(TEXT(' + y + ',"HH:mm"))-TIMEVALUE(TEXT(' + x + ',"HH:mm"))),0)'; };
+  return '=ROUND(24*(' + pair(a, b) + '+' + pair(c, d) + '),1)';
+}
+// Chạy TAY 1 lần trong editor: đặt công thức cho mọi dòng chấm công hiện có.
+function setupTimesheetHoursFormula() {
+  const sh = findSheet(getSS_(), SHEETS.timesheet);
+  if (!sh || sh.getLastRow() < 2) return;
+  const headers = getHeaders(sh), ci = headers.indexOf('Tổng số giờ làm việc');
+  if (ci < 0) { Logger.log('Khong thay cot Tong so gio lam viec'); return; }
+  const n = sh.getLastRow() - 1, f = [];
+  for (let i = 0; i < n; i++) { const fx = tsHoursFormula_(headers, i + 2); if (!fx) { Logger.log('Thieu cot gio vao/ra'); return; } f.push([fx]); }
+  sh.getRange(2, ci + 1, n, 1).setFormulas(f);
+  Logger.log('SETUP_HOURS_FORMULA ' + n + ' dong');
+}
+
 function sheetKeyFor(sheetName) {
   return Object.keys(SHEETS).filter(function (k) { return SHEETS[k] === sheetName; })[0];
 }
@@ -1693,8 +1716,11 @@ function needsPlainTextFormat(enKey) {
   return !!(enKey && (FORCE_TEXT_FIELDS[enKey] || /^ip$|Ip$/.test(enKey)));
 }
 function writeTextForcedCell(cell, val) {
-  cell.setNumberFormat('@');
-  cell.setValue(val);
+  // 2026-10-01: bảng "Bảng_5" (Google Sheets Tables) có cột đã nhập kiểu → setNumberFormat() bị CHẶN và lỗi chỉ báo trễ (ở lần đọc kế tiếp) → cả lệnh ghi
+  // thất bại / mất giá trị (cột IP Checkin không bao giờ có dữ liệu). Nay không đổi định dạng ô: ô đã là văn bản '@' thì ghi thẳng, chưa thì ghi kèm dấu nháy đầu ("'") để Sheets giữ là văn bản.
+  var s = String(val), fmt = '';
+  try { fmt = cell.getNumberFormat(); } catch (e) { /* bỏ qua */ }
+  cell.setValue(fmt === '@' ? s : "'" + s);
 }
 
 // 2026-09-10: ghi các field NGÀY/THỜI GIAN (không phải "month" YYYY-MM, đã
@@ -1912,6 +1938,7 @@ function addData_impl(ss, sheetName, data) {
   const textForcedCols = [];
   const row = headers.map(function (h, i) {
     const enKey = viToEnHeader(sheetName, h);
+    if (sheetName === SHEETS.timesheet && enKey === 'totalHours') { const fx = tsHoursFormula_(headers, 2); if (fx) return fx; }
     let val = data[enKey];
     if (Array.isArray(val)) return stringifyArrayForCell(enKey, val);
     if (typeof val === 'string') val = enToViValue(sheetName, enKey, val);
@@ -1952,6 +1979,7 @@ function updateData_impl(ss, sheetName, id, updates) {
   const plainCols = {};
   headers.forEach(function (h, i) {
     const enKey = viToEnHeader(sheetName, h);
+    if (sheetName === SHEETS.timesheet && enKey === 'totalHours') return;   // cột này là công thức trong Sheet (xem tsHoursFormula_)
     if (updates[enKey] !== undefined) {
       let val = updates[enKey];
       if (Array.isArray(val)) val = stringifyArrayForCell(enKey, val);

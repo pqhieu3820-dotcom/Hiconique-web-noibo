@@ -717,7 +717,11 @@ var TaskManager = (function() {
       if (!localItem) return serverItem;
       var localTime = localItem.updatedAt ? new Date(localItem.updatedAt).getTime() : 0;
       var serverTime = serverItem.updatedAt ? new Date(serverItem.updatedAt).getTime() : 0;
-      var winner = localTime > serverTime ? localItem : serverItem;
+      // 2026-10-01: Sheet là NGUỒN SỰ THẬT. Trước đây bản local thắng mãi nếu `updatedAt` local mới hơn — mà sửa TAY trên Google Sheet không đổi cột
+      // "Ngày cập nhật" nên web giữ dữ liệu cũ vĩnh viễn (bấm làm mới cũng không lấy được). Nay bản local chỉ thắng khi vừa sửa trong 2 phút gần đây
+      // (chờ lệnh ghi lên Sheet xong — lệnh chưa gửi vẫn được phủ lại bởi hàng đợi ghi); quá 2 phút thì lấy theo Sheet.
+      var localRecent = localTime > serverTime && (now - localTime) < 120000;
+      var winner = localRecent ? localItem : serverItem;
       var loser = winner === localItem ? serverItem : localItem;
       return storageKey === STORAGE_KEYS.tasks ? mergeDailyTasks_(winner, loser) : winner;
     });
