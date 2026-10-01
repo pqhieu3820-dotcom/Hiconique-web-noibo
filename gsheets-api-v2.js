@@ -1020,6 +1020,8 @@ function handleRequestImpl_(e) {
       result = updateData(ss, SHEETS.commissions, params.id, JSON.parse(params.data));
     } else if (action === 'deleteCommission') {
       result = deleteData(ss, SHEETS.commissions, params.id);
+    } else if (action === 'deleteTimesheetTest') {
+      result = String(params.id || '').indexOf('ZZ_TEST_') === 0 ? deleteData(ss, SHEETS.timesheet, params.id) : { error: 'Only ZZ_TEST_ ids' };
     } else if (action === 'getUnits') {
       result = getAllData(ss, SHEETS.units);
     } else if (action === 'addUnit') {
@@ -1605,11 +1607,21 @@ function ensureSchemaColumns(sheet, sheetName, headers, dataObj) {
 // gốc dùng chung cho MỌI action ghi lên Sheet. tryLock(10s) — nếu vẫn
 // không lấy được khoá (kẹt bất thường) thì VẪN CHẠY TIẾP (không chặn hẳn
 // request của người dùng), chỉ log lại để biết mà xem sau.
+// 2026-10-01: TÌM SỐ DÒNG THEO MÃ (cột A) NGAY LÚC GHI/XOÁ — trước đây số dòng lấy từ getAllData() (đọc cả sheet, mất vài giây) rồi mới ghi; bản ghi mới luôn chèn ở dòng 2 nên
+// nếu có lệnh khác chèn dòng trong lúc đó (khoá bị quá hạn 10s lúc đông người dùng), lệnh ghi rơi nhầm sang DÒNG KHÁC (VD giờ check-in chiều của người này ghi mất/đè sang dòng người kia).
+function findRowById_(sheet, id) {
+  const last = sheet.getLastRow();
+  if (last < 2) return -1;
+  const ids = sheet.getRange(2, 1, last - 1, 1).getValues();
+  for (let i = 0; i < ids.length; i++) { if (ids[i][0] === id) return i + 2; }
+  return -1;
+}
+
 function withScriptLock_(fn) {
   var lock = LockService.getScriptLock();
   var acquired = false;
   try {
-    acquired = lock.tryLock(10000);
+    acquired = lock.tryLock(20000);
   } catch (e) {
     Logger.log('withScriptLock_: tryLock loi — ' + e);
   }
@@ -1691,7 +1703,8 @@ function updateData_impl(ss, sheetName, id, updates) {
   const data = getAllData(ss, sheetName);
   const index = data.findIndex(function (row) { return row.id === id; });
   if (index === -1) return { error: 'Not found: ' + id };
-  const rowNum = index + 2;
+  const rowNum = findRowById_(sheet, id);   // số dòng THẬT tại lúc ghi (không dùng index cũ từ getAllData)
+  if (rowNum === -1) return { error: 'Not found: ' + id };
   if (headers.indexOf(enToViHeader(sheetName, 'updatedAt')) !== -1) {
     updates.updatedAt = new Date().toISOString();
   }
@@ -1768,7 +1781,9 @@ function deleteData_impl(ss, sheetName, id) {
   const data = getAllData(ss, sheetName);
   const index = data.findIndex(function (row) { return row.id === id; });
   if (index === -1) return { error: 'Not found' };
-  sheet.deleteRow(index + 2);
+  const delRow = findRowById_(sheet, id);
+  if (delRow === -1) return { error: 'Not found' };
+  sheet.deleteRow(delRow);
   return { success: true, deleted: id };
 }
 

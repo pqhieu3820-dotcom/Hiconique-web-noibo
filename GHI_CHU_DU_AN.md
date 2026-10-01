@@ -2158,3 +2158,11 @@ Form Thêm/Sửa dự án (projects.html + projects.js, và form tạo dự án 
 
 ### (dx) 01/10/2026 — Khung đồng bộ: hiện 3s rồi KHÔNG nhắc lại trong 60s
 `offline.js`: sau khi hiện "Đã đồng bộ" đúng 3s rồi ẩn, vào "thời gian yên lặng" 60s — các lệnh ghi nền/liên tiếp trong khoảng này KHÔNG bật lại khung (cả "Đang lưu" lẫn "Đã đồng bộ"); chỉ lỗi/đang thử lại mới hiện ngay. (Production lúc này chạy v141 — đã có bản chặn ghi nền theo thao tác người dùng nhưng vẫn lặp vì các lệnh ghi liên tiếp.) sw v143.
+
+
+### (dy) 01/10/2026 — Chấm công: giờ check-in chiều hiện OK trên web nhưng KHÔNG lên Sheet
+- **Hiện tượng:** CEO check-in ca chiều 13:25 — web báo đã lưu, hàng đợi trống, nhưng dòng chấm công trên Sheet thiếu giờ vào ca chiều (và còn lệch giờ ca sáng, mất ghi chú đóng ca). Dòng 30/09 của CEO cũng thiếu giờ vào ca chiều (13:17).
+- **Nguyên nhân (đã tái hiện từng phần):** bản ghi mới luôn chèn ở dòng 2 nên số dòng đổi liên tục; `updateData`/`deleteData` trước đây lấy số dòng từ `getAllData()` (đọc cả sheet, mất vài giây) rồi mới ghi, và khoá `withScriptLock_` chỉ chờ 10s rồi vẫn chạy tiếp khi không giành được khoá (đông người chấm công cùng lúc, lệnh ghi 4–9s/lệnh) → lệnh ghi có thể rơi nhầm dòng. Test tuần tự trên dòng thử thì ghi đúng ⇒ lỗi chỉ xảy ra khi đua nhau.
+- **Sửa Apps Script v118:** thêm `findRowById_()` — tìm số dòng THEO MÃ (cột A) ngay lúc ghi/xoá, dùng cho `updateData_impl` và `deleteData_impl` (xoá nhầm dòng cũng bị chặn); `tryLock` 10s → 20s. Thêm action tạm `deleteTimesheetTest` (chỉ xoá mã bắt đầu `ZZ_TEST_`, dùng dọn dòng thử).
+- **Sửa client (task-data.js):** `healTimesheetFromLocal_()` — mỗi lần tải dữ liệu, với chấm công của CHÍNH người đăng nhập (3 ngày gần nhất), nếu máy có giờ vào/ra mà Sheet đang trống → tự xếp lệnh cập nhật đẩy lại (mỗi giờ 1 lần/phiên).
+- **Đã khôi phục dữ liệu CEO:** đẩy lại dòng 01/10 (sáng 11:27–11:27 tự đóng ca, chiều vào 13:25, đi muộn "Đi công trường", ghi chú) và dòng 30/09 (vào chiều 13:17). Dòng của NV khác (VD NV_VK_210593) nếu thiếu giờ thì tự đẩy lại khi họ mở web. sw v144.

@@ -615,6 +615,31 @@ var TaskManager = (function() {
     return Object.assign({}, winner, { dailyTasks: mergedDaily, progress: totalProgress });
   }
 
+  // 2026-10-01: TỰ ĐẨY LẠI chấm công bị thiếu trên Sheet. Từng có lúc giờ check-in chiều hiện OK trên web (và hàng đợi báo xong) nhưng Sheet không có (lệnh ghi rơi nhầm dòng khi
+  // nhiều người chấm công cùng lúc — đã sửa phía Apps Script bằng findRowById_). Mỗi lần tải dữ liệu: với các dòng chấm công của CHÍNH người đang đăng nhập (3 ngày gần nhất), nếu máy có
+  // giờ (vào/ra ca sáng/chiều) mà Sheet đang trống → xếp lệnh cập nhật đúng các giờ đó, mỗi giờ chỉ đẩy 1 lần/phiên để không lặp.
+  var healedTs_ = {};
+  function healTimesheetFromLocal_(serverArr) {
+    try {
+      var me = getCurrentUser(); if (!me || !isUsingGSheets()) return;
+      var local = []; try { local = JSON.parse(localStorage.getItem(STORAGE_KEYS.timesheet) || '[]'); } catch (e) {}
+      var byId = {}; (serverArr || []).forEach(function (s) { if (s && s.id) byId[s.id] = s; });
+      var since = Date.now() - 3 * 86400000, fields = ['morningCheckin', 'morningCheckout', 'afternoonCheckin', 'afternoonCheckout'];
+      local.forEach(function (l) {
+        if (!l || l.memberId !== me.id || !byId[l.id]) return;
+        if (l.date && new Date(l.date).getTime() < since) return;
+        var s = byId[l.id], patch = {}, any = false;
+        fields.forEach(function (k) { if (l[k] && !s[k]) { patch[k] = l[k]; any = true; } });
+        if (!any) return;
+        var key = l.id + '|' + JSON.stringify(patch);
+        if (healedTs_[key]) return;
+        healedTs_[key] = 1;
+        ['status', 'totalHours', 'overtimeHours', 'note', 'isLate', 'isEarly', 'lateEarlyNote'].forEach(function (k) { if (l[k] !== undefined && l[k] !== '') patch[k] = l[k]; });
+        callGSheetsAPI('updateTimesheet', patch, l.id);
+      });
+    } catch (e) { console.error('healTimesheetFromLocal_:', e); }
+  }
+
   // Phủ các lệnh ghi CHƯA gửi được lên Sheet (hàng đợi ghi bền vững, xem callGSheetsAPI) lên dữ liệu
   // server vừa tải về, theo đúng thứ tự — để dữ liệu người dùng vừa nhập không bị bản cũ trên Sheet đè mất.
   var PENDING_ACTION_TYPE = { addTimesheet: 'timesheet', updateTimesheet: 'timesheet' };
@@ -814,6 +839,7 @@ var TaskManager = (function() {
         // 2026-09-29: KHÔNG ghi đè thẳng nữa — gộp với dữ liệu local và phủ lại các lệnh ghi còn
         // trong hàng đợi (chưa lên được Sheet), nếu không lượt chấm công vừa bấm sẽ biến mất khỏi
         // màn hình mỗi lần làm mới ngầm 20s cho tới khi Sheet nhận được.
+        healTimesheetFromLocal_(timesheet);   // chấm công của CHÍNH MÌNH có trên máy mà Sheet đang thiếu → đẩy lại (xem hàm)
         localStorage.setItem(STORAGE_KEYS.timesheet, JSON.stringify(applyPendingWrites_('timesheet', mergeServerData(STORAGE_KEYS.timesheet, timesheet))));
       }
       checkDone();
