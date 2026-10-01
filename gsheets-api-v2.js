@@ -378,7 +378,10 @@ const FIELD_MAP = {
     ['Mã CN', 'id'], ['Khách hàng', 'clientName'], ['Mã dự án', 'projectId'], ['Mô tả', 'description'],
     ['Số tiền', 'amount'], ['Hạn thanh toán', 'dueDate'], ['Trạng thái', 'status'], ['Ghi chú', 'note'],
     ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt'],
-    ['Mã đơn hàng', 'orderId'], ['Số đơn hàng', 'orderNumber'], ['Loại công nợ', 'kind']
+    ['Mã đơn hàng', 'orderId'], ['Số đơn hàng', 'orderNumber'], ['Loại công nợ', 'kind'],
+    // 2026-10-01: Công nợ phải thu + phải trả theo đối tượng
+    ['Hướng', 'direction'], ['Loại đối tượng', 'partyType'], ['SĐT', 'partyPhone'], ['Mã số thuế', 'partyTaxCode'], ['Địa chỉ', 'partyAddress'],
+    ['Người liên hệ', 'partyContact'], ['Số hợp đồng/chứng từ', 'refNo'], ['Ngày phát sinh', 'issueDate'], ['Đã thanh toán', 'paidAmount'], ['Lịch sử thanh toán', 'payments']
   ],
   // Ảnh chụp bảng cân đối kế toán theo năm, nhập tay 1 lần/năm — phục vụ
   // riêng "Sổ tay CFO" trong finance.html (thanh khoản, đòn bẩy, Altman

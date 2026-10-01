@@ -135,12 +135,13 @@ var PayslipDocx = (function () {
   }
   function fileName(d) { return 'Giay_de_nghi_thanh_toan_luong_' + String((d.member && d.member.name) || 'NV').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd').replace(/[^A-Za-z0-9]+/g, '_') + '_' + String(d.month).replace('-', '_') + '.docx'; }
 
-  function download(data) {
-    return makeBlob(data).then(function (blob) {
-      var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fileName(data); document.body.appendChild(a); a.click(); a.remove();
+  function downloadBlob(name, getBlob) {
+    return getBlob().then(function (blob) {
+      var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove();
       setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
     });
   }
+  function download(data) { return downloadBlob(fileName(data), function () { return makeBlob(data); }); }
 
   var PV_CSS = '#pdxOverlay{position:fixed;inset:0;z-index:600;display:flex;flex-direction:column;background:radial-gradient(1200px 600px at 50% -10%,#4a4f57,#2b2e33 70%);animation:pdxIn .22s ease}@keyframes pdxIn{from{opacity:0}to{opacity:1}}' +
     '#pdxOverlay .pdx-bar{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 20px;background:rgba(255,255,255,.07);backdrop-filter:blur(16px) saturate(160%);-webkit-backdrop-filter:blur(16px) saturate(160%);border-bottom:1px solid rgba(255,255,255,.12);color:#f4f1ec;font-family:Inter,system-ui,sans-serif;flex-wrap:wrap}' +
@@ -155,13 +156,14 @@ var PayslipDocx = (function () {
     '#pdxOverlay .pdx-load{display:flex;flex-direction:column;align-items:center;gap:14px;padding:80px 0;color:#f4f1ec;font:500 .875rem Inter,system-ui,sans-serif}#pdxOverlay .pdx-load i{width:34px;height:34px;border-radius:50%;border:3px solid rgba(255,255,255,.2);border-top-color:#B08D57;animation:pdxSpin .8s linear infinite}@keyframes pdxSpin{to{transform:rotate(360deg)}}' +
     '@media(max-width:700px){#pdxOverlay .pdx-bar{padding:8px 12px}#pdxOverlay .pdx-zoom{order:3}#pdxOverlay .pdx-btn span{display:none}}';
 
-  function preview(data) {
+  // Khung xem nhanh + Tải .docx + Xuất PDF dùng CHUNG cho mọi văn bản (phiếu lương, công nợ…): cfg = { title, sub, fileName('.docx'), makeBlob() → Promise<Blob> }
+  function openViewer(cfg) {
     var old = document.getElementById('pdxOverlay'); if (old) old.remove();
     if (!document.getElementById('pdxCss')) { var st = document.createElement('style'); st.id = 'pdxCss'; st.textContent = PV_CSS; document.head.appendChild(st); }
-    var m = data.member || {};
+    var escH = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
     var ov = document.createElement('div'); ov.id = 'pdxOverlay';
     ov.innerHTML =
-      '<div class="pdx-bar"><div class="pdx-ttl"><div class="pdx-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></div><div><b>Giấy đề nghị thanh toán lương</b><span>Tháng ' + mmYYYY(data.month) + ' · ' + (m.name || '') + ' · ' + fileName(data) + '</span></div></div>' +
+      '<div class="pdx-bar"><div class="pdx-ttl"><div class="pdx-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></div><div><b>' + escH(cfg.title) + '</b><span>' + escH(cfg.sub) + ' · ' + escH(cfg.fileName) + '</span></div></div>' +
       '<div class="pdx-zoom"><button type="button" data-z="-1" aria-label="Thu nhỏ">−</button><output id="pdxZ">100%</output><button type="button" data-z="1" aria-label="Phóng to">+</button><button type="button" data-z="0" aria-label="Vừa khung" title="Vừa khung" style="font-size:.7rem;font-weight:700;width:auto;padding:0 8px">Vừa</button></div>' +
       '<div class="pdx-act"><label class="pdx-dpi" title="Độ phân giải ảnh trong file PDF"><span>Chất lượng PDF</span><select id="pdxDpi"><option value="1200" selected>1200 DPI (mặc định)</option><option value="600">600 DPI</option><option value="300">300 DPI</option></select></label><button type="button" class="pdx-btn pri" data-dl><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg><span>Tải file .docx</span></button><button type="button" class="pdx-btn" data-pdf title="Tải file PDF về máy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M8 14h1.5a1.5 1.5 0 0 1 0 3H8v-3zM8 17v2"/></svg><span>Xuất PDF</span></button><button type="button" class="pdx-btn" data-x><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg><span>Đóng</span></button></div></div>' +
       '<div class="pdx-scroll"><div id="pdxHost"><div class="pdx-load"><i></i>Đang tạo bản xem…</div></div></div>';
@@ -173,7 +175,7 @@ var PayslipDocx = (function () {
     function onKey(e) { if (e.key === 'Escape') close(); else if ((e.key === '+' || e.key === '=') && e.ctrlKey) { e.preventDefault(); applyZoom(zoom + 0.1); } else if (e.key === '-' && e.ctrlKey) { e.preventDefault(); applyZoom(zoom - 0.1); } }
     document.addEventListener('keydown', onKey);
     ov.querySelector('[data-x]').addEventListener('click', close);
-    ov.querySelector('[data-dl]').addEventListener('click', function () { download(data); });
+    ov.querySelector('[data-dl]').addEventListener('click', function () { downloadBlob(cfg.fileName, cfg.makeBlob); });
     function notify(msg, warn) { var o = ov.querySelector('.pdx-toast'); if (o) o.remove(); var n = document.createElement('div'); n.className = 'pdx-toast' + (warn ? ' warn' : ''); n.innerHTML = '<i></i><span></span>'; n.querySelector('span').textContent = msg; ov.appendChild(n); setTimeout(function () { n.remove(); }, 6000); }
     // Xuất PDF: chụp từng trang giấy đang xem (html2canvas, 2x) rồi ghép vào file PDF A4 (jsPDF) và TẢI THẲNG về máy — không mở hộp thoại in
     ov.querySelector('[data-pdf]').addEventListener('click', function () {
@@ -198,7 +200,7 @@ var PayslipDocx = (function () {
             i++; return next();
           });
         }
-        return next().then(function () { pdf.setProperties({ title: fileName(data).replace(/\.docx$/, ''), creator: 'HICONIQUE Internal Hub' }); var blob = pdf.output('blob'), a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fileName(data).replace(/\.docx$/, '.pdf'); document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+        return next().then(function () { pdf.setProperties({ title: cfg.fileName.replace(/\.docx$/, ''), creator: 'HICONIQUE Internal Hub' }); var blob = pdf.output('blob'), a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = cfg.fileName.replace(/\.docx$/, '.pdf'); document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
           var minDpi = Math.min.apply(null, used), reduced = minDpi < want;
           notify('Đã xuất PDF — ' + minDpi + ' DPI · ' + pages.length + ' trang · ' + (blob.size / 1048576).toFixed(1).replace('.', ',') + ' MB' + (reduced ? ' (đã hạ từ ' + want + ' DPI do thiếu bộ nhớ)' : ''), reduced); });
       }).catch(function (err) { alert('Không tạo được PDF: ' + (err && err.message || err)); })
@@ -207,7 +209,7 @@ var PayslipDocx = (function () {
     ov.querySelector('.pdx-zoom').addEventListener('click', function (e) { var b = e.target.closest('[data-z]'); if (!b) return; var d = Number(b.getAttribute('data-z')); if (d === 0) fit(); else applyZoom(zoom + d * 0.1); });
     scroller.addEventListener('wheel', function (e) { if (!e.ctrlKey) return; e.preventDefault(); applyZoom(zoom * Math.exp(e.deltaY < 0 ? 0.1 : -0.1)); }, { passive: false });
     scroller.addEventListener('mousedown', function (e) { if (e.target === scroller) close(); });
-    return makeBlob(data).then(function (blob) {
+    return cfg.makeBlob().then(function (blob) {
       return ensurePreview().then(function (P) {
         host.innerHTML = '';
         return P.renderAsync(blob, host, null, { className: 'pdx', inWrapper: true, ignoreWidth: false, ignoreHeight: false, breakPages: true });
@@ -215,5 +217,7 @@ var PayslipDocx = (function () {
     }).then(fit).catch(function (err) { host.innerHTML = '<div style="padding:20px;background:#fff;color:#a04848;border-radius:10px;max-width:560px">Không tạo được bản xem: ' + String(err && err.message || err) + '</div>'; });
   }
 
-  return { download: download, preview: preview, moneyWords: moneyWords };
+  function preview(data) { return openViewer({ title: 'Giấy đề nghị thanh toán lương', sub: 'Tháng ' + mmYYYY(data.month) + ' · ' + ((data.member && data.member.name) || ''), fileName: fileName(data), makeBlob: function () { return makeBlob(data); } }); }
+
+  return { download: download, preview: preview, moneyWords: moneyWords, openViewer: openViewer, downloadBlob: downloadBlob, ensureDocx: ensureDocx, fmt: fmt, COMPANY: COMPANY, FONT: FONT };
 })();

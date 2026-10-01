@@ -52,7 +52,7 @@ var FinanceQuick = (function () {
     var before = all().filter(function (e) { return entryDate(e) < range.from; }), opening = cashOf(before), net = cashOf(list), closing = opening + net;
     var upto = all().filter(function (e) { return entryDate(e) <= range.to; }), debt = sumT(upto, 'loan') - sumT(upto, 'repayment');
     var rcs = (TM.getReceivables && TM.getReceivables()) || [], unpaid = 0, overdue = 0;
-    rcs.forEach(function (r) { var st = ctx.receivableStatus(r); if (st !== 'paid') { unpaid += num(r.amount); if (st === 'overdue') overdue += num(r.amount); } });
+    rcs.forEach(function (r) { var st = ctx.receivableStatus(r); if (st !== 'paid') { unpaid += num(r.outstanding); if (st === 'overdue') overdue += num(r.outstanding); } });
     return { list: list, rev: rev, exp: exp, bon: bon, pen: pen, pnl: pnl, margin: rev ? pnl / rev : 0, opening: opening, net: net, closing: closing, debt: debt, unpaid: unpaid, overdue: overdue, rcs: rcs };
   }
 
@@ -138,7 +138,7 @@ var FinanceQuick = (function () {
   function viewRc() {
     var rows = ((ctx.TaskManager.getReceivables && ctx.TaskManager.getReceivables()) || []).map(function (r) {
       var st = ctx.receivableStatus(r), lb = (ctx.STATUS_LABEL || {})[st] || st;
-      return '<tr><td>' + esc(r.clientName || '') + '</td><td>' + esc(r.projectId || '') + '</td><td>' + esc(r.description || '') + '</td><td class="c">' + vn(r.dueDate) + '</td><td class="n">' + fmt(r.amount) + '</td><td class="c">' + pill(st === 'paid' ? 'Tốt' : (st === 'overdue' ? 'Rủi ro' : 'Cần chú ý')).replace(/>[^<]*</, '>' + esc(lb) + '<') + '</td></tr>';
+      return '<tr><td>' + esc(r.clientName || '') + '</td><td>' + esc(r.projectId || '') + '</td><td>' + esc(r.description || '') + '</td><td class="c">' + vn(r.dueDate) + '</td><td class="n">' + fmt(r.outstanding != null && st !== 'paid' ? r.outstanding : r.amount) + '</td><td class="c">' + pill(st === 'paid' ? 'Tốt' : (st === 'overdue' ? 'Rủi ro' : 'Cần chú ý')).replace(/>[^<]*</, '>' + esc(lb) + '<') + '</td></tr>';
     });
     return '<h3 class="fq-sec">CÔNG NỢ KHÁCH HÀNG</h3>' + table(['Khách hàng', 'Dự án', 'Mô tả', 'Hạn thu', 'Số tiền', 'Trạng thái'], rows, { num: [4] });
   }

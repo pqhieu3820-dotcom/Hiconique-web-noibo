@@ -25,6 +25,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js" defer></script>
   <script src="/js/finance-categories.js"></script>
   <script src="/js/finance-export.js" defer></script>
+  <script src="/js/payslip-docx.js" defer></script>
+  <script src="/js/debt-docx.js" defer></script>
   <script src="/js/finance-quick.js" defer></script>
   <script src="/js/excel-standard.js" defer></script>
   <style>
@@ -398,7 +400,7 @@
         { id: 'transactions', label: 'Giao dịch', icon: ICONS.transactions },
         { id: 'ledger', label: 'Sổ quỹ / Sổ tiền gửi', icon: ICONS.transactions },
         { id: 'orders', label: 'Đơn hàng chờ ghi sổ', icon: ICONS.report, badge: 'fnOrdBadge' },
-        { id: 'receivables', label: 'Công nợ khách hàng', icon: ICONS.customers }
+        { id: 'receivables', label: 'Công nợ', icon: ICONS.customers }
       ] },
       { label: 'Báo cáo', items: [
         { id: 'pnl', label: 'Báo cáo lãi/lỗ', icon: ICONS.report },
@@ -518,22 +520,18 @@
                 '<table class="fn-table"><thead><tr><th>Số ĐH</th><th>Khách hàng</th><th>Người lập</th><th>Tổng</th><th>Thu ngay</th><th>Công nợ</th><th>Phân loại</th><th>Trạng thái</th><th></th></tr></thead><tbody id="fnOrdRows"></tbody></table></div>' +
             '</div>' +
             '<div class="fn-section" id="sec-receivables">' +
-              '<div class="fn-section-head"><div class="fn-section-title">Công nợ khách hàng</div><div class="fn-section-desc">Khoản đã báo giá/xuất hoá đơn nhưng khách chưa trả — tách riêng khỏi sổ giao dịch. Khi đánh dấu "Đã thu", hệ thống tự tạo một khoản Doanh thu tương ứng.</div></div>' +
+              '<div class="fn-section-head"><div class="fn-section-title">Công nợ</div><div class="fn-section-desc">Theo dõi mọi khoản <b>phải thu</b> (khách hàng nợ mình) và <b>phải trả</b> (mình nợ nhà cung cấp, thầu phụ, nhân viên, ngân hàng…) theo từng đối tượng. Mỗi lần thu/trả tiền tự tạo phiếu thu/phiếu chi vào sổ; có thể xuất công văn, biên bản đối chiếu, phiếu thu – chi, giấy đề nghị thanh toán (Word/PDF) theo mẫu quy định.</div></div>' +
+              '<div class="fn-summary-grid" id="fnCnSummary" style="grid-template-columns:repeat(4,1fr);"></div>' +
               '<div class="fn-card">' +
-                '<div class="fn-card-head"><div class="fn-card-title">Thêm công nợ</div></div>' +
-                '<div class="fn-form-grid cols5">' +
-                  '<div><span class="fn-field-label">Khách hàng</span><input type="text" class="fn-input" id="fnRcvClient" placeholder="Tên khách hàng"></div>' +
-                  '<div><span class="fn-field-label">Mã dự án</span><input type="text" class="fn-input" id="fnRcvProject" placeholder="VD: DA001"></div>' +
-                  '<div><span class="fn-field-label">Số tiền</span><input type="text" inputmode="numeric" class="fn-input mono" id="fnRcvAmount" data-money-input value="0"></div>' +
-                  '<div><span class="fn-field-label">Hạn thanh toán</span><input type="date" class="fn-input" id="fnRcvDue"></div>' +
-                  '<div><span class="fn-field-label">Mô tả</span><input type="text" class="fn-input" id="fnRcvDesc" placeholder="Đợt thanh toán..."></div>' +
-                  '<div style="grid-column: span 5;"><button class="fn-btn fn-btn-primary" id="fnRcvAddBtn">+ Thêm công nợ</button></div>' +
+                '<div class="fn-card-head"><div class="fn-card-title">Danh sách công nợ</div><button class="fn-btn fn-btn-primary fn-btn-sm" id="fnDebtAddBtn">+ Thêm công nợ</button></div>' +
+                '<div style="padding:12px 20px 0;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">' +
+                  '<div class="fn-ord-tabs" id="fnDebtTabs"></div>' +
+                  '<select class="fn-select" id="fnDebtParty" style="max-width:230px;"></select>' +
+                  '<input type="text" class="fn-input" id="fnDebtSearch" placeholder="Tìm tên đối tượng, mô tả, số HĐ…" style="max-width:260px;">' +
                 '</div>' +
+                '<table class="fn-table"><thead><tr><th>Đối tượng</th><th>Nội dung</th><th>Hạn</th><th>Giá trị</th><th>Đã trả</th><th>Còn lại</th><th>Trạng thái</th><th></th></tr></thead><tbody id="fnRcvRows"></tbody></table>' +
               '</div>' +
-              '<div class="fn-card">' +
-                '<div class="fn-card-head"><div class="fn-card-title">Danh sách công nợ</div></div>' +
-                '<table class="fn-table"><thead><tr><th>Khách hàng</th><th>Dự án</th><th>Mô tả</th><th>Hạn</th><th>Số tiền</th><th>Trạng thái</th><th></th></tr></thead><tbody id="fnRcvRows"></tbody></table>' +
-              '</div>' +
+              '<div class="fn-card"><div class="fn-card-head"><div class="fn-card-title">Tuổi nợ (còn lại theo số ngày quá hạn)</div></div><table class="fn-table"><thead><tr><th>Nhóm</th><th>Chưa đến hạn</th><th>1–30 ngày</th><th>31–60 ngày</th><th>61–90 ngày</th><th>Trên 90 ngày</th></tr></thead><tbody id="fnDebtAging"></tbody></table></div>' +
             '</div>' +
 
             '<div class="fn-section" id="sec-pnl">' +
@@ -651,7 +649,6 @@
       monthInput.addEventListener('change', renderAll);
       HiconiqueMonthNav.mount(monthInput);
       document.getElementById('fnDate').value = new Date().toISOString().split('T')[0];
-      document.getElementById('fnRcvDue').value = new Date().toISOString().split('T')[0];
       if (typeof HiconiqueMoney !== 'undefined') HiconiqueMoney.bindAll(document);
 
       // Danh mục gợi ý theo Loại (datalist: chọn từ danh sách hoặc gõ riêng)
@@ -803,23 +800,9 @@
         refreshVoucher();
       });
 
-      document.getElementById('fnRcvAddBtn').addEventListener('click', function () {
-        var amount = HiconiqueMoney.parse(document.getElementById('fnRcvAmount').value);
-        var data = {
-          clientName: document.getElementById('fnRcvClient').value.trim(),
-          projectId: document.getElementById('fnRcvProject').value.trim(),
-          description: document.getElementById('fnRcvDesc').value.trim(),
-          amount: amount,
-          dueDate: document.getElementById('fnRcvDue').value || new Date().toISOString().split('T')[0]
-        };
-        if (!data.clientName || amount <= 0) { alert('Nhập tên khách hàng và số tiền hợp lệ.'); return; }
-        TaskManager.createReceivable(data, user);
-        document.getElementById('fnRcvClient').value = '';
-        document.getElementById('fnRcvProject').value = '';
-        document.getElementById('fnRcvAmount').value = 0;
-        document.getElementById('fnRcvDesc').value = '';
-        renderAll();
-      });
+      document.getElementById('fnDebtAddBtn').addEventListener('click', function () { openDebtForm(null); });
+      document.getElementById('fnDebtParty').addEventListener('change', function () { debtParty = this.value; renderReceivablesList(); });
+      document.getElementById('fnDebtSearch').addEventListener('input', function () { debtQuery = this.value.trim().toLowerCase(); renderReceivablesList(); });
 
       document.getElementById('fnExportBtn').addEventListener('click', exportReport);
       document.getElementById('fnQuickBtn').addEventListener('click', function () {
@@ -1360,67 +1343,167 @@
       });
     }
 
-    // ============================== RECEIVABLES ==============================
+    // ============================== CÔNG NỢ (phải thu + phải trả) ==============================
+    // receivableStatus/STATUS_LABEL còn dùng cho Báo cáo nhanh + Excel (getReceivables đã tính sẵn status paid/overdue/unpaid)
     function receivableStatus(r) {
-      if (r.status === 'paid') return 'paid';
-      if (r.dueDate && r.dueDate < new Date().toISOString().split('T')[0]) return 'overdue';
+      if (r.status === 'paid' || r.dStatus === 'paid') return 'paid';
+      if (r.dStatus === 'overdue') return 'overdue';
+      if (r.dueDate && r.dueDate < new Date().toISOString().split('T')[0] && r.dStatus === undefined) return 'overdue';
       return 'unpaid';
     }
     var STATUS_LABEL = { unpaid: 'Chưa thu', paid: 'Đã thu', overdue: 'Quá hạn' };
+    var DEBT_ST = { unpaid: 'Chưa thanh toán', partial: 'Thanh toán một phần', overdue: 'Quá hạn', paid: 'Đã tất toán' };
+    var debtTab = 'all', debtParty = '', debtQuery = '';
+    function partyLabel(k) { var f = TaskManager.DEBT_PARTY_TYPES.filter(function (x) { return x[0] === k; })[0]; return f ? f[1] : k; }
+    function partyShort(k) { return partyLabel(k).split(' (')[0]; }
+    function debtCls(st) { return st === 'paid' ? 'paid' : (st === 'overdue' ? 'overdue' : 'unpaid'); }
 
     function renderReceivablesList() {
-      var list = TaskManager.getReceivables();
-      var rows = document.getElementById('fnRcvRows');
-      if (!list || list.length === 0) {
-        rows.innerHTML = '<tr><td colspan="7" class="fn-empty">Chưa có công nợ nào được ghi nhận.</td></tr>';
-        return;
-      }
-      rows.innerHTML = list.map(function (r) {
-        var st = receivableStatus(r);
+      var rows = document.getElementById('fnRcvRows'); if (!rows) return;
+      var all = TaskManager.getDebts();
+      var open = all.filter(function (d) { return d.outstanding > 0; });
+      var rcv = open.filter(function (d) { return d.direction === 'receivable'; }), pay = open.filter(function (d) { return d.direction === 'payable'; });
+      var sum = function (a, f) { return a.reduce(function (s, d) { return s + (Number(f(d)) || 0); }, 0); };
+      var ov = function (a) { return a.filter(function (d) { return d.dStatus === 'overdue'; }); };
+      var rTot = sum(rcv, function (d) { return d.outstanding; }), pTot = sum(pay, function (d) { return d.outstanding; });
+      document.getElementById('fnCnSummary').innerHTML =
+        summaryCard('Phải thu', rTot, 'pos', ICONS.customers, 'green', rcv.length + ' khoản · quá hạn ' + fmt(sum(ov(rcv), function (d) { return d.outstanding; }))) +
+        summaryCard('Phải trả', pTot, 'neg', ICONS.warn, 'bronze', pay.length + ' khoản · quá hạn ' + fmt(sum(ov(pay), function (d) { return d.outstanding; }))) +
+        summaryCard('Chênh lệch (thu − trả)', rTot - pTot, rTot - pTot >= 0 ? 'pos' : 'neg', ICONS.check, 'green', 'Nếu thu đủ và trả đủ') +
+        summaryCard('Quá hạn', sum(ov(open), function (d) { return d.outstanding; }), ov(open).length ? 'neg' : 'neutral', ICONS.warn, 'bronze', ov(open).length + ' khoản cần xử lý');
+      // tuổi nợ
+      var buckets = function (a) { var b = [0, 0, 0, 0, 0]; a.forEach(function (d) { var n = d.daysOverdue, i = n <= 0 ? 0 : n <= 30 ? 1 : n <= 60 ? 2 : n <= 90 ? 3 : 4; b[i] += d.outstanding; }); return b; };
+      document.getElementById('fnDebtAging').innerHTML = [['Phải thu', rcv], ['Phải trả', pay]].map(function (x) { var b = buckets(x[1]); return '<tr><td><b>' + x[0] + '</b></td>' + b.map(function (v, i) { return '<td class="fn-amount' + (i > 1 && v ? ' neg' : '') + '">' + fmt(v) + '</td>'; }).join('') + '</tr>'; }).join('');
+      // tabs + lọc
+      var tabs = [['all', 'Tất cả', all.length], ['receivable', 'Phải thu', all.filter(function (d) { return d.direction === 'receivable'; }).length], ['payable', 'Phải trả', all.filter(function (d) { return d.direction === 'payable'; }).length], ['overdue', 'Quá hạn', ov(all).length], ['paid', 'Đã tất toán', all.filter(function (d) { return d.dStatus === 'paid'; }).length]];
+      document.getElementById('fnDebtTabs').innerHTML = tabs.map(function (tb) { return '<button type="button" class="fn-ord-tab' + (debtTab === tb[0] ? ' on' : '') + '" data-debttab="' + tb[0] + '">' + tb[1] + ' · ' + tb[2] + '</button>'; }).join('');
+      document.querySelectorAll('[data-debttab]').forEach(function (bt) { bt.addEventListener('click', function () { debtTab = bt.getAttribute('data-debttab'); renderReceivablesList(); }); });
+      var ps = document.getElementById('fnDebtParty');
+      ps.innerHTML = '<option value="">Tất cả đối tượng</option>' + TaskManager.DEBT_PARTY_TYPES.map(function (x) { return '<option value="' + x[0] + '"' + (debtParty === x[0] ? ' selected' : '') + '>' + escapeHtml(x[1]) + '</option>'; }).join('');
+      var list = all.filter(function (d) {
+        if (debtTab === 'receivable' || debtTab === 'payable') { if (d.direction !== debtTab) return false; }
+        else if (debtTab === 'overdue') { if (d.dStatus !== 'overdue') return false; }
+        else if (debtTab === 'paid') { if (d.dStatus !== 'paid') return false; }
+        else if (d.dStatus === 'paid') { /* tab Tất cả: vẫn hiện, xếp cuối */ }
+        if (debtParty && d.partyType !== debtParty) return false;
+        if (debtQuery && (d.clientName + ' ' + (d.description || '') + ' ' + (d.refNo || '') + ' ' + (d.orderNumber || '') + ' ' + (d.projectId || '')).toLowerCase().indexOf(debtQuery) === -1) return false;
+        return true;
+      }).sort(function (a, b) { return (a.dStatus === 'paid') - (b.dStatus === 'paid') || String(a.dueDate || '').localeCompare(String(b.dueDate || '')); });
+      if (!list.length) { rows.innerHTML = '<tr><td colspan="8" class="fn-empty">Chưa có công nợ nào trong mục này.</td></tr>'; return; }
+      rows.innerHTML = list.map(function (d) {
+        var recv = d.direction === 'receivable';
         return '<tr>' +
-          '<td>' + escapeHtml(r.clientName || '—') + '</td>' +
-          '<td>' + escapeHtml(r.projectId || '—') + '</td>' +
-          '<td>' + escapeHtml(r.description || '') + '</td>' +
-          '<td>' + escapeHtml(r.dueDate || '') + '</td>' +
-          '<td class="fn-amount pos">' + fmt(r.amount) + '</td>' +
-          '<td><span class="fn-status-badge ' + st + '">' + STATUS_LABEL[st] + '</span></td>' +
-          '<td style="display:flex;gap:6px;">' +
-            (st !== 'paid' ? '<button class="fn-btn fn-btn-ghost fn-btn-sm" data-mark-paid="' + r.id + '">Đã thu</button>' : '') +
-            '<button class="fn-btn fn-btn-ghost fn-btn-sm" data-delete-rcv="' + r.id + '">Xoá</button>' +
-          '</td>' +
-        '</tr>';
+          '<td><b>' + escapeHtml(d.clientName || '—') + '</b><div style="font-size:.6875rem;color:var(--fn-muted);">' + (recv ? 'Phải thu' : 'Phải trả') + ' · ' + escapeHtml(partyShort(d.partyType)) + '</div></td>' +
+          '<td>' + escapeHtml(d.description || '') + '<div style="font-size:.6875rem;color:var(--fn-muted);">' + escapeHtml([d.refNo, d.orderNumber ? 'ĐH ' + d.orderNumber : '', d.projectId].filter(Boolean).join(' · ')) + '</div></td>' +
+          '<td style="white-space:nowrap;">' + vnDate(d.dueDate) + (d.daysOverdue ? '<div style="font-size:.6875rem;color:var(--fn-red);">trễ ' + d.daysOverdue + ' ngày</div>' : '') + '</td>' +
+          '<td class="fn-amount">' + fmt(d.amount) + '</td>' +
+          '<td class="fn-amount">' + fmt(d.paidAmount) + '</td>' +
+          '<td class="fn-amount ' + (recv ? 'pos' : 'neg') + '">' + fmt(d.outstanding) + '</td>' +
+          '<td><span class="fn-status-badge ' + debtCls(d.dStatus) + '">' + DEBT_ST[d.dStatus] + '</span></td>' +
+          '<td style="white-space:nowrap;display:flex;gap:6px;">' +
+            (d.outstanding > 0 ? '<button class="fn-btn fn-btn-primary fn-btn-sm" data-debtpay="' + d.id + '">' + (recv ? 'Thu tiền' : 'Trả tiền') + '</button>' : '') +
+            '<button class="fn-btn fn-btn-ghost fn-btn-sm" data-debtview="' + d.id + '">Chi tiết</button>' +
+          '</td></tr>';
       }).join('');
-
-      rows.querySelectorAll('[data-mark-paid]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          var id = btn.getAttribute('data-mark-paid');
-          var r = list.find(function (x) { return x.id === id; });
-          if (!r) return;
-          fnConfirm('Xác nhận đã thu tiền?', 'Đã thu <b>' + fmt(r.amount) + ' ₫</b> từ <b>' + escapeHtml(r.clientName || '') + '</b>? Hệ thống sẽ tự tạo một khoản Doanh thu tương ứng.', 'Xác nhận đã thu', function () {
-          TaskManager.updateReceivable(id, { status: 'paid' }, user);
-          var today = new Date().toISOString().split('T')[0];
-          TaskManager.createFinanceEntry({
-            type: 'revenue',
-            category: 'Thu công nợ',
-            description: 'Thu nợ: ' + (r.clientName || '') + (r.orderNumber ? ' · ĐH ' + r.orderNumber : '') + (r.projectId ? ' (' + r.projectId + ')' : ''),
-            amount: r.amount,
-            date: today,
-            month: today.slice(0, 7),
-            voucherDate: today,
-            voucherNo: ordPtNo(today),
-            account: '111',
-            counterAccount: '131 — Phải thu của khách hàng'
-          }, user);
-          TaskManager.settleOrderForReceivable(r, user);
-          renderAll();
-          });
-        });
+      rows.querySelectorAll('[data-debtpay]').forEach(function (b) { b.addEventListener('click', function () { openDebtPay(b.getAttribute('data-debtpay')); }); });
+      rows.querySelectorAll('[data-debtview]').forEach(function (b) { b.addEventListener('click', function () { openDebtDetail(b.getAttribute('data-debtview')); }); });
+    }
+    function debtById(id) { return TaskManager.getDebts().filter(function (d) { return d.id === id; })[0]; }
+    function debtModal(id, title, bodyHtml, width) {
+      var old = document.getElementById(id); if (old) old.remove();
+      var ov = document.createElement('div'); ov.className = 'fn-dt-overlay'; ov.id = id; ov.style.zIndex = '550';
+      ov.innerHTML = '<div class="fn-dt-box" style="max-width:' + (width || 640) + 'px;" role="dialog" aria-modal="true"><div class="fn-dt-head"><div class="fn-dt-title">' + title + '</div><button type="button" class="fn-dt-x" aria-label="Đóng">&times;</button></div><div class="fn-dt-body">' + bodyHtml + '</div></div>';
+      document.body.appendChild(ov);
+      var close = function () { ov.remove(); };
+      ov.addEventListener('mousedown', function (e) { if (e.target === ov) close(); });
+      ov.querySelector('.fn-dt-x').addEventListener('click', close);
+      if (window.HiconiqueMoney && HiconiqueMoney.bindAll) HiconiqueMoney.bindAll(ov);
+      ov._close = close; return ov;
+    }
+    // ---- Thêm / sửa công nợ ----
+    function openDebtForm(id) {
+      var d = id ? debtById(id) : null, todayS = new Date().toISOString().split('T')[0];
+      var dir = d ? d.direction : 'receivable', pt = d ? d.partyType : 'customer';
+      var inp = function (k, label, val, ph, extra) { return '<div' + (extra && extra.span ? ' style="grid-column:span 2;"' : '') + '><span class="fn-field-label">' + label + '</span><input type="text" class="fn-input" id="dbf_' + k + '" value="' + escapeHtml(val || '') + '" placeholder="' + (ph || '') + '"></div>'; };
+      var ov = debtModal('fnDebtForm', d ? 'Sửa công nợ' : 'Thêm công nợ',
+        '<div class="fn-form-grid" style="grid-template-columns:1fr 1fr;gap:12px;">' +
+          '<div><span class="fn-field-label">Hướng công nợ</span><select class="fn-select" id="dbf_direction"><option value="receivable"' + (dir === 'receivable' ? ' selected' : '') + '>Phải thu (đối tượng nợ công ty)</option><option value="payable"' + (dir === 'payable' ? ' selected' : '') + '>Phải trả (công ty nợ đối tượng)</option></select></div>' +
+          '<div><span class="fn-field-label">Loại đối tượng</span><select class="fn-select" id="dbf_partyType">' + TaskManager.DEBT_PARTY_TYPES.map(function (x) { return '<option value="' + x[0] + '"' + (pt === x[0] ? ' selected' : '') + '>' + escapeHtml(x[1]) + '</option>'; }).join('') + '</select></div>' +
+          inp('clientName', 'Tên đối tượng *', d && d.clientName, 'Tên khách hàng / nhà cung cấp / người nhận…', { span: 1 }) + inp('partyContact', 'Người liên hệ / đại diện', d && d.partyContact, 'Họ tên') +
+          inp('partyPhone', 'Số điện thoại', d && d.partyPhone, '09xx xxx xxx') + inp('partyTaxCode', 'Mã số thuế', d && d.partyTaxCode, '10 hoặc 13 số') +
+          inp('partyAddress', 'Địa chỉ', d && d.partyAddress, 'Số nhà, đường, phường/xã, tỉnh/thành', { span: 1 }) + inp('refNo', 'Số hợp đồng / hoá đơn / chứng từ', d && d.refNo, 'VD: HĐ-025/2026') +
+          inp('projectId', 'Mã dự án', d && d.projectId, 'VD: DA001') + '<div><span class="fn-field-label">Ngày phát sinh</span><input type="date" class="fn-input" id="dbf_issueDate" value="' + escapeHtml((d && d.issueDate) || todayS) + '"></div>' +
+          '<div><span class="fn-field-label">Số tiền *</span><input type="text" inputmode="numeric" class="fn-input mono" id="dbf_amount" data-money-input value="' + (d ? fmt(d.amount) : '0') + '"></div>' +
+          '<div><span class="fn-field-label">Hạn thanh toán</span><input type="date" class="fn-input" id="dbf_dueDate" value="' + escapeHtml((d && d.dueDate) || todayS) + '"></div>' +
+          '<div style="grid-column:span 2;"><span class="fn-field-label">Nội dung</span><input type="text" class="fn-input" id="dbf_description" value="' + escapeHtml((d && d.description) || '') + '" placeholder="VD: Đợt 2 thi công / tiền vật tư tháng 10…"></div>' +
+          '<div style="grid-column:span 2;"><span class="fn-field-label">Ghi chú</span><input type="text" class="fn-input" id="dbf_note" value="' + escapeHtml((d && d.note) || '') + '"></div>' +
+        '</div><div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px;"><button class="fn-btn fn-btn-ghost" data-x>Huỷ</button><button class="fn-btn fn-btn-primary" data-save>' + (d ? 'Lưu thay đổi' : 'Thêm công nợ') + '</button></div>', 680);
+      var g = function (k) { return ov.querySelector('#dbf_' + k).value.trim(); };
+      var dirSel = ov.querySelector('#dbf_direction'), ptSel = ov.querySelector('#dbf_partyType');
+      if (!d) dirSel.addEventListener('change', function () { ptSel.value = dirSel.value === 'receivable' ? 'customer' : 'supplier'; });
+      ptSel.addEventListener('change', function () { var f = TaskManager.DEBT_PARTY_TYPES.filter(function (x) { return x[0] === ptSel.value; })[0]; if (f && !d) dirSel.value = f[2]; });
+      ov.querySelector('[data-x]').addEventListener('click', ov._close);
+      ov.querySelector('[data-save]').addEventListener('click', function () {
+        var amount = HiconiqueMoney.parse(ov.querySelector('#dbf_amount').value);
+        var data = { direction: g('direction'), partyType: g('partyType'), clientName: g('clientName'), partyContact: g('partyContact'), partyPhone: g('partyPhone'), partyTaxCode: g('partyTaxCode'), partyAddress: g('partyAddress'), refNo: g('refNo'), projectId: g('projectId'), issueDate: g('issueDate'), dueDate: g('dueDate'), description: g('description'), note: g('note'), amount: amount };
+        if (!data.clientName || amount <= 0) { alert('Nhập tên đối tượng và số tiền hợp lệ.'); return; }
+        if (d && amount < d.paidAmount) { alert('Số tiền không được nhỏ hơn số đã thanh toán (' + fmt(d.paidAmount) + ').'); return; }
+        if (d) { TaskManager.updateReceivable(d.id, data, user); } else { TaskManager.createReceivable(data, user); }
+        ov._close(); renderAll();
       });
-      rows.querySelectorAll('[data-delete-rcv]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          var rid = btn.getAttribute('data-delete-rcv');
-          fnConfirm('Xoá công nợ này?', 'Khoản công nợ sẽ bị xoá khỏi danh sách và Google Sheet.', 'Xoá công nợ', function () { TaskManager.deleteReceivable(rid, user); renderAll(); }, true);
-        });
+    }
+    // ---- Thu / trả tiền (từng phần hoặc đủ) → phiếu thu / phiếu chi ----
+    function openDebtPay(id) {
+      var d = debtById(id); if (!d) return; var recv = d.direction === 'receivable', todayS = new Date().toISOString().split('T')[0];
+      var ov = debtModal('fnDebtPay', (recv ? 'Thu tiền công nợ' : 'Trả tiền công nợ'),
+        '<div style="font-size:.8125rem;line-height:1.7;margin-bottom:12px;"><b>' + escapeHtml(d.clientName) + '</b> · ' + escapeHtml(d.description || '') + '<br>Còn lại: <b>' + fmt(d.outstanding) + ' ₫</b> / ' + fmt(d.amount) + ' ₫</div>' +
+        '<div class="fn-form-grid" style="grid-template-columns:1fr 1fr;gap:12px;">' +
+          '<div><span class="fn-field-label">Số tiền ' + (recv ? 'thu' : 'trả') + ' đợt này</span><input type="text" inputmode="numeric" class="fn-input mono" id="dbp_amount" data-money-input value="' + fmt(d.outstanding) + '"></div>' +
+          '<div><span class="fn-field-label">Ngày</span><input type="date" class="fn-input" id="dbp_date" value="' + todayS + '"></div>' +
+          '<div><span class="fn-field-label">Hình thức</span><select class="fn-select" id="dbp_method"><option>Tiền mặt</option><option>Chuyển khoản</option></select></div>' +
+          '<div><span class="fn-field-label">Số phiếu (để trống = tự động)</span><input type="text" class="fn-input mono" id="dbp_voucher" placeholder="' + (recv ? 'PT' : 'PC') + '-yymm-nnn"></div>' +
+          '<div style="grid-column:span 2;"><span class="fn-field-label">Ghi chú</span><input type="text" class="fn-input" id="dbp_note"></div></div>' +
+        '<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px;"><button class="fn-btn fn-btn-ghost" data-x>Huỷ</button><button class="fn-btn fn-btn-primary" data-save>Ghi nhận ' + (recv ? 'thu tiền' : 'trả tiền') + '</button></div>', 560);
+      ov.querySelector('[data-x]').addEventListener('click', ov._close);
+      ov.querySelector('[data-save]').addEventListener('click', function () {
+        var amt = HiconiqueMoney.parse(ov.querySelector('#dbp_amount').value);
+        if (amt <= 0 || amt > d.outstanding) { alert('Số tiền phải lớn hơn 0 và không vượt quá số còn lại (' + fmt(d.outstanding) + ').'); return; }
+        var res = TaskManager.recordDebtPayment(d.id, { amount: amt, date: ov.querySelector('#dbp_date').value || todayS, method: ov.querySelector('#dbp_method').value, voucherNo: ov.querySelector('#dbp_voucher').value.trim(), note: ov.querySelector('#dbp_note').value.trim() }, user);
+        if (!res) { alert('Không ghi nhận được (kiểm tra quyền tài chính).'); return; }
+        ov._close(); renderAll(); openDebtDetail(d.id);
+      });
+    }
+    // ---- Chi tiết + xuất văn bản ----
+    function debtDoc(kind, d, extra) {
+      if (typeof DebtDocx === 'undefined') { alert('Chưa tải xong bộ tạo văn bản. Thử lại sau vài giây.'); return; }
+      var party = TaskManager.getDebts().filter(function (x) { return x.direction === d.direction && x.clientName === d.clientName && x.partyType === d.partyType; });
+      var m = TaskManager.getMember ? TaskManager.getMember(user.id) : null;
+      DebtDocx.open(kind, Object.assign({ debt: d, party: party, user: { name: (m && m.name) || user.name || '', role: (m && (m.position || m.role)) || user.role || '' } }, extra || {}));
+    }
+    function openDebtDetail(id) {
+      var d = debtById(id); if (!d) return; var recv = d.direction === 'receivable';
+      var pays = d.payments.map(function (p, i) {
+        return '<tr><td>' + (i + 1) + '</td><td>' + vnDate(p.date) + '</td><td style="font-family:JetBrains Mono,monospace;font-size:.75rem;">' + escapeHtml(p.voucherNo || '') + '</td><td>' + escapeHtml(p.method || '') + '</td><td class="num">' + fmt(p.amount) + '</td><td>' + escapeHtml(p.note || '') + '</td><td><button class="fn-btn fn-btn-ghost fn-btn-sm" data-paydoc="' + i + '">' + (recv ? 'In phiếu thu' : 'In phiếu chi') + '</button></td></tr>';
+      }).join('');
+      var kv = function (k, v) { return v ? '<div><span class="fn-field-label">' + k + '</span><div style="font-size:.8125rem;">' + escapeHtml(v) + '</div></div>' : ''; };
+      var ov = debtModal('fnDebtDetail', escapeHtml(d.clientName) + ' <span class="fn-status-badge ' + debtCls(d.dStatus) + '">' + DEBT_ST[d.dStatus] + '</span>',
+        '<div class="fn-dt-stats"><div class="fn-dt-stat"><b>' + fmt(d.amount) + '</b><span>Giá trị</span></div><div class="fn-dt-stat pos"><b>' + fmt(d.paidAmount) + '</b><span>Đã ' + (recv ? 'thu' : 'trả') + '</span></div><div class="fn-dt-stat ' + (recv ? 'pos' : 'neg') + '"><b>' + fmt(d.outstanding) + '</b><span>Còn lại</span></div></div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;margin:14px 0;">' + kv('Hướng', recv ? 'Phải thu' : 'Phải trả') + kv('Loại đối tượng', partyLabel(d.partyType)) + kv('Người liên hệ', d.partyContact) + kv('Điện thoại', d.partyPhone) + kv('Mã số thuế', d.partyTaxCode) + kv('Địa chỉ', d.partyAddress) + kv('Số HĐ / chứng từ', d.refNo || (d.orderNumber ? 'ĐH ' + d.orderNumber : '')) + kv('Dự án', d.projectId) + kv('Ngày phát sinh', vnDate(d.issueDate)) + kv('Hạn thanh toán', vnDate(d.dueDate)) + kv('Nội dung', d.description) + kv('Ghi chú', d.note) + '</div>' +
+        '<div class="fn-card-title" style="margin:12px 0 6px;">Lịch sử ' + (recv ? 'thu tiền' : 'trả tiền') + '</div>' +
+        (pays ? '<div style="overflow-x:auto;"><table class="fn-table"><thead><tr><th>#</th><th>Ngày</th><th>Số phiếu</th><th>Hình thức</th><th>Số tiền</th><th>Ghi chú</th><th></th></tr></thead><tbody>' + pays + '</tbody></table></div>' : '<div class="fn-dt-empty">Chưa có lần thanh toán nào.</div>') +
+        '<div class="fn-card-title" style="margin:16px 0 6px;">Xuất văn bản (Word / PDF)</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+          '<button class="fn-btn fn-btn-ghost fn-btn-sm" data-doc="cv">' + (recv ? 'Công văn đề nghị thanh toán' : 'Công văn thông báo thanh toán') + '</button>' +
+          '<button class="fn-btn fn-btn-ghost fn-btn-sm" data-doc="dc">Biên bản đối chiếu công nợ</button>' +
+          (recv ? '' : '<button class="fn-btn fn-btn-ghost fn-btn-sm" data-doc="dn">Giấy đề nghị thanh toán (05-TT)</button>') +
+        '</div><div style="font-size:.6875rem;color:var(--fn-muted);margin-top:6px;">Công văn theo thể thức Nghị định 30/2020/NĐ-CP; phiếu thu – chi, giấy đề nghị thanh toán theo mẫu Thông tư 133/2016/TT-BTC. Công văn/biên bản tự gộp mọi khoản còn nợ của cùng đối tượng.</div>' +
+        '<div style="display:flex;justify-content:space-between;gap:10px;margin-top:18px;"><button class="fn-btn fn-btn-ghost fn-btn-sm" data-del>Xoá công nợ</button><div style="display:flex;gap:8px;"><button class="fn-btn fn-btn-ghost fn-btn-sm" data-edit>Sửa</button>' + (d.outstanding > 0 ? '<button class="fn-btn fn-btn-primary fn-btn-sm" data-pay>' + (recv ? 'Thu tiền' : 'Trả tiền') + '</button>' : '') + '</div></div>', 760);
+      ov.querySelectorAll('[data-doc]').forEach(function (b) { b.addEventListener('click', function () { debtDoc(b.getAttribute('data-doc'), d); }); });
+      ov.querySelectorAll('[data-paydoc]').forEach(function (b) { b.addEventListener('click', function () { debtDoc(recv ? 'pt' : 'pc', d, { payment: d.payments[Number(b.getAttribute('data-paydoc'))] }); }); });
+      ov.querySelector('[data-edit]').addEventListener('click', function () { ov._close(); openDebtForm(d.id); });
+      var pb = ov.querySelector('[data-pay]'); if (pb) pb.addEventListener('click', function () { ov._close(); openDebtPay(d.id); });
+      ov.querySelector('[data-del]').addEventListener('click', function () {
+        fnConfirm('Xoá công nợ này?', 'Khoản công nợ sẽ bị xoá khỏi danh sách và Google Sheet. Các phiếu thu/chi đã ghi trong sổ giao dịch <b>không</b> bị xoá.', 'Xoá công nợ', function () { ov._close(); TaskManager.deleteReceivable(d.id, user); renderAll(); }, true);
       });
     }
 
@@ -1752,7 +1835,7 @@
       }, 0);
       var receivablesOutstanding = (TaskManager.getReceivables() || [])
         .filter(function (r) { return r.status !== 'paid'; })
-        .reduce(function (s, r) { return s + (Number(r.amount) || 0); }, 0);
+        .reduce(function (s, r) { return s + (Number(r.outstanding) || 0); }, 0);
 
       // ---- Bảng số liệu tự động liên kết từ Sổ giao dịch ----
       var autoRows = [
@@ -1933,7 +2016,7 @@
       var today = new Date().toISOString().split('T')[0];
       var receivables = TaskManager.getReceivables() || [];
       var unpaidReceivables = receivables.filter(function (r) { return r.status !== 'paid'; });
-      var receivablesOutstanding = unpaidReceivables.reduce(function (s, r) { return s + (Number(r.amount) || 0); }, 0);
+      var receivablesOutstanding = unpaidReceivables.reduce(function (s, r) { return s + (Number(r.outstanding) || 0); }, 0);
       var overdue = unpaidReceivables.filter(function (r) { return r.dueDate && r.dueDate < today; });
       var overdueTotal = overdue.reduce(function (s, r) { return s + (Number(r.amount) || 0); }, 0);
       var overdueRatio = div(overdueTotal, receivablesOutstanding);

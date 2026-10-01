@@ -95,7 +95,13 @@ function callGSheetsAPI(action, data, id) {
       }
     }
   }
-  q.push({ qid: 'q_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7), action: action, data: data || {}, id: id || '', ts: Date.now(), tries: 0 });
+  var newOp = { qid: 'q_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7), action: action, data: data || {}, id: id || '', ts: Date.now(), tries: 0 };
+  // ƯU TIÊN thao tác của người dùng (xoá/sửa/thêm dữ liệu) lên TRƯỚC các thông báo chưa gửi — thông báo không được làm chậm Xoá/Lưu (từng phải chờ 11 thông báo x ~9s)
+  var ins = q.length;
+  if (!/^addNotification/.test(action)) {
+    for (var pi = writeQueueBusy ? 1 : 0; pi < q.length; pi++) { if (/^addNotification/.test(q[pi].action) && !q[pi].tries) { ins = pi; break; } }
+  }
+  q.splice(ins, 0, newOp);
   saveWriteQueue_(q);
   emitSyncState_({ event: 'queued', action: action, id: id });
   processWriteQueue_();
@@ -104,8 +110,14 @@ function callGSheetsAPI(action, data, id) {
 // Dọn hàng đợi tồn từ trước: gộp lệnh update*/upsert* trùng (action+id) chưa gửi; bỏ nhịp online lastActiveAt cũ
 function compactWriteQueue_() {
   var q = readWriteQueue_(); if (q.length < 2) return;
-  var out = [], seen = {}, changed = false;
+  var out = [], seen = {}, changed = false, nbatch = null;
   q.forEach(function (op, i) {
+    // gộp các thông báo chưa gửi thành 1 lệnh addNotificationsBatch (1 lần gọi thay vì N lần ~9s)
+    if (op.action === 'addNotification' && !op.tries && !(i === 0 && writeQueueBusy) && op.data && op.data.id) {
+      if (nbatch) { nbatch.data.push(op.data); changed = true; return; }
+      nbatch = { qid: op.qid, action: 'addNotificationsBatch', data: [op.data], id: '', ts: op.ts, tries: 0, _first: op };
+      out.push(nbatch); return;
+    }
     var only = op.data && Object.keys(op.data).every(function (k) { return k === 'lastActiveAt' || k === 'updatedAt'; });
     if (op.action === 'updateMember' && only && !(i === 0 && writeQueueBusy)) { changed = true; return; }
     var key = op.action + '|' + op.id;
@@ -115,6 +127,7 @@ function compactWriteQueue_() {
     if (op.id && /^(update|upsert)/i.test(op.action) && !op.tries && !(i === 0 && writeQueueBusy)) seen[key] = op;
     out.push(op);
   });
+  if (nbatch) { if (nbatch.data.length === 1) { out[out.indexOf(nbatch)] = nbatch._first; } else { delete nbatch._first; } }
   if (changed) saveWriteQueue_(out);
 }
 // Lệnh "add" đã vào Sheet chưa? (đọc lại bảng tương ứng, tìm id). true/false; null = không kiểm tra được (không phải lệnh add / bảng lạ / lỗi đọc)
@@ -3363,16 +3376,88 @@ var TaskManager = (function() {
   // dòng `revenue` bên financeEntries — 2 sheet này không tự động đồng bộ
   // 2 chiều trong tầng dữ liệu, để tránh 1 khoản thu bị đếm 2 lần nếu tự
   // ý sửa tay trên Sheet.
-  function getReceivables(filters) {
+  // ===================== CÔNG NỢ (phải thu + phải trả) — sheet TC-Công nợ khách hàng (tên tab giữ nguyên) =====================
+  // Mỗi dòng là 1 khoản công nợ với 1 ĐỐI TƯỢNG. direction: 'receivable' (phải thu — người ta nợ mình) | 'payable' (phải trả — mình nợ người ta).
+  // Dòng cũ (trước 2026-10-01) không có direction/partyType → mặc định phải thu/khách hàng. Thanh toán từng phần ghi vào `payments` (JSON) + `paidAmount`;
+  // mỗi lần thanh toán tạo 1 phiếu THU (phải thu) hoặc phiếu CHI (phải trả) trong Sổ tài chính (recordDebtPayment).
+  var DEBT_PARTY_TYPES = [
+    ['customer', 'Khách hàng', 'receivable'], ['supplier', 'Nhà cung cấp vật tư / thiết bị', 'payable'], ['subcontractor', 'Nhà thầu phụ / tổ đội thi công', 'payable'],
+    ['employee', 'Nhân viên (lương, tạm ứng, thanh toán hộ)', 'payable'], ['partner', 'Đối tác / môi giới / tư vấn', 'payable'], ['bank', 'Ngân hàng / tổ chức tín dụng', 'payable'],
+    ['gov', 'Cơ quan nhà nước (thuế, BHXH…)', 'payable'], ['landlord', 'Chủ nhà / đơn vị cho thuê', 'payable'], ['investor', 'Nhà đầu tư / cổ đông / thành viên góp vốn', 'payable'], ['other', 'Đối tượng khác', 'payable']
+  ];
+  // phải trả: loại giao dịch + danh mục + TK đối ứng khi thanh toán (khớp finance-categories.js / bảng TK trong finance.html)
+  var DEBT_PAY_MAP = {
+    supplier: ['repayment', 'Trả nợ nhà cung cấp vật tư', '331 — Phải trả cho người bán'], subcontractor: ['repayment', 'Trả nợ thầu phụ / nhân công', '331 — Phải trả cho người bán'],
+    employee: ['expense', 'Lương nhân viên', '334 — Phải trả người lao động'], partner: ['expense', 'Hoa hồng môi giới / giới thiệu', '331 — Phải trả cho người bán'],
+    bank: ['repayment', 'Trả gốc vay ngân hàng', '341 — Vay và nợ thuê tài chính'], gov: ['expense', 'Thuế – phí – lệ phí', '333 — Thuế và các khoản phải nộp Nhà nước'],
+    landlord: ['expense', 'Thuê văn phòng / kho / mặt bằng', '331 — Phải trả cho người bán'], investor: ['repayment', 'Hoàn trả cổ đông / CEO', '341 — Vay và nợ thuê tài chính'], other: ['repayment', 'Trả nợ khác', '331 — Phải trả cho người bán']
+  };
+  function debtNum_(v) { var n = Number(v); return isFinite(n) ? n : 0; }
+  function debtParsePayments_(v) {
+    if (Array.isArray(v)) return v;
+    try { var a = JSON.parse(v || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+  }
+  function normalizeDebt_(r) {
+    var o = Object.assign({}, r), amount = debtNum_(r.amount), today = todayStr();
+    o.direction = r.direction === 'payable' ? 'payable' : 'receivable';
+    o.partyType = r.partyType || (o.direction === 'receivable' ? 'customer' : 'other');
+    o.amount = amount;
+    var hasPaid = r.paidAmount !== undefined && r.paidAmount !== null && r.paidAmount !== '';
+    o.paidAmount = hasPaid ? Math.min(amount, debtNum_(r.paidAmount)) : (r.status === 'paid' ? amount : 0);
+    o.outstanding = Math.max(0, amount - o.paidAmount);
+    o.payments = debtParsePayments_(r.payments);
+    var due = String(r.dueDate || '').slice(0, 10);
+    o.dStatus = o.outstanding <= 0 ? 'paid' : (due && due < today ? 'overdue' : (o.paidAmount > 0 ? 'partial' : 'unpaid'));
+    o.daysOverdue = o.outstanding > 0 && due && due < today ? Math.round((new Date(today) - new Date(due)) / 86400000) : 0;
+    return o;
+  }
+  function getDebts(filters) {
     filters = filters || {};
-    var list = getAll(STORAGE_KEYS.receivables);
-    if (filters.status) list = list.filter(function (r) { return r.status === filters.status; });
+    var list = getAll(STORAGE_KEYS.receivables).map(normalizeDebt_);
+    if (filters.direction) list = list.filter(function (r) { return r.direction === filters.direction; });
+    if (filters.partyType) list = list.filter(function (r) { return r.partyType === filters.partyType; });
+    if (filters.status) list = list.filter(function (r) { return r.status === filters.status || r.dStatus === filters.status; });
     return list.sort(function (a, b) { return new Date(a.dueDate || 0) - new Date(b.dueDate || 0); });
+  }
+  // Chỉ PHẢI THU (giữ tên cũ cho phần phân tích tài chính/Excel dùng): trường `status` = trạng thái đã tính lại (paid/partial/overdue/unpaid), `outstanding` = còn phải thu.
+  function getReceivables(filters) {
+    return getDebts(Object.assign({}, filters || {}, { direction: 'receivable' })).map(function (r) { return Object.assign({}, r, { status: r.dStatus === 'partial' ? 'unpaid' : r.dStatus }); });
+  }
+  function getPayables(filters) { return getDebts(Object.assign({}, filters || {}, { direction: 'payable' })); }
+  function debtVoucherNo_(prefix, dateStr) {
+    var ym = String(dateStr || '').slice(2, 7).replace('-', ''), head = prefix + '-' + ym + '-', max = 0;
+    getAll(STORAGE_KEYS.financeEntries).forEach(function (e) { if (e.voucherNo && String(e.voucherNo).indexOf(head) === 0) { var n = parseInt(String(e.voucherNo).slice(head.length), 10); if (n > max) max = n; } });
+    return head + ('00' + (max + 1)).slice(-3);
+  }
+  // Ghi nhận 1 lần THANH TOÁN (từng phần hoặc đủ) → phiếu thu/chi trong Sổ tài chính + cập nhật công nợ. p: { amount, date, method('Tiền mặt'|'Chuyển khoản'), voucherNo?, note? }
+  function recordDebtPayment(id, p, user) {
+    if (!canManageFinance(user)) return null;
+    var raw = getAll(STORAGE_KEYS.receivables).filter(function (x) { return x.id === id; })[0];
+    if (!raw) return null;
+    var r = normalizeDebt_(raw), amt = Math.min(debtNum_(p && p.amount), r.outstanding);
+    if (amt <= 0) return null;
+    var date = (p && p.date) || todayStr(), method = (p && p.method) || 'Tiền mặt', account = /tiền mặt/i.test(method) ? '111' : '112';
+    var isIn = r.direction === 'receivable';
+    var map = isIn ? ['revenue', r.partyType === 'employee' ? 'Thu hoàn tạm ứng' : 'Thu công nợ khách hàng', r.partyType === 'employee' ? '141 — Tạm ứng' : '131 — Phải thu của khách hàng'] : (DEBT_PAY_MAP[r.partyType] || DEBT_PAY_MAP.other);
+    var voucherNo = (p && p.voucherNo) || debtVoucherNo_(isIn ? 'PT' : 'PC', date);
+    var desc = (isIn ? 'Thu nợ: ' : 'Trả nợ: ') + (r.clientName || '') + (r.refNo ? ' · ' + r.refNo : (r.orderNumber ? ' · ĐH ' + r.orderNumber : '')) + (r.paidAmount + amt < r.amount ? ' (đợt ' + (r.payments.length + 1) + ')' : '');
+    var entry = createFinanceEntry({ type: map[0], category: map[1], description: desc, amount: amt, date: date, month: date.slice(0, 7), voucherDate: date, voucherNo: voucherNo, account: account, counterAccount: map[2], actor: r.clientName || '', note: (p && p.note) || '' }, user);
+    if (!entry) return null;
+    var pays = r.payments.concat([{ id: 'pay_' + Date.now(), date: date, amount: amt, method: method, account: account, voucherNo: voucherNo, entryId: entry.id, note: (p && p.note) || '', by: user.id }]);
+    var upd = { paidAmount: r.paidAmount + amt, payments: JSON.stringify(pays), status: (r.paidAmount + amt) >= r.amount ? 'paid' : 'unpaid' };
+    var u = update(STORAGE_KEYS.receivables, id, upd);
+    if (u) syncToGSheets('receivables', 'update', upd, id);
+    if (upd.status === 'paid' && isIn) settleOrderForReceivable(r, user);
+    return { debt: normalizeDebt_(Object.assign({}, raw, upd)), entry: entry, payment: pays[pays.length - 1] };
   }
 
   function createReceivable(data, user) {
     if (!canManageFinance(user)) return null;
     data.status = data.status || 'unpaid';
+    data.direction = data.direction === 'payable' ? 'payable' : 'receivable';
+    data.partyType = data.partyType || (data.direction === 'receivable' ? 'customer' : 'other');
+    if (data.paidAmount === undefined) data.paidAmount = 0;
+    if (data.payments === undefined) data.payments = '[]';
     data.createdBy = user.id;
     var created = add(STORAGE_KEYS.receivables, data);
     syncToGSheets('receivables', 'add', created);
@@ -3898,6 +3983,10 @@ var TaskManager = (function() {
     updateFinanceEntry: updateFinanceEntry,
     deleteFinanceEntry: deleteFinanceEntry,
     getReceivables: getReceivables,
+    getPayables: getPayables,
+    getDebts: getDebts,
+    recordDebtPayment: recordDebtPayment,
+    DEBT_PARTY_TYPES: DEBT_PARTY_TYPES,
     createReceivable: createReceivable,
     updateReceivable: updateReceivable,
     deleteReceivable: deleteReceivable,

@@ -458,7 +458,7 @@ var FinanceExport = (function () {
       var r = 5 + i, st = ctx.receivableStatus(r0);
       wsRc.getCell(r, 1).value = r0.clientName || ''; wsRc.getCell(r, 2).value = r0.projectId || ''; wsRc.getCell(r, 3).value = r0.description || '';
       var dc = wsRc.getCell(r, 4); dc.value = dateCell(r0.dueDate); dc.numFmt = DATEF;
-      var ac = wsRc.getCell(r, 5); ac.value = num(r0.amount); ac.numFmt = NUM; ac.font = { color: { argb: BLUE } };
+      var ac = wsRc.getCell(r, 5); ac.value = num(st === 'paid' ? r0.amount : r0.outstanding); ac.numFmt = NUM; ac.font = { color: { argb: BLUE } };
       wsRc.getCell(r, 6).value = st === 'paid' ? 'Đã thu' : 'Chưa thu';
       wsRc.getCell(r, 7).value = { formula: 'IF(AND(F' + r + '<>"Đã thu",D' + r + '<>"",D' + r + '<TODAY()),"Quá hạn","")' };
       var nc = wsRc.getCell(r, 8); nc.value = { formula: 'IF(G' + r + '="Quá hạn",TODAY()-D' + r + ',0)' }; nc.numFmt = '0';

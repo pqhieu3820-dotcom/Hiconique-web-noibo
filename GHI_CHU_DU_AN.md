@@ -2170,3 +2170,12 @@ Form Thêm/Sửa dự án (projects.html + projects.js, và form tạo dự án 
 
 ### (dz) 01/10/2026 — TC-Tài chính công ty: dòng mới KHÔNG có dropdown cột Danh mục
 Dòng chèn mới ở đầu bảng thừa hưởng dropdown Danh mục cũ từ dòng bên cạnh → danh mục mới thêm trên web bị Sheet báo "không có trong danh sách". Apps Script **v119**: `clearFinanceCategoryValidation_()` xoá validation ô Danh mục của các dòng vừa thêm (addData + addDataBatch, chỉ sheet TC-Tài chính công ty); `financeOnEdit_()` không còn tự gắn dropdown Danh mục theo Loại khi sửa cột Loại. Các ô cũ vẫn còn dropdown cho tới khi tự xoá thủ công (Dữ liệu › Quy tắc xác thực dữ liệu).
+
+
+## 2026-10-01 — Công nợ (phải thu + phải trả) & xuất văn bản
+- Mục "Công nợ khách hàng" ở `finance.html` đổi thành **Công nợ**: mỗi dòng gắn **đối tượng** (khách hàng, nhà cung cấp, nhà thầu phụ, nhân viên, đối tác, ngân hàng, cơ quan nhà nước, chủ nhà, nhà đầu tư, khác) + hướng phải thu/phải trả, MST/SĐT/địa chỉ/người liên hệ/số HĐ/ngày phát sinh.
+- Thu/trả **từng phần** (`TaskManager.recordDebtPayment`): tạo phiếu thu (PT) / phiếu chi (PC) vào Sổ tài chính, lưu lịch sử ở cột `Lịch sử thanh toán` (JSON) + `Đã thanh toán`. Trạng thái tính: chưa TT / một phần / quá hạn / tất toán. KPI phải thu – phải trả – chênh lệch – quá hạn + bảng tuổi nợ.
+- Tab Sheet vẫn là `TC-Công nợ khách hàng` (thêm cột: Hướng, Loại đối tượng, SĐT, Mã số thuế, Địa chỉ, Người liên hệ, Số hợp đồng/chứng từ, Ngày phát sinh, Đã thanh toán, Lịch sử thanh toán) → **cần dán lại FIELD_MAP vào Apps Script và deploy (v120)**; dòng cũ mặc định phải thu/khách hàng.
+- `public/js/debt-docx.js` (dùng khung xem/tải .docx/PDF của `payslip-docx.js`, nay có `openViewer`): Công văn đề nghị thanh toán / thông báo thanh toán (NĐ 30/2020/NĐ-CP), Biên bản đối chiếu công nợ, Giấy đề nghị thanh toán (Mẫu 05-TT), Phiếu thu (01-TT), Phiếu chi (02-TT) (TT 133/2016/TT-BTC). Địa chỉ/MST/TK ngân hàng/người đại diện công ty điền ở `DebtDocx.COMPANY` (để trống thì in dấu chấm).
+- Hàng đợi ghi Sheet (`task-data.js`): thao tác người dùng (xoá/sửa…) chen lên trước thông báo chưa gửi; các `addNotification` chờ được gộp thành `addNotificationsBatch` → Xoá không còn phải chờ hàng chục giây.
+- sw v145.
