@@ -2236,3 +2236,6 @@ Dòng chèn mới ở đầu bảng thừa hưởng dropdown Danh mục cũ từ
 - Hộp "Kết nối AI cập nhật giá — CHƯA BẬT": nhập khóa API + mô hình → lưu ở sheet `DG-Cài đặt` (id `anthropic_api_key`, `ai_model`, `auto_update=off`); `getPriceSettings` không trả khóa ra web (chỉ 4 ký tự cuối). Sau này khi có khóa: viết bước máy đọc nguồn → ghi hàng chờ duyệt (chưa làm).
 - Sheet mới tự tạo ở lần ghi đầu: `DG-Lịch sử giá`, `DG-Nguồn`, `DG-Cài đặt` (cùng nhóm DG-; sortSheetsByPrefix chưa biết tiền tố này). Apps Script v123 (compare + 5 action mới). sw v158.
 - 2026-10-01: trang Báo giá, tab Dự toán thiết kế: ẩn nút "Đồng bộ diện tích" (nút vẫn còn trong mã, ẩn đi để việc tự đồng bộ diện tích từ dự toán xây dựng vẫn chạy). sw v159.
+
+## 2026-10-01 — Trang Báo giá: khung 6 tab công cụ cố định trong trang, Google Sheet chỉ cấp dữ liệu
+- Tiến độ: 18 đầu việc mẫu có SẴN trong trang (không còn "Đang tạo 18 đầu việc mẫu…" và không còn ghi mẫu lên Sheet bằng `seedScheduleItems`); ngày/trạng thái đã lưu ghép theo số thứ tự; dòng mẫu chưa lưu tạo bản ghi ở lần bấm Lưu đầu; "Đặt lại" thay "Xoá" cho dòng mẫu; đầu việc thêm riêng vẫn xoá được. Nghiệm thu/Hồ sơ/Dòng tiền/So sánh nhà thầu/Phát sinh: dựng khung NGAY khi chọn dự án rồi mới điền dữ liệu (trước đây chờ tải xong mới hiện bảng). sw v160.

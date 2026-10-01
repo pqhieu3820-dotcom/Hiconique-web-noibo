@@ -973,7 +973,7 @@
       <div class="pr-card-head">
         <div>
           <div class="pr-card-title">Tiến độ thi công</div>
-          <div class="pr-card-desc">18 đầu việc mẫu theo trình tự thi công nhà dân — nhập ngày thực tế và trạng thái, có thể thêm/xoá đầu việc riêng cho dự án.</div>
+          <div class="pr-card-desc">18 đầu việc mẫu theo trình tự thi công nhà dân (có sẵn trong trang) — nhập ngày thực tế và trạng thái rồi bấm Lưu; có thể thêm/xoá đầu việc riêng cho dự án.</div>
         </div>
         <div class="pr-toolbar">
           <button class="pr-btn pr-btn-ghost pr-btn-sm" id="prScheduleAddBtn">+ Thêm đầu việc</button>
@@ -1340,6 +1340,8 @@
     // ---------- Chọn dự án chung cho 6 tab công cụ (So sánh nhà thầu, Dòng tiền,
     // Phát sinh, Tiến độ, Nghiệm thu, Hồ sơ công trình) ----------
     var TOOL_TABS = ['contractors', 'cashflow', 'changeorders', 'schedule', 'acceptance', 'docs'];
+    // 2026-10-01: khung bảng (đầu việc mẫu, hạng mục, mốc…) dựng SẴN trong trang; Google Sheet chỉ cấp DỮ LIỆU điền vào. toolLoaded nhớ dự án đã nạp để đổi dự án thì xoá dữ liệu cũ.
+    var toolLoaded = {};
     var activeToolProjectId = '';
     function populateToolProjectSelect() {
       var sel = document.getElementById('prToolProjectSelect');
@@ -1685,8 +1687,13 @@
     var currentContractorRecord = null;
     function loadContractors() {
       if (!activeToolProjectId) return;
+      var forP = activeToolProjectId;
+      if (toolLoaded.ctr !== forP) currentContractorRecord = null;
+      renderContractors();   // khung hiện ngay
       gsFetchList('getContractorComparisons', function (list) {
+        if (forP !== activeToolProjectId) return;
         currentContractorRecord = list.find(function (r) { return r.projectId === activeToolProjectId; }) || null;
+        toolLoaded.ctr = forP;
         renderContractors();
       });
     }
@@ -1805,8 +1812,13 @@
     var currentCashflowRecord = null;
     function loadCashflow() {
       if (!activeToolProjectId) return;
+      var forP = activeToolProjectId;
+      if (toolLoaded.cf !== forP) currentCashflowRecord = null;
+      renderCashflow();
       gsFetchList('getCashFlowPlans', function (list) {
+        if (forP !== activeToolProjectId) return;
         currentCashflowRecord = list.find(function (r) { return r.projectId === activeToolProjectId; }) || null;
+        toolLoaded.cf = forP;
         renderCashflow();
       });
     }
@@ -1876,8 +1888,13 @@
     var changeOrdersList = [];
     function loadChangeOrders() {
       if (!activeToolProjectId) return;
+      var forP = activeToolProjectId;
+      if (toolLoaded.co !== forP) changeOrdersList = [];
+      renderChangeOrders();
       gsFetchList('getChangeOrders', function (list) {
+        if (forP !== activeToolProjectId) return;
         changeOrdersList = list.filter(function (r) { return r.projectId === activeToolProjectId; });
+        toolLoaded.co = forP;
         renderChangeOrders();
       });
     }
@@ -1954,42 +1971,42 @@
       { name: 'Vệ sinh, chạy thử, bàn giao', durationDays: 7 }
     ];
     var scheduleList = [];
-    var scheduleSeeding = {};
-    function scheduleMessage(html) {
-      document.getElementById('schRows').innerHTML = '<tr><td colspan="8" class="pr-empty">' + html + '</td></tr>';
+    function scheduleNote(html) {
+      var el = document.getElementById('schStatus');
+      if (!el) { el = document.createElement('div'); el.id = 'schStatus'; el.style.cssText = 'padding:8px 24px;font-size:.75rem;color:var(--pr-muted);'; var tb = document.getElementById('schRows').closest('table'); tb.parentNode.insertBefore(el, tb); }
+      el.innerHTML = html || ''; el.style.display = html ? '' : 'none';
     }
     function loadSchedule() {
       if (!activeToolProjectId) return;
       var forProject = activeToolProjectId;
-      scheduleMessage('Đang tải tiến độ…');
+      if (toolLoaded.sch !== forProject) scheduleList = [];
+      renderSchedule();            // 18 đầu việc mẫu hiện NGAY (khung cố định trong trang)
+      scheduleNote('Đang tải ngày tháng/trạng thái đã lưu…');
       gsFetchList('getScheduleItems', function (list, ok) {
         if (forProject !== activeToolProjectId) return; // người dùng đã đổi dự án trong lúc chờ
         if (!ok) {
-          scheduleMessage('Không tải được tiến độ từ Google Sheet (máy chủ đang bận hoặc mất mạng). <button type="button" class="pr-btn pr-btn-ghost pr-btn-sm" id="schRetryBtn">Tải lại</button>');
+          scheduleNote('Chưa tải được dữ liệu đã lưu (máy chủ đang bận hoặc mất mạng) — đang hiện đầu việc mẫu trống. <button type="button" class="pr-btn pr-btn-ghost pr-btn-sm" id="schRetryBtn">Tải lại</button>');
           var rb = document.getElementById('schRetryBtn'); if (rb) rb.addEventListener('click', loadSchedule);
-          return; // KHÔNG nạp mẫu khi chưa đọc được dữ liệu thật
+          return;
         }
         scheduleList = list.filter(function (r) { return r.projectId === forProject; }).sort(function (a, b) { return (Number(a.seq) || 0) - (Number(b.seq) || 0); });
-        if (!scheduleList.length) { seedSchedule(); return; }
+        toolLoaded.sch = forProject;
+        scheduleNote('');
         renderSchedule();
       });
     }
-    function seedSchedule() {
-      if (scheduleSeeding[activeToolProjectId]) return; // đang nạp mẫu cho dự án này rồi — tránh nạp chồng
-      scheduleSeeding[activeToolProjectId] = true;
-      scheduleMessage('Đang tạo 18 đầu việc mẫu cho dự án…');
-      // Dự án lần đầu mở tab này chưa có đầu việc nào — nạp sẵn 18 đầu việc mẫu.
-      // PHẢI ghi bằng 1 lệnh seedScheduleItems (1 lần thực thi Apps Script, ghi
-      // nguyên khối) — KHÔNG gọi addScheduleItem 18 lần song song: đã thử và bị
-      // đua ghi, rớt mất hơn nửa số dòng do nhiều lần thực thi cùng đọc/ghi "dòng
-      // cuối" của sheet đồng thời.
-      var items = SCHEDULE_SEED.map(function (s, i) { return { projectId: activeToolProjectId, seq: i + 1, name: s.name, durationDays: s.durationDays, status: 'Chưa bắt đầu' }; });
-      var seedFor = activeToolProjectId;
-      gsWrite('seedScheduleItems', items).then(function () { scheduleSeeding[seedFor] = false; loadSchedule(); }).catch(function (e) { scheduleSeeding[seedFor] = false; console.error(e); scheduleMessage('Không tạo được đầu việc mẫu. <button type="button" class="pr-btn pr-btn-ghost pr-btn-sm" id="schRetryBtn">Thử lại</button>'); var rb = document.getElementById('schRetryBtn'); if (rb) rb.addEventListener('click', loadSchedule); });
+    // Dòng hiển thị = 18 đầu việc mẫu (khớp dữ liệu đã lưu theo số thứ tự; chưa lưu thì là dòng "ảo") + các đầu việc người dùng thêm riêng.
+    function scheduleDisplayRows() {
+      var bySeq = {}, extra = [];
+      scheduleList.forEach(function (s) { var q = Number(s.seq); if (q >= 1 && q <= SCHEDULE_SEED.length && !bySeq[q]) bySeq[q] = s; else extra.push(s); });
+      var rows = SCHEDULE_SEED.map(function (tpl, i) { return bySeq[i + 1] ? { s: bySeq[i + 1], tpl: true } : { s: { seq: i + 1, name: tpl.name, durationDays: tpl.durationDays, status: 'Chưa bắt đầu' }, tpl: true, virtual: true }; });
+      extra.forEach(function (s) { rows.push({ s: s }); });
+      return rows;
     }
     function renderSchedule() {
-      document.getElementById('schRows').innerHTML = scheduleList.map(function (s) {
-        return '<tr data-sch-id="' + s.id + '">' +
+      document.getElementById('schRows').innerHTML = scheduleDisplayRows().map(function (r) {
+        var s = r.s;
+        return '<tr ' + (r.virtual ? 'data-sch-seq="' + s.seq + '"' : 'data-sch-id="' + s.id + '"' + (r.tpl ? ' data-sch-tpl="1"' : '')) + '>' +
           '<td><input class="pr-input" data-sch-f="name" value="' + escapeHtml(s.name || '') + '"></td>' +
           '<td class="num"><input class="pr-input mono" type="number" min="0" data-sch-f="durationDays" value="' + (Number(s.durationDays) || 0) + '" style="width:70px;"></td>' +
           '<td><input type="date" class="pr-input" data-sch-f="plannedStart" value="' + escapeHtml(s.plannedStart || '') + '"></td>' +
@@ -1999,12 +2016,12 @@
           '<td><select class="pr-quote-select" data-sch-f="status">' +
             ['Chưa bắt đầu', 'Đang thi công', 'Hoàn thành', 'Chậm tiến độ'].map(function (s2) { return '<option' + (s.status === s2 ? ' selected' : '') + '>' + s2 + '</option>'; }).join('') +
           '</select></td>' +
-          '<td><button class="pr-btn pr-btn-ghost pr-btn-sm" data-sch-save>Lưu</button> <button class="pr-btn pr-btn-danger pr-btn-sm" data-sch-delete>Xoá</button></td>' +
+          '<td><button class="pr-btn pr-btn-ghost pr-btn-sm" data-sch-save>Lưu</button>' + (r.virtual ? '' : ' <button class="pr-btn pr-btn-danger pr-btn-sm" data-sch-delete>' + (r.tpl ? 'Đặt lại' : 'Xoá') + '</button>') + '</td>' +
         '</tr>';
       }).join('');
     }
     document.getElementById('schRows').addEventListener('click', function (e) {
-      var tr = e.target.closest('tr[data-sch-id]');
+      var tr = e.target.closest('tr[data-sch-id], tr[data-sch-seq]');
       if (!tr) return;
       var id = tr.getAttribute('data-sch-id');
       if (e.target.matches('[data-sch-save]')) {
@@ -2013,15 +2030,20 @@
           var f = inp.getAttribute('data-sch-f');
           updates[f] = f === 'durationDays' ? (parseFloat(inp.value) || 0) : inp.value;
         });
+        if (!id) {   // dòng mẫu chưa từng lưu → tạo bản ghi lần đầu khi bấm Lưu
+          updates.projectId = activeToolProjectId; updates.seq = Number(tr.getAttribute('data-sch-seq'));
+          gsWrite('addScheduleItem', updates).then(function () { loadSchedule(); }).catch(function (err) { console.error(err); alert('Lưu thất bại.'); });
+          return;
+        }
         gsWrite('updateScheduleItem', updates, id).then(function () { loadSchedule(); }).catch(function (err) { console.error(err); alert('Lưu thất bại.'); });
       } else if (e.target.matches('[data-sch-delete]')) {
-        if (!confirm('Xoá đầu việc này?')) return;
+        if (!confirm(tr.getAttribute('data-sch-tpl') ? 'Đặt lại đầu việc mẫu này về trống (xoá ngày tháng/trạng thái đã lưu)?' : 'Xoá đầu việc này?')) return;
         gsWrite('deleteScheduleItem', null, id).then(function () { loadSchedule(); }).catch(function (err) { console.error(err); alert('Xoá thất bại.'); });
       }
     });
     document.getElementById('prScheduleAddBtn').addEventListener('click', function () {
       if (!activeToolProjectId) { alert('Chưa có dự án nào để thêm.'); return; }
-      gsWrite('addScheduleItem', { projectId: activeToolProjectId, seq: scheduleList.length + 1, name: 'Đầu việc mới', status: 'Chưa bắt đầu' }).then(function () { loadSchedule(); }).catch(function (e) { console.error(e); alert('Thêm thất bại.'); });
+      gsWrite('addScheduleItem', { projectId: activeToolProjectId, seq: Math.max(SCHEDULE_SEED.length, scheduleList.reduce(function (m, s) { return Math.max(m, Number(s.seq) || 0); }, 0)) + 1, name: 'Đầu việc mới', status: 'Chưa bắt đầu' }).then(function () { loadSchedule(); }).catch(function (e) { console.error(e); alert('Thêm thất bại.'); });
     });
 
     // ---------- Nghiệm thu ----------
@@ -2080,7 +2102,12 @@
     var acceptanceRecords = {};
     function loadAcceptance() {
       if (!activeToolProjectId) return;
+      var forP = activeToolProjectId;
+      if (toolLoaded.acc !== forP) acceptanceRecords = {};
+      renderAcceptance();
       gsFetchList('getAcceptanceChecks', function (list) {
+        if (forP !== activeToolProjectId) return;
+        toolLoaded.acc = forP;
         acceptanceRecords = {};
         list.filter(function (r) { return r.projectId === activeToolProjectId; }).forEach(function (r) { acceptanceRecords[r.checkCode] = r; });
         renderAcceptance();
@@ -2146,7 +2173,12 @@
     var docRecords = {};
     function loadDocs() {
       if (!activeToolProjectId) return;
+      var forP = activeToolProjectId;
+      if (toolLoaded.doc !== forP) docRecords = {};
+      renderDocs();
       gsFetchList('getProjectDocuments', function (list) {
+        if (forP !== activeToolProjectId) return;
+        toolLoaded.doc = forP;
         docRecords = {};
         list.filter(function (r) { return r.projectId === activeToolProjectId; }).forEach(function (r) { docRecords[r.docCode] = r; });
         renderDocs();
