@@ -2260,3 +2260,6 @@ Dòng chèn mới ở đầu bảng thừa hưởng dropdown Danh mục cũ từ
 - Sửa server (`gsheets-api-v2.js`): `getAllData` đọc cả bảng + tiêu đề bằng 1 `getDataRange().getValues()`, tính múi giờ/khoá cột 1 lần; `handleBundle_` chuyển cờ `nc` xuống từng lệnh con. **Cần deploy Apps Script phiên bản mới (v127).**
 - Chip kính góc dưới: dòng phụ tự cập nhật mỗi 0,5s: "Đang đọc 16 bảng… · đã chờ Xs · còn khoảng Ys" (ước tính theo lần đọc trước, mặc định 12s); `offline.js`, `task-data.js` (refreshPhase). sw v165.
 - 2026-10-01: ĐÃ deploy Apps Script **v127** (getAllData đọc 1 lần, bundle truyền `nc`, bỏ 2 mục FIELD_MAP `verifyPassCount`/`verifyStatus` sau khi người dùng đã xóa 2 cột + đổi 3 tiêu đề trên Sheet). Đo sau deploy: gói 9 bảng ~7–8s/98KB (trước: 16 bảng 15s).
+
+## 2026-10-01 — Nút ⟳ trên thanh đầu: chỉ làm mới dữ liệu của trang đang mở
+- `refreshFromGSheets(cb, {force:true, types:[...]})` (task-data.js): chỉ đọc/ghi các loại dữ liệu trong `types` (gói `getBundle` nhỏ hơn nhiều → nhanh). portal.js ánh xạ trang → loại dữ liệu (`PAGE_TYPES`; trang lạ = members+notifications). Ở TRANG CHỦ ⟳ vẫn làm mới đủ 16 bảng. Vào trang từ trang chủ và tải lại trang đã tự cập nhật sẵn. sw v166.

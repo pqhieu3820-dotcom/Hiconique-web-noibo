@@ -215,6 +215,21 @@
     if (searchBtn) actions.insertBefore(btn, searchBtn);
     else actions.insertBefore(btn, actions.firstChild);
 
+    // 2026-10-01: ⟳ ở trang con chỉ làm mới dữ liệu CỦA TRANG ĐÓ (nhanh hơn nhiều); muốn làm mới đủ 16 bảng → bấm ⟳ ở trang chủ.
+    // (Vào trang từ trang chủ và tải lại trang đều đã tự cập nhật.)
+    var PAGE_TYPES = {
+      'timesheet': ['timesheet', 'members'], 'projects': ['projects', 'tasks', 'members'], 'tasks-manager': ['projects', 'tasks', 'members'],
+      'progress-board': ['projects', 'tasks', 'members'], 'my-dashboard': ['projects', 'tasks', 'timesheet'],
+      'finance': ['financeEntries', 'receivables', 'bsSnapshots'], 'khai-toan': ['financeEntries', 'receivables', 'bsSnapshots'],
+      'orders': ['orders', 'financeEntries', 'receivables', 'projects'], 'payslip': ['payslips', 'timesheet', 'members', 'commissions'],
+      'commission': ['commissions', 'commissionRates', 'projects', 'members'], 'notices': ['notices', 'notifications'],
+      'team': ['members'], 'profile': ['members'], 'staff-monitor': ['timesheet', 'members'], 'pricing': ['priceCatalog']
+    };
+    function pageTypes() {
+      var m = location.pathname.match(/\/pages\/([^\/.]+)/);
+      if (!m) return null;                       // trang chủ → đủ 16 bảng
+      return PAGE_TYPES[m[1]] || ['members', 'notifications'];
+    }
     btn.addEventListener('click', function () {
       if (btn.classList.contains('spinning')) return; // đang tải dở, bấm thêm không làm gì
       if (typeof TaskManager === 'undefined' || !TaskManager.refreshFromGSheets) return;
@@ -228,7 +243,7 @@
         // vẽ lại đúng phần dữ liệu của từng trang — không cần gọi gì thêm ở
         // đây, tránh mỗi trang phải tự biết portal.js đang làm gì.
         if (window.HiconiqueSyncChip) { if (ok === false) HiconiqueSyncChip.bad(); else HiconiqueSyncChip.ok(); } else showReloadToast();
-      }, { force: true });   // bấm Làm mới = nhận đúng dữ liệu trên Google Sheet
+      }, { force: true, types: pageTypes() });   // bấm Làm mới = nhận đúng dữ liệu trên Google Sheet
     });
 
     function showReloadToast() {

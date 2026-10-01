@@ -815,6 +815,8 @@ var TaskManager = (function() {
   var refreshBusy_ = false, refreshWaiters_ = [];
   // 2026-10-01: nút "Làm mới" (opts.force) = lấy ĐÚNG dữ liệu trên Google Sheet: bỏ mã băm + bỏ cache máy chủ, bản local KHÔNG thắng theo "ngày cập nhật", không đẩy ngược dữ liệu local lên Sheet.
   var forceFromSheet_ = false;
+  // 2026-10-01: opts.types = chỉ làm mới các loại dữ liệu này (nút ⟳ trên thanh đầu của 1 trang con); bỏ trống = đủ 16 bảng (trang chủ / làm mới ngầm)
+  var refreshScope_ = null;
   function refreshFromGSheets(callback, opts) {
     gsCacheTime = {};
     if (opts && opts.force) { forceFromSheet_ = true; gsHashes = {}; }
@@ -825,8 +827,10 @@ var TaskManager = (function() {
     // Không chạy chồng 2 lần làm mới (mạng chậm + hẹn giờ 10-15s sẽ dồn lệnh lên Apps Script) — lượt gọi thêm được xếp hàng chờ kết quả lượt đang chạy
     if (refreshBusy_) { if (callback) refreshWaiters_.push(callback); return; }
     refreshBusy_ = true;
+    refreshScope_ = opts && opts.types && opts.types.length ? opts.types.filter(function (ty) { return !!API_READ_ACTIONS[ty] && REFRESH_TYPES.indexOf(ty) >= 0; }) : null;
+    if (refreshScope_ && !refreshScope_.length) refreshScope_ = null;
     function finish(ok) {
-      refreshBusy_ = false; forceFromSheet_ = false;
+      refreshBusy_ = false; forceFromSheet_ = false; refreshScope_ = null;
       var waiters = refreshWaiters_; refreshWaiters_ = [];
       if (callback) callback(ok);
       waiters.forEach(function (fn) { try { fn(ok); } catch (e) { console.error(e); } });
@@ -840,7 +844,9 @@ var TaskManager = (function() {
 
   function refreshAllFromCache_(callback) {
     var done = 0;
-    var total = 16;
+    var scope = refreshScope_;
+    var total = scope ? scope.length : 16;
+    function gfs_(type, cb) { if (scope && scope.indexOf(type) < 0) return; getFromGSheets(type, cb); }
     var success = false;
 
     // 2026-09-19: refreshFromGSheets() (kể cả bản chạy NGẦM mỗi 20s qua
@@ -860,32 +866,32 @@ var TaskManager = (function() {
       }
     }
 
-    getFromGSheets('projects', function(projects) {
+    gfs_('projects', function(projects) {
       if (projects.length > 0) {
         localStorage.setItem(STORAGE_KEYS.projects, JSON.stringify(mergeServerData(STORAGE_KEYS.projects, projects)));
         success = true;
       }
       checkDone();
     });
-    getFromGSheets('tasks', function(tasks) {
+    gfs_('tasks', function(tasks) {
       if (tasks.length > 0) {
         localStorage.setItem(STORAGE_KEYS.tasks, JSON.stringify(mergeServerData(STORAGE_KEYS.tasks, tasks)));
       }
       checkDone();
     });
-    getFromGSheets('members', function(members) {
+    gfs_('members', function(members) {
       if (members.length > 0) {
         localStorage.setItem(STORAGE_KEYS.members, JSON.stringify(members));
       }
       checkDone();
     });
-    getFromGSheets('proposals', function(proposals) {
+    gfs_('proposals', function(proposals) {
       if (proposals.length > 0) {
         localStorage.setItem(STORAGE_KEYS.proposals, JSON.stringify(proposals));
       }
       checkDone();
     });
-    getFromGSheets('timesheet', function(timesheet) {
+    gfs_('timesheet', function(timesheet) {
       if (timesheet.length > 0) {
         // 2026-09-29: KHÔNG ghi đè thẳng nữa — gộp với dữ liệu local và phủ lại các lệnh ghi còn
         // trong hàng đợi (chưa lên được Sheet), nếu không lượt chấm công vừa bấm sẽ biến mất khỏi
@@ -895,55 +901,55 @@ var TaskManager = (function() {
       }
       checkDone();
     });
-    getFromGSheets('notifications', function(notifications) {
+    gfs_('notifications', function(notifications) {
       if (notifications.length > 0) {
         localStorage.setItem(STORAGE_KEYS.notifications, JSON.stringify(notifications));
       }
       checkDone();
     });
-    getFromGSheets('notices', function(notices) {
+    gfs_('notices', function(notices) {
       if (notices.length > 0) {
         localStorage.setItem(STORAGE_KEYS.notices, JSON.stringify(notices));
       }
       checkDone();
     });
-    getFromGSheets('documents', function(documents) {
+    gfs_('documents', function(documents) {
       if (documents.length > 0) {
         localStorage.setItem(STORAGE_KEYS.documents, JSON.stringify(documents));
       }
       checkDone();
     });
-    getFromGSheets('payslips', function(payslips) {
+    gfs_('payslips', function(payslips) {
       localStorage.setItem(STORAGE_KEYS.payslips, JSON.stringify(payslips));
       checkDone();
     });
-    getFromGSheets('commissions', function(commissions) {
+    gfs_('commissions', function(commissions) {
       localStorage.setItem(STORAGE_KEYS.commissions, JSON.stringify(commissions));
       checkDone();
     });
-    getFromGSheets('commissionRates', function(rates) {
+    gfs_('commissionRates', function(rates) {
       if (rates.length > 0) {
         localStorage.setItem(STORAGE_KEYS.commissionRates, JSON.stringify(rates));
       }
       checkDone();
     });
-    getFromGSheets('priceCatalog', function(items) {
+    gfs_('priceCatalog', function(items) {
       localStorage.setItem(STORAGE_KEYS.priceCatalog, JSON.stringify(items));
       checkDone();
     });
-    getFromGSheets('financeEntries', function(entries) {
+    gfs_('financeEntries', function(entries) {
       localStorage.setItem(STORAGE_KEYS.financeEntries, JSON.stringify(entries));
       checkDone();
     });
-    getFromGSheets('receivables', function(list) {
+    gfs_('receivables', function(list) {
       localStorage.setItem(STORAGE_KEYS.receivables, JSON.stringify(list));
       checkDone();
     });
-    getFromGSheets('bsSnapshots', function(list) {
+    gfs_('bsSnapshots', function(list) {
       localStorage.setItem(STORAGE_KEYS.bsSnapshots, JSON.stringify(list));
       checkDone();
     });
-    getFromGSheets('orders', function(list) {
+    gfs_('orders', function(list) {
       localStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(list));
       checkDone();
     });
@@ -981,16 +987,17 @@ var TaskManager = (function() {
   var gsHashes = {};   // type -> mã băm nội dung lần tải gần nhất (chỉ trong bộ nhớ; mất khi tải lại trang → tải đủ 1 lần)
   // callback(mode): 'ok' = đã có gói mới; 'legacy' = máy chủ chưa hỗ trợ getBundle (dùng đường cũ 16 lệnh); 'fail' = lỗi mạng/timeout
   function prefetchBundle(callback) {
-    var actions = REFRESH_TYPES.map(function (ty) { return API_READ_ACTIONS[ty]; });
+    var types = refreshScope_ || REFRESH_TYPES;
+    var actions = types.map(function (ty) { return API_READ_ACTIONS[ty]; });
     var controller = new AbortController();
     var timer = setTimeout(function () { controller.abort(); }, 25000);
     // Chỉ gửi mã băm của loại đang có bản đầy đủ trong bộ nhớ; server thấy trùng thì KHÔNG gửi lại dữ liệu loại đó
     var known = {};
-    REFRESH_TYPES.forEach(function (ty) { if (gsHashes[ty] && gsCache[ty] && gsCache[ty].length > 0) known[API_READ_ACTIONS[ty]] = gsHashes[ty]; });
+    types.forEach(function (ty) { if (gsHashes[ty] && gsCache[ty] && gsCache[ty].length > 0) known[API_READ_ACTIONS[ty]] = gsHashes[ty]; });
     var hashParam = Object.keys(known).length && !forceFromSheet_ ? '&hashes=' + encodeURIComponent(JSON.stringify(known)) : '';
     if (forceFromSheet_) hashParam += '&nc=' + Date.now();   // khoá khác → bỏ qua cache 15s phía máy chủ
     var t0Read = Date.now();
-    if (window.HiconiqueMetrics) { HiconiqueMetrics.refreshPhase = 'Đang đọc ' + REFRESH_TYPES.length + ' bảng dữ liệu trên Google Sheet…'; }
+    if (window.HiconiqueMetrics) { HiconiqueMetrics.refreshPhase = 'Đang đọc ' + types.length + ' bảng dữ liệu của trang này…'; }
     fetch(GSHEETS_CONFIG.API_URL + '?action=getBundle&types=' + encodeURIComponent(actions.join(',')) + hashParam, { redirect: 'follow', signal: controller.signal })
       .then(function (r) { return r.json(); })
       .then(function (data) {
@@ -999,7 +1006,7 @@ var TaskManager = (function() {
         if (!data || Array.isArray(data) || data.error) { callback('legacy'); return; }   // {error:'Unknown action'} = Apps Script bản cũ
         var map = {};
         var hs = data._h || {};
-        REFRESH_TYPES.forEach(function (ty) {
+        types.forEach(function (ty) {
           var act = API_READ_ACTIONS[ty], v = data[act];
           if (v && v.same === true && gsCache[ty]) { map[ty] = gsCache[ty]; return; }   // không đổi: dùng lại bản đang có
           if (Array.isArray(v)) { map[ty] = v; if (hs[act]) gsHashes[ty] = hs[act]; }
