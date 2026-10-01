@@ -103,6 +103,7 @@
   function render() {
     if (!TM) return;
     var rows = collect();
+    if ($('smRangeLabel')) { var rd = rangeDates(); $('smRangeLabel').textContent = rd.length > 1 ? '📅 ' + rangeText() : ''; }
     var me = user();
     var isMgr = !!me && TM.canManageNotifications(me);
     var attention = rows.filter(function (r) { return r.flags.some(function (f) { return f.c === 'bad'; }); }).length;
@@ -143,8 +144,54 @@
     return r.dates.filter(function (d) { var b = r.byDay[d]; return b.checked || b.hasAct || appsFor(r.member.id, [d]).length; });
   }
 
+  // ---- Báo cáo tổng toàn bộ nhân viên trong khoảng đang xem (xem · In/PDF · tải Excel) ----
+  function rangeText() {
+    var ds = rangeDates(); if (!ds.length) return '';
+    var f = function (d) { var p = d.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; };
+    return ds.length === 1 ? f(ds[0]) : 'từ ' + f(ds[0]) + ' đến ' + f(ds[ds.length - 1]);
+  }
+  function reportData() {
+    var rows = collect();
+    var head = ['Nhân viên', 'Chức vụ', 'Ngày có chấm công', 'Giờ chấm công', 'Hoạt động Hub', 'Không thao tác', 'Rời tab', 'Tỉ lệ hoạt động', 'Việc đang làm', 'Quá hạn', 'Cập nhật tiến độ', 'Dấu hiệu'];
+    var body = rows.map(function (r) {
+      return [r.member.name || r.member.id, r.member.role || '', r.sum.workDays, r.sum.checked ? fmtDur(r.sum.checked) : '—', r.sum.actDays ? fmtDur(r.sum.active) : '—',
+        r.sum.actDays ? fmtDur(r.sum.idle) : '—', r.sum.actDays ? fmtDur(r.sum.away) : '—', r.ratio == null ? '—' : Math.round(r.ratio * 100) + '%',
+        r.doing, r.overdue, r.sum.updates, r.flags.map(function (f) { return f.t; }).join('; ')];
+    });
+    var tot = rows.reduce(function (a, r) { a.c += r.sum.checked; a.a += r.sum.active; a.i += r.sum.idle; a.w += r.sum.away; a.u += r.sum.updates; a.o += r.overdue; a.d += r.doing; a.wd += r.sum.workDays; return a; }, { c: 0, a: 0, i: 0, w: 0, u: 0, o: 0, d: 0, wd: 0 });
+    var foot = ['Tổng cộng (' + rows.length + ' người)', '', tot.wd, fmtDur(tot.c), fmtDur(tot.a), fmtDur(tot.i), fmtDur(tot.w), tot.c ? Math.round(Math.min(1, tot.a / tot.c) * 100) + '%' : '—', tot.d, tot.o, tot.u, ''];
+    return { head: head, body: body, foot: foot, title: 'Báo cáo tổng hợp hoạt động nhân viên', range: rangeText() };
+  }
+  function reportTableHtml(d) {
+    var cell = function (v, h) { return '<' + (h ? 'th' : 'td') + '>' + esc(String(v)) + '</' + (h ? 'th' : 'td') + '>'; };
+    return '<table class="sm-table" style="font-size:.8125rem"><thead><tr>' + d.head.map(function (h) { return cell(h, 1); }).join('') + '</tr></thead><tbody>' +
+      d.body.map(function (r) { return '<tr>' + r.map(function (v) { return cell(v); }).join('') + '</tr>'; }).join('') +
+      '<tr style="font-weight:700">' + d.foot.map(function (v) { return cell(v); }).join('') + '</tr></tbody></table>';
+  }
+  function openReport() {
+    var d = reportData();
+    $('smModalTitle').textContent = d.title + ' — ' + d.range;
+    $('smModal').querySelector('.sm-modal').style.maxWidth = '1180px';
+    $('smModalBody').innerHTML = '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;"><button class="sm-btn" id="smRepPrint" type="button">In / Lưu PDF</button><button class="sm-btn" id="smRepCsv" type="button">Tải Excel (.csv)</button></div><div style="overflow:auto;max-height:65vh;">' + reportTableHtml(d) + '</div>' +
+      '<p class="sm-muted" style="margin:10px 0 0;font-size:.75rem;">Tỉ lệ hoạt động = phút có thao tác trong Hub ÷ giờ chấm công. Người làm việc chủ yếu ngoài Hub sẽ có tỉ lệ thấp — đối chiếu với tiến độ công việc trước khi kết luận.</p>';
+    $('smModal').classList.add('active');
+    $('smRepPrint').addEventListener('click', function () {
+      var w = window.open('', '_blank'); if (!w) { alert('Trình duyệt chặn cửa sổ in. Hãy cho phép pop-up.'); return; }
+      w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>' + esc(d.title) + '</title><style>body{font-family:Arial,sans-serif;padding:18px;color:#111}h2{margin:0 0 4px}p{margin:0 0 12px;color:#555;font-size:13px}table{border-collapse:collapse;width:100%;font-size:11px}th,td{border:1px solid #999;padding:5px 6px;text-align:left}th{background:#eee}@page{size:A4 landscape;margin:10mm}</style></head><body><h2>' + esc(d.title.toUpperCase()) + '</h2><p>Khoảng thời gian: ' + esc(d.range) + ' · Xuất lúc ' + new Date().toLocaleString('vi-VN') + '</p>' + reportTableHtml(d).replace(' class="sm-table"', '') + '</body></html>');
+      w.document.close(); w.focus(); setTimeout(function () { w.print(); }, 300);
+    });
+    $('smRepCsv').addEventListener('click', function () {
+      var q = function (v) { v = String(v == null ? '' : v); return /[";\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+      var lines = [[d.title + ' — ' + d.range]].concat([d.head], d.body, [d.foot]).map(function (r) { return r.map(q).join(';'); });
+      var blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+      var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'bao-cao-hoat-dong-nhan-vien-' + ymd(new Date()) + '.csv';
+      document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    });
+  }
+
   function openDetail(i) {
     var r = tracked.rows && tracked.rows[i]; if (!r) return;
+    $('smModal').querySelector('.sm-modal').style.maxWidth = '';
     tracked.detail = r;
     $('smModalTitle').textContent = r.member.name || r.member.id;
     var withData = daysWithData(r);
@@ -245,6 +292,7 @@
     }, { passive: false });
     $('smDate').value = ymd(new Date());   // mặc định đang xem "Hôm nay" → hiện ngày hôm nay
     $('smReload').addEventListener('click', reload);
+    if ($('smReport')) $('smReport').addEventListener('click', openReport);
     $('smTable').addEventListener('click', function (e) { var r = e.target.closest('.sm-row'); if (r) openDetail(Number(r.dataset.i)); });
     $('smModalBody').addEventListener('click', function (e) {
       var r = e.target.closest('#smDayRows tr.sm-row'); if (!r) return;

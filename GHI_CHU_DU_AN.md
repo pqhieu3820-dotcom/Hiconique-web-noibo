@@ -2281,3 +2281,8 @@ Dòng chèn mới ở đầu bảng thừa hưởng dropdown Danh mục cũ từ
 
 ## 2026-10-01 — Giám sát nhân viên: ô ngày
 - Bấm 'Hôm nay' (và khi mở trang) ô ngày hiện đúng ngày hôm nay; lăn chuột trên ô ngày: lên = ngày kế, xuống = ngày trước (không quá hôm nay). `staff-monitor.js`, sw v173.
+
+## 2026-10-01 — Giám sát nhân viên: báo cáo tổng, nhãn khoảng ngày, sửa nút tải Agent
+- Nút **▤ Báo cáo tổng** cạnh ô ngày: bảng tổng hợp mọi nhân viên trong khoảng đang xem (kèm dòng tổng cộng), nút In / Lưu PDF (A4 ngang) và Tải Excel (.csv, UTF-8 BOM, phân tách `;`).
+- Bấm "7 ngày" / "Tháng này" hiện nhãn khoảng ngày "📅 từ dd/mm/yyyy đến dd/mm/yyyy" cạnh ô ngày.
+- Nút "Tải HiconiqueAgentSetup…exe" cùng chiều cao/kiểu với nút "Kiểm tra bản mới", icon nằm cùng hàng với chữ (trước bị xuống dòng do svg display:block). sw v174.

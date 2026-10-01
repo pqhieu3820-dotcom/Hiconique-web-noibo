@@ -52,6 +52,12 @@
     .sm-seg button.active { background: color-mix(in srgb, var(--sm-bronze) 16%, transparent); color: var(--sm-bronze); }
     .sm-input { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--sm-border); background: var(--sm-bg); color: var(--sm-text); font-family: inherit; font-size: 0.8125rem; }
     .sm-btn { padding: 8px 14px; border-radius: 9px; border: 1px solid var(--sm-border); background: transparent; color: var(--sm-text); font-family: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; }
+    .sm-range-label { font-size: 0.8125rem; font-weight: 600; color: var(--sm-bronze); padding: 0 4px; }
+    .sm-range-label:empty { display: none; }
+    .sm-agent-actions { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; }
+    .sm-agent-actions .sm-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; line-height: 1.2; white-space: nowrap; box-sizing: border-box; }
+    .sm-agent-actions .sm-btn svg { display: inline-block; flex: none; width: 13px; height: 13px; margin: 0; vertical-align: 0; }
+    .sm-agent-actions .sm-agent-status { align-self: center; }
     .sm-btn:hover { border-color: var(--sm-bronze); color: var(--sm-bronze); }
     .sm-spacer { flex: 1 1 auto; }
     .sm-wrap { background: var(--sm-surface); border: 1px solid var(--sm-border); border-radius: 14px; overflow-x: auto; }
@@ -137,7 +143,7 @@
           <dt>Mã SHA-256</dt><dd id="agSha" style="font-size:0.6875rem">…</dd>
         </dl>
         <div class="sm-agent-actions">
-          <a class="sm-btn" id="agDownload" href="https://drive.google.com/drive/folders/1lSDuoqhGnGM7Yik1wk6V_N5dTdQlU97J?usp=sharing" target="_blank" rel="noopener" style="background:var(--sm-bronze);border-color:var(--sm-bronze);color:#0B0D10;text-decoration:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;vertical-align:-1px;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span id="agDlName">Tải file cài đặt (Google Drive)</span></a>
+          <a class="sm-btn" id="agDownload" href="https://drive.google.com/drive/folders/1lSDuoqhGnGM7Yik1wk6V_N5dTdQlU97J?usp=sharing" target="_blank" rel="noopener" style="background:var(--sm-bronze);border-color:var(--sm-bronze);color:#0B0D10;text-decoration:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span id="agDlName">Tải file cài đặt (Google Drive)</span></a>
           <button class="sm-btn" id="agCheck" type="button">Kiểm tra bản mới</button>
           <span class="sm-agent-status" id="agStatus"></span>
         </div>
@@ -150,7 +156,9 @@
 
     <div class="sm-toolbar">
       <div class="sm-seg" id="smRange"><button data-r="today" class="active">Hôm nay</button><button data-r="7d">7 ngày</button><button data-r="month">Tháng này</button></div>
-      <input class="sm-input" type="date" id="smDate" title="Xem một ngày cụ thể">
+      <input class="sm-input" type="date" id="smDate" title="Xem một ngày cụ thể (lăn chuột để đổi ngày)">
+      <span class="sm-range-label" id="smRangeLabel"></span>
+      <button class="sm-btn" id="smReport" type="button" title="Báo cáo tổng hợp toàn bộ nhân viên trong khoảng đang xem">▤ Báo cáo tổng</button>
       <span class="sm-spacer"></span>
       <button class="sm-btn" id="smReload" type="button">↻ Tải lại dữ liệu</button>
     </div>
