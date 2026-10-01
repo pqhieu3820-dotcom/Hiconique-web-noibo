@@ -828,8 +828,10 @@ function handleRequest(e) {
     }
     return out;
   }
-  const t0 = Date.now(); LOCK_WAIT_MS_ = 0;
-  let res = action === 'batchOps' ? handleBatchOps_(params) : handleRequestImpl_(e);
+  const t0 = Date.now(); LOCK_WAIT_MS_ = 0; IN_REQUEST_ = true;
+  let res;
+  try { res = action === 'batchOps' ? handleBatchOps_(params) : handleRequestImpl_(e); } finally { IN_REQUEST_ = false; }
+  try { flushPendingPush_(); } catch (err) { /* push lỗi không được làm hỏng phản hồi ghi */ }   // gửi push SAU khi đã nhả khoá
   if (action && action !== 'ping' && action !== 'resolveMapLink') bumpReadCacheVersion_();   // có ghi → mọi cache đọc cũ mất hiệu lực
   // 2026-10-01: đo thời gian xử lý phía máy chủ, gắn vào phản hồi ghi (_ms) để client ghi log/hiển thị nghẽn ở khâu nào
   try {
@@ -3551,9 +3553,39 @@ function sendPushToMember_(ss, memberId, title, body, extra) {
 // server tự ghi thẳng addData(ss, SHEETS.notifications, ...) (VD
 // autoCheckoutForgottenEntries, notifyFounderMemberRejected...) — chỉ cần 1
 // chỗ móc, không phải sửa từng nơi tạo thông báo.
+// 2026-10-01 (hiệu năng): TRƯỚC ĐÂY mỗi thông báo gửi push NGAY trong lúc đang giữ khoá ghi (đọc lại cả sheet thiết bị + 1 lệnh FCM/thiết bị, ~10s/thông báo)
+// → mọi thao tác ghi khác (xoá/sửa) phải chờ cả phút. Nay: chỉ GOM vào hàng chờ; gửi 1 lần SAU khi nhả khoá (flushPendingPush_): đọc sheet thiết bị 1 lần + gửi song song (fetchAll).
+var PENDING_PUSH_ = [];
+var IN_REQUEST_ = false;
 function pushForNotificationRow_(ss, row) {
   if (!row || !row.scope) return;
-  sendPushToMember_(ss, row.scope, row.title || 'Thông báo mới', row.message || '', { link: '/' });
+  PENDING_PUSH_.push({ scope: row.scope, title: row.title || 'Thông báo mới', body: row.message || '' });
+  if (!IN_REQUEST_) flushPendingPush_();   // chạy từ trigger/hàm nền (không qua handleRequest) → gửi luôn
+}
+function flushPendingPush_() {
+  if (!PENDING_PUSH_.length) return;
+  const items = PENDING_PUSH_; PENDING_PUSH_ = [];
+  try {
+    const token = getFcmAccessToken_(); if (!token) return;
+    const scopes = {}; items.forEach(function (it) { scopes[it.scope] = true; });
+    const devices = getAllData(getSS_(), SHEETS.pushDevices).filter(function (d) { return scopes[d.memberId] && d.active !== false && d.active !== 'FALSE' && d.fcmToken; });
+    if (!devices.length) return;
+    const reqs = [], owners = [];
+    items.forEach(function (it) {
+      devices.forEach(function (dev) {
+        if (dev.memberId !== it.scope) return;
+        reqs.push({ url: 'https://fcm.googleapis.com/v1/projects/' + FCM_PROJECT_ID + '/messages:send', method: 'post', contentType: 'application/json', headers: { Authorization: 'Bearer ' + token },
+          payload: JSON.stringify({ message: { token: dev.fcmToken, notification: { title: it.title, body: it.body }, webpush: { notification: { icon: '/apple-touch-icon.png' }, fcm_options: { link: '/' } } } }), muteHttpExceptions: true });
+        owners.push(dev);
+      });
+    });
+    if (!reqs.length) return;
+    UrlFetchApp.fetchAll(reqs).forEach(function (resp, i) {
+      const code = resp.getResponseCode();
+      if (code === 404 || code === 400) { try { updateData(getSS_(), SHEETS.pushDevices, owners[i].id, { active: false }); } catch (e) { /* bỏ qua */ } }
+      else if (code >= 400) Logger.log('flushPendingPush_: FCM loi ' + code + ' cho ' + owners[i].memberId);
+    });
+  } catch (e) { Logger.log('flushPendingPush_ exception: ' + e); }
 }
 
 // ================= SẮP XẾP LẠI DỮ LIỆU CŨ — 2026-09-23 (chạy 1 LẦN) =================

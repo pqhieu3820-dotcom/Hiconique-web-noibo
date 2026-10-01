@@ -458,7 +458,7 @@ var Offline = (function () {
         'background:linear-gradient(140deg,rgba(255,255,255,.72) 0%,rgba(255,255,255,.46) 50%,rgba(255,255,255,.6) 100%);color:#12110F;' +
         'box-shadow:0 1px 1px rgba(255,255,255,.5) inset,0 -1px 1px rgba(255,255,255,.12) inset,0 12px 30px -10px rgba(20,24,40,.22),0 0 0 1px rgba(20,24,40,.06),0 4px 12px rgba(20,24,40,.08);' +
         'animation:hqGlassIn .42s cubic-bezier(.2,.9,.25,1.15) both,hqGlow 5.4s .45s ease-in-out infinite alternate;}' +
-        '#hqSyncChip[data-st="bad"]{--gl:224,80,50}#hqSyncChip[data-st="busy"]{--gl:200,160,90}#hqSyncChip[data-st="ok"]{--gl:63,190,110}' +
+        '#hqSyncChip[hidden]{display:none !important}#hqSyncChip[data-st="bad"]{--gl:224,80,50}#hqSyncChip[data-st="busy"]{--gl:200,160,90}#hqSyncChip[data-st="ok"]{--gl:63,190,110}' +
         '@keyframes hqGlow{0%{box-shadow:0 1px 1px rgba(255,255,255,.7) inset,0 0 26px 2px rgba(var(--gl),.1),0 0 64px 12px rgba(var(--gl),.055),0 0 120px 26px rgba(var(--gl),.025),0 10px 26px -10px rgba(20,24,40,.22)}100%{box-shadow:0 1px 1px rgba(255,255,255,.7) inset,0 0 44px 8px rgba(var(--gl),.17),0 0 96px 28px rgba(var(--gl),.095),0 0 170px 50px rgba(var(--gl),.045),0 10px 26px -10px rgba(20,24,40,.22)}}' +
         '#hqSyncChip::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1.2px;pointer-events:none;' +
         'background:linear-gradient(135deg,rgba(255,255,255,.95),rgba(255,255,255,.15) 38%,rgba(255,255,255,.08) 62%,rgba(255,255,255,.7));' +
@@ -495,7 +495,7 @@ var Offline = (function () {
     var liveDirect = directAt.filter(function (s) { return now - s < 40000; }).length, n = q.length + liveDirect, M = window.HiconiqueMetrics || {};
     var w = M.writeMs || [], aw = w.length ? w.reduce(function (a, b) { return a + b; }, 0) / w.length : 0;
     var inQuiet = now < quietUntil && now > doneUntil && !failed && last.event !== 'retry';
-    if (!failed && (n === 0 || inQuiet) && now > doneUntil) { if (el) el.hidden = true; return; }
+    if (!failed && (n === 0 || inQuiet) && now > doneUntil) { if (el) { el.hidden = true; el.style.display = 'none'; } return; }
     if (!ensure()) return;
     var top = ''; if (q.length > 3) { var c = {}; q.forEach(function (o) { c[o.action] = (c[o.action] || 0) + 1; }); var k = Object.keys(c).sort(function (a, b) { return c[b] - c[a]; })[0]; top = ' · nhiều nhất: ' + k + ' ×' + c[k]; }
     var l1, cls = '', icon = '', eta = '';
@@ -504,7 +504,7 @@ var Offline = (function () {
     else if (n > 0) { icon = '<span class="ic busy"><svg viewBox="0 0 24 24"><circle class="tr" cx="12" cy="12" r="9.5"/><circle class="ar" cx="12" cy="12" r="9.5" pathLength="60"/></svg></span>'; l1 = 'Đang lưu lên Google Sheet… ' + n + ' thao tác' + top; eta = aw ? 'còn khoảng ' + dur(n * aw) : ''; }
     else { l1 = 'Đã đồng bộ Google Sheet'; cls = 'ok'; icon = '<span class="ic ok"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.6 4.6L19 7.5"/></svg></span>'; }
     var l2 = 'Ghi ' + (aw ? sec(aw) + '/lệnh' : '—') + ' · Đọc ' + (M.readMs != null ? sec(M.readMs) : '—') + ' · làm mới sau ' + (M.nextRefreshAt > now ? dur(M.nextRefreshAt - now) : '…');
-    el.hidden = false;
+    el.hidden = false; el.style.display = '';
     el.setAttribute('data-st', failed || cls === 'bad' ? 'bad' : (n > 0 ? 'busy' : 'ok'));
     var key = icon + '|' + cls + '|' + l1;
     if (el._key === key && el.querySelector('.l2')) { el.querySelector('.l2').textContent = l2; var eb = el.querySelector('.l1b'); if (eb) eb.textContent = eta; return; }    // chỉ đổi dòng số liệu → giữ nguyên vòng xoay, không nháy
