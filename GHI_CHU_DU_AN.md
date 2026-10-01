@@ -2053,3 +2053,9 @@ Nguyên nhân: nhịp "đang online" (updateMember lastActiveAt, mỗi ~60s, g�
 ### (da) 01/10/2026 — Trang chủ: thẻ Drive & mục Tài liệu
 - Thẻ "Google Drive" (mục Dự án & thi công) đổi tên **Dữ liệu File Công Việc**, link mới https://drive.google.com/drive/folders/11dB7V_pRP-EDfPobySYUOARz_waA4iAI (thay link cũ 1Abs32…).
 - Mục "Tài liệu & Quy trình": gộp 7 thẻ cùng dẫn vào wiki.html thành 1 thẻ **Tài liệu & Quy trình**; thêm thẻ **Tài liệu nội bộ HICONIQUE** → thư mục Drive 1c5sglRIY… (mở tab mới); giữ thẻ SPC. sw v121.
+
+
+### (db) 01/10/2026 — Trang SPC · Quy chuẩn kỹ thuật: thêm/sửa/duyệt/xóa
+- `public/pages/spc.html` + `public/js/spc-page.js` + `spc.css`: danh sách động (Quy chuẩn chiều cao / Đặc tính vật liệu), tìm kiếm, lọc Tất cả/Của tôi/Chờ duyệt, nút **Thêm quy chuẩn**, Sửa trên từng thẻ; Founder có thêm nút **Xóa** và hộp **Chờ Founder duyệt** (Duyệt / Từ chối kèm lý do).
+- Quyền: MỌI nhân viên thêm/sửa; **xóa chỉ Founder** (`TaskManager.isFounder`, level founder). Người không phải Founder thêm → trạng thái `pending` (chỉ người tạo + Founder thấy); sửa → giá trị đang áp dụng GIỮ NGUYÊN, nội dung đề xuất lưu cột `Nội dung đề xuất` (JSON), Founder duyệt mới ghi đè. Founder thao tác có hiệu lực ngay. Thông báo (type `spc`) gửi tới Founder khi có đề xuất và tới người gửi khi được duyệt/từ chối.
+- Dữ liệu: sheet mới **TT-Quy chuẩn kỹ thuật** (Apps Script `spcStandards`: get/add/update/deleteSpcStandard; FIELD_MAP 21 cột), Apps Script **v113** đã deploy. 12 mục mặc định (SPC-001…012) tự nạp lên Sheet khi Founder mở trang lần đầu lúc sheet còn trống (id cố định spc_default_N nên không nhân đôi). task-data.js: khối "SPC · Quy chuẩn kỹ thuật" (loadSpcData/getSpcStandards/create/update/approve/reject/delete/seed). sw v123.

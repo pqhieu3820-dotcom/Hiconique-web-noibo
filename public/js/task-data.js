@@ -294,7 +294,8 @@ function syncToGSheets(type, action, data, id) {
     financeEntries: { add: 'addFinanceEntry', update: 'updateFinanceEntry', delete: 'deleteFinanceEntry' },
     receivables: { add: 'addReceivable', update: 'updateReceivable', delete: 'deleteReceivable' },
     bsSnapshots: { add: 'addBsSnapshot', update: 'updateBsSnapshot', delete: 'deleteBsSnapshot' },
-    orders: { add: 'addOrder', update: 'updateOrder', delete: 'deleteOrder' }
+    orders: { add: 'addOrder', update: 'updateOrder', delete: 'deleteOrder' },
+    spcStandards: { add: 'addSpcStandard', update: 'updateSpcStandard', delete: 'deleteSpcStandard' }
   };
 
   var apiAction = actionMap[type] ? actionMap[type][action] : null;
@@ -496,7 +497,8 @@ var TaskManager = (function() {
     financeEntries: 'hiconique_finance_entries',
     receivables: 'hiconique_receivables',
     bsSnapshots: 'hiconique_bs_snapshots',
-    orders: 'hiconique_orders'
+    orders: 'hiconique_orders',
+    spcStandards: 'hiconique_spc_standards'
   };
 
   // % hoa hồng mặc định theo vai trò — gợi ý khi tạo hoa hồng dự án, admin/
@@ -886,7 +888,7 @@ var TaskManager = (function() {
       lightingStandards: 'getLightingStandards', lightingLamps: 'getLightingLamps',
       lightingFactors: 'getLightingFactors', lightingPlans: 'getLightingPlans',
       equipment: 'getEquipment', pcReports: 'getPcReports', archivedMembers: 'getArchivedMembers', financeAccess: 'getFinanceAccess', customers: 'getCustomers', customerLogs: 'getCustomerLogs', staffActivity: 'getStaffActivity', appUsage: 'getAppUsage',
-      receivables: 'getReceivables', bsSnapshots: 'getBsSnapshots', orders: 'getOrders',
+      receivables: 'getReceivables', bsSnapshots: 'getBsSnapshots', orders: 'getOrders', spcStandards: 'getSpcStandards',
       attendanceLocations: 'getAttendanceLocations'
     };
 
@@ -2370,6 +2372,137 @@ var TaskManager = (function() {
     return result;
   }
 
+  // ===================== SPC · Quy chuẩn kỹ thuật (spc.html) — sheet TT-Quy chuẩn kỹ thuật =====================
+  // Mọi nhân viên tạo/sửa được; XÓA chỉ Founder. Người không phải Founder tạo/sửa → thành "đề xuất chờ duyệt":
+  //  - tạo mới: status='pending' (chỉ người tạo + Founder thấy), Founder duyệt thì thành 'approved'
+  //  - sửa: giá trị đang áp dụng GIỮ NGUYÊN, nội dung đề xuất lưu ở cột `pending` (JSON) + pendingBy/pendingAt; Founder duyệt mới ghi đè
+  // Founder thao tác trực tiếp (không cần duyệt). Mỗi đề xuất/kết quả duyệt gửi thông báo tới người liên quan.
+  var SPC_DEFAULTS = [
+    { id: 'spc_default_1', code: 'SPC-001', section: 'height', title: 'Bục ngồi gỗ', valueMin: 600, valueMax: 700, unit: 'mm', note: 'Chiều cao tiêu chuẩn cho bục gỗ trong nội thất HICONIQUE. Áp dụng cho cả nội thất nhà ở và thương mại.' },
+    { id: 'spc_default_2', code: 'SPC-002', section: 'height', title: 'Tay vịn', valueMin: 850, valueMax: 950, unit: 'mm', note: 'Chiều cao tay vịn cầu thang & lan can. Đảm bảo an toàn & ergonomic.' },
+    { id: 'spc_default_3', code: 'SPC-003', section: 'height', title: 'Mặt bàn làm việc', valueMin: 720, valueMax: 760, unit: 'mm', note: 'Chiều cao mặt bàn tiêu chuẩn cho văn phòng HICONIQUE.' },
+    { id: 'spc_default_4', code: 'SPC-004', section: 'height', title: 'Mặt ghế ngồi', valueMin: 400, valueMax: 460, unit: 'mm', note: 'Chiều cao mặt ghế tiêu chuẩn cho ghế gỗ, ghế bar.' },
+    { id: 'spc_default_5', code: 'SPC-005', section: 'height', title: 'Mặt quầy bar', valueMin: 1000, valueMax: 1100, unit: 'mm', note: 'Chiều cao quầy bar — bao gồm phần chân & phần tựa.' },
+    { id: 'spc_default_6', code: 'SPC-006', section: 'height', title: 'Vòi sen · vòi rửa', valueMin: 850, valueMax: 950, unit: 'mm', note: 'Chiều cao lắp đặt vòi sen tắm & vòi rửa chậu trong phòng tắm.' },
+    { id: 'spc_default_7', code: 'SPC-007', section: 'material', title: 'Gỗ tự nhiên · Oak', note: 'Khả năng chịu ẩm tốt, dễ nứt nếu thay đổi nhiệt độ đột ngột. Yêu cầu bảo quản ở nơi khô ráo, độ ẩm 50–65%. Dùng cho bàn, ghế, sàn gỗ cao cấp.', linkLabel: 'Notion · Mạng vật liệu' },
+    { id: 'spc_default_8', code: 'SPC-008', section: 'material', title: 'Đá Marble', note: 'Đá tự nhiên cao cấp. Dễ bám bẩn, yêu cầu phủ seal định kỳ 6–12 tháng/lần. Dùng cho mặt bàn, mặt quầy bar, sảnh.', linkLabel: 'Notion · Quy trình bảo dưỡng' },
+    { id: 'spc_default_9', code: 'SPC-009', section: 'material', title: 'Kính cường lực', note: 'Độ dày tối thiểu 8mm cho mặt bàn, 10–12mm cho vách ngăn, 12mm+ cho sàn kính. Bắt buộc cạnh mài bo hoặc xử lý nhiệt.', linkLabel: 'Notion · Hướng dẫn kỹ thuật' },
+    { id: 'spc_default_10', code: 'SPC-010', section: 'material', title: 'Inox 304', note: 'Chống gỉ sét, dùng cho chi tiết trang trí, phụ kiện nhà tắm & bếp. Không dùng cho chi tiết tiếp xúc với axit mạnh.', linkLabel: 'Notion · Hướng dẫn sử dụng' },
+    { id: 'spc_default_11', code: 'SPC-011', section: 'material', title: 'Veneer óc chó', note: 'Chiều dày tiêu chuẩn 0.6mm. Cán phẳng trên MDF hoặc ván ép. Bảo quản tránh ánh nắng trực tiếp.', linkLabel: 'Notion · Mạng vật liệu' },
+    { id: 'spc_default_12', code: 'SPC-012', section: 'material', title: 'Vải bọc nội thất', note: 'Yêu cầu chống cháy tiêu chuẩn NFPA 260 cho dự án thương mại. Không dùng vải có chứa PVC cho nội thất nhà ở.', linkLabel: 'Notion · Bộ tiêu chuẩn' }
+  ];
+  var SPC_FIELDS = ['section', 'title', 'valueMin', 'valueMax', 'unit', 'note', 'linkLabel', 'linkUrl'];
+  function loadSpcData(callback) {
+    getFromGSheets('spcStandards', function (items) {
+      if (items && items.length) localStorage.setItem(STORAGE_KEYS.spcStandards, JSON.stringify(items));
+      if (callback) callback(!!(items && items.length));
+    });
+  }
+  function spcParsePending_(r) {
+    var p = null;
+    if (r && r.pending) { try { p = typeof r.pending === 'string' ? JSON.parse(r.pending) : r.pending; } catch (e) { p = null; } }
+    return p && typeof p === 'object' ? p : null;
+  }
+  // Danh sách hiển thị cho `user`: Founder thấy tất cả; người khác thấy mục đã duyệt + mục do mình tạo.
+  function getSpcStandards(user) {
+    var all = getAll(STORAGE_KEYS.spcStandards);
+    var src = all.length ? all : SPC_DEFAULTS.map(function (d) { return Object.assign({ status: 'approved', _default: true }, d); });
+    var f = isFounder(user);
+    return src.filter(function (r) { return f || (r.status !== 'pending' && r.status !== 'rejected') || (user && r.createdBy === user.id); })
+      .map(function (r) { return Object.assign({}, r, { pendingData: spcParsePending_(r) }); })
+      .sort(function (a, b) { return String(a.code || '').localeCompare(String(b.code || ''), undefined, { numeric: true }); });
+  }
+  function spcFounderIds_() {
+    return getMembers().filter(function (m) { return m.level === 'founder' && !(m.active === false || String(m.active).toLowerCase() === 'false'); }).map(function (m) { return m.id; });
+  }
+  function spcNotify_(scopes, title, message) {
+    var list = (scopes || []).filter(Boolean).map(function (s) { return { title: title, message: message, type: 'spc', scope: s, recurring: false }; });
+    if (list.length) { try { addSystemNotificationsBatch(list); } catch (e) {} }
+  }
+  function spcNextCode_() {
+    var max = 0;
+    getAll(STORAGE_KEYS.spcStandards).concat(SPC_DEFAULTS).forEach(function (r) { var m = /(\d+)$/.exec(r.code || ''); if (m) max = Math.max(max, Number(m[1])); });
+    return 'SPC-' + String(max + 1).padStart(3, '0');
+  }
+  function spcClean_(d) {
+    var o = {};
+    SPC_FIELDS.forEach(function (k) {
+      if (d[k] === undefined) return;
+      o[k] = (k === 'valueMin' || k === 'valueMax') ? (d[k] === '' || d[k] === null ? '' : Number(d[k])) : String(d[k]).trim();
+    });
+    return o;
+  }
+  // Founder mở trang lần đầu khi sheet còn trống → nạp 12 mục mặc định (id cố định nên không bị nhân đôi)
+  function seedSpcDefaults(user) {
+    if (!isFounder(user) || getAll(STORAGE_KEYS.spcStandards).length) return 0;
+    var now = new Date().toISOString().split('T')[0];
+    var items = SPC_DEFAULTS.map(function (d) { return Object.assign({ status: 'approved', createdBy: user.id, createdAt: now }, d); });
+    save(STORAGE_KEYS.spcStandards, items);
+    items.forEach(function (it) { syncToGSheets('spcStandards', 'add', it); });
+    return items.length;
+  }
+  function createSpcStandard(data, user) {
+    if (!user || !data || !String(data.title || '').trim()) return null;
+    var rec = spcClean_(data), founder = isFounder(user), now = new Date().toISOString();
+    rec.code = spcNextCode_(); rec.status = founder ? 'approved' : 'pending'; rec.createdBy = user.id;
+    if (!founder) { rec.pendingType = 'create'; rec.pendingBy = user.id; rec.pendingAt = now; }
+    else { rec.approvedBy = user.id; rec.approvedAt = now; }
+    var created = add(STORAGE_KEYS.spcStandards, rec);
+    if (!created) return null;
+    syncToGSheets('spcStandards', 'add', created);
+    if (!founder) spcNotify_(spcFounderIds_(), 'Chờ duyệt quy chuẩn kỹ thuật', (user.name || user.id) + ' đề xuất thêm quy chuẩn "' + rec.title + '" (' + rec.code + ') — vào trang SPC để duyệt.');
+    return created;
+  }
+  function updateSpcStandard(id, changes, user) {
+    var rec = getAll(STORAGE_KEYS.spcStandards).filter(function (r) { return r.id === id; })[0];
+    if (!user || !rec) return null;
+    var ch = spcClean_(changes), now = new Date().toISOString(), updates;
+    var wasPending = rec.status === 'pending' || rec.status === 'rejected';
+    if (isFounder(user)) {
+      updates = Object.assign({}, ch, { pending: '', pendingBy: '', pendingAt: '', pendingType: '', reviewNote: '' });
+      if (wasPending) { updates.status = 'approved'; updates.approvedBy = user.id; updates.approvedAt = now; }
+    } else if (wasPending) {
+      updates = Object.assign({}, ch, { status: 'pending', pendingType: 'create', pendingBy: user.id, pendingAt: now, reviewNote: '' });   // người tạo sửa lại đề xuất thêm mới
+    } else {
+      updates = { pending: JSON.stringify(ch), pendingBy: user.id, pendingAt: now, pendingType: 'update', reviewNote: '' };
+    }
+    var u = update(STORAGE_KEYS.spcStandards, id, updates);
+    if (!u) return null;
+    syncToGSheets('spcStandards', 'update', updates, id);
+    if (!isFounder(user)) spcNotify_(spcFounderIds_(), 'Chờ duyệt quy chuẩn kỹ thuật', (user.name || user.id) + ' đề xuất chỉnh sửa "' + (rec.title || '') + '" (' + (rec.code || '') + ') — vào trang SPC để duyệt.');
+    return u;
+  }
+  function approveSpcStandard(id, user) {
+    if (!isFounder(user)) return null;
+    var rec = getAll(STORAGE_KEYS.spcStandards).filter(function (r) { return r.id === id; })[0];
+    if (!rec) return null;
+    var ch = spcParsePending_(rec) || {}, now = new Date().toISOString();
+    var updates = Object.assign({}, rec.pendingType === 'update' ? spcClean_(ch) : {}, { status: 'approved', pending: '', pendingType: '', pendingBy: '', pendingAt: '', reviewNote: '', approvedBy: user.id, approvedAt: now });
+    var u = update(STORAGE_KEYS.spcStandards, id, updates);
+    if (!u) return null;
+    syncToGSheets('spcStandards', 'update', updates, id);
+    if (rec.pendingBy && rec.pendingBy !== user.id) spcNotify_([rec.pendingBy], 'Quy chuẩn kỹ thuật đã được duyệt', '"' + (u.title || rec.title) + '" (' + rec.code + ') đã được Founder duyệt và hiển thị trên trang SPC.');
+    return u;
+  }
+  function rejectSpcStandard(id, reason, user) {
+    if (!isFounder(user)) return null;
+    var rec = getAll(STORAGE_KEYS.spcStandards).filter(function (r) { return r.id === id; })[0];
+    if (!rec) return null;
+    var isCreate = rec.pendingType === 'create' || rec.status === 'pending';
+    var updates = isCreate ? { status: 'rejected', reviewNote: reason || '' } : { pending: '', pendingType: '', pendingBy: '', pendingAt: '', reviewNote: reason || '' };
+    var u = update(STORAGE_KEYS.spcStandards, id, updates);
+    if (!u) return null;
+    syncToGSheets('spcStandards', 'update', updates, id);
+    if (rec.pendingBy && rec.pendingBy !== user.id) spcNotify_([rec.pendingBy], 'Quy chuẩn kỹ thuật bị từ chối', 'Đề xuất cho "' + rec.title + '" (' + rec.code + ') chưa được duyệt' + (reason ? ': ' + reason : '.'));
+    return u;
+  }
+  function deleteSpcStandard(id, user) {
+    if (!isFounder(user)) return false;
+    remove(STORAGE_KEYS.spcStandards, id);
+    syncToGSheets('spcStandards', 'delete', {}, id);
+    return true;
+  }
+
   // Wiki document links (public/pages/wiki.html)
   function getDocuments() {
     var docs = getAll(STORAGE_KEYS.documents);
@@ -3490,6 +3623,17 @@ var TaskManager = (function() {
     createNotice: createNotice,
     updateNotice: updateNotice,
     deleteNotice: deleteNotice,
+
+    // SPC · Quy chuẩn kỹ thuật
+    loadSpcData: loadSpcData,
+    getSpcStandards: getSpcStandards,
+    seedSpcDefaults: seedSpcDefaults,
+    createSpcStandard: createSpcStandard,
+    updateSpcStandard: updateSpcStandard,
+    approveSpcStandard: approveSpcStandard,
+    rejectSpcStandard: rejectSpcStandard,
+    deleteSpcStandard: deleteSpcStandard,
+    isFounder: isFounder,
 
     // Wiki documents
     getDocuments: getDocuments,

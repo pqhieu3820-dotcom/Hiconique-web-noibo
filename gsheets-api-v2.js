@@ -25,6 +25,7 @@ const SHEETS = {
   notifications: 'TT-Thông báo',
   notices: 'TT-Bảng tin',
   documents: 'TT-Tài liệu',
+  spcStandards: 'TT-Quy chuẩn kỹ thuật',   // 2026-10-01: trang SPC (thêm/sửa/duyệt) — xem spc.html
   // 2026-09-23: danh sách "địa chỉ đăng ký" (FCM registration token) để gửi
   // thông báo pop-up (Web Push) tới điện thoại/máy tính từng nhân viên — xem
   // pushForNotificationRow_()/sendPushToMember_() cuối file.
@@ -247,6 +248,13 @@ const FIELD_MAP = {
   documents: [
     ['Mã TL', 'id'], ['Mã hiệu', 'code'], ['Danh mục', 'category'], ['Tên tài liệu', 'name'], ['Đường liên kết', 'url'],
     ['Nguồn', 'source'], ['Mã file Drive', 'driveId'],
+    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
+  ],
+  spcStandards: [
+    ['Mã', 'id'], ['Mã SPC', 'code'], ['Nhóm', 'section'], ['Tên quy chuẩn', 'title'], ['Giá trị nhỏ nhất', 'valueMin'],
+    ['Giá trị lớn nhất', 'valueMax'], ['Đơn vị', 'unit'], ['Mô tả', 'note'], ['Tên liên kết', 'linkLabel'], ['Đường dẫn', 'linkUrl'],
+    ['Trạng thái', 'status'], ['Loại chờ duyệt', 'pendingType'], ['Nội dung đề xuất', 'pending'], ['Người đề xuất', 'pendingBy'],
+    ['Ngày đề xuất', 'pendingAt'], ['Ghi chú duyệt', 'reviewNote'], ['Người duyệt', 'approvedBy'], ['Ngày duyệt', 'approvedAt'],
     ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
   ],
   pushDevices: [
@@ -966,6 +974,14 @@ function handleRequestImpl_(e) {
       // 2026-09-30: quét thư mục Google Drive, trả về các file có tên bắt đầu bằng MÃ HIỆU (VD DRW-SOP-005 Quy trình…) để trang Tài liệu
       // đối chiếu/nhập vào danh sách. Chỉ ĐỌC, không sửa gì trên Drive. Cần cấp quyền Drive 1 lần: chạy hàm authorizeDriveScan trong editor.
       result = scanDriveDocs_(params.folderId);
+    } else if (action === 'getSpcStandards') {
+      result = getAllData(ss, SHEETS.spcStandards);
+    } else if (action === 'addSpcStandard') {
+      result = addData(ss, SHEETS.spcStandards, JSON.parse(params.data));
+    } else if (action === 'updateSpcStandard') {
+      result = updateData(ss, SHEETS.spcStandards, params.id, JSON.parse(params.data));
+    } else if (action === 'deleteSpcStandard') {
+      result = deleteData(ss, SHEETS.spcStandards, params.id);
     } else if (action === 'getDocuments') {
       result = getAllData(ss, SHEETS.documents);
     } else if (action === 'addDocument') {

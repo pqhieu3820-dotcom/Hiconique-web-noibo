@@ -64,106 +64,31 @@
         thành viên thiết kế, thi công. Đọc kỹ trước khi triển khai bản vẽ.
       </p>
 
+      <div class="spc-toolbar">
+        <div class="spc-search"><input id="spcSearch" type="search" placeholder="Tìm quy chuẩn, vật liệu, mã SPC…" autocomplete="off" /></div>
+        <div class="spc-filters" role="group" aria-label="Lọc">
+          <button type="button" class="spc-chip on" data-spcfilter="all">Tất cả</button>
+          <button type="button" class="spc-chip" data-spcfilter="mine">Của tôi</button>
+          <button type="button" class="spc-chip" data-spcfilter="pending">Chờ duyệt</button>
+        </div>
+        <span class="spc-count" id="spcCount"></span>
+        <button type="button" class="spc-btn pri" id="spcAdd">+ Thêm quy chuẩn</button>
+      </div>
+      <p class="spc-addinfo" id="spcAddInfo"></p>
+
+      <section class="spc-pending" id="spcPending" hidden>
+        <h2><span class="spc-dot"></span>Chờ Founder duyệt <b id="spcPendCount">0</b></h2>
+        <div id="spcPendList"></div>
+      </section>
+
       <section class="subpage-section">
         <h2 class="section-eyebrow">Quy chuẩn chiều cao</h2>
-
-        <div class="spc-grid">
-          <article class="spc-card">
-            <header>
-              <span class="spc-id">SPC-001</span>
-              <h3>Bục ngồi gỗ</h3>
-            </header>
-            <p class="spc-value">600 <span>—</span> 700 <small>mm</small></p>
-            <p class="spc-note">Chiều cao tiêu chuẩn cho bục gỗ trong nội thất HICONIQUE. Áp dụng cho cả nội thất nhà ở và thương mại.</p>
-          </article>
-
-          <article class="spc-card">
-            <header>
-              <span class="spc-id">SPC-002</span>
-              <h3>Tay vịn</h3>
-            </header>
-            <p class="spc-value">850 <span>—</span> 950 <small>mm</small></p>
-            <p class="spc-note">Chiều cao tay vịn cầu thang &amp; lan can. Đảm bảo an toàn &amp; ergonomic.</p>
-          </article>
-
-          <article class="spc-card">
-            <header>
-              <span class="spc-id">SPC-003</span>
-              <h3>Mặt bàn làm việc</h3>
-            </header>
-            <p class="spc-value">720 <span>—</span> 760 <small>mm</small></p>
-            <p class="spc-note">Chiều cao mặt bàn tiêu chuẩn cho văn phòng HICONIQUE.</p>
-          </article>
-
-          <article class="spc-card">
-            <header>
-              <span class="spc-id">SPC-004</span>
-              <h3>Mặt ghế ngồi</h3>
-            </header>
-            <p class="spc-value">400 <span>—</span> 460 <small>mm</small></p>
-            <p class="spc-note">Chiều cao mặt ghế tiêu chuẩn cho ghế gỗ, ghế bar.</p>
-          </article>
-
-          <article class="spc-card">
-            <header>
-              <span class="spc-id">SPC-005</span>
-              <h3>Mặt quầy bar</h3>
-            </header>
-            <p class="spc-value">1000 <span>—</span> 1100 <small>mm</small></p>
-            <p class="spc-note">Chiều cao quầy bar — bao gồm phần chân &amp; phần tựa.</p>
-          </article>
-
-          <article class="spc-card">
-            <header>
-              <span class="spc-id">SPC-006</span>
-              <h3>Vòi sen · vòi rửa</h3>
-            </header>
-            <p class="spc-value">850 <span>—</span> 950 <small>mm</small></p>
-            <p class="spc-note">Chiều cao lắp đặt vòi sen tắm &amp; vòi rửa chậu trong phòng tắm.</p>
-          </article>
-        </div>
+        <div class="spc-grid" id="spcHeights"></div>
       </section>
 
       <section class="subpage-section">
         <h2 class="section-eyebrow">Đặc tính vật liệu</h2>
-
-        <div class="pages-body">
-          <article class="page-block">
-            <h3>Gỗ tự nhiên · Oak</h3>
-            <p>Khả năng chịu ẩm tốt, dễ nứt nếu thay đổi nhiệt độ đột ngột. Yêu cầu bảo quản ở nơi khô ráo, độ ẩm 50–65%. Dùng cho bàn, ghế, sàn gỗ cao cấp.</p>
-            <a href="#">Notion · Mạng vật liệu ↗</a>
-          </article>
-
-          <article class="page-block">
-            <h3>Đá Marble</h3>
-            <p>Đá tự nhiên cao cấp. Dễ bám bẩn, yêu cầu phủ seal định kỳ 6–12 tháng/lần. Dùng cho mặt bàn, mặt quầy bar, sảnh.</p>
-            <a href="#">Notion · Quy trình bảo dưỡng ↗</a>
-          </article>
-
-          <article class="page-block">
-            <h3>Kính cường lực</h3>
-            <p>Độ dày tối thiểu 8mm cho mặt bàn, 10–12mm cho vách ngăn, 12mm+ cho sàn kính. Bắt buộc cạnh mài bo hoặc xử lý nhiệt.</p>
-            <a href="#">Notion · Hướng dẫn kỹ thuật ↗</a>
-          </article>
-
-          <article class="page-block">
-            <h3>Inox 304</h3>
-            <p>Chống gỉ sét, dùng cho chi tiết trang trí, phụ kiện nhà tắm &amp; bếp. Không dùng cho chi tiết tiếp xúc với axit mạnh.</p>
-            <a href="#">Notion · Hướng dẫn sử dụng ↗</a>
-          </article>
-
-          <article class="page-block">
-            <h3>Veneer óc chó</h3>
-            <p>Chiều dày tiêu chuẩn 0.6mm. Cán phẳng trên MDF hoặc ván ép. Bảo quản tránh ánh nắng trực tiếp.</p>
-            <a href="#">Notion · Mạng vật liệu ↗</a>
-          </article>
-
-          <article class="page-block">
-            <h3>Vải bọc nội thất</h3>
-            <p>Yêu cầu chống cháy tiêu chuẩn NFPA 260 cho dự án thương mại. Không dùng vải có chứa PVC cho nội thất nhà ở.</p>
-            <a href="#">Notion · Bộ tiêu chuẩn ↗</a>
-          </article>
-        </div>
+        <div class="pages-body" id="spcMaterials"></div>
       </section>
 
       <p class="subpage-note" style="margin-top:var(--space-2xl)">
@@ -187,5 +112,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js" defer></script>
   <script src="/js/push-notifications.js" defer></script>
   <script src="/js/portal.js" defer></script>
+  <script src="/js/spc-page.js"></script>
 </body>
 </html>
