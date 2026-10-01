@@ -2273,3 +2273,7 @@ Dòng chèn mới ở đầu bảng thừa hưởng dropdown Danh mục cũ từ
 ## 2026-10-01 — Dấu chấm hàng nghìn tự động cho MỌI ô tiền (kể cả ô tạo sau này)
 - `money-input.js`: thêm bộ nghe sự kiện `input` ở cấp document — ô có `[data-money-input]`, hoặc ô text `inputmode="numeric"` có id/name/data-f/class chứa từ khoá tiền (price, amount, budget, salary, bonus, deduction, commission, debt, fee, cost, money, taxcap, tien, luong, gia…) tự hiện dấu chấm khi gõ, không cần gọi `bindAll`. Ô không phải tiền không bị đụng; loại trừ 1 ô khớp nhầm bằng `data-no-money`. Ô tiền mới tạo: dùng `inputmode="numeric"` + tên có từ khoá (hoặc `data-money-input`) là đủ.
 - Phiếu lương: ô nhấp đúp (đơn giá OT, hoa hồng, các khoản lương) có dấu chấm khi gõ. `crm.html` nạp thêm money-input.js (ô Ngân sách). sw v171.
+
+## 2026-10-01 — Phiếu lương: ô OT/hoa hồng trên cùng luôn đúng chấm công + % tiền nhận (thử việc/thực tập)
+- Ô "Giờ OT (tự động)" và "Hoa hồng dự án" trên cùng luôn lấy số thật theo chấm công/hoa hồng, không đổi khi sửa tay trong form.
+- Bảng "Tổng lương hợp đồng nhân viên": thêm ô **%** tiền nhận (mặc định 100) cạnh ô lương; nhấn Lưu là lưu cả lương + %. Lưu vào cột Members `salaryPercent` (header Sheet NS-Thành viên: **"Tỷ lệ nhận lương (%)"** — người dùng tự thêm cột này vào Sheet; FIELD_MAP đã có). Lương cơ bản thực nhận = lương hợp đồng × % (`TaskManager.effectiveBaseSalary`): tiền công theo ngày công, đơn giá OT, BHXH, bảng lương toàn công ty đều tính trên số này. sw v172.

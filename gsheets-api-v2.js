@@ -98,7 +98,7 @@ const FIELD_MAP = {
     ['Giới tính', 'gender'], ['Mail', 'email'], ['Mật khẩu', 'password'], ['Ngày sinh', 'dob'],
     ['SĐT', 'phone'], ['CCCD', 'cccd'], ['Quê quán', 'hometown'], ['Số tài khoản ngân hàng', 'bankAccount'],
     ['Ngân hàng thụ hưởng', 'bank'], ['Màu sắc đại diện', 'color'], ['Tên viết tắt đại diện', 'avatar'],
-    ['Làm việc từ', 'createdAt'], ['Lương cơ bản', 'baseSalary'], ['Trạng thái', 'status'],
+    ['Làm việc từ', 'createdAt'], ['Lương cơ bản', 'baseSalary'], ['Tỷ lệ nhận lương (%)', 'salaryPercent'], ['Trạng thái', 'status'],
     // 2026-09-11: 3 cột này ban đầu thêm KHÔNG qua FIELD_MAP (chỉ cần header
     // tiếng Anh khớp key, xem cơ chế "cột không map" ở getAllData/updateData) —
     // người dùng vừa tự đổi header sang tiếng Việt trên Sheet nên PHẢI khai báo

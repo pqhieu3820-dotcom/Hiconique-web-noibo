@@ -146,6 +146,8 @@
 
     .pl-salary-card { background: var(--pl-surface); border: 1px solid var(--pl-border); border-radius: 18px; overflow: hidden; margin-bottom: 28px; }
     .pl-salary-row { display: grid; grid-template-columns: 1.5fr 1fr 1fr auto; gap: 12px; align-items: center; padding: 12px 24px; border-bottom: 1px solid var(--pl-border); font-size: 0.8125rem; }
+    .pl-pct-wrap { display: flex; align-items: center; gap: 4px; justify-content: flex-end; color: var(--pl-muted); }
+    .pl-pct-wrap .pl-pct-input { width: 70px; text-align: right; }
     .pl-salary-row:last-child { border-bottom: none; }
     .pl-salary-input { width: 140px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--pl-border); background: var(--pl-bg); color: var(--pl-text); font-family: 'JetBrains Mono', monospace; font-size: 0.8125rem; }
 
@@ -286,7 +288,7 @@
       if (existing) {
         return { member: member, month: month, baseSalary: existing.baseSalary, workPay: slipWorkPay(existing), stdDays: STD_DAYS, workDays: existing.workDays, totalHours: existing.totalHours, otHours: existing.otHours, otRate: existing.otRate, otAmount: existing.otAmount, commissionAmount: existing.commissionAmount, otherBonus: existing.otherBonus, otherBonusNote: existing.otherBonusNote, deduction: existing.deduction, deductionNote: existing.deductionNote, bhEmployee: Number(existing.bhEmployee) || 0, breakdown: SalaryStructure.parseSnapshot(existing.breakdown), totalAmount: existing.totalAmount, note: existing.note };
       }
-      var stats = TaskManager.getMonthlyTimesheetStats(user.id, month), base = Number(user.baseSalary) || 0, rate = computeOtRate(base), comm = TaskManager.getMemberCommissionTotal(user.id, month);
+      var stats = TaskManager.getMonthlyTimesheetStats(user.id, month), base = TaskManager.effectiveBaseSalary(user), rate = computeOtRate(base), comm = TaskManager.getMemberCommissionTotal(user.id, month);
       var fv = function (id) { var e = document.getElementById(id); return e ? e.value : ''; };
       var otMan = parseFloat(fv('plOtManual')) || 0, bonus = (typeof HiconiqueMoney !== 'undefined' && fv('plOtherBonus')) ? HiconiqueMoney.parse(fv('plOtherBonus')) : 0, ded = (typeof HiconiqueMoney !== 'undefined' && fv('plDeduction')) ? HiconiqueMoney.parse(fv('plDeduction')) : 0;
       var otHours = stats.overtimeHours + otMan, otAmount = Math.round(otHours * rate);
@@ -343,9 +345,9 @@
       var month = monthInput.value || currentMonthStr();
 
       var existing = TaskManager.getPayslips({ memberId: user.id, month: month })[0];
-      var stats = Object.assign({}, TaskManager.getMonthlyTimesheetStats(user.id, month));
-      var baseSalary = Number(user.baseSalary) || 0;
-      var commissionAmount = TaskManager.getMemberCommissionTotal(user.id, month);
+      var rawStats = TaskManager.getMonthlyTimesheetStats(user.id, month), stats = Object.assign({}, rawStats);
+      var baseSalary = TaskManager.effectiveBaseSalary(user), rawCommission = TaskManager.getMemberCommissionTotal(user.id, month);
+      var commissionAmount = rawCommission;
       var ovKey = user.id + '|' + month, ov = slipOv[ovKey] || (slipOv[ovKey] = {});
       if (ov.workDays != null) stats.workDays = ov.workDays;
       if (ov.totalHours != null) stats.totalHours = ov.totalHours;
@@ -356,8 +358,9 @@
 
       // Top stat tiles reflect the selected month, for the logged-in user.
       document.getElementById('plBaseSalary').textContent = fmt(baseSalary);
-      document.getElementById('plOtHours').textContent = stats.overtimeHours.toFixed(1) + 'h';
-      document.getElementById('plCommission').textContent = fmt(commissionAmount);
+      // Ô trên cùng LUÔN là số chính xác theo chấm công/hoa hồng thật — không đổi khi sửa tay các ô trong form
+      document.getElementById('plOtHours').textContent = rawStats.overtimeHours.toFixed(1) + 'h';
+      document.getElementById('plCommission').textContent = fmt(rawCommission);
 
       if (existing) {
         area.innerHTML =
@@ -538,7 +541,7 @@
       var rows = members.map(function (m) {
         return '<div class="pl-salary-row">' +
           '<span>' + m.name + ' <span style="color:var(--pl-muted);">(' + m.role + ')</span></span>' +
-          '<span></span>' +
+          '<span class="pl-pct-wrap" title="% tiền nhận (thử việc/thực tập). Mặc định 100%"><input type="text" inputmode="decimal" class="pl-salary-input pl-pct-input" data-no-money data-pct-member="' + m.id + '" value="' + TaskManager.getSalaryPercent(m) + '">%</span>' +
           '<input type="text" inputmode="numeric" class="pl-salary-input" data-member="' + m.id + '" data-money-input value="' + (m.baseSalary ? HiconiqueMoney.format(m.baseSalary) : '') + '">' +
           '<button class="pl-btn pl-btn-ghost pl-btn-sm" data-save-salary="' + m.id + '">Lưu</button>' +
         '</div>';
@@ -549,7 +552,10 @@
         btn.addEventListener('click', function () {
           var id = btn.getAttribute('data-save-salary');
           var input = document.querySelector('.pl-salary-input[data-member="' + id + '"]');
-          TaskManager.setMemberBaseSalary(id, HiconiqueMoney.parse(input.value), user);
+          var pctEl = document.querySelector('.pl-pct-input[data-pct-member="' + id + '"]');
+          var pct = pctEl ? parseFloat(String(pctEl.value).replace(',', '.')) : 100;
+          if (isNaN(pct) || pct <= 0) pct = 100; if (pct > 100) pct = 100;
+          TaskManager.setMemberBaseSalary(id, HiconiqueMoney.parse(input.value), user, pct);
           renderAll();
         });
       });

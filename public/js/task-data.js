@@ -3030,12 +3030,17 @@ var TaskManager = (function() {
   }
 
   // Lương cơ bản — chỉ admin/quản lý được sửa (không cho tự sửa lương của mình).
-  function setMemberBaseSalary(id, baseSalary, user) {
+  function setMemberBaseSalary(id, baseSalary, user, percent) {
     if (!canManageNotifications(user)) return null;
-    var updated = update(STORAGE_KEYS.members, id, { baseSalary: baseSalary });
-    if (updated) syncToGSheets('members', 'update', { baseSalary: baseSalary }, id);
+    var patch = { baseSalary: baseSalary };
+    if (percent != null) patch.salaryPercent = percent;   // % tiền nhận (thử việc/thực tập): mặc định 100
+    var updated = update(STORAGE_KEYS.members, id, patch);
+    if (updated) syncToGSheets('members', 'update', patch, id);
     return updated;
   }
+  // % tiền nhận lương của 1 nhân viên (mặc định 100). Lương hợp đồng × % = lương cơ bản thực nhận (tiền công, đơn giá OT, BHXH… đều tính trên số này)
+  function getSalaryPercent(m) { var v = parseFloat(String(m && m.salaryPercent != null ? m.salaryPercent : '').replace(',', '.')); return isNaN(v) || v <= 0 ? 100 : Math.min(v, 100); }
+  function effectiveBaseSalary(m) { return Math.round((Number(m && m.baseSalary) || 0) * getSalaryPercent(m) / 100); }
 
   // % Hoa hồng dự án theo vai trò — cấu hình mặc định, admin/quản lý chỉnh được.
   function getCommissionRates() {
@@ -3972,6 +3977,8 @@ var TaskManager = (function() {
 
     // Lương cơ bản (Members.baseSalary)
     setMemberBaseSalary: setMemberBaseSalary,
+    getSalaryPercent: getSalaryPercent,
+    effectiveBaseSalary: effectiveBaseSalary,
 
     // % Hoa hồng dự án
     getCommissionRates: getCommissionRates,

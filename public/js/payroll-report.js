@@ -26,7 +26,7 @@ var PayrollReport = (function () {
     var slipOf = {}; slips.forEach(function (s) { if (!slipOf[s.memberId] || s.status === 'approved') slipOf[s.memberId] = s; });
     var rows = [];
     members.forEach(function (m) {
-      var slip = slipOf[m.id], base = num(m.baseSalary);
+      var slip = slipOf[m.id], base = TaskManager.effectiveBaseSalary(m);
       if (!slip && !base) return;
       var r = { id: m.id, name: m.name, role: m.role || '', contract: base, items: [], status: slip ? slip.status : 'provisional' };
       if (slip) {
