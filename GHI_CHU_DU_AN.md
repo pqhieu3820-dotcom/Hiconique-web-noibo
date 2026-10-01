@@ -2098,3 +2098,7 @@ Vẫn thấy khung "Đã đồng bộ" hiện mãi vì các lệnh ghi nền (qu
 
 ### (di) 01/10/2026 — Dấu (i) lương tối thiểu vùng ở dòng Lương đóng BHXH
 Dòng "Lương đóng BHXH (vùng I)" trên phiếu có nút **i**: bấm mở bảng mức lương tối thiểu vùng hiện hành (từ 01/01/2026, NĐ 293/2025/NĐ-CP): Vùng I 5.310.000 / 25.500; II 4.730.000 / 22.700; III 4.140.000 / 20.000; IV 3.700.000 / 17.800 (đồng/tháng · đồng/giờ), Vùng I tô nổi. Bỏ chữ "tối thiểu" khỏi tên khoản và bỏ "không theo công" ở mô tả BH/KPI (phiếu + docx). `SalaryStructure.infoBtn()/showMinWageInfo()`. sw v129.
+
+
+### (dk) 01/10/2026 — Bảng lương tối thiểu vùng trong mục "Cơ sở pháp lý"
+Mục 4 của bảng Cơ cấu lương & pháp lý, thẻ "Lương tối thiểu vùng I (2026)" có thêm bảng 4 vùng (tháng/giờ) như ở dấu (i) trên phiếu (`minWageTableHtml()` dùng chung). sw v130.
