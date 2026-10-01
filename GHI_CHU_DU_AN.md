@@ -2235,3 +2235,4 @@ Dòng chèn mới ở đầu bảng thừa hưởng dropdown Danh mục cũ từ
 - Tab **Nguồn**: mỗi nguồn có trạng thái rà soát theo tháng (Đã rà – không đổi / Có thay đổi giá / Nguồn lỗi, ghi chú, người rà) lưu ở `DG-Nguồn`; dòng tổng kết "tháng này đã rà x/36 nguồn".
 - Hộp "Kết nối AI cập nhật giá — CHƯA BẬT": nhập khóa API + mô hình → lưu ở sheet `DG-Cài đặt` (id `anthropic_api_key`, `ai_model`, `auto_update=off`); `getPriceSettings` không trả khóa ra web (chỉ 4 ký tự cuối). Sau này khi có khóa: viết bước máy đọc nguồn → ghi hàng chờ duyệt (chưa làm).
 - Sheet mới tự tạo ở lần ghi đầu: `DG-Lịch sử giá`, `DG-Nguồn`, `DG-Cài đặt` (cùng nhóm DG-; sortSheetsByPrefix chưa biết tiền tố này). Apps Script v123 (compare + 5 action mới). sw v158.
+- 2026-10-01: trang Báo giá, tab Dự toán thiết kế: ẩn nút "Đồng bộ diện tích" (nút vẫn còn trong mã, ẩn đi để việc tự đồng bộ diện tích từ dự toán xây dựng vẫn chạy). sw v159.
