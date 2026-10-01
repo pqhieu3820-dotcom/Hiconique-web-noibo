@@ -225,7 +225,7 @@
     if ($('agCheck')) { $('agCheck').addEventListener('click', function () { loadAgentInfo(true); }); loadAgentInfo(false); }
     $('smRange').addEventListener('click', function (e) {
       var b = e.target.closest('button[data-r]'); if (!b) return;
-      state.range = b.dataset.r; state.date = ''; $('smDate').value = '';
+      state.range = b.dataset.r; state.date = ''; $('smDate').value = state.range === 'today' ? ymd(new Date()) : '';   // Hôm nay → ô ngày hiện đúng ngày hôm nay
       Array.prototype.forEach.call(this.querySelectorAll('button'), function (x) { x.classList.toggle('active', x === b); });
       render();
     });
@@ -234,6 +234,16 @@
       Array.prototype.forEach.call($('smRange').querySelectorAll('button'), function (x) { x.classList.remove('active'); });
       render();
     });
+    // Lăn chuột trên ô ngày: lên = ngày kế, xuống = ngày trước (không vượt quá hôm nay); ô trống thì bắt đầu từ hôm nay
+    $('smDate').addEventListener('wheel', function (e) {
+      e.preventDefault();
+      var cur = this.value ? new Date(this.value + 'T00:00:00') : new Date(); cur.setHours(0, 0, 0, 0);
+      cur.setDate(cur.getDate() + (e.deltaY < 0 ? 1 : -1));
+      var now = new Date(); now.setHours(0, 0, 0, 0); if (cur > now) cur = now;
+      this.value = ymd(cur);
+      this.dispatchEvent(new Event('change'));
+    }, { passive: false });
+    $('smDate').value = ymd(new Date());   // mặc định đang xem "Hôm nay" → hiện ngày hôm nay
     $('smReload').addEventListener('click', reload);
     $('smTable').addEventListener('click', function (e) { var r = e.target.closest('.sm-row'); if (r) openDetail(Number(r.dataset.i)); });
     $('smModalBody').addEventListener('click', function (e) {
