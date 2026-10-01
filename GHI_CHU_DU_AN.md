@@ -2122,3 +2122,7 @@ Bỏ thông báo nổi "✓ Chấm công đã lưu lên hệ thống" ở timesh
 
 ### (dp) 01/10/2026 — Đơn hàng: bấm 4 bước để xem danh sách
 Bấm từng bước ở thanh luồng (Lập đơn · Gửi kế toán · Đã ghi sổ · Thu đủ) → lọc danh sách đơn theo bước đó và tự cuộn xuống danh sách; có khung thống kê (số đơn, tổng tiền, đã thu, còn nợ) + nút "Xem tất cả". Bước 1 gồm cả Nháp và Bị trả lại. sw v135.
+
+
+### (dq) 01/10/2026 — Đơn hàng: danh sách hiện ngay dưới thanh 4 bước
+Bấm 1 bước (Lập đơn · Gửi kế toán · Đã ghi sổ · Thu đủ) → danh sách đơn của bước đó + thống kê (số đơn, tổng tiền, đã thu, còn nợ) hiện NGAY dưới thanh luồng, không cuộn trang; nút Đóng/bấm lại bước để ẩn. Danh sách chính bên dưới (tab lọc) giữ độc lập. sw v136.

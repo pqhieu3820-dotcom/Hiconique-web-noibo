@@ -127,6 +127,9 @@
     .od-liststat { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding: 14px 24px; border-bottom: 1px solid var(--od-border); background: color-mix(in srgb, var(--od-bronze) 6%, transparent); font-size: .8125rem; }
     .od-liststat .ttl { font-weight: 700; } .od-liststat .kv { color: var(--od-muted); } .od-liststat .kv b { color: var(--od-text); font-family: 'JetBrains Mono', monospace; margin-left: 4px; }
     .od-liststat .clr { margin-left: auto; }
+    .od-flowpanel { margin: -14px 0 28px; background: var(--od-surface); border: 1px solid var(--od-border); border-radius: 14px; overflow: hidden; animation: odFp .18s ease; }
+    .od-flowpanel[hidden] { display: none; }
+    @keyframes odFp { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
     .od-detail-row { display: none; }
     .od-detail-row.open { display: table-row; }
     .od-detail-box { padding: 18px 24px; background: var(--od-bg); font-size: 0.8125rem; display: grid; grid-template-columns: 1.6fr 1fr; gap: 24px; }
@@ -209,6 +212,7 @@
 
     <div class="od-summary-grid" id="odSummaryGrid"></div>
     <div class="od-flow" id="odFlow"></div>
+    <div class="od-flowpanel" id="odFlowPanel" hidden></div>
 
     <div class="od-card" id="odFormCard">
       <div class="od-card-head">
@@ -321,7 +325,7 @@
     var PHASE_LABEL = { draft: 'Nháp', pending: 'Chờ kế toán duyệt', rejected: 'Bị trả lại', debt: 'Đã ghi sổ · còn nợ', paid: 'Đã thu đủ', cancelled: 'Đã huỷ' };
     var user;
     var editingOrderId = null;
-    var filter = 'all', query = '';
+    var filter = 'all', query = '', flowSel = '';
     var collectedManual = false;
 
     // ---------- Dropdown ----------
@@ -598,16 +602,32 @@
         ['paid', 'Thu đủ', 'Đóng đơn', cnt('paid')]
       ];
       document.getElementById('odFlow').innerHTML = steps.map(function (s, i) {
-        var on = filter === s[0];
+        var on = flowSel === s[0];
         return '<button type="button" class="od-step' + (on ? ' on' : '') + '" data-flow="' + s[0] + '"><span class="od-step-c">' + s[3] + '</span><div><span class="od-step-n">' + (i + 1) + '</span><span class="od-step-t">' + s[1] + '</span></div><div class="od-step-d">' + s[2] + '</div></button>';
       }).join('');
     }
     document.getElementById('odFlow').addEventListener('click', function (e) {
       var b = e.target.closest('[data-flow]'); if (!b) return;
-      filter = filter === b.getAttribute('data-flow') ? 'all' : b.getAttribute('data-flow');
+      flowSel = flowSel === b.getAttribute('data-flow') ? '' : b.getAttribute('data-flow');
       renderAll();
-      document.getElementById('odListStat').scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
+
+    // Danh sách hiện NGAY dưới thanh luồng khi bấm 1 bước (không phải cuộn xuống)
+    function renderFlowPanel() {
+      var box = document.getElementById('odFlowPanel');
+      if (!flowSel) { box.hidden = true; box.innerHTML = ''; return; }
+      var NAMES = { draft_rej: 'Bước 1 · Lập đơn (nháp, bị trả lại)', pending: 'Bước 2 · Gửi kế toán (chờ duyệt)', debt: 'Bước 3 · Đã ghi sổ (còn công nợ)', paid: 'Bước 4 · Thu đủ' };
+      var list = TaskManager.getOrders().filter(function (o) { var p = phaseOf(o); return flowSel === 'draft_rej' ? (p === 'draft' || p === 'rejected') : p === flowSel; });
+      var sumT = 0, sumC = 0;
+      list.forEach(function (o) { var tt = Number(o.totalAmount) || 0; sumT += tt; sumC += phaseOf(o) === 'paid' ? tt : (o.collectedAmount != null && o.collectedAmount !== '' ? Number(o.collectedAmount) || 0 : 0); });
+      box.hidden = false;
+      box.innerHTML = '<div class="od-liststat"><span class="ttl">' + NAMES[flowSel] + '</span><span class="kv">Số đơn<b>' + list.length + '</b></span><span class="kv">Tổng tiền<b>' + fmt(sumT) + ' ₫</b></span><span class="kv">Đã thu<b>' + fmt(sumC) + ' ₫</b></span><span class="kv">Còn nợ<b>' + fmt(Math.max(0, sumT - sumC)) + ' ₫</b></span><button type="button" class="od-btn od-btn-ghost od-btn-sm clr" data-flowclose>Đóng</button></div>' +
+        (list.length ? '<table class="od-table"><thead><tr><th>Số ĐH</th><th>Khách hàng</th><th>Người lập</th><th class="num">Tổng tiền</th><th class="num">Đã thu</th><th class="num">Còn nợ</th><th>Trạng thái</th></tr></thead><tbody>' + list.map(function (o) {
+          var tt = Number(o.totalAmount) || 0, ph = phaseOf(o), col = ph === 'paid' ? tt : (o.collectedAmount != null && o.collectedAmount !== '' ? Number(o.collectedAmount) || 0 : 0);
+          return '<tr><td style="white-space:nowrap"><b>' + escapeHtml(o.orderNumber || o.id) + '</b><br><span style="color:var(--od-faint);font-size:.6875rem;">' + escapeHtml(vnDate(o.createdAt)) + '</span></td><td>' + escapeHtml(o.clientName || '') + '</td><td>' + escapeHtml(memberName(o.createdBy)) + '</td><td class="num od-amount">' + fmt(tt) + '</td><td class="num">' + fmt(col) + '</td><td class="num">' + fmt(Math.max(0, tt - col)) + '</td><td><span class="od-status ' + ph + '">' + PHASE_LABEL[ph] + '</span></td></tr>';
+        }).join('') + '</tbody></table>' : '<div class="od-empty">Chưa có đơn nào ở bước này.</div>');
+    }
+    document.getElementById('odFlowPanel').addEventListener('click', function (e) { if (e.target.closest('[data-flowclose]')) { flowSel = ''; renderAll(); } });
 
     function projectName(id) {
       if (!id) return '—';
@@ -815,6 +835,7 @@
 
     function renderAll() {
       renderSummary();
+      renderFlowPanel();
       renderOrderList();
       renderProjectOptions();
     }
