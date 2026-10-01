@@ -2040,3 +2040,7 @@ Nguyên nhân: khung đếm cả lệnh ghi trực tiếp bị treo (fetch khôn
 
 ### (cx) 01/10/2026 — Thẻ "Cập nhật gần đây"
 Thêm dòng 01/10 (sửa báo trùng link, khung đồng bộ), bỏ dòng Agent cũ nhất để giữ 5 dòng. sw v118.
+
+
+### (cy) 01/10/2026 — Xóa thông báo "Họp team tháng 9"
+Thông báo quá hạn (07/09/2026) đã gỡ khỏi trang chủ theo yêu cầu. sw v119.
