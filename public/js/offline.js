@@ -351,11 +351,19 @@ var Offline = (function () {
   // 2026-09-29: đo thực tế — 5s x 16 lệnh song song = ~192 lệnh Apps Script/phút/tab làm NGHẼN hàng đợi (12-35s, 404).
   // Nay: 1 lệnh gói (getBundle) + cache phía server, hẹn giờ 10-15s có độ lệch ngẫu nhiên (các thiết bị không bắn cùng lúc),
   // bỏ qua khi tab đang ẩn (visibilitychange tự làm mới ngay khi hiện lại).
-  var SILENT_REFRESH_MIN_MS = 10000, SILENT_REFRESH_JITTER_MS = 5000;
-  function silentRefresh() {
+  // 2026-10-01: Apps Script bị gọi ~1 lệnh/giây (nhiều tab × 10-15s/lần, mỗi lệnh đọc cả 16 sheet 10-24s) làm lệnh GHI chậm cả phút. Nay: 45-65s/lần, chỉ 1 tab mỗi trình duyệt
+  // (tab khác thấy tab kia vừa làm mới thì bỏ qua), không làm mới khi người dùng không thao tác >5 phút (quay lại thì làm mới ngay). Làm mới tức thì: nút ⟳ trên thanh đầu trang.
+  var SILENT_REFRESH_MIN_MS = 45000, SILENT_REFRESH_JITTER_MS = 20000, IDLE_STOP_MS = 300000, lastUserAct = Date.now(), REFRESH_LS = 'hq_last_silent_refresh';
+  ['pointerdown', 'keydown', 'touchstart', 'wheel'].forEach(function (ev) { window.addEventListener(ev, function () { lastUserAct = Date.now(); }, { passive: true, capture: true }); });
+  function silentRefresh(force) {
     if (!online) return;
     if (document.visibilityState === 'hidden') return;
     if (typeof TaskManager === 'undefined' || !TaskManager.silentRefresh) return;
+    if (!force) {
+      if (Date.now() - lastUserAct > IDLE_STOP_MS) return;
+      try { if (Date.now() - Number(localStorage.getItem(REFRESH_LS) || 0) < SILENT_REFRESH_MIN_MS - 5000) return; } catch (e) { /* bỏ qua */ }
+    }
+    try { localStorage.setItem(REFRESH_LS, String(Date.now())); } catch (e) { /* bỏ qua */ }
     TaskManager.silentRefresh();
   }
 
@@ -365,8 +373,9 @@ var Offline = (function () {
     window.addEventListener('offline', function () { setOnline(false); });
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'visible') {
+        lastUserAct = Date.now();
         pingCheck();
-        silentRefresh();
+        silentRefresh(true);
       }
     });
     // 'pageshow' bắn cả lúc load bình thường LẪN lúc trình duyệt phục hồi

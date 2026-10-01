@@ -720,7 +720,7 @@ var TaskManager = (function() {
       // 2026-10-01: Sheet là NGUỒN SỰ THẬT. Trước đây bản local thắng mãi nếu `updatedAt` local mới hơn — mà sửa TAY trên Google Sheet không đổi cột
       // "Ngày cập nhật" nên web giữ dữ liệu cũ vĩnh viễn (bấm làm mới cũng không lấy được). Nay bản local chỉ thắng khi vừa sửa trong 2 phút gần đây
       // (chờ lệnh ghi lên Sheet xong — lệnh chưa gửi vẫn được phủ lại bởi hàng đợi ghi); quá 2 phút thì lấy theo Sheet.
-      var localRecent = localTime > serverTime && (now - localTime) < 120000;
+      var localRecent = !forceFromSheet_ && localTime > serverTime && (now - localTime) < 120000;
       var winner = localRecent ? localItem : serverItem;
       var loser = winner === localItem ? serverItem : localItem;
       return storageKey === STORAGE_KEYS.tasks ? mergeDailyTasks_(winner, loser) : winner;
@@ -813,8 +813,11 @@ var TaskManager = (function() {
   }
 
   var refreshBusy_ = false, refreshWaiters_ = [];
-  function refreshFromGSheets(callback) {
+  // 2026-10-01: nút "Làm mới" (opts.force) = lấy ĐÚNG dữ liệu trên Google Sheet: bỏ mã băm + bỏ cache máy chủ, bản local KHÔNG thắng theo "ngày cập nhật", không đẩy ngược dữ liệu local lên Sheet.
+  var forceFromSheet_ = false;
+  function refreshFromGSheets(callback, opts) {
     gsCacheTime = {};
+    if (opts && opts.force) { forceFromSheet_ = true; gsHashes = {}; }
     if (!isUsingGSheets()) {
       if (callback) callback(false);
       return;
@@ -823,7 +826,7 @@ var TaskManager = (function() {
     if (refreshBusy_) { if (callback) refreshWaiters_.push(callback); return; }
     refreshBusy_ = true;
     function finish(ok) {
-      refreshBusy_ = false;
+      refreshBusy_ = false; forceFromSheet_ = false;
       var waiters = refreshWaiters_; refreshWaiters_ = [];
       if (callback) callback(ok);
       waiters.forEach(function (fn) { try { fn(ok); } catch (e) { console.error(e); } });
@@ -887,7 +890,7 @@ var TaskManager = (function() {
         // 2026-09-29: KHÔNG ghi đè thẳng nữa — gộp với dữ liệu local và phủ lại các lệnh ghi còn
         // trong hàng đợi (chưa lên được Sheet), nếu không lượt chấm công vừa bấm sẽ biến mất khỏi
         // màn hình mỗi lần làm mới ngầm 20s cho tới khi Sheet nhận được.
-        healTimesheetFromLocal_(timesheet);   // chấm công của CHÍNH MÌNH có trên máy mà Sheet đang thiếu → đẩy lại (xem hàm)
+        if (!forceFromSheet_) healTimesheetFromLocal_(timesheet);   // chấm công của CHÍNH MÌNH có trên máy mà Sheet đang thiếu → đẩy lại (xem hàm)
         localStorage.setItem(STORAGE_KEYS.timesheet, JSON.stringify(applyPendingWrites_('timesheet', mergeServerData(STORAGE_KEYS.timesheet, timesheet))));
       }
       checkDone();
@@ -984,7 +987,8 @@ var TaskManager = (function() {
     // Chỉ gửi mã băm của loại đang có bản đầy đủ trong bộ nhớ; server thấy trùng thì KHÔNG gửi lại dữ liệu loại đó
     var known = {};
     REFRESH_TYPES.forEach(function (ty) { if (gsHashes[ty] && gsCache[ty] && gsCache[ty].length > 0) known[API_READ_ACTIONS[ty]] = gsHashes[ty]; });
-    var hashParam = Object.keys(known).length ? '&hashes=' + encodeURIComponent(JSON.stringify(known)) : '';
+    var hashParam = Object.keys(known).length && !forceFromSheet_ ? '&hashes=' + encodeURIComponent(JSON.stringify(known)) : '';
+    if (forceFromSheet_) hashParam += '&nc=' + Date.now();   // khoá khác → bỏ qua cache 15s phía máy chủ
     var t0Read = Date.now();
     fetch(GSHEETS_CONFIG.API_URL + '?action=getBundle&types=' + encodeURIComponent(actions.join(',')) + hashParam, { redirect: 'follow', signal: controller.signal })
       .then(function (r) { return r.json(); })

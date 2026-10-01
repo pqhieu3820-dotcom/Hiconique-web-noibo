@@ -134,7 +134,7 @@
       updateHeroStat();
     }
   }
-  setInterval(refreshHeroStat, 45000);
+  setInterval(refreshHeroStat, 120000);   // 2026-10-01: giãn từ 45s để bớt tải Apps Script
 
   // ----- Thông báo minh bạch về thời gian hoạt động trên Hub (hiện 1 lần cho mỗi người dùng) -----
   // Hub ghi nhận phút "hoạt động / không thao tác / rời tab" TRONG CHÍNH HUB (xem TaskManager.startActivityTracker),
@@ -227,7 +227,7 @@
         // vẽ lại đúng phần dữ liệu của từng trang — không cần gọi gì thêm ở
         // đây, tránh mỗi trang phải tự biết portal.js đang làm gì.
         showReloadToast();
-      });
+      }, { force: true });   // bấm Làm mới = nhận đúng dữ liệu trên Google Sheet
     });
 
     function showReloadToast() {

@@ -2077,6 +2077,7 @@ function deleteData_impl(ss, sheetName, id) {
 function onEdit(e) {
   try {
     if (!e || !e.range) return;
+    try { bumpReadCacheVersion_(); } catch (be) { /* sửa tay trên Sheet → cache đọc 15s phía máy chủ hết hiệu lực */ }
     try { financeOnEdit_(e); } catch (fe) { /* không chặn onEdit chính */ }
     const sheet = e.range.getSheet();
     if (normalizeName(sheet.getName()) !== normalizeName(SHEETS.members)) return;
