@@ -17,7 +17,7 @@
   LEGAL.minWageTrained = Math.round(LEGAL.minWageRegion1 * (1 + LEGAL.trainedUplift));
 
   var LEGAL_NOTES = [
-    ['Lương tối thiểu vùng I (2026)', 'Nghị định 293/2025/NĐ-CP, hiệu lực 01/01/2026: 5.310.000 đ/tháng. Lao động đã qua đào tạo/học nghề: tối thiểu cao hơn 7% → 5.681.700 đ. Mức lương đóng BHXH không được thấp hơn mức này.'],
+    ['Lương tối thiểu vùng I (2026)', 'Nghị định 293/2025/NĐ-CP, hiệu lực 01/01/2026: 5.310.000 đ/tháng — công ty chọn đây làm mức lương đóng BHXH. Lưu ý: lao động đã qua đào tạo/học nghề có thể phải trả cao hơn ít nhất 7% (5.681.700 đ) nếu hợp đồng/thỏa thuận quy định — kế toán/luật sư xác nhận cho từng người.'],
     ['Tỷ lệ đóng BH bắt buộc', 'Người lao động 10,5% (BHXH 8% + BHYT 1,5% + BHTN 1%); doanh nghiệp 21,5% (BHXH 17,5% gồm 0,5% TNLĐ-BNN + BHYT 3% + BHTN 1%). Mức lương đóng BH tối đa 20 × lương cơ sở (2.340.000 → 46.800.000 đ).'],
     ['Các khoản hỗ trợ không tính đóng BHXH', 'Tiền ăn giữa ca, hỗ trợ xăng xe, điện thoại, đi lại… nếu được ghi thành MỤC RIÊNG trong hợp đồng lao động/quy chế thì không tính vào lương đóng BHXH (Thông tư 10/2020/TT-BLĐTBXH điểm c2 khoản 5 Điều 3; Luật BHXH 2024 + Nghị định 158/2025/NĐ-CP). Cần ghi rõ từng khoản trong hợp đồng/phụ lục.'],
     ['Thuế TNCN của các khoản hỗ trợ', 'Tiền ăn trưa/ăn ca chi bằng tiền: không chịu thuế TNCN trong mức trần theo quy định (trước đây 730.000 đ/tháng; dự kiến 1.200.000 đ/tháng từ 01/07/2026 — kế toán cần xác nhận văn bản hiện hành). Xăng xe/điện thoại: chỉ được miễn thuế khi có quy chế, mức chi hợp lý — nếu không sẽ tính vào thu nhập chịu thuế.'],
@@ -27,16 +27,16 @@
 
   // Khoản mặc định (id cố định để không nhân đôi). kind: bh | allowance | performance | setting
   var DEFAULTS = [
-    { id: 'salc_bh', code: 'LUONG_BH', name: 'Lương đóng BHXH (tối thiểu vùng I)', kind: 'bh', amount: LEGAL.minWageTrained, insured: true, taxCap: '', active: true, order: 1,
-      note: 'Mức lương ghi trong hợp đồng làm căn cứ đóng BH. ≥ 5.310.000 (vùng I 2026); lao động qua đào tạo ≥ 5.681.700.' },
+    { id: 'salc_bh', code: 'LUONG_BH', name: 'Lương đóng BHXH (tối thiểu vùng I)', kind: 'bh', amount: LEGAL.minWageRegion1, insured: true, taxCap: '', active: true, order: 1,
+      note: 'Mức lương làm căn cứ đóng BH = tối thiểu vùng I 5.310.000 (NĐ 293/2025). KHÔNG tính theo công: lấy trọn cục này trước. (Lao động qua đào tạo có thể cần 5.681.700 — sửa ở đây nếu hợp đồng quy định.)' },
     { id: 'salc_xang', code: 'HT_XANG_XE', name: 'Hỗ trợ xăng xe', kind: 'allowance', amount: 700000, insured: false, taxCap: '', active: true, order: 2,
-      note: 'Trần 700.000 đ/tháng khi đủ 26 công; ít công hơn thì giảm theo tỷ lệ công. Ghi mục riêng trong HĐLĐ.' },
+      note: 'Trần 700.000 đ/tháng khi đủ 26 công; ít công hơn thì giảm theo tỷ lệ công (khoản duy nhất tính theo công). Ghi mục riêng trong HĐLĐ.' },
     { id: 'salc_dt', code: 'HT_DIEN_THOAI', name: 'Hỗ trợ điện thoại', kind: 'allowance', amount: 300000, insured: false, taxCap: '', active: true, order: 3,
       note: 'Mức do công ty quy định (mặc định 300.000 đ/tháng đủ 26 công) — sửa được.' },
     { id: 'salc_an', code: 'HT_AN_TRUA', name: 'Hỗ trợ ăn trưa', kind: 'allowance', amount: 730000, insured: false, taxCap: 730000, active: true, order: 4,
       note: 'Mặc định 730.000 đ/tháng (mức miễn thuế TNCN trước đây; có thể nâng lên 1.200.000 từ 01/07/2026 nếu kế toán xác nhận).' },
     { id: 'salc_perf', code: 'LUONG_HIEU_QUA', name: 'Lương theo hiệu quả công việc', kind: 'performance', amount: '', insured: false, taxCap: '', active: true, order: 9,
-      note: 'Phần còn lại = Tổng lương hợp đồng − lương đóng BH − các khoản hỗ trợ. Tính theo công.' },
+      note: 'KPI = phần còn lại sau lương đóng BH và các khoản hỗ trợ. KHÔNG tính theo công; hỗ trợ đã đủ phần còn lại thì KPI = 0.' },
     { id: 'salc_bhded', code: 'BH_TRU_LUONG', name: 'Trừ phần BH người lao động (10,5%) vào thực lãnh', kind: 'setting', amount: '', insured: false, taxCap: '', active: true, order: 99,
       note: 'Bật: phiếu lương trừ 10,5% × lương đóng BH. Tắt: chỉ hiển thị, không trừ.' }
   ];
@@ -47,37 +47,60 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 
   // totalMonthly = tổng lương hợp đồng (đủ công); days = số công thực tế. comps = danh mục khoản (TaskManager.getSalaryComponents()).
-  function compute(totalMonthly, days, comps) {
+  // QUY TẮC (2026-10-01, theo yêu cầu): tổng tiền công W = tổng ÷ 26 × số công (như cũ). Trong W:
+  //   1) Lương đóng BH (5.310.000 = tối thiểu vùng I) KHÔNG tính theo công — lấy trọn cục này trước (nếu W nhỏ hơn thì lấy hết W);
+  //   2) các khoản HỖ TRỢ (xăng xe, điện thoại, ăn trưa…) = trần × công ÷ 26 (chỉ khoản này theo công), ưu tiên lớn nhất, bị chặn bởi phần W còn lại;
+  //   3) Lương hiệu quả (KPI) KHÔNG theo công = phần còn lại — nếu hỗ trợ đã đủ hết phần còn lại thì KPI = 0.
+  // overrides = { <id khoản>: số tiền } — người dùng nhấp đúp sửa tay; tổng luôn giữ = W (KPI hấp thụ chênh lệch; sửa KPI thì phần chênh dồn vào các khoản hỗ trợ).
+  function compute(totalMonthly, days, comps, overrides) {
     var P = Math.max(0, num(totalMonthly)), STD = LEGAL.stdDays, d = Math.max(0, num(days)), D = Math.min(d, STD), ratio = D / STD;
     var W = Math.round(P / STD * D);
+    overrides = overrides || {};
     var deductOn = dedOn(comps);
     comps = (comps || []).filter(function (c) { return !off(c.active); }).sort(function (a, b) { return num(a.order) - num(b.order); });
-    var rem = P, items = [], warnings = [], bhBase = 0;
+    var warnings = [], items = [];
     var bhc = comps.filter(function (c) { return c.kind === 'bh'; })[0];
-    comps.forEach(function (c) {
-      if (c.kind === 'bh') {
-        var full = Math.min(num(c.amount), rem); rem -= full; bhBase = full;
-        items.push({ id: c.id, code: c.code, name: c.name, kind: 'bh', full: full, earned: Math.round(full * ratio) });
-      } else if (c.kind === 'allowance') {
-        var f2 = Math.min(num(c.amount), rem); rem -= f2;
-        items.push({ id: c.id, code: c.code, name: c.name, kind: 'allowance', full: f2, earned: Math.round(f2 * ratio), cap: num(c.amount), taxCap: num(c.taxCap) });
-        if (num(c.taxCap) > 0 && num(c.amount) > num(c.taxCap)) warnings.push('"' + c.name + '" (' + fmt(c.amount) + ') vượt mức miễn thuế ' + fmt(c.taxCap) + ' — phần vượt tính vào thu nhập chịu thuế TNCN.');
-      }
-    });
     var perf = comps.filter(function (c) { return c.kind === 'performance'; })[0];
-    var sumOther = items.reduce(function (s, x) { return s + x.earned; }, 0);
-    if (perf) items.push({ id: perf.id, code: perf.code, name: perf.name, kind: 'performance', full: Math.max(0, rem), earned: Math.max(0, W - sumOther) });
-    var workPay = items.reduce(function (s, x) { return s + x.earned; }, 0);
-    if (!perf) workPay = W;                                  // không có dòng "hiệu quả": giữ đúng tổng theo công
+    var allows = comps.filter(function (c) { return c.kind === 'allowance'; });
+    var capSum = allows.reduce(function (s, c) { return s + num(c.amount); }, 0);
+    var bhFull = bhc ? Math.min(num(bhc.amount), P) : 0;
+    var hasOv = function (id) { return overrides[id] !== undefined && overrides[id] !== null && overrides[id] !== ''; };
+    // 1) khoản không phải KPI: mặc định theo quy tắc, ghi đè nếu có
+    var rem = W, bhE = 0;
+    if (bhc) { bhE = Math.min(hasOv(bhc.id) ? Math.max(0, num(overrides[bhc.id])) : bhFull, rem); rem -= bhE; items.push({ id: bhc.id, code: bhc.code, name: bhc.name, kind: 'bh', full: bhFull, earned: bhE, edited: hasOv(bhc.id) }); }
+    var aItems = [];
+    allows.forEach(function (c) {
+      var def = Math.round(num(c.amount) * ratio), e = hasOv(c.id) ? Math.max(0, num(overrides[c.id])) : def;
+      e = Math.min(e, rem); rem -= e;
+      var it = { id: c.id, code: c.code, name: c.name, kind: 'allowance', full: num(c.amount), earned: e, cap: num(c.amount), taxCap: num(c.taxCap), edited: hasOv(c.id) };
+      items.push(it); aItems.push(it);
+      if (num(c.taxCap) > 0 && e > num(c.taxCap)) warnings.push('"' + c.name + '" (' + fmt(e) + ') vượt mức miễn thuế ' + fmt(c.taxCap) + ' — phần vượt tính vào thu nhập chịu thuế TNCN.');
+    });
+    // 2) KPI = phần còn lại (hoặc ghi đè → dồn chênh lệch vào hỗ trợ/BH chưa sửa tay)
+    if (perf) {
+      var kEarned = rem;
+      if (hasOv(perf.id)) {
+        kEarned = Math.min(Math.max(0, num(overrides[perf.id])), rem);
+        var diff = rem - kEarned;
+        for (var i = 0; i < aItems.length && diff > 0; i++) {
+          if (aItems[i].edited) continue;
+          var room = Math.max(0, num(aItems[i].cap) - aItems[i].earned); var add = Math.min(diff, room); aItems[i].earned += add; diff -= add;
+        }
+        if (diff > 0) kEarned += diff;   // hỗ trợ đã đủ trần → KPI không giảm thêm được (giữ tổng = tiền công)
+      }
+      items.push({ id: perf.id, code: perf.code, name: perf.name, kind: 'performance', full: Math.max(0, P - bhFull - capSum), earned: kEarned, edited: hasOv(perf.id) });
+    } else if (rem > 0 && items.length) { items[items.length - 1].earned += rem; }
     if (!items.length) items.push({ id: 'all', code: 'LUONG', name: 'Lương theo ngày công', kind: 'performance', full: P, earned: W });
+    var workPay = items.reduce(function (s, x) { return s + x.earned; }, 0);
+    var bhBase = bhc ? Math.min(num(bhc.amount), P || num(bhc.amount)) : 0;   // lương làm căn cứ đóng BH = trọn mức khai báo, không theo công
     var contributes = bhBase > 0 && d >= LEGAL.minDaysBH;
-    var bhEmployee = contributes ? Math.round(Math.min(bhBase, LEGAL.maxBase) * LEGAL.empRate) : 0;
-    var bhEmployer = contributes ? Math.round(Math.min(bhBase, LEGAL.maxBase) * LEGAL.erRate) : 0;
+    var capBase = Math.min(bhBase, LEGAL.maxBase);
+    var bhEmployee = contributes ? Math.round(capBase * LEGAL.empRate) : 0;
+    var bhEmployer = contributes ? Math.round(capBase * LEGAL.erRate) : 0;
     if (bhc && num(bhc.amount) > 0 && num(bhc.amount) < LEGAL.minWageRegion1) warnings.push('Lương đóng BH (' + fmt(bhc.amount) + ') thấp hơn lương tối thiểu vùng I ' + fmt(LEGAL.minWageRegion1) + ' — không hợp lệ.');
-    else if (bhc && num(bhc.amount) > 0 && num(bhc.amount) < LEGAL.minWageTrained) warnings.push('Lương đóng BH thấp hơn ' + fmt(LEGAL.minWageTrained) + ' (vùng I + 7%): chỉ hợp lệ với lao động CHƯA qua đào tạo.');
     if (bhc && P > 0 && P < num(bhc.amount)) warnings.push('Tổng lương hợp đồng (' + fmt(P) + ') thấp hơn lương đóng BH tối thiểu (' + fmt(bhc.amount) + ').');
     if (bhBase > 0 && d < LEGAL.minDaysBH) warnings.push('Dưới ' + LEGAL.minDaysBH + ' ngày công — không đóng BH tháng này.');
-    return { total: P, days: d, usedDays: D, stdDays: STD, ratio: ratio, items: items, workPay: workPay, bhBase: bhBase, bhEmployee: bhEmployee, bhEmployer: bhEmployer, deductBh: deductOn, warnings: warnings, perfFull: Math.max(0, rem) };
+    return { total: P, days: d, usedDays: D, stdDays: STD, ratio: ratio, items: items, workPay: workPay, bhBase: bhBase, bhEmployee: bhEmployee, bhEmployer: bhEmployer, deductBh: deductOn, warnings: warnings, perfFull: Math.max(0, P - bhFull - capSum) };
   }
 
   // Phiên bản gọn lưu vào phiếu (cột "Chi tiết cơ cấu lương") để phiếu cũ không đổi khi sau này sửa cơ cấu
@@ -96,9 +119,15 @@
   }
 
   // ---------- giao diện: bảng chi tiết (dùng ở form + phiếu đã gửi) ----------
-  function rowsHtml(items, workDaysTxt) {
+  function itemNote(x, days, std) {
+    var k = x.k || x.kind, f = x.f != null ? x.f : x.full;
+    if (k === 'bh') return 'cố định ' + fmt(f) + ' (không theo công)';
+    if (k === 'allowance') return 'trần ' + fmt(f) + ' × ' + days + '/' + std + ' công';
+    return 'phần còn lại (không theo công)';
+  }
+  function rowsHtml(items, days, std) {
     return items.map(function (x) {
-      return '<div class="pl-breakdown-row"><span>' + esc(x.n || x.name) + ' <span style="color:var(--pl-muted);font-size:.75rem;">' + (workDaysTxt || '') + (x.f != null || x.full != null ? ' · đủ tháng ' + fmt(x.f != null ? x.f : x.full) : '') + '</span></span><span>' + fmt(x.e != null ? x.e : x.earned) + '</span></div>';
+      return '<div class="pl-breakdown-row pl-bd-sub"><span>' + esc(x.n || x.name) + ' <span style="color:var(--pl-muted);font-size:.75rem;">· ' + itemNote(x, days, std || LEGAL.stdDays) + '</span></span><span>' + fmt(x.e != null ? x.e : x.earned) + '</span></div>';
     }).join('');
   }
 
@@ -125,7 +154,7 @@
     var ov = document.createElement('div'); ov.id = 'ssOv';
     ov.innerHTML = '<div class="ss-box"><div class="ss-h"><div><div class="ss-t">Cơ cấu lương · bản tổng hợp</div><div class="ss-s">Chia lương hợp đồng thành lương đóng BHXH (tối thiểu vùng I) + các khoản hỗ trợ + lương hiệu quả. Dữ liệu lưu ở Sheet <b>TLCC-Cơ cấu lương</b> — sửa ở đây hoặc trực tiếp trên Sheet đều được.</div></div><button type="button" class="ss-x" data-x aria-label="Đóng">×</button></div>' +
       '<div class="ss-b"><h4>1. Danh mục khoản & mức trần (đủ 26 công)</h4><div id="ssTable"></div><div class="ss-f" style="justify-content:space-between"><button type="button" class="ss-btn" id="ssAdd">+ Thêm khoản hỗ trợ</button><span id="ssWarn" class="ss-warn"></span></div>' +
-      '<h4>2. Công thức tính</h4><div class="ss-form"><b>Số công tính lương</b> = min(ngày công thực tế, 26). &nbsp;<b>Tỷ lệ công</b> = số công ÷ 26.<br><b>Mỗi khoản hỗ trợ</b> = mức trần × tỷ lệ công (làm đủ 26 công nhận đủ trần, ví dụ xăng xe 700.000; làm 20 công nhận 700.000 × 20 ÷ 26 = 538.462).<br><b>Lương đóng BH</b> = mức khai báo × tỷ lệ công. &nbsp;<b>Lương hiệu quả</b> = (Tổng lương hợp đồng − lương đóng BH − Σ hỗ trợ) × tỷ lệ công.<br><b>Tổng tiền công</b> = Tổng lương hợp đồng ÷ 26 × số công (không đổi so với cách tính cũ; chỉ chia nhỏ để minh bạch).<br><b>BH người lao động</b> = 10,5% × lương đóng BH (đủ tháng, không theo công; không đóng nếu &lt; 14 công). <b>BH doanh nghiệp đóng thêm</b> = 21,5% × lương đóng BH.<br><b>Thực lãnh</b> = tiền công + OT + hoa hồng + thưởng − khấu trừ − BH người lao động.</div>' +
+      '<h4>2. Công thức tính</h4><div class="ss-form"><b>Tổng tiền công</b> W = Tổng lương hợp đồng ÷ 26 × số công (tối đa 26 công) — không đổi so với cách tính cũ.<br><b>Lương đóng BH</b> = 5.310.000 (tối thiểu vùng I) <b>trọn cục, KHÔNG tính theo công</b> (nếu W nhỏ hơn thì lấy hết W).<br><b>Hỗ trợ</b> (xăng xe, điện thoại, ăn trưa…) = trần × số công ÷ 26 — <b>chỉ khoản này tính theo công</b>, ưu tiên lớn nhất, không vượt phần W còn lại (xăng xe 700.000: đủ 26 công nhận 700.000; 20 công nhận 538.462).<br><b>Lương hiệu quả (KPI)</b> = phần còn lại của W, KHÔNG theo công; hỗ trợ đã đủ phần còn lại thì KPI = 0.<br><b>Sửa tay:</b> trên phiếu lương, nhấp đúp vào số tiền của từng khoản để chỉnh — tổng luôn giữ đúng W (KPI tự hấp thụ chênh lệch; sửa KPI thì chênh dồn vào các khoản hỗ trợ).<br><b>BH người lao động</b> = 10,5% × lương đóng BH (đủ tháng; không đóng nếu &lt; 14 công). <b>BH doanh nghiệp đóng thêm</b> = 21,5% × lương đóng BH.<br><b>Thực lãnh</b> = tiền công + OT + hoa hồng + thưởng − khấu trừ − BH người lao động.</div>' +
       '<h4>3. Thử tính nhanh</h4><div class="ss-ex"><div><label style="font-size:.6875rem;color:var(--color-text-muted)">Tổng lương hợp đồng</label><input id="ssExP" class="ss-num" value="15.000.000"></div><div><label style="font-size:.6875rem;color:var(--color-text-muted)">Số công</label><input id="ssExD" class="ss-num" value="26"></div></div><div id="ssEx"></div>' +
       '<h4>4. Cơ sở pháp lý (tham khảo)</h4><div class="ss-legal">' + LEGAL_NOTES.map(function (n) { return '<div><b>' + esc(n[0]) + '</b>' + esc(n[1]) + '</div>'; }).join('') + '</div>' +
       '<div class="ss-f"><button type="button" class="ss-btn" data-x>Đóng</button><button type="button" class="ss-btn pri" id="ssSave">Lưu cơ cấu lương</button></div></div></div>';

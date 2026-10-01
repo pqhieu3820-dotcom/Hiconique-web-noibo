@@ -109,6 +109,8 @@
     .pl-bd-sub { font-size: 0.8125rem; }
     .pl-bd-sub span:first-child { padding-left: 14px; color: var(--pl-muted); }
     .pl-breakdown-row span span { font-family: inherit !important; font-weight: 400 !important; color: var(--pl-muted) !important; }
+    .pl-bd-amt { cursor: text; border-radius: 6px; padding: 1px 6px; } .pl-bd-amt:hover { background: color-mix(in srgb, var(--pl-bronze) 14%, transparent); }
+    .pl-bd-edit { width: 130px; text-align: right; padding: 4px 8px; border: 1px solid var(--pl-bronze); border-radius: 6px; background: var(--pl-bg); color: var(--pl-text); font: inherit; }
     .pl-bd-note { font-size: 0.75rem; color: var(--pl-muted); margin: 0 0 14px; line-height: 1.55; }
     .pl-bd-warn { color: var(--pl-danger); }
     .pl-total-row {
@@ -313,7 +315,7 @@
     // đều suy ra được từ tổng − OT − hoa hồng − thưởng + khấu trừ (phiếu cũ = lương cơ bản như trước).
     var STD_DAYS = TaskManager.STANDARD_MONTHLY_HOURS / 8;
     function computeWorkPay(baseSalary, workDays) { return Math.round((Number(baseSalary) || 0) / STD_DAYS * Math.min(Number(workDays) || 0, STD_DAYS)); }
-    function computeBd(base, days) { return SalaryStructure.compute(base, days, TaskManager.getSalaryComponents()); }
+    function computeBd(base, days, ov) { return SalaryStructure.compute(base, days, TaskManager.getSalaryComponents(), ov); }
     function bhOf(bd) { return SalaryStructure.dedOn(TaskManager.getSalaryComponents()) ? bd.bhEmployee : 0; }
     function slipWorkPay(s) { var sn = SalaryStructure.parseSnapshot(s.breakdown); if (sn) return Math.round(Number(sn.workPay) || 0); return Math.round((Number(s.totalAmount) || 0) - (Number(s.otAmount) || 0) - (Number(s.commissionAmount) || 0) - (Number(s.otherBonus) || 0) + (Number(s.deduction) || 0)); }
     function workPayNote(base, days) { return 'Lương cơ bản ' + fmt(base) + ' ÷ ' + STD_DAYS + ' công × ' + days + ' ngày công'; }
@@ -333,7 +335,8 @@
       var stats = TaskManager.getMonthlyTimesheetStats(user.id, month);
       var baseSalary = Number(user.baseSalary) || 0;
       var commissionAmount = TaskManager.getMemberCommissionTotal(user.id, month);
-      var bd = computeBd(baseSalary, stats.workDays), workPay = bd.workPay, bhEmployee = bhOf(bd);
+      var itemOv = {};   // nhấp đúp sửa tay từng khoản (giữ tổng = tiền công)
+      var bd = computeBd(baseSalary, stats.workDays, itemOv), workPay = bd.workPay, bhEmployee = bhOf(bd);
 
       // Top stat tiles reflect the selected month, for the logged-in user.
       document.getElementById('plBaseSalary').textContent = fmt(baseSalary);
@@ -383,7 +386,7 @@
           '</div>' +
           '<div class="pl-breakdown">' +
             '<div class="pl-breakdown-row pl-bd-head"><span>Lương theo ngày công <span style="color:var(--pl-muted);font-size:.75rem;">(' + Math.min(stats.workDays, STD_DAYS) + '/' + STD_DAYS + ' công · tổng lương hợp đồng ' + fmt(baseSalary) + ')</span></span><span id="bdBase">' + fmt(workPay) + '</span></div>' +
-            bd.items.map(function (x) { return '<div class="pl-breakdown-row pl-bd-sub"><span>↳ ' + x.name + ' <span style="color:var(--pl-muted);font-size:.75rem;">· đủ tháng ' + fmt(x.full) + ' × ' + Math.min(stats.workDays, STD_DAYS) + '/' + STD_DAYS + '</span></span><span>' + fmt(x.earned) + '</span></div>'; }).join('') +
+            '<div id="bdItems">' + itemRowsHtml(bd, stats.workDays) + '</div>' +
             '<div class="pl-breakdown-row"><span>Tăng ca (OT)</span><span id="bdOt">' + fmt(Math.round(otHoursAuto * otRate)) + '</span></div>' +
             '<div class="pl-breakdown-row"><span>Hoa hồng dự án</span><span id="bdCommission">' + fmt(commissionAmount) + '</span></div>' +
             '<div class="pl-breakdown-row"><span>Thưởng khác</span><span id="bdBonus">' + fmt(0) + '</span></div>' +
@@ -415,6 +418,20 @@
         document.getElementById(id).addEventListener('input', recalcTotal);
       });
       if (typeof HiconiqueMoney !== 'undefined') HiconiqueMoney.bindAll(document);
+      document.getElementById('bdItems').addEventListener('dblclick', function (e) {
+        var cell = e.target.closest('[data-amt]'); if (!cell || cell.querySelector('input')) return;
+        var id = cell.getAttribute('data-amt'), cur = (bd.items.filter(function (x) { return x.id === id; })[0] || {}).earned || 0;
+        cell.innerHTML = '<input class="pl-bd-edit" inputmode="numeric" value="' + fmt(cur) + '">';
+        var inp = cell.firstChild; inp.focus(); inp.select();
+        function commit(ok) { if (inp._done) return; inp._done = 1; if (ok) { var v = parseInt(String(inp.value).replace(/[^\d]/g, ''), 10); if (!isNaN(v)) itemOv[id] = v; } redrawItems(); }
+        inp.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') commit(true); else if (ev.key === 'Escape') commit(false); });
+        inp.addEventListener('blur', function () { commit(true); });
+      });
+      function redrawItems() {
+        bd = computeBd(baseSalary, stats.workDays, itemOv);
+        document.getElementById('bdItems').innerHTML = itemRowsHtml(bd, stats.workDays);
+        recalcTotal();
+      }
       recalcTotal();
 
       document.getElementById('plSubmitBtn').addEventListener('click', function () {
@@ -446,12 +463,20 @@
       });
     }
 
+    function itemRowsHtml(bd, days) {
+      var dd = Math.min(Number(days) || 0, STD_DAYS);
+      return bd.items.map(function (x) {
+        var note = x.kind === 'bh' ? 'cố định ' + fmt(x.full) + ' · không theo công' : x.kind === 'allowance' ? 'trần ' + fmt(x.full) + ' × ' + dd + '/' + STD_DAYS + ' công' : 'phần còn lại · không theo công';
+        return '<div class="pl-breakdown-row pl-bd-sub" data-item="' + x.id + '" title="Nhấp đúp vào số tiền để sửa — tổng vẫn giữ đủ"><span>↳ ' + x.name + (x.edited ? ' ✎' : '') + ' <span style="color:var(--pl-muted);font-size:.75rem;">· ' + note + '</span></span><span class="pl-bd-amt" data-amt="' + x.id + '">' + fmt(x.earned) + '</span></div>';
+      }).join('');
+    }
+
     function existingBreakdownHtml(s) {
       var sn = SalaryStructure.parseSnapshot(s.breakdown);
       if (!sn) return '';
       var d = Number(sn.days) || 0;
       return '<div class="pl-form-card" style="margin-top:16px"><div class="pl-form-title">Chi tiết cơ cấu lương</div><div class="pl-breakdown">' +
-        '<div class="pl-breakdown-row pl-bd-head"><span>Lương theo ngày công (' + d + '/' + (sn.std || STD_DAYS) + ' công)</span><span>' + fmt(sn.workPay) + '</span></div>' + SalaryStructure.rowsHtml(sn.items.map(function (x) { return { n: '↳ ' + x.n, f: x.f, e: x.e }; })) +
+        '<div class="pl-breakdown-row pl-bd-head"><span>Lương theo ngày công (' + d + '/' + (sn.std || STD_DAYS) + ' công)</span><span>' + fmt(sn.workPay) + '</span></div>' + SalaryStructure.rowsHtml(sn.items.map(function (x) { return { n: '↳ ' + x.n, k: x.k, f: x.f, e: x.e }; }), d, sn.std || STD_DAYS) +
         '<div class="pl-breakdown-row"><span>Tăng ca (OT)</span><span>' + fmt(s.otAmount) + '</span></div><div class="pl-breakdown-row"><span>Hoa hồng dự án</span><span>' + fmt(s.commissionAmount) + '</span></div><div class="pl-breakdown-row"><span>Thưởng khác</span><span>' + fmt(s.otherBonus) + '</span></div>' +
         '<div class="pl-breakdown-row minus"><span>Khấu trừ</span><span>− ' + fmt(s.deduction) + '</span></div><div class="pl-breakdown-row minus"><span>BHXH, BHYT, BHTN người lao động (10,5% × ' + fmt(sn.bhBase) + ')</span><span>− ' + fmt(s.bhEmployee) + '</span></div></div>' +
         '<div class="pl-total-row"><span class="pl-total-label">Thực lãnh</span><span class="pl-total-value">' + fmt(s.totalAmount) + '</span></div>' +
