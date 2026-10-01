@@ -781,6 +781,15 @@ function getPriceDb(ss, province) {
   return res;
 }
 
+// So sánh 1 mục giá giữa các tỉnh: trả mọi dòng có Mã = code trong bảng kind (nc|tho|vt|ct) — cột đầu là Tỉnh/Thành (đọc 1 lần cả sheet)
+function getPriceDbCompare(ss, kind, code) {
+  if (!kind || !code || PRICE_DB_KEYS.indexOf(kind) === -1) return { error: 'Missing kind/code' };
+  const sh = findSheet(ss, PRICE_DB_SHEETS[kind]);
+  if (!sh || sh.getLastRow() < 2) return { kind: kind, code: code, headers: [], rows: [] };
+  const v = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getValues(), h = v[0].map(String), ci = h.indexOf('Mã');
+  return { kind: kind, code: code, headers: h, rows: ci < 0 ? [] : v.slice(1).filter(function (r) { return String(r[ci]) === String(code); }) };
+}
+
 function sheetKeyFor(sheetName) {
   return Object.keys(SHEETS).filter(function (k) { return SHEETS[k] === sheetName; })[0];
 }
@@ -1315,6 +1324,8 @@ function handleRequestImpl_(e) {
       result = getPriceDb(ss, params.province);
     } else if (action === 'getPriceDbProvinces') {
       result = getPriceDbProvinces(ss);
+    } else if (action === 'getPriceDbCompare') {
+      result = getPriceDbCompare(ss, params.kind, params.code);
     } else if (action === 'getContractorComparisons') {
       result = getAllData(ss, SHEETS.contractorComparisons);
     } else if (action === 'addContractorComparison') {

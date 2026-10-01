@@ -597,7 +597,7 @@
       <div class="pr-card-head">
         <div>
           <div class="pr-card-title">Tra cứu đơn giá theo tỉnh/thành</div>
-          <div class="pr-card-desc">Dữ liệu lấy trực tiếp từ Google Sheet — database đơn giá xây dựng 34 tỉnh/thành, mốc giá 01/09/2026. Chọn tỉnh để xem đơn giá nhân công, phần thô/hoàn thiện, vật tư/thiết bị tại địa phương đó.</div>
+          <div class="pr-card-desc">Cơ sở dữ liệu đơn giá xây dựng 34 tỉnh/thành (gộp theo nội dung), mốc giá 01/09/2026, chưa VAT. Chọn tỉnh để xem đơn giá nhân công, phần thô/hoàn thiện, vật tư/thiết bị tại địa phương đó.</div>
         </div>
         <div class="pr-toolbar">
           <select class="pr-quote-select" id="prProvinceSelect" style="min-width:220px;"><option value="">— Chọn tỉnh/thành —</option></select>
@@ -1060,10 +1060,10 @@
       <div class="pr-card-head">
         <div>
           <div class="pr-card-title">Hướng dẫn sử dụng</div>
-          <div class="pr-card-desc">Lấy trực tiếp từ Google Sheet — cách đọc đơn giá, ý nghĩa các cột và công cụ trong bộ database 34 tỉnh.</div>
+          <div class="pr-card-desc">Cách tra đơn giá, ý nghĩa các cột giá (kèm công thức tự tính) và các công cụ trong trang này.</div>
         </div>
       </div>
-      <div id="prGuideWrap" class="pr-empty">Đang tải...</div>
+      <div id="prGuideWrap" class="pr-empty">Đang dựng...</div>
     </div>
     </div>
 
@@ -1072,10 +1072,10 @@
       <div class="pr-card-head">
         <div>
           <div class="pr-card-title">Nguồn dữ liệu</div>
-          <div class="pr-card-desc">Danh sách tổ chức/NCC/khảo sát dùng để xây database đơn giá 34 tỉnh — lấy trực tiếp từ Google Sheet.</div>
+          <div class="pr-card-desc">Danh sách tổ chức/NCC/khảo sát dùng để xây database đơn giá 34 tỉnh — bấm để mở nguồn gốc.</div>
         </div>
       </div>
-      <div id="prSourcesWrap" class="pr-empty">Đang tải...</div>
+      <div id="prSourcesWrap" class="pr-empty">Đang dựng...</div>
     </div>
     </div>
   </div>
@@ -1086,6 +1086,8 @@
 
   <script src="/js/portal.js" defer></script>
   <script src="/js/khai-toan.js" defer></script>
+  <script src="/js/pricing-prov.js"></script>
+  <script src="/js/pricing-ref.js"></script>
   <script>
   (function () {
     'use strict';
@@ -1150,18 +1152,23 @@
     }
     function fetchProvinceList() {
       if (!provinceApiReady()) { setProvinceWrapMessage('Chưa bật kết nối Google Sheets.'); return; }
-      fetch(GSHEETS_CONFIG.API_URL + '?action=getProvinceList', { redirect: 'follow' })
-        .then(function (r) { return r.json(); })
+      var fill = function (names) {
+        var sel = document.getElementById('prProvinceSelect');
+        var projectSel = document.getElementById('project-province');
+        names.forEach(function (name) {
+          var opt = document.createElement('option');
+          opt.value = name;
+          opt.textContent = name;
+          sel.appendChild(opt);
+          if (projectSel) projectSel.appendChild(opt.cloneNode(true));
+        });
+      };
+      // 2026-10-01: danh sách tỉnh từ cơ sở dữ liệu gộp (sheet DG-Tỉnh thành); chưa có thì dùng danh sách cũ ở DGXD-Mục lục
+      PricingProv.jget(GSHEETS_CONFIG.API_URL + '?action=getPriceDbProvinces')
         .then(function (list) {
-          var sel = document.getElementById('prProvinceSelect');
-          var projectSel = document.getElementById('project-province');
-          (Array.isArray(list) ? list : []).forEach(function (name) {
-            var opt = document.createElement('option');
-            opt.value = name;
-            opt.textContent = name;
-            sel.appendChild(opt);
-            if (projectSel) projectSel.appendChild(opt.cloneNode(true));
-          });
+          var names = (Array.isArray(list) ? list : []).map(function (x) { return x['Tỉnh/thành']; }).filter(Boolean);
+          if (names.length) { fill(names); return; }
+          return PricingProv.jget(GSHEETS_CONFIG.API_URL + '?action=getProvinceList').then(function (l) { fill(Array.isArray(l) ? l : []); });
         })
         .catch(function (e) { console.error('Không tải được danh sách tỉnh:', e); });
     }
@@ -1187,70 +1194,10 @@
         })
         .catch(function (e) { console.error('Không tải được danh sách loại dự án:', e); });
     }
-    // Cấu trúc mỗi sheet tỉnh: nhiều bảng xếp chồng, mỗi bảng có 1 dòng tiêu đề mục
-    // (chỉ cột A có chữ, các cột còn lại trống) rồi ngay tới dòng header cột — dựng
-    // lại đúng cấu trúc đó thành bảng HTML thay vì hiển thị 1 bảng phẳng gây hiểu nhầm.
-    function renderProvinceTable(rows) {
-      var wrap = document.getElementById('prProvinceTableWrap');
-      if (!rows || !rows.length) { setProvinceWrapMessage('Không có dữ liệu cho tỉnh này.'); return; }
-      var html = '<div style="overflow-x:auto;"><table class="pr-table pr-prov-table"><tbody>';
-      var afterSection = false;
-      rows.forEach(function (row) {
-        var nonEmpty = row.filter(function (c) { return String(c || '').trim() !== ''; });
-        if (nonEmpty.length === 0) return; // bỏ dòng trắng hoàn toàn
-        var isSection = nonEmpty.length <= 2 && String(row[0] || '').trim() !== '';
-        if (isSection) {
-          html += '<tr class="pr-prov-section"><td colspan="' + Math.max(row.length, 1) + '">' + escapeHtml(row[0]) + '</td></tr>';
-          afterSection = true;
-        } else if (afterSection) {
-          html += '<tr class="pr-prov-header">' + row.map(function (c) { return '<th>' + escapeHtml(c) + '</th>'; }).join('') + '</tr>';
-          afterSection = false;
-        } else {
-          html += '<tr>' + row.map(function (c) { return '<td>' + escapeHtml(c) + '</td>'; }).join('') + '</tr>';
-        }
-      });
-      html += '</tbody></table></div>';
-      wrap.className = '';
-      wrap.innerHTML = html;
-    }
-    // Trích danh sách vật tư/thiết bị phẳng (tên + giá thấp/cao) từ lưới thô của 1
-    // tỉnh — quét tới dòng header nào có cả "Vật tư/thiết bị" và "Giá thấp" trong
-    // hàng (đúng bảng mục C trong sheet tỉnh), gom các dòng dữ liệu ngay sau đó
-    // tới khi gặp dòng tiêu đề mục kế tiếp hoặc hết dữ liệu. Dùng để dò đơn giá
-    // tham khảo theo từ khoá cho tab "Khối lượng sơ bộ" — không đụng gì tới bảng
-    // hiển thị đầy đủ ở tab "Đơn giá theo tỉnh".
+    // Bảng đơn giá theo tỉnh: giao diện native trong js/pricing-prov.js (dữ liệu từ sheet gộp DG-*).
     function parseVndNumber(s) {
       var n = parseFloat(String(s || '').replace(/\./g, '').replace(',', '.'));
       return isNaN(n) ? 0 : n;
-    }
-    function extractVatTuEntries(rows) {
-      var nameCol = -1, lowCol = -1, highCol = -1, unitCol = -1, inTable = false;
-      var entries = [];
-      rows.forEach(function (row) {
-        var nonEmpty = row.filter(function (c) { return String(c || '').trim() !== ''; });
-        if (nonEmpty.length === 0) return;
-        var isSection = nonEmpty.length <= 2 && String(row[0] || '').trim() !== '';
-        if (isSection) { inTable = false; return; }
-        var hasNameHeader = row.indexOf('Vật tư/thiết bị') !== -1;
-        var hasPriceHeader = row.indexOf('Giá thấp') !== -1;
-        if (hasNameHeader && hasPriceHeader) {
-          nameCol = row.indexOf('Vật tư/thiết bị');
-          lowCol = row.indexOf('Giá thấp');
-          highCol = row.indexOf('Giá cao');
-          unitCol = row.indexOf('ĐVT');
-          inTable = true;
-          return;
-        }
-        if (inTable && nameCol !== -1 && row[nameCol]) {
-          entries.push({
-            name: String(row[nameCol]),
-            unit: unitCol >= 0 ? String(row[unitCol] || '').toLowerCase().trim() : '',
-            low: parseVndNumber(row[lowCol]),
-            high: parseVndNumber(row[highCol >= 0 ? highCol : lowCol])
-          });
-        }
-      });
-      return entries;
     }
     // Chỉ khớp khi ĐVT của vật tư trùng luôn với ĐVT của hạng mục — nếu không lọc
     // theo đơn vị thì từ khoá kiểu "thép" rất dễ vơ nhầm đơn giá của 1 hạng mục
@@ -1276,21 +1223,7 @@
       return { low: avg(lows), high: avg(highs) };
     }
 
-    document.getElementById('prProvinceSelect').addEventListener('change', function () {
-      var name = this.value;
-      if (!name) { setProvinceWrapMessage('Chọn tỉnh/thành phía trên để xem bảng đơn giá.'); recalcPrelimQty(); return; }
-      if (provinceCache[name]) { renderProvinceTable(provinceCache[name]); recalcPrelimQty(); return; }
-      setProvinceWrapMessage('Đang tải...');
-      fetch(GSHEETS_CONFIG.API_URL + '?action=getProvincePricing&province=' + encodeURIComponent(name), { redirect: 'follow' })
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-          if (data.error) { setProvinceWrapMessage('Lỗi: ' + data.error); return; }
-          provinceCache[name] = data.rows;
-          renderProvinceTable(data.rows);
-          recalcPrelimQty();
-        })
-        .catch(function (e) { setProvinceWrapMessage('Không tải được dữ liệu. Kiểm tra kết nối mạng.'); console.error(e); });
-    });
+    PricingProv.mount({ select: document.getElementById('prProvinceSelect'), wrap: document.getElementById('prProvinceTableWrap'), onLoaded: function () { recalcPrelimQty(); } });
     fetchProvinceList();
     fetchProjectTypes();
 
@@ -1330,7 +1263,8 @@
       document.getElementById('prelimFloorAreaRef').textContent = fmt(floorArea) + ' m²';
       var toiletCount = num('prelimToiletCount');
       var provinceName = document.getElementById('prProvinceSelect').value;
-      var entries = provinceName && provinceCache[provinceName] ? extractVatTuEntries(provinceCache[provinceName]) : null;
+      var entries = provinceName ? PricingProv.entries(provinceName) : null;
+      if (entries && !entries.length) entries = null;
       var notice = document.getElementById('prPrelimQtyNotice');
       notice.textContent = provinceName
         ? 'Đơn giá tham khảo tự dò theo tỉnh: ' + provinceName + ' — dò không ra thì để 0, tự nhập tay.'
@@ -2251,7 +2185,7 @@
       promise.then(function (res) { if (!id && res && res.id) tr.setAttribute('data-doc-id', res.id); }).catch(function (e) { console.error(e); });
     }
 
-    // ---------- Hướng dẫn / Nguồn (tham khảo tĩnh, đọc trực tiếp từ Google Sheet) ----------
+    // ---------- Hướng dẫn / Nguồn (nội dung tĩnh trong js/pricing-ref.js) ----------
     var referenceLoaded = { guide: false, sources: false };
     function renderGenericSheetTable(rows, wrapId, linkColIndex) {
       var wrap = document.getElementById(wrapId);
@@ -2286,18 +2220,12 @@
     function loadGuideOnce() {
       if (referenceLoaded.guide) return;
       referenceLoaded.guide = true;
-      fetch(GSHEETS_CONFIG.API_URL + '?action=getProvincePricing&province=' + encodeURIComponent('Hướng dẫn'), { redirect: 'follow' })
-        .then(function (r) { return r.json(); })
-        .then(function (data) { renderGenericSheetTable(data.rows, 'prGuideWrap'); })
-        .catch(function (e) { document.getElementById('prGuideWrap').textContent = 'Không tải được.'; console.error(e); });
+      PricingRef.renderGuide(document.getElementById('prGuideWrap'));
     }
     function loadSourcesOnce() {
       if (referenceLoaded.sources) return;
       referenceLoaded.sources = true;
-      fetch(GSHEETS_CONFIG.API_URL + '?action=getProvincePricing&province=' + encodeURIComponent('Nguồn'), { redirect: 'follow' })
-        .then(function (r) { return r.json(); })
-        .then(function (data) { renderGenericSheetTable(data.rows, 'prSourcesWrap', 4); })
-        .catch(function (e) { document.getElementById('prSourcesWrap').textContent = 'Không tải được.'; console.error(e); });
+      PricingRef.renderSources(document.getElementById('prSourcesWrap'));
     }
     var baseActivateTab2 = activateTab;
     activateTab = function (tab) {
