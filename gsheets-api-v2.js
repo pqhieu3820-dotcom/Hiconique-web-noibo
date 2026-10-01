@@ -828,9 +828,38 @@ function handleRequest(e) {
     }
     return out;
   }
-  const res = handleRequestImpl_(e);
+  const t0 = Date.now(); LOCK_WAIT_MS_ = 0;
+  let res = action === 'batchOps' ? handleBatchOps_(params) : handleRequestImpl_(e);
   if (action && action !== 'ping' && action !== 'resolveMapLink') bumpReadCacheVersion_();   // có ghi → mọi cache đọc cũ mất hiệu lực
+  // 2026-10-01: đo thời gian xử lý phía máy chủ, gắn vào phản hồi ghi (_ms) để client ghi log/hiển thị nghẽn ở khâu nào
+  try {
+    const total = Date.now() - t0;
+    if (action && action !== 'ping') {
+      const obj = JSON.parse(res.getContent());
+      if (obj && typeof obj === 'object' && !Array.isArray(obj)) { obj._ms = { t: total, lock: LOCK_WAIT_MS_ }; res = jsonOut_(JSON.stringify(obj)); }
+      if (total > 5000) Logger.log('SLOW ' + action + ' ' + total + 'ms (cho khoa ' + LOCK_WAIT_MS_ + 'ms)');
+    }
+  } catch (err) { /* không gắn được thì thôi */ }
   return res;
+}
+
+// 2026-10-01: GỘP NHIỀU LỆNH GHI trong 1 lần gọi (client gửi tối đa ~12 lệnh trong hàng đợi): mỗi lần gọi Web App tốn nhiều giây cố định
+// (khởi động + mở bảng tính + chuyển hướng), nên 12 lệnh riêng = ~100s, gộp = ~15s. Chạy TUẦN TỰ đúng thứ tự (mỗi lệnh tự lấy/nhả khoá),
+// bảng tính chỉ mở 1 lần. Quá 40s thì dừng, các lệnh còn lại trả skipped để client gửi lại ở lượt sau.
+function handleBatchOps_(params) {
+  const out = { results: [] };
+  let ops = [];
+  try { ops = JSON.parse(params.data || '[]'); } catch (err) { return jsonOut_(JSON.stringify({ error: 'batchOps: du lieu loi' })); }
+  const t0 = Date.now();
+  ops.forEach(function (op) {
+    if (!op || !op.action || /^(getBundle|batchOps|ping)$/.test(op.action) || isReadAction_(op.action)) { out.results.push({ error: 'batchOps: lenh khong hop le' }); return; }
+    if (Date.now() - t0 > 40000) { out.results.push({ skipped: true }); return; }
+    try {
+      const r = JSON.parse(handleRequestImpl_({ parameter: { action: op.action, id: op.id || '', data: JSON.stringify(op.data || {}) } }).getContent());
+      out.results.push(r && r.error ? { error: String(r.error) } : { ok: true });
+    } catch (err) { out.results.push({ error: String((err && err.message) || err) }); }
+  });
+  return jsonOut_(JSON.stringify(out));
 }
 
 function handleRequestImpl_(e) {
@@ -845,7 +874,7 @@ function handleRequestImpl_(e) {
     // dùng cùng lúc), dùng chung đường đi với các action đọc/ghi thật sẽ khiến
     // ping bị timeout giả, offline.js hiểu nhầm thành mất mạng dù mạng vẫn tốt.
     if (action === 'ping') {
-      return ContentService.createTextOutput(JSON.stringify({ ok: true, ts: Date.now() })).setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, ts: Date.now(), caps: ['batchOps'] })).setMimeType(ContentService.MimeType.JSON);
     }
 
     // 2026-09-27: đổi link chia sẻ Google Maps (maps.app.goo.gl/...) ra toạ độ cho ô "dán link"
@@ -1621,14 +1650,17 @@ function findRowById_(sheet, id) {
   return -1;
 }
 
+var LOCK_WAIT_MS_ = 0;   // tổng thời gian chờ khoá trong 1 lần thực thi (báo về client qua _ms để biết nghẽn ở đâu)
 function withScriptLock_(fn) {
   var lock = LockService.getScriptLock();
   var acquired = false;
+  var tLock0 = Date.now();
   try {
     acquired = lock.tryLock(20000);
   } catch (e) {
     Logger.log('withScriptLock_: tryLock loi — ' + e);
   }
+  LOCK_WAIT_MS_ += Date.now() - tLock0;
   if (!acquired) Logger.log('withScriptLock_: khong lay duoc khoa sau 10s, van chay tiep de tranh treo request nguoi dung.');
   try {
     return fn();
@@ -1713,14 +1745,16 @@ function addData_impl(ss, sheetName, data) {
 function updateData_impl(ss, sheetName, id, updates) {
   const sheet = getOrCreateSheet(ss, sheetName);
   const headers = ensureSchemaColumns(sheet, sheetName, getHeaders(sheet), updates);
-  const data = getAllData(ss, sheetName);
-  const index = data.findIndex(function (row) { return row.id === id; });
-  if (index === -1) return { error: 'Not found: ' + id };
-  const rowNum = findRowById_(sheet, id);   // số dòng THẬT tại lúc ghi (không dùng index cũ từ getAllData)
+  // 2026-10-01 (hiệu năng): KHÔNG đọc cả sheet nữa (getAllData tốn vài giây/sheet lớn) — chỉ tìm số dòng theo Mã rồi ghi.
+  // Chỉ riêng sheet Thành viên khi đổi trạng thái mới cần bản ghi cũ (so sánh trạng thái trước/sau).
+  const rowNum = findRowById_(sheet, id);   // số dòng THẬT tại lúc ghi
   if (rowNum === -1) return { error: 'Not found: ' + id };
+  const oldObj = (sheetName === SHEETS.members && updates.status !== undefined) ? (getDataById(ss, sheetName, id) || {}) : {};
   if (headers.indexOf(enToViHeader(sheetName, 'updatedAt')) !== -1) {
     updates.updatedAt = new Date().toISOString();
   }
+  // 2026-10-01 (hiệu năng): gom các ô thường theo cụm cột liền nhau → mỗi cụm 1 lệnh setValues (trước đây mỗi ô 1 lệnh setValue, ~0,1–0,3s/ô).
+  const plainCols = {};
   headers.forEach(function (h, i) {
     const enKey = viToEnHeader(sheetName, h);
     if (updates[enKey] !== undefined) {
@@ -1730,7 +1764,7 @@ function updateData_impl(ss, sheetName, id, updates) {
       val = toRealDateIfDateField(val, enKey);
       const cell = sheet.getRange(rowNum, i + 1);
       if (val instanceof Date) {
-        cell.setValue(val);
+        plainCols[i] = val;
       } else if (typeof val === 'string' && val && needsPlainTextFormat(enKey)) {
         writeTextForcedCell(cell, val);
       } else {
@@ -1740,10 +1774,22 @@ function updateData_impl(ss, sheetName, id, updates) {
         // đúng `false` (chỉ ra `""`), làm hỏng mọi so sánh `=== false` ở phía
         // client. Coalesce đúng kiểu: chỉ thay bằng '' khi thật sự undefined/null.
         const forced = forceTextIfDateLike(val, enKey);
-        cell.setValue(forced !== undefined && forced !== null ? forced : '');
+        plainCols[i] = forced !== undefined && forced !== null ? forced : '';
       }
     }
   });
+  (function flushPlain_() {
+    const idxs = Object.keys(plainCols).map(Number).sort(function (a, b) { return a - b; });
+    let s = 0;
+    while (s < idxs.length) {
+      let e2 = s;
+      while (e2 + 1 < idxs.length && idxs[e2 + 1] === idxs[e2] + 1) e2++;
+      const vals = [];
+      for (let k = s; k <= e2; k++) vals.push(plainCols[idxs[k]]);
+      sheet.getRange(rowNum, idxs[s] + 1, 1, vals.length).setValues([vals]);
+      s = e2 + 1;
+    }
+  })();
   // 2026-09-29: đổi Cấp bậc qua web → tiền tố Mã NV tự đổi theo (xem
   // syncMemberIdPrefixForRow_). Kết quả trả về mang id MỚI để client biết.
   if (sheetName === SHEETS.members && updates.level !== undefined) {
@@ -1756,10 +1802,10 @@ function updateData_impl(ss, sheetName, id, updates) {
   // lại đủ 48h mới, không kế thừa đồng hồ cũ. Cùng cơ chế với việc admin sửa
   // tay cột "Trạng thái" thẳng trên Sheet — xem onEdit()/stampMemberRejection().
   if (sheetName === SHEETS.members && updates.status !== undefined) {
-    const oldStatus = data[index].status;
+    const oldStatus = oldObj.status;
     const newStatus = updates.status;
     if (newStatus === 'rejected' && oldStatus !== 'rejected') {
-      stampMemberRejection(ss, sheet, headers, rowNum, id, data[index].name);
+      stampMemberRejection(ss, sheet, headers, rowNum, id, oldObj.name);
     } else if (oldStatus === 'rejected' && newStatus !== 'rejected') {
       clearMemberRejection(sheet, headers, rowNum);
     }
@@ -1769,7 +1815,7 @@ function updateData_impl(ss, sheetName, id, updates) {
       clearMemberInactive_(sheet, headers, rowNum);
     }
   }
-  return Object.assign({}, data[index], updates);
+  return Object.assign({}, oldObj, { id: id }, updates);
 }
 
 // 2026-09-22: cập nhật NHIỀU dòng cùng lúc trong 1 lần thực thi (VD tự ẩn
@@ -1791,9 +1837,6 @@ function updateDataBatch(ss, sheetName, updatesList) {
 function deleteData_impl(ss, sheetName, id) {
   const sheet = findSheet(ss, sheetName);
   if (!sheet) return { error: 'Sheet not found: ' + sheetName };
-  const data = getAllData(ss, sheetName);
-  const index = data.findIndex(function (row) { return row.id === id; });
-  if (index === -1) return { error: 'Not found' };
   const delRow = findRowById_(sheet, id);
   if (delRow === -1) return { error: 'Not found' };
   sheet.deleteRow(delRow);

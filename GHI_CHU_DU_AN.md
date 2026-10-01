@@ -2184,3 +2184,10 @@ Dòng chèn mới ở đầu bảng thừa hưởng dropdown Danh mục cũ từ
 ## 2026-10-01 — Xuất Word/PDF cho Sổ tài chính & Đơn hàng
 - `debt-docx.js` thêm: **Phiếu thu/chi từ giao dịch** (nút "Phiếu thu/Phiếu chi" mỗi dòng ở Giao dịch; Mẫu 01-TT / 02-TT, TT 133/2016/TT-BTC; tự lấy số phiếu, TK quỹ, TK đối ứng, bằng chữ) và 4 chứng từ đơn hàng (menu "Word/PDF…" ở trang Đơn hàng): Bảng kê hàng hóa dịch vụ kiêm đề nghị thanh toán (nội dung theo Điều 10 NĐ 123/2020/NĐ-CP, ghi rõ KHÔNG thay hóa đơn GTGT điện tử), Bảng báo giá, Biên bản giao nhận – nghiệm thu, Phiếu thu phần đã thu.
 - orders.html nạp thêm payslip-docx.js + debt-docx.js. sw v146.
+
+
+## 2026-10-01 — Tăng tốc ghi/đồng bộ (Apps Script v120)
+- Chẩn đoán: file API (~250KB) KHÔNG phải nguyên nhân; chậm do (1) mỗi lệnh ghi = 1 lần gọi Web App ~9s cố định, hàng đợi gửi tuần tự; (2) `updateData_impl` đọc CẢ sheet (`getAllData`) + ghi từng ô riêng; (3) `deleteData_impl` cũng đọc cả sheet.
+- Máy chủ: `batchOps` (gộp tối đa 12 lệnh ghi/1 lần gọi, chạy tuần tự, mở bảng tính 1 lần, dừng sau 40s); `updateData_impl` chỉ tìm dòng theo Mã (`findRowById_`) và ghi theo cụm cột liền nhau (1 `setValues`/cụm); `deleteData_impl` bỏ đọc cả sheet; mọi phản hồi ghi kèm `_ms:{t,lock}` (tổng ms, ms chờ khoá) + log `SLOW` khi >5s.
+- Client (`task-data.js`): hàng đợi gửi `batchOps` khi có ≥2 lệnh chưa lỗi; lệnh lỗi tự quay về gửi đơn lẻ; máy chủ cũ không có batchOps → tự dùng cách cũ (`batchSupported_`). Console cảnh báo `[sync] … mất Nms (chờ khoá Mms)` nếu >6s; `HiconiqueMetrics.server` giữ số đo gần nhất.
+- Đọc: đã có getBundle + mã băm + cache 15s từ trước (không đổi). sw v147.

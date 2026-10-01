@@ -157,6 +157,7 @@ function diagnoseWrite_(op, urlLen, usePost, err, cb) {
     }, function () { cb('KHÔNG có kết nối Internet ra ngoài (mạng/WiFi/proxy)'); });
   });
 }
+var batchSupported_ = null;   // null = chưa biết; false = máy chủ chưa có batchOps
 function processWriteQueue_() {
   if (writeQueueBusy) return;
   compactWriteQueue_();
@@ -209,6 +210,35 @@ function processWriteQueue_() {
 
   var controller = new AbortController();
   var timer = setTimeout(function () { controller.abort(); }, WRITE_TIMEOUT_MS);
+  // 2026-10-01: GỘP NHIỀU LỆNH trong hàng đợi vào 1 lần gọi (action batchOps) — mỗi lần gọi Apps Script mất ~9s cố định nên gửi từng lệnh rất chậm.
+  // Chỉ gộp lệnh chưa lỗi lần nào (tries=0); lệnh lỗi/được thử lại vẫn đi đường đơn lẻ với đầy đủ cách xử lý cũ. Máy chủ cũ chưa có batchOps → tự quay về gửi đơn lẻ.
+  if (!op.tries && batchSupported_ !== false) {
+    var grp = [];
+    for (var gi = 0; gi < q.length && grp.length < 12; gi++) { if (q[gi].tries) break; grp.push(q[gi]); }
+    var body = JSON.stringify(grp.map(function (x) { return { action: x.action, id: x.id, data: x.data }; }));
+    if (grp.length >= 2 && body.length < 60000) {
+      var bc = new AbortController(), bt = setTimeout(function () { bc.abort(); }, WRITE_TIMEOUT_MS + 30000);
+      var bform = new URLSearchParams(); bform.set('action', 'batchOps'); bform.set('data', body);
+      fetch(GSHEETS_CONFIG.API_URL, { method: 'POST', body: bform, redirect: 'follow', signal: bc.signal })
+        .then(function (r) { return r.json(); })
+        .then(function (res) {
+          clearTimeout(bt); clearTimeout(timer);
+          if (!res || !Array.isArray(res.results)) { batchSupported_ = false; writeQueueBusy = false; scheduleWriteQueue_(50); return; }   // máy chủ cũ
+          batchSupported_ = true;
+          if (res._ms) { HiconiqueMetrics.server = res._ms; if (res._ms.t > 6000) console.warn('[sync] batch ' + grp.length + ' lệnh mất ' + res._ms.t + 'ms (chờ khoá ' + res._ms.lock + 'ms)'); }
+          writeQueueBusy = false;
+          var cur = readWriteQueue_(), done = {}, n = 0;
+          grp.forEach(function (g, i) { var r = res.results[i] || {}; if (r.ok || (/^delete/i.test(g.action) && /not found/i.test(String(r.error || '')))) { done[g.qid] = true; n++; } else if (r.error) { done['!' + g.qid] = true; } });
+          cur = cur.filter(function (x) { return !done[x.qid]; }).map(function (x) { if (done['!' + x.qid]) x.tries = (x.tries || 0) + 1; return x; });   // lỗi → thử lại đơn lẻ (tries>0)
+          saveWriteQueue_(cur);
+          if (n) { lastWriteOkAt = Date.now(); HiconiqueMetrics.writeMs.push(Math.round((Date.now() - t0Write) / n)); if (HiconiqueMetrics.writeMs.length > 5) HiconiqueMetrics.writeMs.shift(); }
+          emitSyncState_({ event: 'ok', action: 'batchOps', id: '' });
+          if (cur.length) scheduleWriteQueue_(50); else emitSyncState_();
+        })
+        .catch(function (e) { clearTimeout(bt); finish(false, e, false); });
+      return;
+    }
+  }
   try {
     var params = '?action=' + encodeURIComponent(op.action);
     if (op.id) params += '&id=' + encodeURIComponent(op.id);
@@ -262,6 +292,7 @@ function processWriteQueue_() {
           finish(false, result.error, !/not found/i.test(String(result.error)));
           return;
         }
+        if (result && result._ms) { HiconiqueMetrics.server = result._ms; if (result._ms.t > 6000) console.warn('[sync] ' + op.action + ' mất ' + result._ms.t + 'ms (chờ khoá ' + result._ms.lock + 'ms)'); }
         finish(true);
       })
       .catch(function (e) {
