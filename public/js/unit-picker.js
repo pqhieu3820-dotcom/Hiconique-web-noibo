@@ -48,7 +48,7 @@
 
   var CSS = '#upPop{position:fixed;z-index:810;max-height:340px;overflow-y:auto;background:var(--color-surface);border:1px solid var(--color-border);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.35);font:400 .8125rem Inter,sans-serif;color:var(--color-text);padding:8px 10px 10px;width:340px}' +
     '#upPop .gh{margin:8px 2px 5px;font-size:.625rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-muted)}#upPop .gh:first-child{margin-top:0}' +
-    '#upPop .wrap{display:flex;flex-wrap:wrap;gap:5px}#upPop .it{padding:5px 11px;border-radius:999px;border:1px solid var(--color-border);background:var(--color-bg);font-family:"JetBrains Mono",monospace;font-size:.8125rem;font-weight:600;cursor:pointer;color:var(--color-text)}' +
+    '#upPop .wrap{display:flex;flex-wrap:wrap;gap:5px}#upPop .it{padding:5px 11px;border-radius:999px;border:1px solid var(--color-border);background:var(--color-bg);font-family:Inter,sans-serif;font-size:.8125rem;font-weight:500;cursor:pointer;color:var(--color-text)}' +
     '#upPop .it:hover,#upPop .it.on{border-color:var(--color-bronze);background:color-mix(in srgb,var(--color-bronze) 16%,transparent);color:var(--color-bronze)}' +
     '#upPop .add{display:block;width:100%;margin-top:8px;padding:8px 10px;border-radius:9px;border:1px dashed var(--color-bronze);background:none;color:var(--color-bronze);font:600 .75rem Inter,sans-serif;cursor:pointer;text-align:left}#upPop .add:hover,#upPop .add.on{background:color-mix(in srgb,var(--color-bronze) 12%,transparent)}' +
     '#upPop .em{padding:4px 2px;color:var(--color-text-muted);font-size:.75rem}';

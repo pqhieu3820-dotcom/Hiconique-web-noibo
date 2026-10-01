@@ -357,7 +357,7 @@
       tr.innerHTML =
         '<td><input class="od-input mono" data-i="code" value="' + escapeHtml(prefill.code || '') + '" placeholder="VD: W03"></td>' +
         '<td><input class="od-input" data-i="name" value="' + escapeHtml(prefill.name || '') + '" placeholder="Tên hạng mục"></td>' +
-        '<td><input class="od-input" data-i="unit" autocomplete="off" value="' + escapeHtml(prefill.unit || '') + '" placeholder="Chọn / gõ…"></td>' +
+        '<td><input class="od-input" data-i="unit" autocomplete="off" value="' + escapeHtml(prefill.unit || '') + '" placeholder="Đơn vị"></td>' +
         '<td class="num"><input class="od-input mono" data-i="qty" type="number" min="0" step="1" value="' + (Number(prefill.qty) || 1) + '"></td>' +
         '<td class="num"><input class="od-input mono" data-i="price" type="text" inputmode="numeric" data-money-input value="' + (prefill.price ? HiconiqueMoney.format(prefill.price) : '') + '"></td>' +
         '<td class="num od-amount" data-i="lineTotal">0</td>' +

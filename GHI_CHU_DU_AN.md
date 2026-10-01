@@ -2146,3 +2146,7 @@ Bỏ dropdown "Danh mục có sẵn" (thừa vì đã gõ tên là tra giá); th
 ### (du) 01/10/2026 — Ô Đơn vị: gọn lại + nút "Thêm đơn vị"
 - `unit-picker.js` viết lại: danh sách chỉ còn **ký hiệu gọn** (m2 · m3 · g · kg · tấn · buổi · bộ…) dạng nút chia nhóm, bỏ hết chữ giải thích và các biến thể dài (m2 sàn, m2 VL, bao 25kg…). Gõ 1–2 chữ vẫn lọc (không dấu, hiểu tên gọi như "met vuong").
 - Gõ đơn vị chưa có → hiện nút **"+ Thêm “…” vào bảng đơn vị"** (bấm hoặc Enter): lưu chung cho cả công ty vào sheet mới **TC-Đơn vị tính** (nhóm TC-; sheet được tạo khi có đơn vị đầu tiên → chạy lại `sortSheetsByPrefix()` nếu nó nằm cuối), hiện ở nhóm "Đơn vị riêng của công ty". `TaskManager.loadUnits/getCustomUnits/addCustomUnit`. Apps Script **v117** (getUnits/addUnit/updateUnit/deleteUnit). Muốn sửa/xóa đơn vị đã thêm: sửa thẳng trên Sheet. sw v140.
+
+
+### (dv) 01/10/2026 — Ô Đơn vị: đổi font nút về Inter
+Nút đơn vị trong bảng gợi ý dùng font Inter (weight 500) như phần còn lại của web, thay cho font mono đậm; placeholder ô còn "Đơn vị". sw v141.
