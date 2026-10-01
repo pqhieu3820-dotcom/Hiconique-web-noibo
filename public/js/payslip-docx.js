@@ -82,13 +82,14 @@ var PayslipDocx = (function () {
     };
     var rows = [new D.TableRow({ tableHeader: true, children: [cell('STT', { bold: true, align: D.AlignmentType.CENTER, w: 8, fill: 'E7E6E6' }), cell('Khoản mục', { bold: true, align: D.AlignmentType.CENTER, w: 30, fill: 'E7E6E6' }), cell('Diễn giải', { bold: true, align: D.AlignmentType.CENTER, w: 36, fill: 'E7E6E6' }), cell('Số tiền (đồng)', { bold: true, align: D.AlignmentType.CENTER, w: 26, fill: 'E7E6E6' })] })];
     var items = [
-      ['1', 'Lương theo ngày công', (function () { var sd = d.stdDays || 26, wp = d.workPay != null ? d.workPay : d.baseSalary, calc = Math.round((Number(d.baseSalary) || 0) / sd * Math.min(Number(d.workDays) || 0, sd)); return Math.abs(wp - calc) <= 1 ? 'Lương cơ bản ' + fmt(d.baseSalary) + ' ÷ ' + sd + ' công × ' + (d.workDays || 0) + ' ngày công (' + (Number(d.totalHours) || 0).toFixed(1) + ' giờ làm)' : 'Ngày công thực tế: ' + (d.workDays || 0) + ' ngày'; })(), fmt(d.workPay != null ? d.workPay : d.baseSalary)],
+      ['1', 'Lương theo ngày công', (function () { var sd = d.stdDays || 26, wp = d.workPay != null ? d.workPay : d.baseSalary, calc = Math.round((Number(d.baseSalary) || 0) / sd * Math.min(Number(d.workDays) || 0, sd)); return Math.abs(wp - calc) <= 1 ? 'Tổng lương hợp đồng ' + fmt(d.baseSalary) + ' ÷ ' + sd + ' công × ' + (d.workDays || 0) + ' ngày công (' + (Number(d.totalHours) || 0).toFixed(1) + ' giờ làm)' : 'Ngày công thực tế: ' + (d.workDays || 0) + ' ngày'; })(), fmt(d.workPay != null ? d.workPay : d.baseSalary)],
+      ].concat((d.breakdown && d.breakdown.items || []).map(function (x, i) { return ['1.' + (i + 1), '   ↳ ' + x.n, 'Đủ tháng ' + fmt(x.f) + ' × ' + (d.breakdown.days || 0) + '/' + (d.breakdown.std || 26) + ' công', fmt(x.e), true]; })).concat([
       ['2', 'Tiền làm thêm giờ (OT)', (Number(d.otHours) || 0).toFixed(1) + ' giờ × ' + fmt(d.otRate) + ' đồng/giờ (hệ số 1,5)', fmt(d.otAmount)],
       ['3', 'Hoa hồng dự án', 'Theo bảng hoa hồng tháng ' + mmYYYY(d.month), fmt(d.commissionAmount)],
       ['4', 'Thưởng khác', d.otherBonusNote || '', fmt(d.otherBonus)],
       ['5', 'Các khoản khấu trừ (−)', d.deductionNote || '', d.deduction ? '(' + fmt(d.deduction) + ')' : '0']
-    ];
-    items.forEach(function (x) { rows.push(new D.TableRow({ children: [cell(x[0], { align: D.AlignmentType.CENTER }), cell(x[1]), cell(x[2], { italic: true }), cell(x[3], { align: D.AlignmentType.RIGHT })] })); });
+    ]).concat(d.bhEmployee ? [['6', 'BHXH, BHYT, BHTN người lao động (−)', '10,5% × lương đóng BH ' + fmt(d.breakdown ? d.breakdown.bhBase : 0) + ' đồng', '(' + fmt(d.bhEmployee) + ')']] : []);
+    items.forEach(function (x) { var sub = !!x[4]; rows.push(new D.TableRow({ children: [cell(x[0], { align: D.AlignmentType.CENTER, italic: sub }), cell(x[1], { italic: sub }), cell(x[2], { italic: true }), cell(x[3], { align: D.AlignmentType.RIGHT, italic: sub })] })); });
     rows.push(new D.TableRow({ children: [new D.TableCell({ borders: allBorders, columnSpan: 3, margins: { top: 70, bottom: 70, left: 100, right: 100 }, shading: { type: D.ShadingType.CLEAR, color: 'auto', fill: 'F2F2F2' }, children: [P(R('TỔNG SỐ TIỀN ĐỀ NGHỊ THANH TOÁN', { bold: true, size: 24 }), { align: D.AlignmentType.CENTER, after: 0 })] }), cell(fmt(d.totalAmount), { bold: true, align: D.AlignmentType.RIGHT, fill: 'F2F2F2' })] }));
     var table = new D.Table({ width: { size: 100, type: W.PERCENTAGE }, borders: { top: line, bottom: line, left: line, right: line, insideHorizontal: line, insideVertical: line }, rows: rows });
 

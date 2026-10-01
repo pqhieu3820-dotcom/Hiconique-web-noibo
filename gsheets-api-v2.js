@@ -33,6 +33,7 @@ const SHEETS = {
   payslips: 'TLCC-Phiếu lương',
   commissions: 'TLCC-Hoa hồng dự án',
   commissionRates: 'TLCC-Mức hoa hồng',
+  salaryComponents: 'TLCC-Cơ cấu lương',   // 2026-10-01: danh mục chia nhỏ lương (BH, hỗ trợ xăng xe/điện thoại/ăn trưa…) — nằm cạnh nhóm TLCC-
   priceCatalog: 'TC-Bảng giá dịch vụ',
   financeEntries: 'TC-Tài chính công ty',
   receivables: 'TC-Công nợ khách hàng',
@@ -269,7 +270,12 @@ const FIELD_MAP = {
     ['Tiền hoa hồng', 'commissionAmount'], ['Thưởng khác', 'otherBonus'], ['Ghi chú thưởng', 'otherBonusNote'],
     ['Khấu trừ', 'deduction'], ['Ghi chú khấu trừ', 'deductionNote'], ['Thực lãnh', 'totalAmount'],
     ['Trạng thái', 'status'], ['Ghi chú', 'note'], ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'],
-    ['Ngày cập nhật', 'updatedAt'], ['Ngày duyệt', 'reviewedAt'], ['Mã người duyệt', 'reviewerId']
+    ['Ngày cập nhật', 'updatedAt'], ['Ngày duyệt', 'reviewedAt'], ['Mã người duyệt', 'reviewerId'],
+    ['Khấu trừ BH người lao động', 'bhEmployee'], ['Chi tiết cơ cấu lương', 'breakdown']
+  ],
+  salaryComponents: [
+    ['Mã', 'id'], ['Mã khoản', 'code'], ['Tên khoản', 'name'], ['Nhóm', 'kind'], ['Mức đủ tháng', 'amount'], ['Đóng BH', 'insured'],
+    ['Trần miễn thuế', 'taxCap'], ['Bật', 'active'], ['Thứ tự', 'order'], ['Ghi chú / cơ sở pháp lý', 'note'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
   ],
   commissions: [
     ['Mã dòng', 'id'], ['Dự án', 'projectId'], ['Mã thành viên', 'memberId'], ['Giá trị dự án', 'projectValue'],
@@ -1006,6 +1012,14 @@ function handleRequestImpl_(e) {
       result = updateData(ss, SHEETS.commissions, params.id, JSON.parse(params.data));
     } else if (action === 'deleteCommission') {
       result = deleteData(ss, SHEETS.commissions, params.id);
+    } else if (action === 'getSalaryComponents') {
+      result = getAllData(ss, SHEETS.salaryComponents);
+    } else if (action === 'addSalaryComponent') {
+      result = addData(ss, SHEETS.salaryComponents, JSON.parse(params.data));
+    } else if (action === 'updateSalaryComponent') {
+      result = updateData(ss, SHEETS.salaryComponents, params.id, JSON.parse(params.data));
+    } else if (action === 'deleteSalaryComponent') {
+      result = deleteData(ss, SHEETS.salaryComponents, params.id);
     } else if (action === 'getCommissionRates') {
       result = getAllData(ss, SHEETS.commissionRates);
     } else if (action === 'addCommissionRate') {

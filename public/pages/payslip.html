@@ -22,6 +22,7 @@
   <script src="/js/task-data.js"></script>
   <script src="/js/auth.js"></script>
   <script src="/js/money-input.js"></script>
+  <script src="/js/salary-structure.js"></script>
   <script src="/js/payslip-docx.js"></script>
   <style>
     :root {
@@ -104,6 +105,12 @@
     .pl-breakdown-row:last-child { border-bottom: none; }
     .pl-breakdown-row span:last-child { font-family: 'JetBrains Mono', monospace; color: var(--pl-text); font-weight: 500; }
     .pl-breakdown-row.minus span:last-child { color: var(--pl-danger); }
+    .pl-bd-head { background: color-mix(in srgb, var(--pl-bronze) 8%, transparent); font-weight: 600; }
+    .pl-bd-sub { font-size: 0.8125rem; }
+    .pl-bd-sub span:first-child { padding-left: 14px; color: var(--pl-muted); }
+    .pl-breakdown-row span span { font-family: inherit !important; font-weight: 400 !important; color: var(--pl-muted) !important; }
+    .pl-bd-note { font-size: 0.75rem; color: var(--pl-muted); margin: 0 0 14px; line-height: 1.55; }
+    .pl-bd-warn { color: var(--pl-danger); }
     .pl-total-row {
       display: flex; align-items: center; justify-content: space-between; padding: 16px 20px;
       background: rgba(176, 141, 87, 0.08); border-radius: 12px; margin-bottom: 20px;
@@ -219,7 +226,7 @@
     <div id="plFormArea"></div>
 
     <div class="pl-salary-card" id="plSalaryCard" style="display:none;">
-      <div class="pl-list-head">Lương cơ bản nhân viên</div>
+      <div class="pl-list-head" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;"><span>Tổng lương hợp đồng nhân viên <span style="font-weight:400;color:var(--pl-muted);font-size:.8125rem;">(chia nhỏ theo cơ cấu lương)</span></span><button type="button" class="pl-btn pl-btn-ghost pl-btn-sm" id="plStructBtn">Cơ cấu lương &amp; pháp lý</button></div>
       <div id="plSalaryRows"></div>
     </div>
 
@@ -265,13 +272,14 @@
       var existing = TaskManager.getPayslips({ memberId: user.id, month: month })[0];
       var member = { name: user.name, role: user.role, id: user.id, bankAccount: user.bankAccount };
       if (existing) {
-        return { member: member, month: month, baseSalary: existing.baseSalary, workPay: slipWorkPay(existing), stdDays: STD_DAYS, workDays: existing.workDays, totalHours: existing.totalHours, otHours: existing.otHours, otRate: existing.otRate, otAmount: existing.otAmount, commissionAmount: existing.commissionAmount, otherBonus: existing.otherBonus, otherBonusNote: existing.otherBonusNote, deduction: existing.deduction, deductionNote: existing.deductionNote, totalAmount: existing.totalAmount, note: existing.note };
+        return { member: member, month: month, baseSalary: existing.baseSalary, workPay: slipWorkPay(existing), stdDays: STD_DAYS, workDays: existing.workDays, totalHours: existing.totalHours, otHours: existing.otHours, otRate: existing.otRate, otAmount: existing.otAmount, commissionAmount: existing.commissionAmount, otherBonus: existing.otherBonus, otherBonusNote: existing.otherBonusNote, deduction: existing.deduction, deductionNote: existing.deductionNote, bhEmployee: Number(existing.bhEmployee) || 0, breakdown: SalaryStructure.parseSnapshot(existing.breakdown), totalAmount: existing.totalAmount, note: existing.note };
       }
       var stats = TaskManager.getMonthlyTimesheetStats(user.id, month), base = Number(user.baseSalary) || 0, rate = computeOtRate(base), comm = TaskManager.getMemberCommissionTotal(user.id, month);
       var fv = function (id) { var e = document.getElementById(id); return e ? e.value : ''; };
       var otMan = parseFloat(fv('plOtManual')) || 0, bonus = (typeof HiconiqueMoney !== 'undefined' && fv('plOtherBonus')) ? HiconiqueMoney.parse(fv('plOtherBonus')) : 0, ded = (typeof HiconiqueMoney !== 'undefined' && fv('plDeduction')) ? HiconiqueMoney.parse(fv('plDeduction')) : 0;
       var otHours = stats.overtimeHours + otMan, otAmount = Math.round(otHours * rate);
-      return { member: member, month: month, baseSalary: base, workPay: computeWorkPay(base, stats.workDays), stdDays: STD_DAYS, workDays: stats.workDays, totalHours: stats.totalHours, otHours: otHours, otRate: Math.round(rate), otAmount: otAmount, commissionAmount: comm, otherBonus: bonus, otherBonusNote: fv('plOtherBonusNote').trim(), deduction: ded, deductionNote: fv('plDeductionNote').trim(), totalAmount: Math.round(computeWorkPay(base, stats.workDays) + otAmount + comm + bonus - ded), note: fv('plNote').trim() };
+      var bd = computeBd(base, stats.workDays), bhEmp = bhOf(bd);
+      return { member: member, month: month, baseSalary: base, workPay: bd.workPay, bhEmployee: bhEmp, breakdown: SalaryStructure.parseSnapshot(SalaryStructure.snapshot(bd, SalaryStructure.dedOn(TaskManager.getSalaryComponents()))), stdDays: STD_DAYS, workDays: stats.workDays, totalHours: stats.totalHours, otHours: otHours, otRate: Math.round(rate), otAmount: otAmount, commissionAmount: comm, otherBonus: bonus, otherBonusNote: fv('plOtherBonusNote').trim(), deduction: ded, deductionNote: fv('plDeductionNote').trim(), totalAmount: Math.round(bd.workPay + otAmount + comm + bonus - ded - bhEmp), note: fv('plNote').trim() };
     }
     (function mountDocxButtons() {
       var nav = monthInput.closest('.hq-month-nav') || (monthInput.parentNode && monthInput.parentNode.querySelector('.hq-month-nav')) || document.querySelector('.hq-month-nav');
@@ -305,7 +313,9 @@
     // đều suy ra được từ tổng − OT − hoa hồng − thưởng + khấu trừ (phiếu cũ = lương cơ bản như trước).
     var STD_DAYS = TaskManager.STANDARD_MONTHLY_HOURS / 8;
     function computeWorkPay(baseSalary, workDays) { return Math.round((Number(baseSalary) || 0) / STD_DAYS * Math.min(Number(workDays) || 0, STD_DAYS)); }
-    function slipWorkPay(s) { return Math.round((Number(s.totalAmount) || 0) - (Number(s.otAmount) || 0) - (Number(s.commissionAmount) || 0) - (Number(s.otherBonus) || 0) + (Number(s.deduction) || 0)); }
+    function computeBd(base, days) { return SalaryStructure.compute(base, days, TaskManager.getSalaryComponents()); }
+    function bhOf(bd) { return SalaryStructure.dedOn(TaskManager.getSalaryComponents()) ? bd.bhEmployee : 0; }
+    function slipWorkPay(s) { var sn = SalaryStructure.parseSnapshot(s.breakdown); if (sn) return Math.round(Number(sn.workPay) || 0); return Math.round((Number(s.totalAmount) || 0) - (Number(s.otAmount) || 0) - (Number(s.commissionAmount) || 0) - (Number(s.otherBonus) || 0) + (Number(s.deduction) || 0)); }
     function workPayNote(base, days) { return 'Lương cơ bản ' + fmt(base) + ' ÷ ' + STD_DAYS + ' công × ' + days + ' ngày công'; }
 
     function computeOtRate(baseSalary) {
@@ -323,7 +333,7 @@
       var stats = TaskManager.getMonthlyTimesheetStats(user.id, month);
       var baseSalary = Number(user.baseSalary) || 0;
       var commissionAmount = TaskManager.getMemberCommissionTotal(user.id, month);
-      var workPay = computeWorkPay(baseSalary, stats.workDays);
+      var bd = computeBd(baseSalary, stats.workDays), workPay = bd.workPay, bhEmployee = bhOf(bd);
 
       // Top stat tiles reflect the selected month, for the logged-in user.
       document.getElementById('plBaseSalary').textContent = fmt(baseSalary);
@@ -336,7 +346,7 @@
             '<div>Phiếu lương tháng ' + month + ' đã được gửi — trạng thái: ' +
               '<span class="pl-badge ' + existing.status + '">' + statusLabel(existing.status) + '</span></div>' +
             (existing.status === 'pending' ? '<button class="pl-btn pl-btn-danger pl-btn-sm" id="plCancelBtn">Huỷ phiếu</button>' : '') +
-          '</div>';
+          '</div>' + existingBreakdownHtml(existing);
         var cancelBtn = document.getElementById('plCancelBtn');
         if (cancelBtn) {
           cancelBtn.addEventListener('click', function () {
@@ -372,12 +382,15 @@
             '<div style="grid-column: span 2;"><span class="pl-field-label">Ghi chú khấu trừ</span><input type="text" class="pl-input pl-note-input" id="plDeductionNote"></div>' +
           '</div>' +
           '<div class="pl-breakdown">' +
-            '<div class="pl-breakdown-row"><span>Lương theo ngày công <span style="color:var(--pl-muted);font-size:.75rem;">(' + stats.workDays + '/' + STD_DAYS + ' công · lương cơ bản ' + fmt(baseSalary) + ')</span></span><span id="bdBase">' + fmt(workPay) + '</span></div>' +
+            '<div class="pl-breakdown-row pl-bd-head"><span>Lương theo ngày công <span style="color:var(--pl-muted);font-size:.75rem;">(' + Math.min(stats.workDays, STD_DAYS) + '/' + STD_DAYS + ' công · tổng lương hợp đồng ' + fmt(baseSalary) + ')</span></span><span id="bdBase">' + fmt(workPay) + '</span></div>' +
+            bd.items.map(function (x) { return '<div class="pl-breakdown-row pl-bd-sub"><span>↳ ' + x.name + ' <span style="color:var(--pl-muted);font-size:.75rem;">· đủ tháng ' + fmt(x.full) + ' × ' + Math.min(stats.workDays, STD_DAYS) + '/' + STD_DAYS + '</span></span><span>' + fmt(x.earned) + '</span></div>'; }).join('') +
             '<div class="pl-breakdown-row"><span>Tăng ca (OT)</span><span id="bdOt">' + fmt(Math.round(otHoursAuto * otRate)) + '</span></div>' +
             '<div class="pl-breakdown-row"><span>Hoa hồng dự án</span><span id="bdCommission">' + fmt(commissionAmount) + '</span></div>' +
             '<div class="pl-breakdown-row"><span>Thưởng khác</span><span id="bdBonus">' + fmt(0) + '</span></div>' +
             '<div class="pl-breakdown-row minus"><span>Khấu trừ</span><span id="bdDeduction">− ' + fmt(0) + '</span></div>' +
+            '<div class="pl-breakdown-row minus"><span>BHXH, BHYT, BHTN người lao động <span style="color:var(--pl-muted);font-size:.75rem;">(10,5% × lương đóng BH ' + fmt(bd.bhBase) + (stats.workDays < 14 ? ' · dưới 14 công: không đóng' : '') + ')</span></span><span id="bdBh">− ' + fmt(bhEmployee) + '</span></div>' +
           '</div>' +
+          '<div class="pl-bd-note">Doanh nghiệp đóng thêm 21,5% × ' + fmt(bd.bhBase) + ' = <b>' + fmt(bd.bhEmployer) + '</b> (không trừ vào lương). ' + (bd.warnings.length ? '<span class="pl-bd-warn">⚠ ' + bd.warnings.join(' ') + '</span>' : '<span style="color:var(--pl-success)">✓ Lương đóng BH ≥ mức tối thiểu vùng I.</span>') + '</div>' +
           '<div class="pl-total-row"><span class="pl-total-label">Tổng đề xuất thanh toán</span><span class="pl-total-value" id="plTotalPreview">' + fmt(workPay) + '</span></div>' +
           '<div><span class="pl-field-label">Ghi chú chung</span><textarea class="pl-input pl-note-input" id="plNote" rows="2" style="width:100%;" placeholder="Ghi chú thêm cho người duyệt (tuỳ chọn)"></textarea></div>' +
           '<div style="margin-top:16px; text-align:right;"><button class="pl-btn pl-btn-primary" id="plSubmitBtn">Gửi đề xuất lương</button></div>' +
@@ -389,7 +402,7 @@
         var deduction = HiconiqueMoney.parse(document.getElementById('plDeduction').value);
         var otHours = otHoursAuto + otManual;
         var otAmount = otHours * otRate;
-        var total = workPay + otAmount + commissionAmount + otherBonus - deduction;
+        var total = workPay + otAmount + commissionAmount + otherBonus - deduction - bhEmployee;
         document.getElementById('bdBase').textContent = fmt(workPay);
         document.getElementById('bdOt').textContent = fmt(Math.round(otAmount));
         document.getElementById('bdCommission').textContent = fmt(commissionAmount);
@@ -422,6 +435,8 @@
           otherBonusNote: document.getElementById('plOtherBonusNote').value.trim(),
           deduction: vals.deduction,
           deductionNote: document.getElementById('plDeductionNote').value.trim(),
+          bhEmployee: bhEmployee,
+          breakdown: SalaryStructure.snapshot(bd, SalaryStructure.dedOn(TaskManager.getSalaryComponents())),
           totalAmount: Math.round(vals.total),
           note: document.getElementById('plNote').value.trim(),
           createdBy: user.id
@@ -431,11 +446,24 @@
       });
     }
 
+    function existingBreakdownHtml(s) {
+      var sn = SalaryStructure.parseSnapshot(s.breakdown);
+      if (!sn) return '';
+      var d = Number(sn.days) || 0;
+      return '<div class="pl-form-card" style="margin-top:16px"><div class="pl-form-title">Chi tiết cơ cấu lương</div><div class="pl-breakdown">' +
+        '<div class="pl-breakdown-row pl-bd-head"><span>Lương theo ngày công (' + d + '/' + (sn.std || STD_DAYS) + ' công)</span><span>' + fmt(sn.workPay) + '</span></div>' + SalaryStructure.rowsHtml(sn.items.map(function (x) { return { n: '↳ ' + x.n, f: x.f, e: x.e }; })) +
+        '<div class="pl-breakdown-row"><span>Tăng ca (OT)</span><span>' + fmt(s.otAmount) + '</span></div><div class="pl-breakdown-row"><span>Hoa hồng dự án</span><span>' + fmt(s.commissionAmount) + '</span></div><div class="pl-breakdown-row"><span>Thưởng khác</span><span>' + fmt(s.otherBonus) + '</span></div>' +
+        '<div class="pl-breakdown-row minus"><span>Khấu trừ</span><span>− ' + fmt(s.deduction) + '</span></div><div class="pl-breakdown-row minus"><span>BHXH, BHYT, BHTN người lao động (10,5% × ' + fmt(sn.bhBase) + ')</span><span>− ' + fmt(s.bhEmployee) + '</span></div></div>' +
+        '<div class="pl-total-row"><span class="pl-total-label">Thực lãnh</span><span class="pl-total-value">' + fmt(s.totalAmount) + '</span></div>' +
+        '<div class="pl-bd-note">Doanh nghiệp đóng thêm 21,5% × ' + fmt(sn.bhBase) + ' = <b>' + fmt(sn.bhEmployer) + '</b> (không trừ vào lương).</div></div>';
+    }
+
     function renderSalaryCard() {
       var user = getUser();
       var card = document.getElementById('plSalaryCard');
       if (!user || !isManager(user)) { card.style.display = 'none'; return; }
       card.style.display = 'block';
+      var sb = document.getElementById('plStructBtn'); if (sb && !sb._b) { sb._b = 1; sb.addEventListener('click', function () { SalaryStructure.openEditor(getUser(), renderAll); }); }
       var members = TaskManager.getMembers();
       var rows = members.map(function (m) {
         return '<div class="pl-salary-row">' +
@@ -517,6 +545,7 @@
 
     monthInput.addEventListener('change', renderAll);
     renderAll();
+    TaskManager.loadSalaryComponents(renderAll);   // danh mục cơ cấu lương từ Sheet (nếu có) → vẽ lại
 
     // 2026-09-19: cung bug "duyet roi ma khong hien" da fix o timesheet.html
     // (renderPendingDevicesList) - trang nay cung co 1 danh sach + so dem

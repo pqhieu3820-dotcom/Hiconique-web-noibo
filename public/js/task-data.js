@@ -295,7 +295,8 @@ function syncToGSheets(type, action, data, id) {
     receivables: { add: 'addReceivable', update: 'updateReceivable', delete: 'deleteReceivable' },
     bsSnapshots: { add: 'addBsSnapshot', update: 'updateBsSnapshot', delete: 'deleteBsSnapshot' },
     orders: { add: 'addOrder', update: 'updateOrder', delete: 'deleteOrder' },
-    spcStandards: { add: 'addSpcStandard', update: 'updateSpcStandard', delete: 'deleteSpcStandard' }
+    spcStandards: { add: 'addSpcStandard', update: 'updateSpcStandard', delete: 'deleteSpcStandard' },
+    salaryComponents: { add: 'addSalaryComponent', update: 'updateSalaryComponent', delete: 'deleteSalaryComponent' }
   };
 
   var apiAction = actionMap[type] ? actionMap[type][action] : null;
@@ -498,7 +499,8 @@ var TaskManager = (function() {
     receivables: 'hiconique_receivables',
     bsSnapshots: 'hiconique_bs_snapshots',
     orders: 'hiconique_orders',
-    spcStandards: 'hiconique_spc_standards'
+    spcStandards: 'hiconique_spc_standards',
+    salaryComponents: 'hiconique_salary_components'
   };
 
   // % hoa hồng mặc định theo vai trò — gợi ý khi tạo hoa hồng dự án, admin/
@@ -888,7 +890,7 @@ var TaskManager = (function() {
       lightingStandards: 'getLightingStandards', lightingLamps: 'getLightingLamps',
       lightingFactors: 'getLightingFactors', lightingPlans: 'getLightingPlans',
       equipment: 'getEquipment', pcReports: 'getPcReports', archivedMembers: 'getArchivedMembers', financeAccess: 'getFinanceAccess', customers: 'getCustomers', customerLogs: 'getCustomerLogs', staffActivity: 'getStaffActivity', appUsage: 'getAppUsage',
-      receivables: 'getReceivables', bsSnapshots: 'getBsSnapshots', orders: 'getOrders', spcStandards: 'getSpcStandards',
+      receivables: 'getReceivables', bsSnapshots: 'getBsSnapshots', orders: 'getOrders', spcStandards: 'getSpcStandards', salaryComponents: 'getSalaryComponents',
       attendanceLocations: 'getAttendanceLocations'
     };
 
@@ -2504,6 +2506,43 @@ var TaskManager = (function() {
     return true;
   }
 
+  // ===================== Cơ cấu lương (salary-structure.js) — sheet TLCC-Cơ cấu lương =====================
+  // Danh mục khoản chia nhỏ lương hợp đồng (lương đóng BH, hỗ trợ xăng xe/điện thoại/ăn trưa…). Mặc định nằm ở SalaryStructure.DEFAULTS (id cố định);
+  // bản lưu trên Sheet ghi đè theo id, khoản thêm mới (id salc_<time>) được nối thêm. Chỉ quản lý (admin/manager) sửa.
+  function loadSalaryComponents(callback) {
+    getFromGSheets('salaryComponents', function (items) {
+      if (items && items.length) localStorage.setItem(STORAGE_KEYS.salaryComponents, JSON.stringify(items));
+      if (callback) callback();
+    });
+  }
+  function getSalaryComponents() {
+    var defs = (typeof SalaryStructure !== 'undefined') ? SalaryStructure.DEFAULTS : [];
+    var stored = getAll(STORAGE_KEYS.salaryComponents), byId = {};
+    stored.forEach(function (c) { byId[c.id] = c; });
+    var out = defs.map(function (d) { return Object.assign({}, d, byId[d.id] || {}); });
+    stored.forEach(function (c) { if (!defs.some(function (d) { return d.id === c.id; })) out.push(Object.assign({}, c)); });
+    out.forEach(function (c) { if (c.amount !== '' && c.amount != null) c.amount = Number(c.amount) || 0; if (c.taxCap !== '' && c.taxCap != null) c.taxCap = Number(c.taxCap) || 0; c.order = Number(c.order) || 0; });
+    return out.sort(function (a, b) { return a.order - b.order; });
+  }
+  function saveSalaryComponents(list, removedList, user) {
+    if (!canManageNotifications(user)) return false;
+    if (typeof Offline !== 'undefined' && Offline.guard('lưu cơ cấu lương')) return false;
+    var stored = getAll(STORAGE_KEYS.salaryComponents), now = new Date().toISOString();
+    (list || []).forEach(function (c) {
+      var rec = { code: c.code || '', name: c.name || '', kind: c.kind || 'allowance', amount: c.amount === '' || c.amount == null ? '' : Number(c.amount) || 0, insured: !!c.insured && c.insured !== 'false',
+        taxCap: c.taxCap === '' || c.taxCap == null ? '' : Number(c.taxCap) || 0, active: !(c.active === false || String(c.active).toLowerCase() === 'false'), order: Number(c.order) || 0, note: c.note || '' };
+      var i = stored.findIndex(function (x) { return x.id === c.id; });
+      if (i !== -1) { stored[i] = Object.assign({}, stored[i], rec, { updatedAt: now }); syncToGSheets('salaryComponents', 'update', rec, c.id); }
+      else { var item = Object.assign({ id: c.id, createdAt: now.split('T')[0] }, rec); stored.push(item); syncToGSheets('salaryComponents', 'add', item); }
+    });
+    (removedList || []).forEach(function (c) {
+      var i = stored.findIndex(function (x) { return x.id === c.id; });
+      if (i !== -1) { stored.splice(i, 1); syncToGSheets('salaryComponents', 'delete', {}, c.id); }
+    });
+    save(STORAGE_KEYS.salaryComponents, stored);
+    return true;
+  }
+
   // Wiki document links (public/pages/wiki.html)
   function getDocuments() {
     var docs = getAll(STORAGE_KEYS.documents);
@@ -3624,6 +3663,11 @@ var TaskManager = (function() {
     createNotice: createNotice,
     updateNotice: updateNotice,
     deleteNotice: deleteNotice,
+
+    // Cơ cấu lương
+    loadSalaryComponents: loadSalaryComponents,
+    getSalaryComponents: getSalaryComponents,
+    saveSalaryComponents: saveSalaryComponents,
 
     // SPC · Quy chuẩn kỹ thuật
     loadSpcData: loadSpcData,
