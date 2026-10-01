@@ -1429,7 +1429,7 @@ của Member đang đăng nhập, kiểm tra phía client (không có bảo mậ
 | **Google Sheet — database chính** (chỉnh sửa trực tiếp) | **https://docs.google.com/spreadsheets/d/1usLh4pt5F7r1XY-SLbWPfajYuZ5mDNGaaa4neYG84nY/edit** |
 | **Google Apps Script — editor** (sửa code `gsheets-api-v2.js` tại đây) | **https://script.google.com/u/1/home/projects/13qWJLAwWHzeH7nyfcVHlMrxwOOWAUi4X2gD7CgB2EfwQseFX30RJo_RJ/edit** |
 | **Apps Script Web App — URL đang chạy thật** (client gọi `API_URL` này để ghi dữ liệu) | **https://script.google.com/macros/s/AKfycbzgg0dfNgDTFgcTGlNvF2IHLUusK6YuBk1pot9SrbYi5B9al-H2nmmMlKLz5CpDlLY/exec** |
-| **Google Drive — thư mục file thiết kế/hồ sơ kỹ thuật** | **https://drive.google.com/drive/folders/1Abs32vARD3f486LWBfgIWXjKIUV-LK6L** |
+| **Google Drive — thư mục file thiết kế/hồ sơ kỹ thuật** | **https://drive.google.com/drive/folders/11dB7V_pRP-EDfPobySYUOARz_waA4iAI** |
 | **Database đơn giá chi phí xây dựng nhà 34 tỉnh T9/2026** (tham khảo ngoài — 34 tỉnh × 432 vật tư × 219 công tác, mốc giá 01/09/2026; có cả bản PDF `DEMO_Cam_nang_don_gia_T9_2026.pdf` cùng nội dung, thêm ma trận NCC + checklist hỏi giá) | **https://docs.google.com/spreadsheets/d/1INkLZfjbfS7G9otbV4uGgQKhog0ADh8L2fnS3GTT2dM/edit?usp=drivesdk** |
 | **Production — link chính đang dùng (2026-09-24)** | **https://hiconique-web-noibo.pqhieu3820.workers.dev** (Cloudflare Workers) |
 | Netlify — `noibo.hiconique.com` (link cũ, vẫn giữ nhưng KHÔNG còn là link chính) | Bị lỗi DNS (NXDOMAIN) ngày 2026-09-24, không liên quan gì tới code/Apps Script — xem chi tiết ở mục "VIỆC CÒN TỒN ĐỌNG" phía trên. Chưa rõ nguyên nhân/khi nào khắc phục, không phải việc của Web repo này. |
@@ -2048,3 +2048,8 @@ Thông báo quá hạn (07/09/2026) đã gỡ khỏi trang chủ theo yêu cầu
 
 ### (cz) 01/10/2026 — Khung đồng bộ vẫn hiện lặp
 Nguyên nhân: nhịp "đang online" (updateMember lastActiveAt, mỗi ~60s, gửi keepalive) bị khung đồng bộ tính là thao tác ghi → cứ ~1 phút lại hiện "Đang lưu/Đã đồng bộ". Sửa `offline.js`: bỏ qua yêu cầu keepalive; thời gian giữ "Đã đồng bộ" 5s → 3s. sw v120.
+
+
+### (da) 01/10/2026 — Trang chủ: thẻ Drive & mục Tài liệu
+- Thẻ "Google Drive" (mục Dự án & thi công) đổi tên **Dữ liệu File Công Việc**, link mới https://drive.google.com/drive/folders/11dB7V_pRP-EDfPobySYUOARz_waA4iAI (thay link cũ 1Abs32…).
+- Mục "Tài liệu & Quy trình": gộp 7 thẻ cùng dẫn vào wiki.html thành 1 thẻ **Tài liệu & Quy trình**; thêm thẻ **Tài liệu nội bộ HICONIQUE** → thư mục Drive 1c5sglRIY… (mở tab mới); giữ thẻ SPC. sw v121.
