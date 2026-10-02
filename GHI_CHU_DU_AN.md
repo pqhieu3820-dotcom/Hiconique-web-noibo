@@ -1,3 +1,9 @@
+## ⭐ QUAN TRỌNG — QUY TẮC GIAO DIỆN (người dùng chốt 2026-10-02): TỰ CHỦ ĐỘNG CĂN CHỈNH, KHÔNG ĐỂ NGƯỜI DÙNG PHẢI NHẮC
+
+- Mọi nút, ô nhập, hàng, bảng, hộp thoại làm mới/sửa phải **cân đối, thẳng hàng, cùng chiều cao/độ rộng hợp lý**; không để chữ bị cắt/bị bẻ dòng xấu, không để nút lệch kích thước, không để 1 phần tử trông khác các phần tử cùng loại (font, màu, cỡ chữ phải đồng bộ với phần còn lại của web). Làm xong tự rà bằng mắt (preview) trước khi báo.
+- Khi thêm phần tử vào danh sách/bảng đã có, **đối chiếu với phần tử cũ và dùng đúng kiểu cũ** (chú ý các quy tắc CSS chung như `.wiki-col li a span:first/last-child` có thể làm phần tử mới lệch); không tạo kiểu mới nếu không cần.
+- Hộp thoại xác nhận dùng nút "Xác nhận"; nút hành động cùng hàng phải cùng kích thước; font bảng = Inter như toàn web.
+
 ## ⭐ QUAN TRỌNG — NƠI LƯU FILE CÀI ĐẶT HICONIQUE AGENT (người dùng chốt 2026-09-30)
 
 - **Folder Google Drive**: https://drive.google.com/drive/folders/1lSDuoqhGnGM7Yik1wk6V_N5dTdQlU97J?usp=sharing — tên "Folder cài đặt HICONIQUE APP PC", chủ sở hữu **hiconique.group@gmail.com**.
@@ -2343,3 +2349,4 @@ Dòng chèn mới ở đầu bảng thừa hưởng dropdown Danh mục cũ từ
 - 2026-10-02 (sw v188): UI Wiki đồng bộ — dòng tài liệu nhiều link giữ đúng màu/font mã như dòng thường (lỗi do selector `span:last-child` của subpage.css), bảng chia link dùng font Inter, nút Mở nhỏ gọn, cột Trạng thái bảng quét Drive rộng đủ chữ, 2 nút Nhập/Tải kết quả cùng kích thước (ô chọn danh mục giãn ngang), hộp thoại sau khi nhập: nút "Xác nhận".
 - 2026-10-02 (sw v189): FIX Wiki — (1) sửa tài liệu mã POL-001 bị báo "Mã đã tồn tại — trùng file Drive «…»": kiểm tra trùng Drive nay bỏ qua file Drive đã thuộc link của bất kỳ tài liệu nào và link đang nhập trong form (trước chỉ bỏ qua link chính). (2) Form sửa chỉ hiện 1 link: Apps Script đổi chuỗi JSON dạng mảng thành MẢNG khi đọc Sheet nên `getDocLinks` JSON.parse hỏng → rơi về 1 link `url`; nay nhận cả mảng lẫn chuỗi.
 - 2026-10-02 (sw v190): Wiki — (1) mã POL-001 (dòng nhiều link) hiển thị y hệt các mã khác: selector `.wiki-col li a span.wiki-doc-code` lặp đúng giá trị của subpage.css (màu đồng, mono, .75rem, 500) vì nhãn "N link" làm span mã mất last-child; không thêm class/kiểu mới nào khác. (2) Form sửa tài liệu: MỌI link là 1 hàng như nhau — tay nắm ⋮⋮ kéo đổi thứ tự (pointer, chuột + cảm ứng), nút × xoá ở từng link (xoá hết thì tự thêm hàng trống), link đầu tiên là link chính; lưu cần ≥1 link.
+- 2026-10-02 (sw v191): form sửa tài liệu — hàng link 1 dòng thẳng hàng (tay nắm | nhãn 150px | ô link giãn | nút × vuông 44px cao bằng ô), modal rộng 1180px. Thêm mục QUY TẮC GIAO DIỆN ở đầu file ghi chú.

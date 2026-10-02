@@ -224,7 +224,7 @@
 
     /* ===== modal thêm/sửa, kiểm soát, đồng bộ ===== */
     .dm-overlay { position: fixed; inset: 0; z-index: 400; background: rgba(10, 12, 15, 0.55); backdrop-filter: blur(3px); display: flex; align-items: flex-start; justify-content: center; padding: 5vh 16px; overflow-y: auto; }
-    .dm-box { width: 100%; max-width: 1080px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 16px; box-shadow: 0 24px 60px rgba(0,0,0,0.35); }
+    .dm-box { width: 100%; max-width: 1180px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 16px; box-shadow: 0 24px 60px rgba(0,0,0,0.35); }
     .dm-box.dm-wide { max-width: 1240px; }
     /* ô nhập không bị cắt chữ: hàng chứa select/ô nhập tự xuống dòng, mỗi ô rộng tối thiểu để đọc hết */
     .dm-card .dm-row { flex-wrap: wrap; }
@@ -232,11 +232,14 @@
     .dm-card .dm-row input { flex: 1 1 260px; min-width: 0; }
     .dm-card .dm-row .dm-code { flex: 1 1 280px; }
     .dm-card .dm-row .dfLL { flex: 0 0 150px; }
-    .dm-lrow { padding: 2px 0; align-items: center; }
-    .dm-lrow .dfLH { flex: 0 0 auto; width: 18px; cursor: grab; color: var(--color-text-faint); font-size: 1.05rem; line-height: 1; letter-spacing: -3px; text-align: center; user-select: none; touch-action: none; }
+    /* hàng link: 1 dòng duy nhất, thẳng hàng: tay nắm | nhãn | ô link (giãn) | nút xoá vuông cùng chiều cao ô */
+    .dm-card .dm-row.dm-lrow { flex-wrap: nowrap; gap: 8px; padding: 2px 0; align-items: stretch; }
+    .dm-lrow .dfLH { display: flex; align-items: center; justify-content: center; flex: 0 0 18px; width: 18px; cursor: grab; color: var(--color-text-faint); font-size: 1.05rem; line-height: 1; letter-spacing: -3px; text-align: center; user-select: none; touch-action: none; }
     .dm-lrow .dfLH:hover { color: var(--color-bronze); }
     .dm-lrow.dragging { opacity: .65; background: color-mix(in srgb, var(--color-bronze) 10%, transparent); border-radius: 8px; }
-    .dm-lrow .dfLX { flex: 0 0 auto; padding: 8px 12px; }
+    .dm-card .dm-row.dm-lrow .dfLU { flex: 1 1 auto; min-width: 0; }
+    .dm-card .dm-row.dm-lrow .dfLL { flex: 0 0 150px; }
+    .dm-card .dm-row.dm-lrow .dfLX { flex: 0 0 44px; width: 44px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1.125rem; line-height: 1; }
     .dm-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 20px 24px 14px; border-bottom: 1px solid var(--color-border); }
     .dm-title { font-size: 1.125rem; font-weight: 700; color: var(--color-text); }
     .dm-sub { font-size: 0.8125rem; color: var(--color-text-muted); margin-top: 2px; }
