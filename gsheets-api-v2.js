@@ -1173,8 +1173,11 @@ function migrateDgdm(dryRun) {
   if (!dryRun) {
     try {
       const stamp = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd HH:mm');
-      const copy = DriveApp.getFileById(ss.getId()).makeCopy('SAO LƯU trước khi đổi tên DGDM — ' + stamp);
-      log.push('ĐÃ SAO LƯU: ' + copy.getUrl());
+      const bname = 'SAO LƯU trước khi đổi tên DGDM — ' + stamp;
+      let copyUrl;
+      try { copyUrl = DriveApp.getFileById(ss.getId()).makeCopy(bname).getUrl(); }
+      catch (e1) { copyUrl = ss.copy(bname).getUrl(); }   // chưa cấp quyền Drive đầy đủ → dùng Spreadsheet.copy (chỉ cần quyền Sheets)
+      log.push('ĐÃ SAO LƯU: ' + copyUrl);
     } catch (e) { log.push('KHÔNG SAO LƯU ĐƯỢC (' + e + ') → DỪNG, chưa đổi gì.'); Logger.log(log.join('\n')); return log.join('\n'); }
   }
   SHEET_MEMO_ = null;
