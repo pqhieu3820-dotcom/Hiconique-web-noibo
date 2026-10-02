@@ -1286,11 +1286,244 @@ function getDgdmStatus_(ss) {
   return out;
 }
 
+// ===== 2026-10-02: Trang Đơn giá – Định mức = công cụ kiểm soát CSDL (xem / sửa / thêm / xoá) cho MỌI sheet DGDM- =====
+// getDgdmRows (đọc, có phân trang + lọc tỉnh + tìm) · dgdmWrite (op: update | add | delete; all = áp dụng cho mọi tỉnh theo mã công việc/vật tư).
+// Mọi thay đổi đều ghi vào sheet "DGDM-Nhật ký thay đổi" (xoá thì lưu nguyên dòng cũ để khôi phục tay). Không cho sửa "DGDM-Cài đặt" (chứa khoá API) và chính sheet nhật ký.
+var DGDM_LOG_SHEET_ = 'DGDM-Nhật ký thay đổi';
+function dgNorm_(s) { return String(s == null ? '' : s).normalize('NFC').trim().toLowerCase(); }
+function dgdmSheetByName_(ss, name, forWrite) {
+  const n = dgNorm_(name);
+  if (n.indexOf('dgdm-') !== 0 || n === dgNorm_('DGDM-Cài đặt')) return null;
+  if (forWrite && n === dgNorm_(DGDM_LOG_SHEET_)) return null;
+  return ss.getSheets().filter(function (s) { return dgNorm_(s.getName()) === n; })[0] || null;
+}
+// Dòng tiêu đề = dòng có nhiều ô chữ nhất trong 8 dòng đầu (các sheet mẫu có dòng tiêu đề trang ở trên)
+function dgdmInfo_(sh) {
+  const lr = sh.getLastRow(), lc = sh.getLastColumn();
+  if (lr < 1 || lc < 1) return { hr: 1, lc: Math.max(lc, 1), headers: [], hs: [], lr: lr };
+  const top = sh.getRange(1, 1, Math.min(8, lr), lc).getValues();
+  let hr = 1, best = -1;
+  top.forEach(function (r, i) { const n = r.filter(function (c) { return String(c).trim() !== ''; }).length; if (n > best) { best = n; hr = i + 1; } });
+  const headers = top[hr - 1].map(function (c) { return String(c).trim(); });
+  return { hr: hr, lc: lc, lr: lr, headers: headers, hs: headers.map(dgNorm_) };
+}
+function dgdmCell_(v) { return (v instanceof Date) ? Utilities.formatDate(v, Session.getScriptTimeZone(), 'dd/MM/yyyy') : v; }
+function getDgdmRows_(ss, p) {
+  const sh = dgdmSheetByName_(ss, p.sheet, false);
+  if (!sh) return { error: 'Không có sheet ' + p.sheet };
+  const info = dgdmInfo_(sh), out = { sheet: sh.getName(), headerRow: info.hr, headers: info.headers, total: 0, offset: 0, rows: [], provinces: [], readonly: dgNorm_(sh.getName()) === dgNorm_(DGDM_LOG_SHEET_) };
+  if (info.lr <= info.hr) return out;
+  const pi = info.hs.indexOf(dgNorm_('Tỉnh/Thành')), vals = sh.getRange(info.hr + 1, 1, info.lr - info.hr, info.lc).getValues();
+  const q = dgNorm_(p.q || ''), prov = String(p.province || '').trim(), seen = {}, rows = [];
+  vals.forEach(function (r, i) {
+    if (!r.some(function (c) { return String(c).trim() !== ''; })) return;
+    if (pi !== -1) { const pv = String(r[pi]).trim(); if (pv && !seen[pv]) { seen[pv] = 1; out.provinces.push(pv); } if (prov && pv !== prov) return; }
+    if (q && dgNorm_(r.join(' ')).indexOf(q) === -1) return;
+    rows.push({ r: info.hr + 1 + i, v: r.map(dgdmCell_) });
+  });
+  const off = Math.max(0, parseInt(p.offset, 10) || 0), lim = Math.min(500, Math.max(1, parseInt(p.limit, 10) || 100));
+  out.total = rows.length; out.offset = off; out.rows = rows.slice(off, off + lim);
+  return out;
+}
+function dgdmToNumber_(v) {
+  if (typeof v === 'number') return v;
+  let s = String(v).replace(/[\s₫đ]/g, '');
+  if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) s = s.replace(/\./g, '').replace(',', '.');
+  else s = s.replace(',', '.');
+  const n = Number(s);
+  return (s !== '' && isFinite(n)) ? n : v;
+}
+function dgdmLog_(ss, actor, action, sheetName, row, key, detail) {
+  let lg = ss.getSheets().filter(function (s) { return dgNorm_(s.getName()) === dgNorm_(DGDM_LOG_SHEET_); })[0];
+  if (!lg) {
+    const idx = ss.getSheets().reduce(function (m, s, i) { return /^dgdm-/i.test(dgNorm_(s.getName())) ? i + 1 : m; }, ss.getSheets().length);
+    lg = ss.insertSheet(DGDM_LOG_SHEET_, idx);
+    lg.getRange(1, 1, 1, 7).setValues([['Thời gian', 'Người thực hiện', 'Hành động', 'Sheet', 'Dòng', 'Khoá (tỉnh · mã)', 'Chi tiết']]).setFontWeight('bold');
+    lg.setFrozenRows(1);
+  }
+  lg.appendRow([new Date(), actor || '', action, sheetName, row, key, String(detail).slice(0, 40000)]);
+}
+function dgdmWrite_(ss, d) {
+  return withScriptLock_(function () {
+    const sh = dgdmSheetByName_(ss, d.sheet, true);
+    if (!sh) return { ok: false, error: 'Không được phép ghi vào sheet ' + d.sheet };
+    const info = dgdmInfo_(sh), actor = String(d.actor || '').slice(0, 60), op = d.op, vals = d.values || {}, exp = d.expect || {};
+    const ci = function (h) { return info.hs.indexOf(dgNorm_(h)); };
+    const pI = ci('Tỉnh/Thành'), maI = ci('Mã');
+    const codeI = ci('Mã công việc') !== -1 ? ci('Mã công việc') : ci('Mã tài nguyên');
+    const same = function (a, b) { return String(a == null ? '' : a).trim() === String(b == null ? '' : b).trim(); };
+    const lastRow = function () { return sh.getLastRow(); };
+    const keyOf = function (r) { return (pI !== -1 ? String(r[pI]).trim() + ' · ' : '') + String((maI !== -1 && String(r[maI]).trim()) ? r[maI] : (codeI !== -1 ? r[codeI] : r[0])).trim(); };
+    const rowVals = function (n) { return sh.getRange(n, 1, 1, info.lc).getValues()[0]; };
+    const checkExpect = function (n) {
+      if (n <= info.hr || n > lastRow()) return 'Dòng ' + n + ' không còn trong sheet — tải lại danh sách.';
+      const cur = rowVals(n);
+      for (const h in exp) { const i = ci(h); if (i === -1 || !same(cur[i], exp[h])) return 'Dòng ' + n + ' đã bị đổi bởi người khác (cột ' + h + ') — tải lại danh sách rồi làm lại.'; }
+      return '';
+    };
+    const textCols = function () { return info.headers.map(function (h, i) { return /^mã/i.test(dgNorm_(h)) || /spec|tên|tổ chức|nội dung|url/i.test(h) ? i : -1; }).filter(function (i) { return i !== -1; }); };
+    const conv = function (h, v) { return (v === '' || v == null) ? '' : (priceDbIsNumCol_(h) ? dgdmToNumber_(v) : v); };
+    // các dòng cùng "mặt hàng" ở mọi tỉnh (khớp theo Mã cũ; dòng mới không có Mã cũ thì khớp theo mã mới)
+    const siblings = function (curRow) {
+      const all = sh.getRange(info.hr + 1, 1, lastRow() - info.hr, info.lc).getValues(), ma = maI !== -1 ? String(curRow[maI]).trim() : '', cd = codeI !== -1 ? String(curRow[codeI]).trim() : '', res = [];
+      all.forEach(function (r, i) { const rm = maI !== -1 ? String(r[maI]).trim() : ''; if (ma ? rm === ma : (!rm && cd && String(r[codeI]).trim() === cd)) res.push(info.hr + 1 + i); });
+      return res;
+    };
+    let res = { ok: true };
+    if (op === 'update') {
+      const n = parseInt(d.row, 10), err = checkExpect(n); if (err) return { ok: false, error: err };
+      const cur = rowVals(n), targets = d.all && pI !== -1 ? siblings(cur) : [n], changes = [];
+      Object.keys(vals).forEach(function (h) {
+        const i = ci(h); if (i === -1) return;
+        const nv = conv(h, vals[h]);
+        if (same(cur[i], nv)) return;
+        changes.push(h + ': "' + String(cur[i]).slice(0, 80) + '" → "' + String(nv).slice(0, 80) + '"');
+        if (targets.length === 1) { const rg = sh.getRange(targets[0], i + 1); if (textCols().indexOf(i) !== -1) rg.setNumberFormat('@'); rg.setValue(nv); }
+        else {
+          const colV = sh.getRange(info.hr + 1, i + 1, lastRow() - info.hr, 1).getValues();
+          targets.forEach(function (t) { colV[t - info.hr - 1][0] = nv; });
+          const rg = sh.getRange(info.hr + 1, i + 1, colV.length, 1); if (textCols().indexOf(i) !== -1) rg.setNumberFormat('@'); rg.setValues(colV);
+        }
+      });
+      if (changes.length) dgdmLog_(ss, actor, 'SỬA' + (targets.length > 1 ? ' (mọi tỉnh ×' + targets.length + ')' : ''), sh.getName(), n, keyOf(cur), changes.join(' | '));
+      res.changed = changes.length; res.rows = targets.length;
+    } else if (op === 'add') {
+      const heads = info.headers, provList = [];
+      if (pI !== -1) { const pv = sh.getRange(info.hr + 1, pI + 1, Math.max(lastRow() - info.hr, 1), 1).getValues(); pv.forEach(function (r) { const x = String(r[0]).trim(); if (x && provList.indexOf(x) === -1) provList.push(x); }); }
+      const code = codeI !== -1 ? String(vals[heads[codeI]] || '').trim() : '', ma = maI !== -1 ? String(vals[heads[maI]] || '').trim() : '';
+      if (codeI !== -1 && !code) return { ok: false, error: 'Phải nhập ' + heads[codeI] + ' (mã mới).' };
+      if (heads.length && !Object.keys(vals).some(function (h) { return String(vals[h]).trim() !== ''; })) return { ok: false, error: 'Chưa nhập dữ liệu.' };
+      const all = lastRow() > info.hr ? sh.getRange(info.hr + 1, 1, lastRow() - info.hr, info.lc).getValues() : [];
+      const targets = (d.all && pI !== -1) ? provList : [String(vals[heads[pI]] || (d.province || '')).trim()];
+      const newRows = [], skipped = [];
+      targets.forEach(function (pv) {
+        if (pI !== -1 && !pv) return;
+        const dup = all.some(function (r) { return (pI === -1 || String(r[pI]).trim() === pv) && ((ma && maI !== -1 && String(r[maI]).trim() === ma) || (!ma && codeI !== -1 && code && String(r[codeI]).trim() === code && !String(r[maI === -1 ? 0 : maI]).trim())); });
+        if (dup) { skipped.push(pv); return; }
+        const nr = heads.map(function (h, i) {
+          if (i === pI) return pv;
+          const v = vals[h]; if (v === undefined || v === null) return '';
+          if (d.all && pI !== -1 && priceDbIsNumCol_(h) && pv !== String(d.province || '').trim()) return '';   // giá chỉ nhập cho tỉnh đang chọn
+          return conv(h, v);
+        });
+        newRows.push(nr);
+      });
+      if (!newRows.length) return { ok: false, error: 'Mã này đã tồn tại' + (skipped.length ? ' ở: ' + skipped.slice(0, 4).join(', ') : '') + ' — không thêm trùng.' };
+      const start = lastRow() + 1; textCols().forEach(function (i) { sh.getRange(start, i + 1, newRows.length, 1).setNumberFormat('@'); });
+      sh.getRange(start, 1, newRows.length, info.lc).setValues(newRows);
+      dgdmLog_(ss, actor, 'THÊM' + (newRows.length > 1 ? ' (×' + newRows.length + ' tỉnh)' : ''), sh.getName(), start, (pI !== -1 ? (d.all ? 'mọi tỉnh' : targets[0]) + ' · ' : '') + (ma || code || String(newRows[0][0])), heads.map(function (h, i) { return newRows[0][i] === '' ? '' : h + '=' + newRows[0][i]; }).filter(String).join(' | '));
+      res.added = newRows.length; res.skipped = skipped.length;
+    } else if (op === 'delete') {
+      const n = parseInt(d.row, 10), err = checkExpect(n); if (err) return { ok: false, error: err };
+      const cur = rowVals(n), targets = d.all && pI !== -1 ? siblings(cur) : [n];
+      targets.slice().sort(function (a, b) { return b - a; }).forEach(function (t) {
+        const rv = rowVals(t);
+        dgdmLog_(ss, actor, 'XOÁ', sh.getName(), t, keyOf(rv), info.headers.map(function (h, i) { return rv[i] === '' ? '' : h + '=' + dgdmCell_(rv[i]); }).filter(String).join(' | '));
+        sh.deleteRow(t);
+      });
+      res.deleted = targets.length;
+    } else return { ok: false, error: 'Lệnh không hợp lệ: ' + op };
+    SHEET_MEMO_ = null;
+    return res;
+  });
+}
+
+// ===== 2026-10-02: CHUYỂN ĐỔI DỮ LIỆU THẬT sang chuẩn mới (không chỉ bảng tham chiếu) — chạy tay trong editor: dgdmConvertData() =====
+// 1) Sao lưu cả file. 2) Tạo "DGDM-Quy đổi ĐVT cũ" (giữ bảng ánh xạ cũ→chuẩn). 3) Ở 4 sheet dữ liệu (công tác, vật tư, nhân công khoán, phần thô): thêm cột "ĐVT cũ" (giữ nguyên giá trị cũ) rồi ghi ĐVT chuẩn mới vào cột "ĐVT";
+// công tác thêm "Hạng mục" + "Giai đoạn" (suy từ mã công việc mới), vật tư thêm "Nhóm tài nguyên" (suy từ mã tài nguyên). 4) Viết lại 3 sheet danh mục thành danh mục sống: số dòng đang dùng tính từ dữ liệu thật.
+// Chạy lại được nhiều lần (cột "ĐVT cũ" đã có thì không đổi lại). Không xoá dòng nào, không đụng cột giá.
+function dgdmConvertData() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID), L = function (m) { Logger.log(m); };
+  const fd = function (n) { return ss.getSheets().filter(function (x) { return dgNorm_(x.getName()) === dgNorm_(n); })[0]; };
+  const bname = 'SAO LƯU trước khi chuyển đổi dữ liệu DGDM — ' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd-MM HH:mm');
+  try { ss.copy(bname); L('Đã sao lưu: ' + bname); } catch (e) { L('DUNG: không sao lưu được — ' + e); return; }
+  const uSh = fd('DGDM-Đơn vị tính'), gSh = fd('DGDM-Nhóm tài nguyên'), sSh = fd('DGDM-Giai đoạn hạng mục');
+  if (!uSh || !gSh || !sSh) { L('DUNG: thiếu sheet danh mục'); return; }
+  // --- 1. bảng quy đổi ĐVT
+  let qSh = fd('DGDM-Quy đổi ĐVT cũ'), uv = uSh.getDataRange().getValues();
+  const oldLayout = dgNorm_(uv[0][1]) === dgNorm_('ĐVT cũ trên app');
+  if (!qSh) {
+    if (!oldLayout) { L('DUNG: không có bảng quy đổi để tạo'); return; }
+    const idx = ss.getSheets().indexOf(uSh) + 1;
+    qSh = ss.insertSheet('DGDM-Quy đổi ĐVT cũ', idx);
+    const rows = [['ĐVT cũ', 'ĐVT chuẩn mới', 'Số dòng lúc đối chiếu', 'Ghi chú điều kiện đo']];
+    uv.slice(1).forEach(function (r) { if (String(r[1]).trim()) rows.push([r[1], r[3], r[2], r[4]]); });
+    qSh.getRange(1, 1, rows.length, 4).setValues(rows).setNumberFormat('@'); qSh.getRange(1, 1, 1, 4).setFontWeight('bold'); qSh.setFrozenRows(1);
+    qSh.getRange(2, 3, rows.length - 1, 1).setNumberFormat('0');
+    L('Tạo DGDM-Quy đổi ĐVT cũ (' + (rows.length - 1) + ' dòng)');
+  }
+  const unitMap = {}; qSh.getDataRange().getValues().slice(1).forEach(function (r) { const o = String(r[0]).trim(); if (o) unitMap[o] = String(r[1]).trim() || o; });
+  const std = []; if (oldLayout) uv.slice(1).forEach(function (r) { const s = String(r[0]).trim(); if (s) std.push([s, '']); });
+  const stdNotes = {}; Object.keys(unitMap).forEach(function (o) { });
+  if (oldLayout) { uv.slice(1).forEach(function (r) { const o = String(r[1]).trim(), n = String(r[4]).trim(); if (o && unitMap[o] === o && n && n !== 'Giữ nguyên') stdNotes[o] = n; }); }
+  // --- hạng mục → giai đoạn
+  const hm2gd = {}; sSh.getDataRange().getValues().slice(1).forEach(function (r) { if (String(r[2]).trim()) hm2gd[String(r[2]).trim()] = String(r[0]).trim(); });
+  // --- 2. chuyển 4 sheet dữ liệu
+  const unitCount = {}, hmCodes = {}, grCodes = {};
+  [['DGDM-Mã công việc công tác', 'ct'], ['DGDM-Vật tư thiết bị', 'vt'], ['DGDM-Nhân công khoán', 'nc'], ['DGDM-Phần thô và trọn gói', 'tho']].forEach(function (p) {
+    const sh = fd(p[0]); if (!sh) { L('THIEU ' + p[0]); return; }
+    const addCol = function (h) { const hs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(dgNorm_), i = hs.indexOf(dgNorm_(h)); if (i !== -1) return i + 1; const lc = sh.getLastColumn(); if (sh.getMaxColumns() < lc + 1) sh.insertColumnAfter(lc); sh.getRange(1, lc).copyTo(sh.getRange(1, lc + 1), SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false); sh.getRange(1, lc + 1).setValue(h); return lc + 1; };
+    const hs0 = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(dgNorm_), uC = hs0.indexOf(dgNorm_('ĐVT')) + 1;
+    if (!uC) { L('KHONG CO cot DVT o ' + p[0]); return; }
+    const oC = addCol('ĐVT cũ'), n = sh.getLastRow() - 1; if (n < 1) return;
+    const cur = sh.getRange(2, uC, n, 1).getValues(), old = sh.getRange(2, oC, n, 1).getValues(), outU = [], outO = []; let changed = 0, filled = 0;
+    for (let i = 0; i < n; i++) {
+      const c = String(cur[i][0]).trim(), o = String(old[i][0]).trim();
+      if (o) { outO.push([o]); outU.push([cur[i][0]]); filled++; unitCount[String(cur[i][0]).trim()] = (unitCount[String(cur[i][0]).trim()] || 0) + 1; continue; }
+      const nu = unitMap[c] || c; outO.push([c]); outU.push([nu]); if (nu !== c) changed++;
+      unitCount[nu] = (unitCount[nu] || 0) + 1;
+    }
+    sh.getRange(2, oC, n, 1).setNumberFormat('@').setValues(outO); sh.getRange(2, uC, n, 1).setNumberFormat('@').setValues(outU);
+    L(p[0] + ': ĐVT chuẩn hoá ' + changed + ' dòng đổi giá trị / ' + n + ' dòng (đã có sẵn ĐVT cũ: ' + filled + ')');
+    if (p[1] === 'ct' || p[1] === 'vt') {
+      const hs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(dgNorm_), cc = hs.indexOf(dgNorm_(p[1] === 'ct' ? 'Mã công việc' : 'Mã tài nguyên')) + 1;
+      const codes = sh.getRange(2, cc, n, 1).getValues();
+      if (p[1] === 'ct') {
+        const hC = addCol('Hạng mục'), gC = addCol('Giai đoạn'), oh = [], og = [];
+        codes.forEach(function (r) { const c = String(r[0]).trim(), hm = c.replace(/-\d{3,4}$/, ''); oh.push([c ? hm : '']); og.push([c ? (hm2gd[hm] || '') : '']); if (c) { hmCodes[hm] = hmCodes[hm] || {}; hmCodes[hm][c] = 1; } });
+        sh.getRange(2, hC, n, 1).setNumberFormat('@').setValues(oh); sh.getRange(2, gC, n, 1).setNumberFormat('@').setValues(og);
+        L('Công tác: điền Hạng mục + Giai đoạn cho ' + oh.filter(function (x) { return x[0]; }).length + ' dòng');
+      } else {
+        const rC = addCol('Nhóm tài nguyên'), og = [];
+        codes.forEach(function (r) { const c = String(r[0]).trim(), g = c.replace(/-\d{3,5}$/, ''); og.push([g]); if (c) { grCodes[g] = grCodes[g] || {}; grCodes[g][c] = 1; } });
+        sh.getRange(2, rC, n, 1).setNumberFormat('@').setValues(og);
+        L('Vật tư: điền Nhóm tài nguyên cho ' + og.filter(function (x) { return x[0]; }).length + ' dòng');
+      }
+    }
+  });
+  // --- 3. danh mục sống
+  if (oldLayout) {
+    const rows = [['ĐVT chuẩn', 'Ghi chú điều kiện đo', 'Số dòng đang dùng']];
+    std.forEach(function (s) { rows.push([s[0], stdNotes[s[0]] || '', unitCount[s[0]] || 0]); });
+    uSh.clearContents(); uSh.getRange(1, 1, rows.length, 3).setNumberFormat('@').setValues(rows); uSh.getRange(2, 3, rows.length - 1, 1).setNumberFormat('0'); uSh.getRange(1, 1, 1, 3).setFontWeight('bold');
+    const extra = Object.keys(unitCount).filter(function (u) { return std.every(function (s) { return s[0] !== u; }); });
+    L('DGDM-Đơn vị tính: viết lại ' + std.length + ' ĐVT chuẩn' + (extra.length ? ' — CÒN ĐVT ngoài danh sách: ' + extra.join(', ') : ' (không còn ĐVT ngoài danh sách)'));
+  }
+  const gh = gSh.getRange(1, 1, 1, gSh.getLastColumn()).getValues()[0].map(dgNorm_);
+  if (gh.indexOf(dgNorm_('Mã nhóm')) === -1) {
+    const gv = gSh.getDataRange().getValues().slice(1), c1 = gSh.getLastColumn() + 1;
+    gSh.getRange(1, c1, 1, 2).setValues([['Mã nhóm', 'Số mã đang dùng']]).setFontWeight('bold');
+    gSh.getRange(2, c1, gv.length, 2).setNumberFormat('@').setValues(gv.map(function (r) { const k = String(r[0]).trim() + '-' + String(r[1]).trim(); return [k, grCodes[k] ? Object.keys(grCodes[k]).length : 0]; }));
+    L('DGDM-Nhóm tài nguyên: thêm Mã nhóm + Số mã đang dùng');
+  }
+  const sh2 = sSh.getRange(1, 1, 1, sSh.getLastColumn()).getValues()[0].map(dgNorm_);
+  if (sh2.indexOf(dgNorm_('Số mã công việc')) === -1) {
+    const sv = sSh.getDataRange().getValues().slice(1), c1 = sSh.getLastColumn() + 1;
+    sSh.getRange(1, c1, 1, 1).setValues([['Số mã công việc']]).setFontWeight('bold');
+    sSh.getRange(2, c1, sv.length, 1).setValues(sv.map(function (r) { const k = String(r[2]).trim(); return [hmCodes[k] ? Object.keys(hmCodes[k]).length : 0]; }));
+    L('DGDM-Giai đoạn hạng mục: thêm Số mã công việc');
+  }
+  SHEET_MEMO_ = null; bumpReadCacheVersion_();
+  L('XONG chuyển đổi dữ liệu.');
+}
+
 // 2026-10-02: các bảng mới DTQT-/QLCL- dùng chung 1 bộ xử lý (get/add/update/delete + addBatch cho mã công việc & đơn giá tỉnh)
 var GEN_COLL_ = [['DtqtEstimate', 'dtqtEstimates'], ['DtqtCode', 'dtqtCodes'], ['DtqtPrice', 'dtqtPrices'], ['DtqtSettlement', 'dtqtSettlements'], ['QlclTask', 'qlclTasks'], ['QlclRecord', 'qlclRecords']];
 function genericColl_(ss, action, params) {
   if (typeof action !== 'string') return undefined;
   if (action === 'getDgdmStatus') return getDgdmStatus_(ss);
+  if (action === 'getDgdmRows') return getDgdmRows_(ss, params);
+  if (action === 'dgdmWrite') return dgdmWrite_(ss, JSON.parse(params.data));
   if (action === 'seedDgdm') return seedDgdm_(ss, JSON.parse(params.data));
   if (action === 'applyDgdmCodes') return applyDgdmCodes_(ss, JSON.parse(params.data));
   for (let i = 0; i < GEN_COLL_.length; i++) {

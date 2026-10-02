@@ -102,6 +102,8 @@
     .fn-chart-yr { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--fn-border); background: transparent; color: var(--fn-muted); cursor: pointer; font-size: 1rem; line-height: 1; }
     .fn-chart-yr:hover { border-color: var(--fn-bronze); color: var(--fn-bronze); }
     .fn-chart-yr[hidden] { display: none; }
+    .fn-ord-goto { display: block; margin-top: 6px; font-size: .6875rem; line-height: 1.35; color: var(--fn-bronze); text-decoration: none; font-weight: 600; white-space: normal; }
+    .fn-ord-goto:hover { text-decoration: underline; }
     .fn-chart-open { cursor: pointer; }
     .fn-chart-open .fn-chart-col { min-width: 120px; }
     .fn-chart-open .fn-chart-wrap { overflow-x: hidden; }
@@ -1142,6 +1144,7 @@
       }
     }
     document.addEventListener('click', function (e) { var el = e.target.closest('[data-detail]'); if (el && document.getElementById('fnBody')) showDetail(el.getAttribute('data-detail')); });
+    document.addEventListener('click', function (e) { var g = e.target.closest && e.target.closest('[data-goto-nav]'); if (!g) return; e.preventDefault(); var nb = document.querySelector('#fnSidebar [data-nav="' + g.getAttribute('data-goto-nav') + '"]'); if (nb) nb.click(); });
     document.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[data-detail]')) { e.preventDefault(); showDetail(e.target.getAttribute('data-detail')); } });
 
     function summaryCard(label, value, cls, icon, iconCls, tag, detail) {
@@ -1687,7 +1690,7 @@
           '<td>' + escapeHtml(o.clientName || '—') + (o.projectId ? '<br><span style="color:var(--fn-muted);font-size:.75rem;">' + escapeHtml(o.projectId) + '</span>' : '') + '</td>' +
           '<td>' + escapeHtml(ordMember(o.createdBy)) + '</td><td class="fn-amount ' + (pu ? 'neg' : 'pos') + '">' + fmt(total) + '</td><td class="fn-amount">' + fmt(col) + '</td><td class="fn-amount">' + fmt(debtAmt) + '</td>' +
           '<td style="font-size:.75rem;">' + escapeHtml(o.revenueCategory || '—') + '<br><span style="color:var(--fn-muted)">' + (pu ? escapeHtml(TaskManager.purchaseModeLabel(o.payMode)) + (o.receiptNo ? ' · HĐ ' + escapeHtml(o.receiptNo) : '') : (debtAmt > 0 ? escapeHtml(o.debtKind || '') + (o.debtDueDate ? ' · hạn ' + vnDate(o.debtDueDate) : '') : 'Không nợ') + ' · TK ' + escapeHtml(o.account || '111')) + '</span></td>' +
-          '<td><span class="fn-status-badge ' + (ph === 'pending' ? 'unpaid' : ph === 'rejected' ? 'overdue' : 'paid') + '">' + (pu && ph === 'debt' ? 'Đã ghi sổ · chờ hoàn' : pu && ph === 'paid' ? 'Đã chi xong' : ORD_LABEL[ph]) + '</span></td>' +
+          '<td><span class="fn-status-badge ' + (ph === 'pending' ? 'unpaid' : ph === 'rejected' ? 'overdue' : 'paid') + '">' + (pu && ph === 'debt' ? 'Đã ghi sổ · chờ hoàn' : pu && ph === 'paid' ? 'Đã chi xong' : ORD_LABEL[ph]) + '</span>' + (pu && ph === 'debt' ? '<a href="#" class="fn-ord-goto" data-goto-nav="receivables" title="Mở mục Công nợ">Duyệt hoàn ứng ở mục Công nợ →</a>' : '') + '</td>' +
           '<td style="white-space:nowrap;">' + (ph === 'pending' ? '<button class="fn-btn fn-btn-primary fn-btn-sm" data-ordapprove="' + o.id + '">Duyệt &amp; ghi sổ</button> <button class="fn-btn fn-btn-ghost fn-btn-sm" data-ordedit="' + o.id + '">Sửa</button> <button class="fn-btn fn-btn-ghost fn-btn-sm" data-ordreject="' + o.id + '">Từ chối</button>' : '<button class="fn-btn fn-btn-ghost fn-btn-sm" data-ordview="' + o.id + '">Xem</button>') + '</td></tr>';
       }).join('');
     }
