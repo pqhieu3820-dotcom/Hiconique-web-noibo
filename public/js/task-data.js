@@ -2777,7 +2777,17 @@ var TaskManager = (function() {
   // lưu riêng trong localStorage của máy (không đồng bộ qua Google Sheets).
   function getDocCategories() {
     var list = getAll(STORAGE_KEYS.docCategories);
+    // Đã kéo sắp xếp tay (setDocCategoryOrder) → giữ đúng thứ tự người dùng; chưa thì xếp A→Z như cũ
+    if (localStorage.getItem('hiconique_doc_categories_ordered') === '1') return list.slice();
     return list.slice().sort(function (a, b) { return a.localeCompare(b, 'vi'); });
+  }
+  function setDocCategoryOrder(names, user) {
+    if (!canManageNotifications(user)) return null;
+    var cur = getAll(STORAGE_KEYS.docCategories), out = [];
+    (names || []).forEach(function (n) { if (cur.indexOf(n) !== -1 && out.indexOf(n) === -1) out.push(n); });
+    cur.forEach(function (n) { if (out.indexOf(n) === -1) out.push(n); });
+    save(STORAGE_KEYS.docCategories, out); try { localStorage.setItem('hiconique_doc_categories_ordered', '1'); } catch (e) { }
+    return out;
   }
 
   function addDocCategory(name, user) {
@@ -4260,6 +4270,7 @@ var TaskManager = (function() {
     updateDocument: updateDocument,
     deleteDocument: deleteDocument,
     getDocCategories: getDocCategories,
+    setDocCategoryOrder: setDocCategoryOrder,
     addDocCategory: addDocCategory,
     deleteDocCategory: deleteDocCategory,
     getNextDocCode: getNextDocCode,

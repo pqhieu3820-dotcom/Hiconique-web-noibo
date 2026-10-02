@@ -57,12 +57,14 @@
       <div class="es-seg" id="esTabs">
         <button data-tab="est" class="on">Dự toán</button>
         <button data-tab="set">Thanh toán · Quyết toán</button>
+        <button data-tab="res">Nhân công · Máy · Ngày công</button>
         <button data-tab="lib">Mã công việc &amp; đơn giá tỉnh</button>
         <button data-tab="help">Hướng dẫn &amp; căn cứ</button>
       </div>
 
       <section id="esEst"></section>
       <section id="esSet" hidden></section>
+      <section id="esRes" hidden></section>
       <section id="esLib" hidden></section>
       <section id="esHelp" hidden></section>
     </div>
@@ -72,6 +74,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js" defer></script>
   <script src="/js/push-notifications.js" defer></script>
   <script src="/js/portal.js" defer></script>
+  <script src="/js/norms-data.js" defer></script>
   <script src="/js/estimate.js" defer></script>
 </body>
 </html>

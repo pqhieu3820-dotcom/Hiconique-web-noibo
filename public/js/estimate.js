@@ -118,7 +118,7 @@
   }
 
   // ---------- dự toán: mô hình & tính tiền ----------
-  function defaultParams(kind) { var k = KINDS[kind] || KINDS.dandung; return { knc: 1, kmay: 1, other: 0, cc: k[1], tl: k[2], vat: 10, prov: 0 }; }
+  function defaultParams(kind) { var k = KINDS[kind] || KINDS.dandung; return { knc: 1, kmay: 1, other: 0, cc: k[1], tl: k[2], vat: 10, prov: 0, kns: 1, crew: 10, target: 0 }; }
   function parseParams(rec) { var p = rec.params; if (typeof p === 'string') { try { p = JSON.parse(p); } catch (e) { p = null; } } return Object.assign(defaultParams(rec.kind), p && typeof p === 'object' ? p : {}); }
   function newEst(o) {
     var kind = o.kind || 'dandung';
@@ -644,10 +644,71 @@
   }
 
   // =====================================================================================
+  // TAB NHÂN CÔNG · MÁY · NGÀY CÔNG — khối lượng dự toán × định mức hao phí → số công, ca máy, số ngày
+  // Định mức: ưu tiên thư viện DTQT (dòng NC = công/ĐVT, dòng M = ca máy/ĐVT, nạp từ định mức chính thức); không có thì dùng số ước tính tham khảo trong norms-data.js (cần đối chiếu).
+  // =====================================================================================
+  function normOf(line) {
+    var c = libCodes().filter(function (x) { return x.code === line.code; })[0];
+    if (c) { var nc = 0, may = []; libResources(c).forEach(function (r) { var t = String(r.t || '').toUpperCase(); if (t === 'NC') nc += n0(r.qty); else if (t === 'M' || t === 'MAY') may.push({ name: r.name, qty: n0(r.qty) }); }); if (nc || may.length) return { nc: nc, may: may, grade: '', src: 'Thư viện DTQT', official: true }; }
+    var s = window.VnNorms && VnNorms.get(line.code);
+    return s ? { nc: s.nc, may: s.may, grade: s.grade, src: s.src, official: false } : null;
+  }
+  function resCalc(e) {
+    var P = e.params, K = n0(P.kns) || 1, crew = Math.max(1, n0(P.crew) || 1), rows = [], g = null, tot = { cong: 0, may: {}, miss: 0, n: 0, off: 0, est: 0 };
+    e.items.forEach(function (it) {
+      if (it.t === 'g') { g = { cong: 0, name: it.name }; rows.push({ g: g, it: it }); return; }
+      var nm = normOf(it), q = n0(it.qty); tot.n++;
+      if (!nm) { tot.miss++; rows.push({ it: it, nm: null }); return; }
+      var cong = q * nm.nc * K; if (nm.official) tot.off++; else tot.est++;
+      tot.cong += cong; if (g) g.cong += cong;
+      var mays = nm.may.map(function (m) { var ca = q * m.qty * K; tot.may[m.name] = n0(tot.may[m.name]) + ca; return { name: m.name, ca: ca }; });
+      rows.push({ it: it, nm: nm, cong: cong, mays: mays, days: cong / crew });
+    });
+    tot.days = tot.cong / crew; tot.need = n0(P.target) > 0 ? Math.ceil(tot.cong / n0(P.target)) : 0;
+    return { rows: rows, tot: tot, K: K, crew: crew };
+  }
+  function renderRes() {
+    var root = $('esRes'), list = estList();
+    if (!st.est && list.length) { st.est = loadEstRec(list[0]); st.estId = list[0].id; }
+    var e = st.est;
+    if (!e) { root.innerHTML = '<div class="es-card"><div class="es-empty">Chưa có dự toán. Lập dự toán ở tab “Dự toán” trước — khối lượng của dự toán sẽ được dùng để tính nhân công, máy, ngày công.</div></div>'; return; }
+    var P = e.params, c = resCalc(e), t = c.tot, f2 = function (v) { return (Math.round(n0(v) * 100) / 100).toLocaleString('vi-VN', { maximumFractionDigits: 2 }); };
+    var kp = '<div class="es-kpis"><div class="es-kpi"><span>Tổng ngày công (người·ngày)</span><b>' + f2(t.cong) + '</b></div><div class="es-kpi"><span>Số ngày với ' + c.crew + ' thợ</span><b>' + f2(t.days) + '</b></div><div class="es-kpi"><span>' + (t.need ? 'Thợ cần để xong trong ' + P.target + ' ngày' : 'Nhập số ngày mục tiêu') + '</span><b>' + (t.need || '—') + '</b></div><div class="es-kpi"><span>Dòng có định mức</span><b>' + (t.n - t.miss) + ' / ' + t.n + '</b></div></div>';
+    var warn = t.est ? '<div class="es-card" style="border-color:var(--es-warn)"><div class="es-note"><b style="color:var(--es-warn)">Lưu ý:</b> ' + t.est + ' dòng đang dùng định mức <b>ước tính tham khảo</b> (chưa phải số liệu chính thức theo Thông tư 12/2021/TT-BXD, Quyết định 1776/BXD-VP…). Muốn dùng định mức chính thức: ở tab “Mã công việc & đơn giá tỉnh” thêm / nhập mã với “Định mức hao phí” (dòng NC = công/ĐVT, dòng M = ca máy/ĐVT) — định mức trong thư viện luôn được ưu tiên.</div></div>' : '';
+    var ctl = '<div class="es-card"><h3>Điều kiện thi công <small>· dùng cho dự toán “' + esc(e.name) + '”</small></h3><div class="es-toolbar" style="margin:0"><select class="es-select" id="rsPick" style="min-width:260px">' + list.map(function (x) { return '<option value="' + x.id + '"' + (x.id === e.id ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('') + '</select><label class="es-note">Số thợ bố trí</label><input class="es-input" id="rsCrew" style="width:90px" value="' + esc(String(P.crew)) + '" inputmode="numeric"><label class="es-note">Hệ số điều chỉnh định mức (K)</label><input class="es-input" id="rsK" style="width:90px" value="' + esc(String(P.kns).replace('.', ',')) + '" inputmode="decimal" title="K lớn hơn 1: thi công khó (nhà cao tầng, mặt bằng hẹp…); nhỏ hơn 1: thuận lợi"><label class="es-note">Số ngày mục tiêu</label><input class="es-input" id="rsTarget" style="width:90px" value="' + (P.target ? esc(String(P.target)) : '') + '" inputmode="numeric" placeholder="vd 60"><span class="es-spacer"></span><button class="es-btn" id="rsXls" type="button">Xuất Excel</button></div></div>';
+    var rows = c.rows.map(function (r, i) {
+      if (r.g) return '<tr class="grp"><td colspan="6">' + esc(r.it.name) + '</td><td class="num">' + f2(r.g.cong) + '</td><td class="num">' + f2(r.g.cong / c.crew) + '</td><td></td></tr>';
+      var it = r.it;
+      if (!r.nm) return '<tr><td>' + esc(it.code) + '</td><td>' + esc(it.name) + '</td><td>' + esc(it.unit) + '</td><td class="num">' + fmtQ(it.qty) + '</td><td class="num" colspan="3" style="color:var(--es-muted)">chưa có định mức</td><td></td><td><button class="es-btn es-btn-sm" data-addnorm="' + i + '" type="button">+ Thêm định mức</button></td></tr>';
+      return '<tr><td>' + esc(it.code) + '</td><td>' + esc(it.name) + '</td><td>' + esc(it.unit) + '</td><td class="num">' + fmtQ(it.qty) + '</td><td class="num">' + f2(r.nm.nc) + '<div style="font-size:.6875rem;color:var(--es-muted)">' + esc(r.nm.grade || '') + '</div></td><td style="min-width:200px">' + (r.mays.length ? r.mays.map(function (m) { return esc(m.name) + ' <b>' + f2(m.ca) + '</b> ca'; }).join('<br>') : '<span style="color:var(--es-muted)">—</span>') + '</td><td class="num">' + f2(r.cong) + '</td><td class="num">' + f2(r.days) + '</td><td><span class="es-chip ' + (r.nm.official ? 'ok' : 'warn') + '" title="' + esc(r.nm.src) + '">' + (r.nm.official ? 'Thư viện' : 'Tham khảo') + '</span></td></tr>';
+    }).join('');
+    var mach = Object.keys(t.may).sort().map(function (k) { return '<span class="k">Máy: ' + esc(k) + '</span><span></span><span class="v">' + f2(t.may[k]) + ' ca</span>'; }).join('');
+    root.innerHTML = kp + warn + ctl + '<div class="es-card"><div class="es-tablewrap"><table class="es-table" style="min-width:1000px"><thead><tr><th style="width:90px">Mã hiệu</th><th>Công tác</th><th style="width:70px">ĐVT</th><th class="num" style="width:100px">Khối lượng</th><th class="num" style="width:130px">Định mức công/ĐVT</th><th>Máy thi công (ca)</th><th class="num" style="width:110px">Tổng công</th><th class="num" style="width:110px">Số ngày</th><th style="width:130px">Nguồn</th></tr></thead><tbody>' + (rows || '<tr><td colspan="9" class="es-empty">Dự toán chưa có dòng công tác.</td></tr>') + '</tbody></table></div>' +
+      '<div class="es-sum" style="margin-top:14px"><span class="k"><b>Tổng nhân công (người·ngày công)</b></span><span></span><span class="v tot">' + f2(t.cong) + '</span>' + mach + '<span class="k"><b>Số ngày thi công (nếu làm tuần tự theo ' + c.crew + ' thợ)</b></span><span></span><span class="v tot">' + f2(t.days) + ' ngày</span></div><p class="es-note" style="margin:10px 0 0">Số ngày = tổng công × K ÷ số thợ, cộng dồn theo thứ tự công tác; thực tế các tổ đội làm song song nên tiến độ ngắn hơn — dùng ô “Số ngày mục tiêu” để biết cần bao nhiêu thợ. Công = ngày công 8 giờ.</p></div>';
+    var rd = function () { P.crew = Math.max(1, Math.round(pnum($('rsCrew').value)) || 1); P.kns = pnum($('rsK').value) || 1; P.target = Math.max(0, Math.round(pnum($('rsTarget').value))); touch(); renderRes(); };
+    $('rsCrew').addEventListener('change', rd); $('rsK').addEventListener('change', rd); $('rsTarget').addEventListener('change', rd);
+    $('rsPick').addEventListener('change', function () { var rec = estList().filter(function (x) { return x.id === $('rsPick').value; })[0]; saveEst(function () { if (rec) { st.est = loadEstRec(rec); st.estId = rec.id; } renderRes(); }); });
+    $('rsXls').addEventListener('click', function () { exportRes(e, c); });
+    root.querySelector('tbody').addEventListener('click', function (ev) { var b = ev.target.closest('[data-addnorm]'); if (!b) return; var it = c.rows[Number(b.dataset.addnorm)].it; st.libTab = 'codes'; showTab('lib'); codeForm({ code: it.code, name: it.name, unit: it.unit }); });
+  }
+  function exportRes(e, c) {
+    if (typeof ExcelJS === 'undefined') { alert('Chưa tải xong bộ xuất Excel.'); return; }
+    var wb = new ExcelJS.Workbook(), ws = wb.addWorksheet('Nhân công - Máy'); ws.columns = [{ width: 12 }, { width: 46 }, { width: 8 }, { width: 12 }, { width: 14 }, { width: 40 }, { width: 13 }, { width: 11 }, { width: 14 }];
+    ws.addRow(['BẢNG TỔNG HỢP NHÂN CÔNG, MÁY THI CÔNG VÀ SỐ NGÀY CÔNG']).font = { bold: true, size: 14 }; ws.addRow(['Công trình: ' + e.name + ' · K = ' + c.K + ' · ' + c.crew + ' thợ']); ws.addRow([]);
+    var hr = ws.addRow(['Mã hiệu', 'Công tác', 'ĐVT', 'Khối lượng', 'ĐM công/ĐVT', 'Máy thi công (ca)', 'Tổng công', 'Số ngày', 'Nguồn định mức']); hr.font = { bold: true };
+    c.rows.forEach(function (r) { var row = r.g ? ws.addRow(['', r.it.name, '', '', '', '', r.g.cong, r.g.cong / c.crew]) : ws.addRow([r.it.code, r.it.name, r.it.unit, n0(r.it.qty), r.nm ? r.nm.nc : '', r.nm ? r.mays.map(function (m) { return m.name + ': ' + (Math.round(m.ca * 100) / 100); }).join('; ') : '', r.nm ? r.cong : '', r.nm ? r.days : '', r.nm ? r.nm.src : 'chưa có định mức']); if (r.g) row.font = { bold: true }; [4, 5, 7, 8].forEach(function (i) { row.getCell(i).numFmt = '#,##0.00'; }); });
+    ws.addRow([]); ws.addRow(['', 'TỔNG NHÂN CÔNG (người·ngày)', '', '', '', '', c.tot.cong]).font = { bold: true }; ws.addRow(['', 'Số ngày với ' + c.crew + ' thợ', '', '', '', '', '', c.tot.days]).font = { bold: true };
+    Object.keys(c.tot.may).sort().forEach(function (k) { ws.addRow(['', 'Máy: ' + k, '', '', '', '', c.tot.may[k]]); });
+    ws.addRow([]); ws.addRow(['', 'Ghi chú: định mức nguồn "Ước tính tham khảo" cần đối chiếu Thông tư 12/2021/TT-BXD / Quyết định 1776/BXD-VP trước khi dùng chính thức.']);
+    if (typeof HiconiqueExcel !== 'undefined' && HiconiqueExcel.standardize) { try { HiconiqueExcel.standardize(wb); } catch (er) { } }
+    wb.xlsx.writeBuffer().then(function (buf) { download('nhan-cong-may-' + plain(e.name) + '.xlsx', new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })); });
+  }
+
+  // =====================================================================================
   // TAB HƯỚNG DẪN
   // =====================================================================================
   function renderHelp() {
-    $('esHelp').innerHTML = '<div class="es-card"><h3>Quy trình lập dự toán</h3><ol class="es-steps"><li><b>Dự toán mới</b> → chọn tỉnh/thành, loại công trình (tự gợi ý tỷ lệ chi phí chung và thu nhập chịu thuế tính trước, sửa được).</li><li>Thêm <b>hạng mục</b>, rồi <b>công tác</b> từ thư viện mã việc hoặc bảng giá <b>DG-</b> của tỉnh — hoặc dán khối lượng từ Excel. Đơn giá tự điền theo mức giá (thấp / trung bình / cao) và kỳ giá.</li><li>Nhập <b>khối lượng</b>; sửa tay đơn giá nếu cần (ô chuyển cam, không bị ghi đè khi cập nhật giá).</li><li>Kiểm tra bảng <b>tổng hợp chi phí</b> (trực tiếp → chung → thu nhập chịu thuế tính trước → VAT → dự phòng) rồi <b>xuất Excel / In PDF</b>.</li><li>Khi chốt hợp đồng: tab <b>Thanh toán · Quyết toán</b> → mỗi đợt nhập khối lượng nghiệm thu kỳ này (+ khối lượng phát sinh), trừ tạm ứng, giữ lại bảo hành; cuối cùng <b>Tổng hợp quyết toán</b> đối chiếu với dự toán.</li></ol></div>' +
+    $('esHelp').innerHTML = '<div class="es-card"><h3>Quy trình lập dự toán</h3><ol class="es-steps"><li><b>Dự toán mới</b> → chọn tỉnh/thành, loại công trình (tự gợi ý tỷ lệ chi phí chung và thu nhập chịu thuế tính trước, sửa được).</li><li>Thêm <b>hạng mục</b>, rồi <b>công tác</b> từ thư viện mã việc hoặc bảng giá <b>DG-</b> của tỉnh — hoặc dán khối lượng từ Excel. Đơn giá tự điền theo mức giá (thấp / trung bình / cao) và kỳ giá.</li><li>Nhập <b>khối lượng</b>; sửa tay đơn giá nếu cần (ô chuyển cam, không bị ghi đè khi cập nhật giá).</li><li>Kiểm tra bảng <b>tổng hợp chi phí</b> (trực tiếp → chung → thu nhập chịu thuế tính trước → VAT → dự phòng) rồi <b>xuất Excel / In PDF</b>.</li><li>Tab <b>Nhân công · Máy · Ngày công</b>: khối lượng dự toán × định mức hao phí → tổng công, ca máy từng loại, số ngày với số thợ bố trí (hoặc số thợ cần để xong đúng hạn).</li><li>Khi chốt hợp đồng: tab <b>Thanh toán · Quyết toán</b> → mỗi đợt nhập khối lượng nghiệm thu kỳ này (+ khối lượng phát sinh), trừ tạm ứng, giữ lại bảo hành; cuối cùng <b>Tổng hợp quyết toán</b> đối chiếu với dự toán.</li></ol></div>' +
       '<div class="es-card"><h3>Cập nhật mã công việc &amp; đơn giá theo từng tỉnh</h3><ol class="es-steps"><li>Tab <b>Mã công việc &amp; đơn giá tỉnh → Cập nhật đơn giá</b>: chọn tỉnh + kỳ giá, nhập đơn giá riêng (VD giá công bố hàng tháng) cho từng mã. Lưu vào <b>DTQT-Đơn giá tỉnh</b>.</li><li>Dự toán dùng <b>đơn giá mới nhất có kỳ ≤ kỳ giá của dự toán</b>; bấm “⟳ Cập nhật đơn giá” để tính lại cả dự toán sau khi đổi tỉnh / kỳ giá.</li><li>Có file định mức / đơn giá từ phần mềm khác (ETA, G8, F1…) → <b>Nhập từ Excel / CSV</b>.</li><li>Bảng <b>DG-</b> (công ty tự khảo sát) vẫn là nguồn gốc, chỉ được đọc — không bị ghi đè.</li></ol></div>' +
       '<div class="es-card"><h3>Căn cứ &amp; lưu ý</h3><p class="es-note">Cấu trúc chi phí theo Nghị định 10/2021/NĐ-CP (quản lý chi phí đầu tư xây dựng) và Thông tư 11/2021/TT-BXD; định mức theo Thông tư 12/2021/TT-BXD và các văn bản sửa đổi. <b>Trang này không kèm sẵn toàn bộ bộ định mức / đơn giá nhà nước</b> — hãy nạp bằng file hoặc khai vào thư viện. Tỷ lệ chi phí chung / thu nhập chịu thuế tính trước / VAT là giá trị mặc định tham khảo — luôn đối chiếu văn bản hiện hành và yêu cầu của chủ đầu tư rồi chỉnh trong từng dự toán. Chỉnh “Knc / Kmtc” để áp hệ số điều chỉnh nhân công / máy theo vùng, theo quý.</p></div>';
   }
@@ -656,8 +717,8 @@
   function showTab(t) {
     st.tab = t;
     document.querySelectorAll('#esTabs button').forEach(function (b) { b.classList.toggle('on', b.dataset.tab === t); });
-    ['est', 'set', 'lib', 'help'].forEach(function (k) { $('es' + k.charAt(0).toUpperCase() + k.slice(1)).hidden = k !== t; });
-    if (t === 'est') renderEst(); else if (t === 'set') saveEst(renderSet); else if (t === 'lib') saveEst(renderLib); else renderHelp();
+    ['est', 'set', 'res', 'lib', 'help'].forEach(function (k) { $('es' + k.charAt(0).toUpperCase() + k.slice(1)).hidden = k !== t; });
+    if (t === 'est') renderEst(); else if (t === 'set') saveEst(renderSet); else if (t === 'res') renderRes(); else if (t === 'lib') saveEst(renderLib); else renderHelp();
   }
   $('esTabs').addEventListener('click', function (ev) { var b = ev.target.closest('[data-tab]'); if (b) showTab(b.dataset.tab); });
   window.addEventListener('beforeunload', function () { if (st.dirty) saveEst(); });
