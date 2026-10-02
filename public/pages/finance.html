@@ -37,7 +37,15 @@
       --fn-green: #4F6F52; --fn-red: #A04848;
     }
     body { background: var(--fn-bg); color: var(--fn-text); font-family: 'Inter', -apple-system, sans-serif; min-height: 100vh; }
-    .fn-container { max-width: 1320px; }
+    .fn-container, .subpage-inner.fn-container { max-width: min(1760px, calc(100vw - 48px)); width: 100%; }   /* 2026-10-02: Sổ tài chính trải ngang gần hết màn hình, bảng không phải lăn chuột ngang */
+    .fn-sidebar { width: 236px; }
+    .fn-content { flex: 1; min-width: 0; }
+    .fn-table { width: 100%; }
+    .fn-table:has(#fnOrdRows) { min-width: 0; table-layout: auto; }
+    .fn-table:has(#fnOrdRows) td, .fn-table:has(#fnOrdRows) th { padding-left: 14px; padding-right: 14px; }
+    .fn-table:has(#fnOrdRows) td:nth-child(2), .fn-table:has(#fnOrdRows) td:nth-child(3), .fn-table:has(#fnOrdRows) td:nth-child(7) { min-width: 170px; }
+    .fn-table:has(#fnOrdRows) td:last-child { min-width: 150px; }
+    .fn-form-grid { gap: 16px 20px; }
 
     .fn-locked { max-width: 480px; margin: 80px auto; text-align: center; padding: 40px 32px; background: var(--fn-surface); border: 1px solid var(--fn-border); border-radius: 18px; }
     .fn-locked svg { width: 40px; height: 40px; color: var(--fn-muted); margin-bottom: 16px; }
@@ -50,7 +58,7 @@
     .fn-hero p { font-size: 0.875rem; color: var(--fn-muted); max-width: 480px; }
 
     /* ---- layout: sidebar + content ---- */
-    .fn-layout { display: flex; gap: 22px; align-items: flex-start; }
+    .fn-layout { display: flex; gap: 26px; align-items: flex-start; }
     .fn-sidebar { width: 216px; flex-shrink: 0; position: sticky; top: 16px; background: var(--fn-surface); border: 1px solid var(--fn-border); border-radius: 16px; padding: 14px 10px; }
     .fn-sidebar-group { margin-bottom: 14px; }
     .fn-sidebar-group:last-child { margin-bottom: 0; }
