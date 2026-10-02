@@ -2681,7 +2681,9 @@ var TaskManager = (function() {
 
   // 2026-10-02: MỘT MÃ - NHIỀU LINK (thuyết minh + slide + bản vẽ… cùng mã hiệu bổ trợ cho nhau). `links` = JSON [{label,url,driveId}], link đầu = `url`/`driveId` (tương thích cũ).
   function getDocLinks(d) {
-    var arr = []; try { arr = JSON.parse((d && d.links) || '[]'); } catch (e) { arr = []; }
+    var arr = [];
+    // Apps Script tự đổi chuỗi JSON dạng mảng thành MẢNG khi đọc từ Sheet (getAllData) → nhận cả mảng lẫn chuỗi
+    if (d && Array.isArray(d.links)) arr = d.links; else { try { arr = JSON.parse((d && d.links) || '[]'); } catch (e) { arr = []; } }
     if (!Array.isArray(arr)) arr = [];
     arr = arr.filter(function (x) { return x && x.url && x.url !== '#'; });
     if (!arr.length && d && d.url && d.url !== '#') arr = [{ label: 'Tài liệu', url: d.url, driveId: d.driveId || '' }];

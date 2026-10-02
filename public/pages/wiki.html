@@ -503,9 +503,12 @@
       code = normCode(code); if (!code) return null;
       return allDocs().filter(function (d) { return d.id !== ignoreId && normCode(d.code) === code; })[0] || null;
     }
-    function driveByCode(code, url) {
-      code = normCode(code); var did = driveIdOf(url);
-      return TaskManager.getDriveDocCodes().filter(function (x) { return normCode(x.code) === code && (!did || x.driveId !== did); })[0] || null;
+    // File Drive cùng mã nhưng CHƯA thuộc tài liệu nào (không nằm trong link của bất kỳ tài liệu nào, không phải link đang nhập trong form) mới tính là trùng
+    function driveByCode(code, ignoreIds) {
+      code = normCode(code); var skip = {}, owned = {};
+      (ignoreIds || []).forEach(function (i) { if (i) skip[i] = 1; });
+      allDocs().forEach(function (d) { TaskManager.getDocLinks(d).forEach(function (l) { if (l.driveId) owned[l.driveId] = 1; var i = driveIdOf(l.url); if (i) owned[i] = 1; }); });
+      return TaskManager.getDriveDocCodes().filter(function (x) { return normCode(x.code) === code && !skip[x.driveId] && !owned[x.driveId]; })[0] || null;
     }
     function docByUrl(url, ignoreId) {
       var n = normUrl(url); if (!n || n === '#') return null;
@@ -643,7 +646,7 @@
         var c = normCode(code.value), el = $('dfCodeMsg'); lastState = { ok: true };
         if (!c) { msg(el, '', 'Không gán mã cũng được (tuỳ chọn). Chọn Loại tài liệu (và Phòng ban nếu có) để lấy mã tự động.'); return; }
         if (!CODE_RE.test(c)) { lastState = { ok: false }; msg(el, 'bad', '✕ Sai định dạng. Dạng chuẩn: <code>LOẠI-PHÒNGBAN-STT</code> ví dụ <code>SOP-DRW-005</code>; toàn công ty: <code>LOẠI-STT</code> ví dụ <code>POL-001</code>.'); return; }
-        var d = docByCode(c, isEdit ? editDoc.id : null), dr = !d && driveByCode(c, url.value);
+        var d = docByCode(c, isEdit ? editDoc.id : null), dr = !d && driveByCode(c, collectLinks().map(function (l) { return l.driveId; }));
         if (d || dr) {
           var m2 = /^([A-Z]{2,4})(?:-([A-Z]{2,4}))?-\d+$/.exec(c), sug = m2 ? TaskManager.getNextDocCode(m2[1], m2[2] || '') : '';
           if (d && !isEdit) {   // mã đã có tài liệu → cho chọn: link bổ trợ (1 mã nhiều link) / ghi đè / đổi mã
