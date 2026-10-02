@@ -373,6 +373,7 @@
     var editingOrderId = null;
     var filter = 'all', query = '', flowSel = '';
     var collectedManual = false;
+    var editingPhase = '';   // giai đoạn của đơn đang sửa (đơn đã ghi sổ chỉ được sửa phần mô tả)
     var orderKind = 'sale';   // 'sale' = đơn bán cho khách · 'purchase' = phiếu mua nội bộ (mua hộ / tạm ứng cho công ty)
     var PURPOSE_HINT = { 'Tiếp khách': 'Tiếp ai (tên khách / đơn vị), vì việc gì, mấy người, địa điểm', 'Công tác': 'Đi đâu, từ ngày … đến ngày …, công việc gì, đi cùng ai', 'Ăn uống': 'Bữa nào, cho ai, tại công trình / văn phòng', 'Xăng xe': 'Biển số xe, lộ trình / công trình' };
     function purposeKey() { var c = (document.getElementById('odExpCat').value || ''); return /tiếp khách/i.test(c) ? 'Tiếp khách' : /công tác/i.test(c) ? 'Công tác' : /ăn uống/i.test(c) ? 'Ăn uống' : /xăng xe/i.test(c) ? 'Xăng xe' : ''; }
@@ -581,7 +582,7 @@
       document.getElementById('odKindSwitch').addEventListener('click', function (e) { var b = e.target.closest('[data-kind]'); if (b && !editingOrderId) setKind(b.getAttribute('data-kind')); });
     })();
     function resetForm() {
-      editingOrderId = null; collectedManual = false; lastTotal = 0;
+      editingOrderId = null; editingPhase = ''; collectedManual = false; lastTotal = 0;
       ['odReceiptNo', 'odReceiptUrl', 'odNote2', 'odTaxCode', 'odPurpose'].forEach(function (id) { document.getElementById(id).value = ''; });
       document.getElementById('odPurchaseDate').value = todayStr(); document.getElementById('odPayMode').value = 'employee'; document.getElementById('odExpCat').selectedIndex = 0; document.getElementById('odDocType').value = 'vat'; document.getElementById('odPartyType').value = 'supplier';
       setKind('sale');
@@ -607,7 +608,7 @@
     }
 
     function loadOrderIntoForm(order) {
-      editingOrderId = order.id;
+      editingOrderId = order.id; editingPhase = TaskManager.orderPhase(order);
       document.getElementById('odReceiptNo').value = order.receiptNo || ''; document.getElementById('odReceiptUrl').value = order.receiptUrl || ''; document.getElementById('odNote2').value = order.note || '';
       document.getElementById('odPurchaseDate').value = order.purchaseDate ? String(order.purchaseDate).slice(0, 10) : todayStr();
       document.getElementById('odTaxCode').value = order.partyTaxCode || ''; document.getElementById('odPurpose').value = order.purpose || '';
@@ -616,7 +617,7 @@
       if (order.revenueCategory && order.orderKind === 'purchase') document.getElementById('odExpCat').value = order.revenueCategory;
       setKind(order.orderKind === 'purchase' ? 'purchase' : 'sale');
       document.getElementById('odFormTitle').textContent = (order.orderKind === 'purchase' ? 'Sửa phiếu mua ' : 'Sửa đơn hàng ') + (order.orderNumber || '');
-      document.getElementById('odFormDesc').textContent = TaskManager.orderPhase(order) === 'rejected' && order.financeNote ? 'Kế toán trả lại: ' + order.financeNote : 'Chỉnh sửa rồi lưu nháp hoặc gửi kế toán.';
+      document.getElementById('odFormDesc').textContent = TaskManager.orderPhase(order) === 'rejected' && order.financeNote ? 'Kế toán trả lại: ' + order.financeNote : (editingPhase === 'debt' || editingPhase === 'paid' ? 'Đơn đã ghi sổ: chỉ sửa được thông tin mô tả (khách/nhà cung cấp, hạng mục, chứng từ). Phiếu thu/chi và công nợ đã tạo không đổi.' : 'Chỉnh sửa rồi lưu nháp hoặc gửi kế toán.');
       document.getElementById('odResetFormBtn').hidden = false;
       document.getElementById('odSaveDraftBtn').textContent = 'Cập nhật nháp';
       document.getElementById('odClientName').value = order.clientName || '';
@@ -693,6 +694,12 @@
       var data = collectFormData(); if (!data) return;
       if (submit && data.orderKind !== 'purchase' && data.debtAmount > 0 && !data.debtDueDate) { alert('Nhập hạn thanh toán cho phần công nợ trước khi gửi kế toán.'); return; }
       var id = editingOrderId;
+      if (id && (editingPhase === 'debt' || editingPhase === 'paid')) {
+        // Đơn ĐÃ ghi sổ: chỉ cập nhật thông tin mô tả; trạng thái, phiếu thu/chi, công nợ đã tạo giữ nguyên (kế toán sửa tiếp ở Sổ tài chính)
+        ['status', 'financeStatus', 'financeNote', 'collectedAmount', 'debtAmount', 'paymentMethod', 'account', 'debtKind', 'debtDueDate', 'revenueCategory', 'payMode'].forEach(function (k) { delete data[k]; });
+        if (!TaskManager.updateOrder(id, data, user)) { alert('Không sửa được đơn này.'); return; }
+        resetForm(); renderAll(); toast('Đã cập nhật thông tin đơn. Phiếu thu/chi và công nợ đã ghi sổ không đổi — sửa ở Sổ tài chính nếu cần.'); return;
+      }
       if (id) {
         data.status = 'draft'; data.financeStatus = ''; data.financeNote = '';
         if (!TaskManager.updateOrder(id, data, user)) { alert('Không sửa được đơn này.'); return; }
@@ -836,7 +843,7 @@
             '<select class="od-btn od-btn-ghost od-btn-sm" data-doc-order="' + o.id + '" title="Xuất văn bản Word / PDF"><option value="">Word/PDF…</option><option value="ob">Bảng kê & đề nghị thanh toán</option><option value="oq">Bảng báo giá</option><option value="oh">Biên bản giao nhận, nghiệm thu</option>' + (col > 0 ? '<option value="or">Phiếu thu (phần đã thu)</option>' : '') + '</select>' +
             (editable && ph === 'draft' ? '<button class="od-btn od-btn-primary od-btn-sm" data-submit-order="' + o.id + '">Gửi kế toán</button>' : '') +
             (canEdit && ph === 'pending' ? '<button class="od-btn od-btn-ghost od-btn-sm" data-recall-order="' + o.id + '">Thu hồi</button>' : '') +
-            (editable ? '<button class="od-btn od-btn-ghost od-btn-sm" data-edit-order="' + o.id + '">Sửa</button>' : '') +
+            ((canEdit && ph !== 'cancelled') ? '<button class="od-btn od-btn-ghost od-btn-sm" data-edit-order="' + o.id + '" title="' + (ph === 'debt' || ph === 'paid' ? 'Đơn đã ghi sổ: chỉ sửa thông tin mô tả, phiếu thu/chi & công nợ giữ nguyên' : ph === 'pending' ? 'Sửa đơn đang chờ kế toán (đơn quay về Nháp để gửi lại)' : 'Sửa đơn') + '">Sửa</button>' : '') +
             (canEdit && (ph === 'draft' || ph === 'rejected') ? '<button class="od-btn od-btn-danger od-btn-sm" data-delete-order="' + o.id + '">Xoá</button>' : '') +
           '</div></td>' +
         '</tr>' +

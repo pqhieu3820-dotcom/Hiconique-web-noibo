@@ -4016,6 +4016,15 @@ var TaskManager = (function() {
     else { var oUpd2 = { settledAmount: actual, settledAt: date, settleReceiptNo: rno, receiptNo: rno, docType: docType, partyTaxCode: taxCode, revenueCategory: cat }; update(STORAGE_KEYS.orders, o.id, oUpd2); syncToGSheets('orders', 'update', oUpd2, o.id); }
     return { used: used, excess: excess, rest: rest };
   }
+  // Kế toán (quyền tài chính) sửa thông tin đơn hàng ĐANG CHỜ ghi sổ trước khi duyệt — không cần là người lập đơn
+  function updateFinanceOrder(id, updates, user) {
+    if (!canManageFinance(user)) return null;
+    var o = getById(STORAGE_KEYS.orders, id);
+    if (!o || ordFin_(o) !== 'pending') return null;
+    var u = update(STORAGE_KEYS.orders, id, updates);
+    if (u) syncToGSheets('orders', 'update', updates, id);
+    return u;
+  }
   function rejectOrderFinance(id, reason, user) {
     if (!canManageFinance(user)) return null;
     var o = getById(STORAGE_KEYS.orders, id);
@@ -4370,6 +4379,7 @@ var TaskManager = (function() {
     submitOrderToFinance: submitOrderToFinance,
     approveOrderToFinance: approveOrderToFinance,
     approvePurchaseToFinance: approvePurchaseToFinance,
+    updateFinanceOrder: updateFinanceOrder,
     settleAdvance: settleAdvance,
     DOC_TYPES: DOC_TYPES,
     PURCHASE_PARTY_TYPES: PURCHASE_PARTY_TYPES,

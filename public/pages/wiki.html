@@ -472,7 +472,7 @@
           if (!target) return;
           var d = allDocs().filter(function (x) { return x.id === docId; })[0], to = target.querySelector('h3').textContent, from = fromCol.querySelector('h3').textContent;
           if (!d) return;
-          showConfirmDialog('Chuyển tài liệu <b>' + escapeHtml((d.code ? d.code + ' ' : '') + d.name) + '</b><br>từ danh mục <b>' + escapeHtml(from) + '</b> sang <b>' + escapeHtml(to) + '</b>?', function () { TaskManager.updateDocument(docId, { category: to }, user); render(); }, 'Chuyển');
+          showConfirmDialog('Chuyển tài liệu <b>' + escapeHtml((d.code ? d.code + ' ' : '') + d.name) + '</b><br>từ danh mục <b>' + escapeHtml(from) + '</b> sang <b>' + escapeHtml(to) + '</b>?', function () { TaskManager.updateDocument(docId, { category: to }, Auth.getCurrentUser()); render(); }, 'Chuyển');
         };
         document.addEventListener('pointermove', move, { passive: false }); document.addEventListener('pointerup', up); document.addEventListener('pointercancel', up);
       };
