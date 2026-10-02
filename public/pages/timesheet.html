@@ -936,6 +936,11 @@
               </div>
             </div>
             <div class="form-group">
+              <label class="form-label">Giờ bắt đầu check-in ca chiều</label>
+              <input type="text" class="form-input" id="tsWsAfternoonFrom" inputmode="numeric" maxlength="5" placeholder="13:00" style="max-width:120px;">
+              <p style="font-size:0.75rem; color:var(--ts-muted); margin:6px 0 0;">Chấm công từ giờ này trở đi (VD 13:00 → hết ngày) được tính là <b>check-in ca chiều</b>; trước giờ này là ca sáng. Đã check-in/out ca sáng xong thì nút chuyển sang ca chiều ngay. Đổi giờ ở đây có hiệu lực ngay trong ngày.</p>
+            </div>
+            <div class="form-group">
               <label class="form-label">Thời gian cho phép muộn đầu giờ (phút)</label>
               <input type="number" class="form-input" id="tsWsLateGrace" min="0" max="60" step="1" placeholder="5" style="max-width:120px;">
               <p style="font-size:0.75rem; color:var(--ts-muted); margin:6px 0 0;">Chấm công trong khoảng phút này SAU giờ vào ca vẫn tính đúng giờ, không bị đánh dấu "đi muộn" — VD giờ vào 07:30, cho phép 5 phút thì chấm công trước 07:35 vẫn chấp nhận. Chỉ áp dụng lúc vào ca, không áp dụng lúc ra ca.</p>
@@ -2144,12 +2149,10 @@
       if (record && record.morningCheckout && record.afternoonCheckout) return null;
       if (record && record.morningCheckout && !record.afternoonCheckin) return 'afternoon';
       if (record && record.afternoonCheckout && !record.morningCheckin) return 'morning';
+      // 2026-10-02: từ "Giờ bắt đầu check-in ca chiều" (Setup, mặc định 13:00) trở đi = ca chiều; trước đó = ca sáng (trước đây lấy mốc giữa giờ nghỉ trưa)
       var nowMin = toMinutes(nowHM());
-      var morningEndMin = toMinutes(ws.morningEnd);
-      var afternoonStartMin = toMinutes(ws.afternoonStart);
-      if (nowMin != null && morningEndMin != null && afternoonStartMin != null) {
-        return nowMin < (morningEndMin + afternoonStartMin) / 2 ? 'morning' : 'afternoon';
-      }
+      var fromMin = toMinutes(ws.afternoonCheckinFrom || '13:00');
+      if (nowMin != null && fromMin != null) return nowMin < fromMin ? 'morning' : 'afternoon';
       return 'morning';
     }
 
@@ -3660,8 +3663,8 @@
       // Chỉ Founder/CEO được sửa (không tính Giám đốc Bộ phận dù cùng
       // roleLevel 'admin') — các cấp còn lại mở modal chỉ để XEM.
       var canEdit = user.level === 'founder' || user.level === 'ceo';
-      ['tsWsMorningStart', 'tsWsMorningEnd', 'tsWsAfternoonStart', 'tsWsAfternoonEnd', 'tsWsMorningAutoCheckout', 'tsWsAfternoonAutoCheckout'].forEach(function (id) { makeTimePicker(document.getElementById(id)); });
-      var timeInputs = ['tsWsMorningStart', 'tsWsMorningEnd', 'tsWsAfternoonStart', 'tsWsAfternoonEnd'].map(function (id) {
+      ['tsWsMorningStart', 'tsWsMorningEnd', 'tsWsAfternoonStart', 'tsWsAfternoonEnd', 'tsWsAfternoonFrom', 'tsWsMorningAutoCheckout', 'tsWsAfternoonAutoCheckout'].forEach(function (id) { makeTimePicker(document.getElementById(id)); });
+      var timeInputs = ['tsWsMorningStart', 'tsWsMorningEnd', 'tsWsAfternoonStart', 'tsWsAfternoonEnd', 'tsWsAfternoonFrom'].map(function (id) {
         return document.getElementById(id);
       });
       var graceInput = document.getElementById('tsWsLateGrace');
@@ -3686,6 +3689,7 @@
         document.getElementById('tsWsMorningEnd').value = ws.morningEnd || DEFAULT_WORK_SCHEDULE.morningEnd;
         document.getElementById('tsWsAfternoonStart').value = ws.afternoonStart || DEFAULT_WORK_SCHEDULE.afternoonStart;
         document.getElementById('tsWsAfternoonEnd').value = ws.afternoonEnd || DEFAULT_WORK_SCHEDULE.afternoonEnd;
+        document.getElementById('tsWsAfternoonFrom').value = ws.afternoonCheckinFrom || DEFAULT_WORK_SCHEDULE.afternoonCheckinFrom;
         graceInput.value = (ws.lateGraceMinutes === '' || ws.lateGraceMinutes == null) ? DEFAULT_WORK_SCHEDULE.lateGraceMinutes : ws.lateGraceMinutes;
         morningAutoCheckoutInput.value = ws.morningAutoCheckoutTime || DEFAULT_WORK_SCHEDULE.morningAutoCheckoutTime;
         afternoonAutoCheckoutInput.value = ws.afternoonAutoCheckoutTime || DEFAULT_WORK_SCHEDULE.afternoonAutoCheckoutTime;
@@ -3711,12 +3715,17 @@
           morningEnd: document.getElementById('tsWsMorningEnd').value,
           afternoonStart: document.getElementById('tsWsAfternoonStart').value,
           afternoonEnd: document.getElementById('tsWsAfternoonEnd').value,
+          afternoonCheckinFrom: document.getElementById('tsWsAfternoonFrom').value || DEFAULT_WORK_SCHEDULE.afternoonCheckinFrom,
           lateGraceMinutes: graceRaw === '' ? 0 : Math.max(0, Math.round(Number(graceRaw))),
           morningAutoCheckoutTime: morningAutoCheckoutInput.value.trim() || DEFAULT_WORK_SCHEDULE.morningAutoCheckoutTime,
           afternoonAutoCheckoutTime: afternoonAutoCheckoutInput.value.trim() || DEFAULT_WORK_SCHEDULE.afternoonAutoCheckoutTime
         };
         if (!isValidHM(data.morningStart) || !isValidHM(data.morningEnd) || !isValidHM(data.afternoonStart) || !isValidHM(data.afternoonEnd)) {
           showToast('Giờ không hợp lệ, nhập theo định dạng HH:MM (24h), VD: 07:30.', false);
+          return;
+        }
+        if (!isValidHM(data.afternoonCheckinFrom)) {
+          showToast('Giờ bắt đầu check-in ca chiều không hợp lệ, nhập theo định dạng HH:MM (24h), VD: 13:00.', false);
           return;
         }
         if (!isValidHM(data.morningAutoCheckoutTime)) {

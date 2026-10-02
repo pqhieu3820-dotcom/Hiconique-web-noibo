@@ -231,7 +231,7 @@ const FIELD_MAP = {
   // muộn/về sớm khi chấm công theo ca. Setup thời gian làm việc (timesheet.html).
   workSchedule: [
     ['Mã', 'id'], ['Giờ vào ca sáng', 'morningStart'], ['Giờ ra ca sáng', 'morningEnd'],
-    ['Giờ vào ca chiều', 'afternoonStart'], ['Giờ ra ca chiều', 'afternoonEnd'],
+    ['Giờ vào ca chiều', 'afternoonStart'], ['Giờ ra ca chiều', 'afternoonEnd'], ['Giờ bắt đầu check-in ca chiều', 'afternoonCheckinFrom'],
     ['Thời gian cho phép muộn (phút)', 'lateGraceMinutes'],
     // 2026-09-22: giờ TỰ ĐỘNG đóng ca sáng nếu quên check-out — đọc field này
     // trong autoCheckoutForgottenMorningShifts() mỗi lần trigger chạy (mỗi
@@ -1638,7 +1638,7 @@ function getAllData(ss, sheetName) {
       // vì text thuần, format lại đúng ở đây là đủ khôi phục nguyên vẹn).
       if (Object.prototype.toString.call(val) === '[object Date]') {
         const TIME_ONLY_FIELDS = { checkinTime: true, checkoutTime: true, morningCheckin: true, morningCheckout: true, afternoonCheckin: true, afternoonCheckout: true,
-          morningStart: true, morningEnd: true, afternoonStart: true, afternoonEnd: true, morningAutoCheckoutTime: true, afternoonAutoCheckoutTime: true };   // 2026-09-30: giờ làm việc (Setup thời gian làm việc) cũng là giờ thuần — trước bị đọc thành '1899-12-30' nên lưu xong mở lại không thấy
+          morningStart: true, morningEnd: true, afternoonStart: true, afternoonEnd: true, morningAutoCheckoutTime: true, afternoonAutoCheckoutTime: true, afternoonCheckinFrom: true };   // 2026-09-30: giờ làm việc (Setup thời gian làm việc) cũng là giờ thuần — trước bị đọc thành '1899-12-30' nên lưu xong mở lại không thấy
         const pattern = TIME_ONLY_FIELDS[key] ? 'HH:mm' : (key === 'month' ? 'yyyy-MM' : 'yyyy-MM-dd');
         val = Utilities.formatDate(val, TZ, pattern);
       }
