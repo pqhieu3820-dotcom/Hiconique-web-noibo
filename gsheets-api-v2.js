@@ -1252,7 +1252,7 @@ function handleRequestImpl_(e) {
     } else if (action === 'scanDriveDocs') {
       // 2026-09-30: quét thư mục Google Drive, trả về các file có tên bắt đầu bằng MÃ HIỆU (VD DRW-SOP-005 Quy trình…) để trang Tài liệu
       // đối chiếu/nhập vào danh sách. Chỉ ĐỌC, không sửa gì trên Drive. Cần cấp quyền Drive 1 lần: chạy hàm authorizeDriveScan trong editor.
-      result = scanDriveDocs_(params.folderId, params.resume);
+      result = scanDriveDocs_(params.folderId, params.resume, params.token);
     } else if (action === 'getSpcStandards') {
       result = getAllData(ss, SHEETS.spcStandards);
     } else if (action === 'addSpcStandard') {
@@ -4567,14 +4567,16 @@ function authorizeDriveScan() {
 
 // 2026-10-02: QUÉT SÂU mọi thư mục con. Mỗi lượt chạy tối đa ~45s; hết giờ mà còn thư mục chưa quét thì trả `resume` (danh sách thư mục còn lại) — client gọi tiếp với `resume`
 // cho tới khi hết. Trả cả file CÓ mã (files) lẫn file KHÔNG có mã (noCode, tối đa 2500) kèm đường dẫn + loại file để phân loại/xác nhận.
-function scanDriveDocs_(folderId, resumeJson) {
+function scanDriveDocs_(folderId, resumeJson, token) {
   var id = String(folderId || '').replace(/^.*\/folders\//, '').replace(/[?&#].*$/, '').replace(/[^A-Za-z0-9_-]/g, '');
   if (!id) return { error: 'Thiếu mã/link thư mục Drive' };
   var started = Date.now(), LIMIT_MS = 45000, NOCODE_MAX = 2500;
   var root;
   try { root = DriveApp.getFolderById(id); } catch (err) { return { error: 'Không mở được thư mục (sai link hoặc chưa cấp quyền Drive): ' + err }; }
   var queue = [], resume = null;
-  try { resume = resumeJson ? JSON.parse(resumeJson) : null; } catch (err) { resume = null; }
+  // 2026-10-02: danh sách thư mục còn lại có thể RẤT dài (URL GET không chứa nổi) → giữ trong CacheService, client chỉ gửi `token` ngắn
+  if (token) { var cached = CacheService.getScriptCache().get('scanq_' + token); if (!cached) return { error: 'Phiên quét đã hết hạn (quá 1 giờ) — bấm quét lại từ đầu.' }; try { resume = JSON.parse(cached); } catch (err) { resume = null; } }
+  else { try { resume = resumeJson ? JSON.parse(resumeJson) : null; } catch (err) { resume = null; } }
   if (resume && resume.length) {
     resume.forEach(function (r) { try { queue.push({ folder: DriveApp.getFolderById(r.id), path: r.path, id: r.id }); } catch (err) { /* thư mục đã bị xoá/không còn quyền */ } });
   } else queue.push({ folder: root, path: root.getName(), id: root.getId() });
@@ -4592,7 +4594,13 @@ function scanDriveDocs_(folderId, resumeJson) {
     var di = cur.folder.getFolders();
     while (di.hasNext()) { var d = di.next(); queue.push({ folder: d, path: cur.path + ' / ' + d.getName(), id: d.getId() }); }
   }
-  return { files: files, noCode: noCode, scanned: scanned, folders: folders, truncated: truncated, resume: truncated ? queue.map(function (q) { return { id: q.id, path: q.path }; }) : [], folder: root.getName() };
+  var rest = truncated ? queue.map(function (q) { return { id: q.id, path: q.path }; }) : [], nextToken = '';
+  if (rest.length) {
+    var str = JSON.stringify(rest);
+    if (str.length > 90000) { rest = rest.map(function (q) { return { id: q.id, path: String(q.path).slice(-60) }; }); str = JSON.stringify(rest); }
+    nextToken = Utilities.getUuid().slice(0, 8); CacheService.getScriptCache().put('scanq_' + nextToken, str, 3600);
+  }
+  return { files: files, noCode: noCode, scanned: scanned, folders: folders, truncated: truncated, resume: [], resumeToken: nextToken, folder: root.getName() };
 }
 
 

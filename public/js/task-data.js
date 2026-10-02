@@ -2735,17 +2735,17 @@ var TaskManager = (function() {
   function scanDriveDocs(folder, callback, onProgress) {
     if (!isUsingGSheets() || !GSHEETS_CONFIG.API_URL) { callback({ error: 'Chưa kết nối Google Sheets' }); return; }
     var acc = { files: [], noCode: [], scanned: 0, folders: 0, truncated: false, folder: '' }, rounds = 0;
-    function round(resume) {
+    function round(token) {
       var controller = new AbortController(), timer = setTimeout(function () { controller.abort(); }, 100000);
-      fetch(GSHEETS_CONFIG.API_URL + '?action=scanDriveDocs&folderId=' + encodeURIComponent(folder) + (resume && resume.length ? '&resume=' + encodeURIComponent(JSON.stringify(resume)) : ''), { redirect: 'follow', signal: controller.signal })
+      fetch(GSHEETS_CONFIG.API_URL + '?action=scanDriveDocs&folderId=' + encodeURIComponent(folder) + (token ? '&token=' + encodeURIComponent(token) : ''), { redirect: 'follow', signal: controller.signal })
         .then(function (r) { return r.json(); })
         .then(function (d) {
           clearTimeout(timer);
           if (!d || d.error) { callback(d || { error: 'Phản hồi rỗng' }); return; }
           acc.files = acc.files.concat(d.files || []); acc.noCode = acc.noCode.concat(d.noCode || []); acc.scanned += d.scanned || 0; acc.folders += d.folders || 0; acc.folder = d.folder || acc.folder;
           if (onProgress) onProgress({ scanned: acc.scanned, folders: acc.folders, found: acc.files.length });
-          if (d.truncated && d.resume && d.resume.length && ++rounds < 40) { round(d.resume); return; }
-          acc.truncated = !!(d.truncated && d.resume && d.resume.length);
+          if (d.truncated && d.resumeToken && ++rounds < 60) { round(d.resumeToken); return; }
+          acc.truncated = !!(d.truncated && d.resumeToken);
           setDriveDocCodes(acc.files.map(function (f) { return { code: canonDocCode(f.code), name: f.name, url: f.url, driveId: f.driveId }; }));
           callback(acc);
         })

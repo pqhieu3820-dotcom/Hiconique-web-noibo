@@ -222,8 +222,15 @@
 
     /* ===== modal thêm/sửa, kiểm soát, đồng bộ ===== */
     .dm-overlay { position: fixed; inset: 0; z-index: 400; background: rgba(10, 12, 15, 0.55); backdrop-filter: blur(3px); display: flex; align-items: flex-start; justify-content: center; padding: 5vh 16px; overflow-y: auto; }
-    .dm-box { width: 100%; max-width: 860px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 16px; box-shadow: 0 24px 60px rgba(0,0,0,0.35); }
-    .dm-box.dm-wide { max-width: 980px; }
+    .dm-box { width: 100%; max-width: 1080px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 16px; box-shadow: 0 24px 60px rgba(0,0,0,0.35); }
+    .dm-box.dm-wide { max-width: 1240px; }
+    /* ô nhập không bị cắt chữ: hàng chứa select/ô nhập tự xuống dòng, mỗi ô rộng tối thiểu để đọc hết */
+    .dm-card .dm-row { flex-wrap: wrap; }
+    .dm-card .dm-row select { flex: 1 1 260px; min-width: 0; }
+    .dm-card .dm-row input { flex: 1 1 260px; min-width: 0; }
+    .dm-card .dm-row .dm-code { flex: 1 1 280px; }
+    .dm-card .dm-row #dfLabel { flex: 0 0 150px; }
+    .dm-card .dm-row .dfLL { flex: 0 0 150px; }
     .dm-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 20px 24px 14px; border-bottom: 1px solid var(--color-border); }
     .dm-title { font-size: 1.125rem; font-weight: 700; color: var(--color-text); }
     .dm-sub { font-size: 0.8125rem; color: var(--color-text-muted); margin-top: 2px; }
@@ -582,7 +589,7 @@
             '<div class="dm-row"><select id="dfType"><option value="">Loại tài liệu…</option>' + DOC_TYPES.map(function (t) { return '<option value="' + t[0] + '">' + escapeHtml(t[1]) + '</option>'; }).join('') + '</select>' +
             '<select id="dfDept"><option value="">Toàn công ty / nhiều phòng ban (bỏ mã ban)</option>' + depts.map(function (d) { return '<option value="' + d[0] + '">' + escapeHtml(d[1]) + '</option>'; }).join('') + '</select></div>' +
             '<label class="dm-lab">Mã hiệu <span class="dm-hint">LOẠI-PHÒNGBAN-STT, hoặc LOẠI-STT nếu áp dụng toàn công ty · tự động · có thể gõ tay để sửa</span></label>' +
-            '<div class="dm-row"><input id="dfCode" class="dm-code" placeholder="VD: SOP-DES-005 hoặc POL-001" maxlength="16" spellcheck="false"><button type="button" class="dm-btn" id="dfAuto" title="Lấy lại mã tự động">Tự động</button></div>' +
+            '<div class="dm-row"><input id="dfCode" class="dm-code" placeholder="SOP-DES-005 / POL-001" maxlength="16" spellcheck="false"><button type="button" class="dm-btn" id="dfAuto" title="Lấy lại mã tự động">Tự động</button></div>' +
             '<div id="dfCodeMsg" class="dm-msg"></div>' +
             '<div class="doc-code-info-panel" id="dfInfoPanel" hidden></div>' +
           '</section>' +
@@ -756,12 +763,12 @@
       }).join('');
       var oldList = A.coded.filter(function (x) { return x.fmt === 'old'; }), badList = A.coded.filter(function (x) { return x.fmt === 'bad'; });
       var folderRows = Object.keys(A.byFolder).sort().map(function (k) { var g = A.byFolder[k]; return '<tr><td class="dm-dim">' + escapeHtml(k) + '</td><td>' + g.n + '</td><td>' + Object.keys(g.guess).map(function (x) { return escapeHtml(x) + ' ×' + g.guess[x]; }).join(' · ') + '</td></tr>'; }).join('');
-      return '<div class="dm-stats">' + stat(r.scanned, 'File đã quét') + stat(r.folders, 'Thư mục con') + stat(A.groups.length, 'Tài liệu (mã) tìm thấy') + stat(A.multi.length, 'Mã có nhiều link bổ trợ') + stat(A.noCode.length + (r.noCode && r.noCode.length >= 2500 ? '+' : ''), 'File chưa có mã') + stat(A.cnt.old, 'Mã thứ tự cũ', 1) + stat(A.cnt.bad, 'Sai quy cách', 1) + stat(A.dups.length, 'Trùng mã khác tên', 1) + '</div>' +
+      return '<div class="dm-stats">' + stat(r.scanned, 'File đã quét') + stat(r.folders, 'Thư mục con') + stat(A.groups.length, 'Tài liệu (mã) tìm thấy') + stat(A.multi.length, 'Mã có nhiều link bổ trợ') + stat(A.noCode.length + (r.noCode && r.noCode.length >= 2500 ? '+' : ''), 'File chưa có mã') + stat(A.cnt.old, 'Mã thứ tự cũ', 1) + stat(A.cnt.bad, 'Sai quy cách', 1) + stat(A.dups.length, 'Cùng mã khác tên (kiểm tra)') + '</div>' +
         '<section class="dm-card"><h4>Theo loại tài liệu</h4>' + (typeRows ? '<table class="dm-table"><thead><tr><th>Loại</th><th>Số mã</th><th>Số file</th><th>Phòng ban</th></tr></thead><tbody>' + typeRows + '</tbody></table>' : '<div class="dm-dim">Chưa có file nào mang mã hiệu.</div>') + '</section>' +
         (A.multi.length ? '<section class="dm-card"><h4>Mã có nhiều link bổ trợ (' + A.multi.length + ') — sẽ gộp thành 1 tài liệu nhiều link</h4><ul class="dm-list">' + A.multi.slice(0, 40).map(function (g) { return '<li><code>' + escapeHtml(g.canon) + '</code> ' + escapeHtml(g.files[0].name) + ' <span class="dm-dim">· ' + g.files.map(function (x) { return escapeHtml(x.label); }).join(' + ') + '</span></li>'; }).join('') + '</ul></section>' : '') +
         (oldList.length ? '<section class="dm-card dm-alert"><h4>Mã theo thứ tự cũ (' + oldList.length + ') — nên đổi tên file trên Drive</h4><ul class="dm-list">' + oldList.slice(0, 60).map(function (x) { return '<li><code>' + escapeHtml(x.code) + '</code> → <code>' + escapeHtml(x.canon) + '</code> <span class="dm-dim">· ' + escapeHtml(x.fileName) + '</span></li>'; }).join('') + (oldList.length > 60 ? '<li class="dm-dim">… và ' + (oldList.length - 60) + ' file nữa (xem file .csv)</li>' : '') + '</ul></section>' : '') +
         (badList.length ? '<section class="dm-card dm-alert"><h4>Mã sai quy cách (' + badList.length + ')</h4><ul class="dm-list">' + badList.slice(0, 60).map(function (x) { return '<li><code>' + escapeHtml(x.code) + '</code> — ' + escapeHtml(x.why) + ' <span class="dm-dim">· ' + escapeHtml(x.path) + '</span></li>'; }).join('') + '</ul></section>' : '') +
-        (A.dups.length ? '<section class="dm-card dm-alert"><h4>Cùng mã nhưng KHÁC TÊN (' + A.dups.length + ') — có thể nhầm mã, cần đổi số cho đúng</h4><ul class="dm-list">' + A.dups.slice(0, 40).map(function (k) { var g = A.groups.filter(function (x) { return x.canon === k; })[0]; return '<li><code>' + escapeHtml(k) + '</code>: ' + g.subs.map(function (s) { return '«' + escapeHtml(s[0].name) + '» (' + s.length + ' file)'; }).join(' ≠ ') + '</li>'; }).join('') + '</ul></section>' : '') +
+        (A.dups.length ? '<section class="dm-card"><h4>Cùng mã nhưng KHÁC TÊN (' + A.dups.length + ') — tin theo mã bạn đặt trên Drive, gộp vào 1 tài liệu nhiều link; chỉ để bạn kiểm tra lại</h4><ul class="dm-list">' + A.dups.slice(0, 40).map(function (k) { var g = A.groups.filter(function (x) { return x.canon === k; })[0]; return '<li><code>' + escapeHtml(k) + '</code>: ' + g.subs.map(function (s) { return '«' + escapeHtml(s[0].name) + '» (' + s.length + ' file)'; }).join(' ≠ ') + '</li>'; }).join('') + '</ul></section>' : '') +
         (A.noCode.length ? '<section class="dm-card"><h4>File chưa có mã hiệu (' + A.noCode.length + ') — gợi ý loại theo thư mục/tên</h4><div class="dm-tablewrap" style="max-height:240px"><table class="dm-table"><thead><tr><th>Thư mục</th><th>Số file</th><th>Gợi ý loại</th></tr></thead><tbody>' + folderRows + '</tbody></table></div><div class="dm-dim" style="margin-top:6px">Chi tiết từng file + gợi ý loại có trong file .csv. Đây chỉ là gợi ý — bạn xác nhận trước khi gán mã.</div></section>' : '');
     }
     function scanCsv(A) {
@@ -775,7 +782,7 @@
     function openSync() {
       var saved = DEFAULT_DRIVE_FOLDER; try { saved = localStorage.getItem(DRIVE_FOLDER_KEY) || DEFAULT_DRIVE_FOLDER; } catch (e) { /* bỏ qua */ }
       var body =
-        '<p class="dm-dim" style="margin:0 0 10px;">Quét <b>sâu tất cả thư mục con</b> của thư mục Google Drive chứa tài liệu. Web nhận các file có <b>tên bắt đầu bằng mã hiệu</b> (VD <code>SOP-DES-005 Quy trình…</code>, <code>POL-001 Nội quy…</code>). Các file <b>cùng mã và cùng tên</b> (thuyết minh + slide…) được gộp thành <b>1 tài liệu nhiều link</b>; cùng mã nhưng khác tên sẽ được báo để bạn sửa. Kết quả được phân loại theo Loại / Phòng ban, kèm mã sai quy cách và file chưa có mã — bạn xác nhận trước khi nhập. Chỉ đọc, không sửa gì trên Drive.</p>' +
+        '<p class="dm-dim" style="margin:0 0 10px;">Quét <b>sâu tất cả thư mục con</b> của thư mục Google Drive chứa tài liệu. Web nhận các file có <b>tên bắt đầu bằng mã hiệu</b> (VD <code>SOP-DES-005 Quy trình…</code>, <code>POL-001 Nội quy…</code>). Các file <b>cùng mã và cùng tên</b> (thuyết minh + slide…) được gộp thành <b>1 tài liệu nhiều link</b>; cùng mã nhưng khác tên vẫn gộp theo mã bạn đặt (chỉ gắn cảnh báo để bạn kiểm tra). Kết quả được phân loại theo Loại / Phòng ban, kèm mã sai quy cách và file chưa có mã — bạn xác nhận trước khi nhập. Chỉ đọc, không sửa gì trên Drive.</p>' +
         '<div class="dm-row"><input id="dsFolder" placeholder="Dán link thư mục Google Drive…" value="' + escapeHtml(saved) + '"><button type="button" class="doc-submit-btn dm-primary" id="dsScan" style="white-space:nowrap;">Quét thư mục</button></div>' +
         '<div id="dsOut" class="dm-msg" style="margin-top:12px;"></div>';
       var ov = openModal('dmSync', 'Đồng bộ mã hiệu từ Google Drive', 'Quét sâu · gộp file bổ trợ · phân loại theo quy cách mã mới · xác nhận trước khi nhập.', body, true);
@@ -797,18 +804,21 @@
             var existing = docs.filter(function (d) { return normCode(d.code) === g.canon; })[0];
             var haveIds = {}; docs.forEach(function (d) { TaskManager.getDocLinks(d).forEach(function (l) { if (l.driveId) haveIds[l.driveId] = d; var i = driveIdOf(l.url); if (i) haveIds[i] = d; }); });
             var fresh = g.files.filter(function (x) { return !haveIds[x.driveId]; });
-            g._links = g.files.map(linkOf); g._fresh = fresh.map(linkOf); g._existing = existing || null;
+            // Mã đặt trên Drive là chuẩn: cùng mã dù khác tên vẫn gộp thành 1 tài liệu nhiều link (tên chính = nhóm tên có nhiều file nhất); link thuộc tên khác ghi rõ tên trong nhãn
+            var prim = g.subs.slice().sort(function (a, b) { return b.length - a.length; })[0], primKey = nn(prim[0].name);
+            g._name = prim[0].name;
+            var linkOfG = function (x) { var l = linkOf(x); if (nn(x.name) !== primKey) l.label = x.label + ' — ' + x.name; return l; };
+            g._links = g.files.map(linkOfG); g._fresh = fresh.map(linkOfG); g._existing = existing || null;
             if (g.fmt === 'bad') g._st = { k: 'bad', t: 'Sai quy cách' };
-            else if (g.conflict) g._st = { k: 'bad', t: 'Cùng mã nhưng khác tên' };
             else if (!fresh.length) g._st = { k: 'ok', t: 'Đã có' };
             else if (existing) {
               var same = nn(existing.name) === nn(g.subs[0][0].name) || nn(existing.name).indexOf(nn(g.subs[0][0].name)) >= 0 || nn(g.subs[0][0].name).indexOf(nn(existing.name)) >= 0;
-              g._st = same ? { k: 'new', t: 'Bổ sung ' + fresh.length + ' link vào «' + existing.name + '»', append: true } : { k: 'bad', t: 'Trùng mã với «' + existing.name + '» (khác tên)' };
-            } else g._st = { k: 'new', t: 'Mới' + (g.files.length > 1 ? ' · ' + g.files.length + ' link' : '') };
+              g._st = { k: 'new', t: 'Bổ sung ' + fresh.length + ' link vào «' + existing.name + '»' + (same ? '' : ' ⚠ khác tên — kiểm tra'), append: true };
+            } else g._st = { k: 'new', t: 'Mới' + (g.files.length > 1 ? ' · ' + g.files.length + ' link' : '') + (g.conflict ? ' ⚠ gộp ' + g.subs.length + ' tên khác nhau — kiểm tra' : '') };
           });
           var rows = found.map(function (g, i) {
             var chips = g.files.map(function (x) { return '<span class="dm-tag">' + escapeHtml(x.label) + '</span>'; }).join(' ');
-            return '<tr><td>' + (g._st.k === 'new' ? '<input type="checkbox" data-i="' + i + '" checked>' : '') + '</td><td><code>' + escapeHtml(g.canon) + '</code>' + (g.fmt === 'old' ? '<div class="dm-dim">tên file: ' + escapeHtml(g.files[0].code) + '</div>' : '') + '</td><td>' + escapeHtml(g.subs[0][0].name) + ' ' + chips + '<div class="dm-dim">' + escapeHtml(g.files[0].path) + '</div></td><td><span class="dm-tag ' + g._st.k + '">' + escapeHtml(g._st.t) + '</span></td></tr>';
+            return '<tr><td>' + (g._st.k === 'new' ? '<input type="checkbox" data-i="' + i + '" checked>' : '') + '</td><td><code>' + escapeHtml(g.canon) + '</code>' + (g.fmt === 'old' ? '<div class="dm-dim">tên file: ' + escapeHtml(g.files[0].code) + '</div>' : '') + '</td><td>' + escapeHtml(g._name) + ' ' + chips + (g.conflict ? '<div class="dm-dim">⚠ cùng mã, tên khác: ' + g.subs.map(function (s) { return escapeHtml(s[0].name); }).join(' | ') + '</div>' : '') + '<div class="dm-dim">' + escapeHtml(g.files[0].path) + '</div></td><td><span class="dm-tag ' + g._st.k + '">' + escapeHtml(g._st.t) + '</span></td></tr>';
           }).join('');
           var nNew = found.filter(function (g) { return g._st.k === 'new'; }).length, nBad = found.filter(function (g) { return g._st.k === 'bad'; }).length;
           out.className = 'dm-msg';
@@ -829,7 +839,7 @@
               var g = found[Number(cb.dataset.i)]; if (!g || g._st.k !== 'new') return;
               if (g._st.append && g._existing) { TaskManager.updateDocument(g._existing.id, Object.assign({ updatedAt: new Date().toISOString().slice(0, 10) }, TaskManager.docLinkUpdates(mergeLinks(TaskManager.getDocLinks(g._existing), g._fresh))), user); n++; return; }
               if (docByCode(g.canon)) return;
-              TaskManager.createDocument(Object.assign({ category: catv, name: g.subs[0][0].name, code: g.canon, source: 'drive' }, TaskManager.docLinkUpdates(g._links)), user); n++;
+              TaskManager.createDocument(Object.assign({ category: catv, name: g._name, code: g.canon, source: 'drive' }, TaskManager.docLinkUpdates(g._links)), user); n++;
             });
             closeModal('dmSync'); render();
             showConfirmDialog('Đã nhập/bổ sung ' + n + ' tài liệu từ Drive.', function () {}, 'Đóng');
