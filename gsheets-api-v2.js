@@ -252,7 +252,7 @@ const FIELD_MAP = {
   ],
   documents: [
     ['Mã TL', 'id'], ['Mã hiệu', 'code'], ['Danh mục', 'category'], ['Tên tài liệu', 'name'], ['Đường liên kết', 'url'],
-    ['Nguồn', 'source'], ['Mã file Drive', 'driveId'],
+    ['Nguồn', 'source'], ['Mã file Drive', 'driveId'], ['Danh sách link', 'links'],
     ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
   ],
   spcStandards: [

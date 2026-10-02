@@ -2679,6 +2679,19 @@ var TaskManager = (function() {
     return updated;
   }
 
+  // 2026-10-02: MỘT MÃ - NHIỀU LINK (thuyết minh + slide + bản vẽ… cùng mã hiệu bổ trợ cho nhau). `links` = JSON [{label,url,driveId}], link đầu = `url`/`driveId` (tương thích cũ).
+  function getDocLinks(d) {
+    var arr = []; try { arr = JSON.parse((d && d.links) || '[]'); } catch (e) { arr = []; }
+    if (!Array.isArray(arr)) arr = [];
+    arr = arr.filter(function (x) { return x && x.url && x.url !== '#'; });
+    if (!arr.length && d && d.url && d.url !== '#') arr = [{ label: 'Tài liệu', url: d.url, driveId: d.driveId || '' }];
+    return arr;
+  }
+  function docLinkUpdates(links) {
+    links = (links || []).filter(function (x) { return x && x.url && x.url !== '#'; });
+    return { links: JSON.stringify(links), url: links.length ? links[0].url : '#', driveId: links.length ? (links[0].driveId || '') : '' };
+  }
+
   function deleteDocument(id, user) {
     if (!canManageNotifications(user)) return false;
     var result = remove(STORAGE_KEYS.documents, id);
@@ -4080,6 +4093,8 @@ var TaskManager = (function() {
     addDocCategory: addDocCategory,
     deleteDocCategory: deleteDocCategory,
     getNextDocCode: getNextDocCode,
+    getDocLinks: getDocLinks,
+    docLinkUpdates: docLinkUpdates,
     canonDocCode: canonDocCode,
     migrateDocCodes: migrateDocCodes,
     DOC_TYPE_CODES: DOC_TYPE_CODES,
