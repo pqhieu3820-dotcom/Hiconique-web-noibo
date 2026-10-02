@@ -381,6 +381,7 @@ const FIELD_MAP = {
   financeEntries: [
     ['Mã GD', 'id'], ['Loại', 'type'], ['Danh mục', 'category'], ['Mô tả', 'description'],
     ['Số tiền', 'amount'], ['Tháng', 'month'], ['Ngày', 'date'], ['Ghi chú', 'note'], ['Người giao dịch', 'actor'], ['Số phiếu', 'voucherNo'], ['TK đối ứng', 'counterAccount'], ['Tài khoản quỹ', 'account'], ['Ngày chứng từ', 'voucherDate'],
+    ['Số hóa đơn', 'invoiceNo'], ['Loại chứng từ', 'docType'], ['MST đối tượng', 'partyTaxCode'], ['Mã đơn liên kết', 'orderId'], ['Link hóa đơn', 'invoiceUrl'], ['Hợp lệ thuế', 'deductible'],
     ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt'], ['Ngày xóa', 'deletedAt'], ['Người xóa', 'deletedBy']
   ],
   // Công nợ phải thu từ khách hàng (không phải giao dịch tiền mặt thật —
@@ -425,7 +426,8 @@ const FIELD_MAP = {
     ['Trạng thái sổ', 'financeStatus'], ['Thu ngay', 'collectedAmount'], ['Công nợ', 'debtAmount'], ['Hạn công nợ', 'debtDueDate'], ['Loại công nợ', 'debtKind'],
     ['Danh mục doanh thu', 'revenueCategory'], ['Tài khoản quỹ', 'account'], ['Ghi chú kế toán', 'financeNote'], ['Người duyệt sổ', 'financeReviewedBy'],
     ['Ngày duyệt sổ', 'financeReviewedAt'], ['Mã công nợ liên kết', 'linkedReceivableId'], ['Ngày gửi kế toán', 'submittedAt'],
-    ['Loại phiếu', 'orderKind'], ['Hình thức chi', 'payMode'], ['Số hóa đơn/chứng từ', 'receiptNo'], ['Ngày mua', 'purchaseDate'], ['Link ảnh hóa đơn', 'receiptUrl'], ['Ngày xóa', 'deletedAt'], ['Người xóa', 'deletedBy']
+    ['Loại phiếu', 'orderKind'], ['Hình thức chi', 'payMode'], ['Số hóa đơn/chứng từ', 'receiptNo'], ['Ngày mua', 'purchaseDate'], ['Link ảnh hóa đơn', 'receiptUrl'],
+    ['Loại chứng từ', 'docType'], ['MST đối tượng', 'partyTaxCode'], ['Mục đích / chi tiết', 'purpose'], ['Loại đối tượng', 'partyType'], ['Thực chi quyết toán', 'settledAmount'], ['Ngày quyết toán', 'settledAt'], ['Số HĐ quyết toán', 'settleReceiptNo'], ['Ngày xóa', 'deletedAt'], ['Người xóa', 'deletedBy']
   ],
   // 6 sheet công cụ theo dự án dưới đây (2026-09-09) đi cùng các tab mới trong
   // pricing.html — mỗi tab lấy TEMPLATE cố định (tên nhóm công việc, tiêu chí

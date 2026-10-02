@@ -3533,7 +3533,7 @@ var TaskManager = (function() {
     var map = isIn ? ['revenue', r.partyType === 'employee' ? 'Thu hoàn tạm ứng' : 'Thu công nợ khách hàng', r.partyType === 'employee' ? '141 — Tạm ứng' : '131 — Phải thu của khách hàng'] : (DEBT_PAY_MAP[r.partyType] || DEBT_PAY_MAP.other);
     var voucherNo = (p && p.voucherNo) || debtVoucherNo_(isIn ? 'PT' : 'PC', date);
     var desc = (isIn ? 'Thu nợ: ' : 'Trả nợ: ') + (r.clientName || '') + (r.refNo ? ' · ' + r.refNo : (r.orderNumber ? ' · ĐH ' + r.orderNumber : '')) + (r.paidAmount + amt < r.amount ? ' (đợt ' + (r.payments.length + 1) + ')' : '');
-    var entry = createFinanceEntry({ type: map[0], category: map[1], description: desc, amount: amt, date: date, month: date.slice(0, 7), voucherDate: date, voucherNo: voucherNo, account: account, counterAccount: map[2], actor: r.clientName || '', note: (p && p.note) || '' }, user);
+    var entry = createFinanceEntry({ type: map[0], category: map[1], description: desc, amount: amt, date: date, month: date.slice(0, 7), voucherDate: date, voucherNo: voucherNo, account: account, counterAccount: map[2], actor: r.clientName || '', note: (p && p.note) || '', invoiceNo: r.refNo || '', partyTaxCode: r.partyTaxCode || '', orderId: r.orderId || '' }, user);
     if (!entry) return null;
     var pays = r.payments.concat([{ id: 'pay_' + Date.now(), date: date, amount: amt, method: method, account: account, voucherNo: voucherNo, entryId: entry.id, note: (p && p.note) || '', by: user.id }]);
     var upd = { paidAmount: r.paidAmount + amt, payments: JSON.stringify(pays), status: (r.paidAmount + amt) >= r.amount ? 'paid' : 'unpaid' };
@@ -3786,8 +3786,13 @@ var TaskManager = (function() {
   //  payMode 'employee' : nhân viên tự ứng tiền mua → kế toán duyệt tạo CÔNG NỢ PHẢI TRẢ nhân viên (hoàn ứng); khi trả tiền mới sinh phiếu chi (sổ quỹ chỉ tính tiền thật ra/vào)
   //  payMode 'company'  : đã chi bằng tiền/thẻ công ty → duyệt tạo PHIẾU CHI ngay
   //  payMode 'advance'  : xin tạm ứng để mua → duyệt tạo PHIẾU CHI tạm ứng (TK 141) + công nợ PHẢI THU nhân viên (thu hồi khi nộp hoá đơn/hoàn tiền)
-  var PURCHASE_PAY_MODES = [['employee', 'Nhân viên tự ứng tiền mua — công ty hoàn ứng'], ['company', 'Đã chi bằng tiền / thẻ công ty'], ['advance', 'Xin tạm ứng để mua (chưa mua)']];
-  var PURCHASE_EXPENSE_CATS = ['Vật liệu xây dựng', 'Vật liệu nội thất (gỗ, tấm, đá, sơn…)', 'Thiết bị – phụ kiện (điện, nước, đèn…)', 'Máy móc – dụng cụ thi công', 'Văn phòng phẩm – thiết bị văn phòng', 'Vận chuyển – bốc xếp', 'Tiếp khách – hội họp', 'Điện – nước – internet – điện thoại', 'Marketing – quảng cáo – thương hiệu', 'Tạm ứng nhân viên', 'Chi phí khác'];
+  var PURCHASE_PAY_MODES = [['employee', 'Nhân viên tự ứng tiền mua — công ty hoàn ứng'], ['company', 'Đã chi bằng tiền / thẻ công ty'], ['advance', 'Xin tạm ứng để mua (chưa mua)'], ['supplier', 'Mua chịu — chưa thanh toán cho nhà cung cấp']];
+  var PURCHASE_EXPENSE_CATS = ['Công tác phí (đi lại, lưu trú, phụ cấp)', 'Ăn uống – chi tiêu hằng ngày', 'Xăng xe – cầu đường – gửi xe', 'Thuê ngoài / freelancer / dịch vụ', 'Thuê mặt bằng – kho – máy móc', 'Thuế – phí – lệ phí', 'Vật liệu xây dựng', 'Vật liệu nội thất (gỗ, tấm, đá, sơn…)', 'Thiết bị – phụ kiện (điện, nước, đèn…)', 'Máy móc – dụng cụ thi công', 'Văn phòng phẩm – thiết bị văn phòng', 'Vận chuyển – bốc xếp', 'Tiếp khách – hội họp', 'Điện – nước – internet – điện thoại', 'Marketing – quảng cáo – thương hiệu', 'Tạm ứng nhân viên', 'Chi phí khác'];
+  // Loại chứng từ → có được tính chi phí hợp lệ về thuế hay không
+  var DOC_TYPES = [['vat', 'Hóa đơn GTGT (VAT) — hợp lệ thuế'], ['retail', 'Hóa đơn bán lẻ / hóa đơn điện tử máy tính tiền'], ['receipt', 'Biên lai / phiếu thu của bên bán'], ['contract', 'Hợp đồng + biên bản nghiệm thu / thanh lý'], ['none', 'Không có hóa đơn — bảng kê mua hàng (chi nội bộ)']];
+  var PURCHASE_PARTY_TYPES = [['supplier', 'Nhà cung cấp vật tư / thiết bị'], ['subcontractor', 'Nhà thầu phụ / tổ đội thi công'], ['partner', 'Đối tác / môi giới / tư vấn / freelancer'], ['landlord', 'Chủ nhà / đơn vị cho thuê'], ['retail', 'Cửa hàng / quán ăn / dịch vụ (chi tiêu hằng ngày)'], ['other', 'Đối tượng khác']];
+  function docTypeLabel(k) { var x = DOC_TYPES.filter(function (d) { return d[0] === k; })[0]; return x ? x[1] : ''; }
+  function docDeductible_(k) { return k ? (k === 'none' ? 'Không' : 'Có') : ''; }
   function isPurchase(o) { return !!o && o.orderKind === 'purchase'; }
   function purchaseModeLabel(m) { var x = PURCHASE_PAY_MODES.filter(function (p) { return p[0] === m; })[0]; return x ? x[1] : ''; }
   function ordFin_(o) { return o.financeStatus || ''; }
@@ -3845,7 +3850,7 @@ var TaskManager = (function() {
     var desc = 'Đơn hàng ' + (o.orderNumber || o.id) + ' — ' + (o.clientName || 'Khách lẻ');
     if (col > 0) {
       var entry = createFinanceEntry({ type: 'revenue', category: cat, description: desc + (debt > 0 ? ' (thu trước)' : ''), amount: col, date: date, month: date.slice(0, 7), voucherDate: date,
-        voucherNo: p.voucherNo || ordVoucherNo_(date), account: upd.account, counterAccount: p.counterAccount || '511 — Doanh thu bán hàng & cung cấp dịch vụ', actor: o.clientName || '', note: 'Từ đơn hàng ' + (o.orderNumber || o.id) }, user);
+        voucherNo: p.voucherNo || ordVoucherNo_(date), account: upd.account, counterAccount: p.counterAccount || '511 — Doanh thu bán hàng & cung cấp dịch vụ', actor: o.clientName || '', note: 'Từ đơn hàng ' + (o.orderNumber || o.id), invoiceNo: o.orderNumber || '', partyTaxCode: o.partyTaxCode || '', orderId: o.id }, user);
       if (entry) upd.linkedFinanceEntryId = entry.id;
     }
     if (debt > 0) {
@@ -3865,20 +3870,26 @@ var TaskManager = (function() {
     if (!o || !isPurchase(o) || ordFin_(o) === 'booked') return null;
     p = p || {};
     var total = Number(o.totalAmount) || 0, mode = p.payMode || o.payMode || 'company', date = p.date || todayStr(), cat = p.category || o.revenueCategory || PURCHASE_EXPENSE_CATS[0];
-    var who = memberName_(o.createdBy), desc = 'Mua nội bộ ' + (o.orderNumber || o.id) + ' — ' + (o.clientName || 'NCC') + (o.receiptNo ? ' · HĐ ' + o.receiptNo : '');
-    var upd = { financeStatus: 'booked', payMode: mode, revenueCategory: cat, account: p.account || o.account || '111', financeNote: p.note || '', financeReviewedBy: user.id, financeReviewedAt: new Date().toISOString() };
+    var who = memberName_(o.createdBy);
+    var meta = { receiptNo: p.receiptNo != null ? p.receiptNo : (o.receiptNo || ''), docType: p.docType || o.docType || '', partyTaxCode: p.partyTaxCode != null ? p.partyTaxCode : (o.partyTaxCode || '') };
+    var desc = 'Mua nội bộ ' + (o.orderNumber || o.id) + ' — ' + (o.clientName || 'NCC') + (meta.receiptNo ? ' · HĐ ' + meta.receiptNo : '') + (o.purpose ? ' · ' + o.purpose : '');
+    var inv = { invoiceNo: meta.receiptNo, docType: meta.docType, partyTaxCode: meta.partyTaxCode, orderId: o.id, invoiceUrl: o.receiptUrl || '', deductible: docDeductible_(meta.docType) };
+    var upd = { financeStatus: 'booked', payMode: mode, revenueCategory: cat, account: p.account || o.account || '111', financeNote: p.note || '', financeReviewedBy: user.id, financeReviewedAt: new Date().toISOString(), receiptNo: meta.receiptNo, docType: meta.docType, partyTaxCode: meta.partyTaxCode };
     if (mode === 'company' || mode === 'advance') {
       var isAdv = mode === 'advance';
-      var entry = createFinanceEntry({ type: 'expense', category: isAdv ? 'Tạm ứng nhân viên' : cat, description: (isAdv ? 'Tạm ứng cho ' + who + ' — ' : '') + desc, amount: total, date: date, month: date.slice(0, 7), voucherDate: date,
-        voucherNo: p.voucherNo || debtVoucherNo_('PC', date), account: upd.account, counterAccount: p.counterAccount || (isAdv ? '141 — Tạm ứng' : '642 — Chi phí quản lý doanh nghiệp'), actor: who, note: 'Từ phiếu mua nội bộ ' + (o.orderNumber || o.id) }, user);
+      var entry = createFinanceEntry(Object.assign({ type: 'expense', category: isAdv ? 'Tạm ứng nhân viên' : cat, description: (isAdv ? 'Tạm ứng cho ' + who + ' — ' : '') + desc, amount: total, date: date, month: date.slice(0, 7), voucherDate: date,
+        voucherNo: p.voucherNo || debtVoucherNo_('PC', date), account: upd.account, counterAccount: p.counterAccount || (isAdv ? '141 — Tạm ứng' : '642 — Chi phí quản lý doanh nghiệp'), actor: who, note: 'Từ phiếu mua nội bộ ' + (o.orderNumber || o.id) }, inv), user);
       if (!entry) return null;
       upd.linkedFinanceEntryId = entry.id;
     }
     if (mode === 'company') { upd.collectedAmount = total; upd.debtAmount = 0; upd.status = 'paid'; }
     else {
-      var rc = createReceivable(mode === 'employee'
+      var rcCommon = { partyTaxCode: meta.partyTaxCode, partyPhone: o.clientPhone || '', partyAddress: o.clientAddress || '', refNo: meta.receiptNo, issueDate: o.purchaseDate || date };
+      var rc = createReceivable(Object.assign(rcCommon, mode === 'supplier'
+        ? { direction: 'payable', partyType: o.partyType && o.partyType !== 'retail' ? o.partyType : 'supplier', clientName: o.clientName || 'Nhà cung cấp', projectId: o.projectId || '', description: 'Mua chịu — ' + desc, amount: total, dueDate: p.dueDate || date, status: 'unpaid', orderId: o.id, orderNumber: o.orderNumber || '', kind: 'Công nợ mua hàng / dịch vụ', note: p.note || '' }
+        : mode === 'employee'
         ? { direction: 'payable', partyType: 'employee', clientName: who, projectId: o.projectId || '', description: 'Hoàn ứng — ' + desc, amount: total, dueDate: p.dueDate || date, status: 'unpaid', orderId: o.id, orderNumber: o.orderNumber || '', kind: 'Hoàn ứng chi phí mua hộ', note: p.note || '' }
-        : { direction: 'receivable', partyType: 'employee', clientName: who, projectId: o.projectId || '', description: 'Tạm ứng mua — ' + desc, amount: total, dueDate: p.dueDate || date, status: 'unpaid', orderId: o.id, orderNumber: o.orderNumber || '', kind: 'Tạm ứng — thu bù sau', note: p.note || '' }, user);
+        : { direction: 'receivable', partyType: 'employee', clientName: who, projectId: o.projectId || '', description: 'Tạm ứng mua — ' + desc, amount: total, dueDate: p.dueDate || date, status: 'unpaid', orderId: o.id, orderNumber: o.orderNumber || '', kind: 'Tạm ứng — thu bù sau', note: p.note || '' }), user);
       if (!rc) return null;
       upd.linkedReceivableId = rc.id; upd.collectedAmount = mode === 'advance' ? total : 0; upd.debtAmount = total; upd.status = 'confirmed';
     }
@@ -3886,6 +3897,42 @@ var TaskManager = (function() {
     if (u) syncToGSheets('orders', 'update', upd, id);
     if (o.createdBy && o.createdBy !== user.id) ordNotify_([o.createdBy], 'Phiếu mua nội bộ đã được ghi sổ', 'Phiếu ' + (o.orderNumber || o.id) + ' đã được ' + (user.name || 'kế toán') + ' duyệt: ' + purchaseModeLabel(mode) + ' — ' + total.toLocaleString('vi-VN') + ' ₫.');
     return u;
+  }
+  // QUYẾT TOÁN TẠM ỨNG: nhân viên nộp hoá đơn thực chi cho khoản đã tạm ứng (công nợ phải thu nhân viên gắn phiếu mua).
+  // p: { actual, date, receiptNo, docType, partyTaxCode, category, note, refundNow(bool), method, account }
+  //  - phần thực chi ≤ tạm ứng: trừ vào công nợ bằng hoá đơn (không phát sinh tiền); phần thừa: thu lại bằng phiếu thu (refundNow) hoặc để lại nợ
+  //  - thực chi > tạm ứng: công ty chi thêm phần vượt bằng phiếu chi
+  //  - phiếu chi tạm ứng ban đầu được gắn lại đúng nhóm chi phí + số hoá đơn
+  function settleAdvance(debtId, p, user) {
+    if (!canManageFinance(user)) return null;
+    p = p || {};
+    var raw = getAll(STORAGE_KEYS.receivables).filter(function (x) { return x.id === debtId; })[0];
+    if (!raw) return null;
+    var r = normalizeDebt_(raw), o = r.orderId ? getById(STORAGE_KEYS.orders, r.orderId) : null;
+    if (!o || !isPurchase(o) || r.direction !== 'receivable' || r.partyType !== 'employee' || r.outstanding <= 0) return null;
+    var actual = debtNum_(p.actual);
+    if (actual <= 0) return null;
+    var date = p.date || todayStr(), cat = p.category || o.revenueCategory || PURCHASE_EXPENSE_CATS[0], adv = r.outstanding;
+    var used = Math.min(actual, adv), excess = Math.max(0, actual - adv), rest = adv - used;
+    var docType = p.docType || o.docType || '', taxCode = p.partyTaxCode != null ? p.partyTaxCode : (o.partyTaxCode || ''), rno = p.receiptNo || o.receiptNo || '';
+    var inv = { invoiceNo: rno, docType: docType, partyTaxCode: taxCode, orderId: o.id, invoiceUrl: o.receiptUrl || '', deductible: docDeductible_(docType) };
+    var desc = 'Mua nội bộ ' + (o.orderNumber || o.id) + ' — ' + (o.clientName || 'NCC') + (rno ? ' · HĐ ' + rno : '') + ' (quyết toán tạm ứng ' + (r.clientName || '') + ')';
+    if (o.linkedFinanceEntryId) updateFinanceEntry(o.linkedFinanceEntryId, Object.assign({ category: cat, description: desc }, inv), user);
+    var pays = r.payments.concat([{ id: 'pay_' + Date.now(), date: date, amount: used, method: 'Quyết toán bằng hoá đơn', account: '', voucherNo: rno, entryId: '', note: p.note || '', by: user.id }]);
+    var paid = r.paidAmount + used;
+    var upd = { paidAmount: paid, payments: JSON.stringify(pays), status: paid >= r.amount ? 'paid' : 'unpaid' };
+    var u = update(STORAGE_KEYS.receivables, debtId, upd);
+    if (u) syncToGSheets('receivables', 'update', upd, debtId);
+    if (excess > 0) {
+      createFinanceEntry(Object.assign({ type: 'expense', category: cat, description: 'Chi vượt tạm ứng — ' + desc, amount: excess, date: date, month: date.slice(0, 7), voucherDate: date, voucherNo: debtVoucherNo_('PC', date),
+        account: p.account || '111', counterAccount: '334 — Phải trả người lao động', actor: r.clientName || '', note: 'Công ty chi thêm phần vượt tạm ứng' }, inv), user);
+    }
+    var oUpd = { settledAmount: actual, settledAt: date, settleReceiptNo: rno, receiptNo: rno, docType: docType, partyTaxCode: taxCode, revenueCategory: cat, debtAmount: rest };
+    if (rest > 0 && p.refundNow) recordDebtPayment(debtId, { amount: rest, date: date, method: p.method || 'Tiền mặt', note: 'Hoàn tiền tạm ứng thừa — ' + desc }, user);
+    else if (rest <= 0) settleOrderForReceivable(Object.assign({}, r, upd), user);
+    if (!(rest > 0 && p.refundNow)) { var ou = update(STORAGE_KEYS.orders, o.id, oUpd); if (ou) syncToGSheets('orders', 'update', oUpd, o.id); }
+    else { var oUpd2 = { settledAmount: actual, settledAt: date, settleReceiptNo: rno, receiptNo: rno, docType: docType, partyTaxCode: taxCode, revenueCategory: cat }; update(STORAGE_KEYS.orders, o.id, oUpd2); syncToGSheets('orders', 'update', oUpd2, o.id); }
+    return { used: used, excess: excess, rest: rest };
   }
   function rejectOrderFinance(id, reason, user) {
     if (!canManageFinance(user)) return null;
@@ -4235,6 +4282,10 @@ var TaskManager = (function() {
     submitOrderToFinance: submitOrderToFinance,
     approveOrderToFinance: approveOrderToFinance,
     approvePurchaseToFinance: approvePurchaseToFinance,
+    settleAdvance: settleAdvance,
+    DOC_TYPES: DOC_TYPES,
+    PURCHASE_PARTY_TYPES: PURCHASE_PARTY_TYPES,
+    docTypeLabel: docTypeLabel,
     isPurchase: isPurchase,
     purchaseModeLabel: purchaseModeLabel,
     PURCHASE_PAY_MODES: PURCHASE_PAY_MODES,

@@ -49,6 +49,9 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 
 - Trang Hóa đơn & Đơn hàng có công tắc **Bán hàng / Mua nội bộ**. Phiếu mua dùng chung bảng `orders` với `orderKind = 'purchase'`; cột mới ở sheet đơn hàng: Loại phiếu, Hình thức chi (`payMode`), Số hóa đơn/chứng từ, Ngày mua, Link ảnh hóa đơn (tự thêm cột khi Apps Script chạy).
 - 3 hình thức chi: **employee** (nhân viên tự ứng → công nợ PHẢI TRẢ nhân viên, "Hoàn ứng chi phí mua hộ"; trả nợ đủ thì phiếu chuyển "Đã chi xong"), **company** (công ty đã chi → phiếu chi ngay, TK đối ứng 642), **advance** (xin tạm ứng → phiếu chi TK 141 + công nợ PHẢI THU nhân viên).
+- **Bổ sung (sw v194, Apps Script v140)**: phiếu mua có thêm Loại chứng từ (`docType`: vat/retail/receipt/contract/none → cột "Hợp lệ thuế" Có/Không), MST đối tượng (`partyTaxCode`), Đối tượng bán (`partyType`), Mục đích/chi tiết (`purpose`, bắt buộc với tiếp khách/công tác/ăn uống/xăng xe hoặc khi không có HĐ). Hình thức chi thứ 4: **supplier** (mua chịu → công nợ PHẢI TRẢ nhà cung cấp, thanh toán sau sinh phiếu chi kèm số HĐ).
+- Kế toán ở Sổ tài chính kiểm tra/bổ sung loại chứng từ, số HĐ, MST rồi xác nhận → phiếu chi/công nợ mang `invoiceNo/docType/partyTaxCode/orderId/invoiceUrl/deductible` (6 cột mới ở sheet TC-Tài chính công ty).
+- **Quyết toán tạm ứng** (`TaskManager.settleAdvance`, nút ở chi tiết công nợ phải thu nhân viên): nhập thực chi + hoá đơn → trừ công nợ bằng hoá đơn (không phát sinh tiền), phiếu chi tạm ứng gắn lại đúng nhóm chi phí + số HĐ; thực chi < ứng → thu phần thừa bằng phiếu thu (hoặc giữ nợ); thực chi > ứng → phiếu chi phần vượt. Đơn bán cũng gắn số đơn/MST vào phiếu thu.
 - Code: `task-data.js` (`approvePurchaseToFinance`, `isPurchase`, `PURCHASE_PAY_MODES`, `PURCHASE_EXPENSE_CATS`); `orders.html` (`setKind`, `#odKindSwitch`); `finance.html` (`openPurchaseApprove`, `ordPcNo`, nhãn "Mua nội bộ" ở hộp Đơn hàng chờ ghi sổ).
 
 ## ⏳ VIỆC CÒN TỒN ĐỌNG (đọc mục này đầu tiên — cập nhật 2026-09-24)
