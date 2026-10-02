@@ -35,7 +35,14 @@
       --od-green: #4F8A5B; --od-red: #C75B5B; --od-blue: #4B7FA6; --od-amber: #C28A3A;
     }
     body { background: var(--od-bg); color: var(--od-text); font-family: 'Inter', -apple-system, sans-serif; min-height: 100vh; }
-    .od-container { max-width: 1180px; }
+    .od-container { max-width: 1480px; }
+    /* Quy tắc giao diện: bảng danh sách đủ rộng, chữ không chồng/bẻ dòng xấu (người dùng chốt 2026-10-02) */
+    #odOrderRows { white-space: nowrap; }
+    #odOrderRows td:nth-child(2) { min-width: 190px; white-space: normal; }
+    #odOrderRows td:nth-child(5) { min-width: 250px; white-space: normal; }
+    #odOrderRows td:nth-child(7) { min-width: 260px; }
+    #odOrderRows td:nth-child(3) { min-width: 140px; }
+    #odPurchaseFields[hidden], #odPurchasePaySec[hidden], #odSalePaySec[hidden] { display: none !important; }
 
     /* ---- tổng quan ---- */
     .od-summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }

@@ -68,7 +68,7 @@ self.addEventListener('notificationclick', function (event) {
   );
 });
 
-const CACHE_VERSION = 'hiconique-shell-v194';
+const CACHE_VERSION = 'hiconique-shell-v195';
 
 const PRECACHE_URLS = [
   '/',
@@ -89,6 +89,8 @@ const PRECACHE_URLS = [
   '/pages/lighting.html',
   '/pages/crm.html',
   '/pages/equipment.html',
+  '/pages/estimate.html',
+  '/pages/quality.html',
   '/pages/staff-monitor.html',
   '/pages/my-dashboard.html',
   '/pages/notices.html',
@@ -104,6 +106,7 @@ const PRECACHE_URLS = [
   '/pages/timesheet.html',
   '/pages/wiki.html',
   '/css/gantt.css',
+  '/css/work-pages.css',
   '/css/portal.css',
   '/css/projects.css',
   '/css/reset.css',
@@ -118,6 +121,8 @@ const PRECACHE_URLS = [
   '/js/lighting.js',
   '/js/crm.js',
   '/js/equipment.js',
+  '/js/estimate.js',
+  '/js/quality-docs.js',
   '/js/money-input.js',
   '/js/global-search.js',
   '/js/staff-monitor.js',

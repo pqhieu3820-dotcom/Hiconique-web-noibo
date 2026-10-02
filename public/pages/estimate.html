@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dự toán & Thanh quyết toán · HICONIQUE</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/reset.css">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/portal.css">
+  <link rel="stylesheet" href="/css/subpage.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-title" content="HICONIQUE" />
+  <link rel="manifest" href="/manifest.json" />
+  <script src="/js/offline.js"></script>
+  <script src="/js/gsheets-config.js"></script>
+  <script src="/js/task-data.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/excel-standard.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js" defer></script>
+  <link rel="stylesheet" href="/css/work-pages.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/" class="brand">
+        <span class="brand-mark"><img class="brand-logo" src="/logo-mark.png" alt="HICONIQUE" /></span>
+        <span class="brand-name"><span class="brand-name-1">HICONIQUE</span></span>
+      </a>
+      <nav class="primary-nav">
+        <a href="/#tools" class="nav-link">Công cụ</a>
+        <a href="/pages/tasks-manager.html" class="nav-link">Tasks</a>
+        <a href="/pages/projects.html" class="nav-link">Dự án</a>
+        <a href="/pages/wiki.html" class="nav-link">Tài liệu</a>
+        <a href="/#ai" class="nav-link">AI</a>
+        <a href="/pages/notices.html" class="nav-link">Thông báo</a>
+        <a href="/pages/team.html" class="nav-link">Team</a>
+      </nav>
+      <div class="header-actions">
+        <button class="theme-toggle" aria-label="Chuyển đổi sáng/tối" data-theme-toggle>
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" stroke-linecap="round" /></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        </button>
+        <span class="clock"><span class="clock-time" data-clock>--:--</span><span class="clock-meta">GMT+7</span></span>
+        <button class="avatar"><span>--</span></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="subpage">
+    <div class="subpage-inner es-container">
+      <p class="eyebrow">— Dự toán · Thanh toán · Quyết toán</p>
+      <h1 class="subpage-title">Dự toán &amp; <span class="subpage-title-italic">thanh quyết toán</span></h1>
+      <p class="subpage-lede">Lập dự toán theo mã công việc và đơn giá từng tỉnh/thành (nguồn: bảng giá DG- của công ty + thư viện định mức DTQT-), tự tính chi phí chung, thu nhập chịu thuế tính trước, VAT; thanh toán theo đợt, quyết toán và đối chiếu với dự toán — xuất Excel/PDF.</p>
+
+      <div class="es-seg" id="esTabs">
+        <button data-tab="est" class="on">Dự toán</button>
+        <button data-tab="set">Thanh toán · Quyết toán</button>
+        <button data-tab="lib">Mã công việc &amp; đơn giá tỉnh</button>
+        <button data-tab="help">Hướng dẫn &amp; căn cứ</button>
+      </div>
+
+      <section id="esEst"></section>
+      <section id="esSet" hidden></section>
+      <section id="esLib" hidden></section>
+      <section id="esHelp" hidden></section>
+    </div>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js" defer></script>
+  <script src="/js/push-notifications.js" defer></script>
+  <script src="/js/portal.js" defer></script>
+  <script src="/js/estimate.js" defer></script>
+</body>
+</html>

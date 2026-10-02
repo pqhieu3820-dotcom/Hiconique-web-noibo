@@ -1,6 +1,7 @@
 ## ⭐ QUAN TRỌNG — QUY TẮC GIAO DIỆN (người dùng chốt 2026-10-02): TỰ CHỦ ĐỘNG CĂN CHỈNH, KHÔNG ĐỂ NGƯỜI DÙNG PHẢI NHẮC
 
-- Mọi nút, ô nhập, hàng, bảng, hộp thoại làm mới/sửa phải **cân đối, thẳng hàng, cùng chiều cao/độ rộng hợp lý**; không để chữ bị cắt/bị bẻ dòng xấu, không để nút lệch kích thước, không để 1 phần tử trông khác các phần tử cùng loại (font, màu, cỡ chữ phải đồng bộ với phần còn lại của web). Làm xong tự rà bằng mắt (preview) trước khi báo.
+- Mọi nút, ô nhập, hàng, bảng, hộp thoại làm mới/sửa phải **cân đối, thẳng hàng, cùng chiều cao/độ rộng hợp lý**; không để chữ bị cắt/bị bẻ dòng xấu, không để nút lệch kích thước, không để 1 phần tử trông khác các phần tử cùng loại (font, màu, cỡ chữ phải đồng bộ với phần còn lại của web). Làm xong tự rà bằng mắt (preview) trước khi báo.
+- **Bảng/danh sách phải đủ rộng, không để chữ chồng lên nhau hay bẻ dòng xấu (người dùng chốt 2026-10-02, từ trang Đơn hàng & hóa đơn)**: khi làm/sửa bảng nào, nới khung (max-width ~1480px), đặt min-width cho cột chữ dài (tên, trạng thái, số tiền kèm chú thích), cho cột mã/số không xuống dòng; rà lại bằng mắt trước khi báo xong. Phần tử dùng thuộc tính `hidden` mà có CSS `display:grid/flex` thì phải thêm `[hidden]{display:none!important}`.
 - Khi thêm phần tử vào danh sách/bảng đã có, **đối chiếu với phần tử cũ và dùng đúng kiểu cũ** (chú ý các quy tắc CSS chung như `.wiki-col li a span:first/last-child` có thể làm phần tử mới lệch); không tạo kiểu mới nếu không cần.
 - Hộp thoại xác nhận dùng nút "Xác nhận"; nút hành động cùng hàng phải cùng kích thước; font bảng = Inter như toàn web.
 
@@ -53,6 +54,16 @@ tắc làm việc của dự án **HICONIQUE Internal Hub**.
 - Kế toán ở Sổ tài chính kiểm tra/bổ sung loại chứng từ, số HĐ, MST rồi xác nhận → phiếu chi/công nợ mang `invoiceNo/docType/partyTaxCode/orderId/invoiceUrl/deductible` (6 cột mới ở sheet TC-Tài chính công ty).
 - **Quyết toán tạm ứng** (`TaskManager.settleAdvance`, nút ở chi tiết công nợ phải thu nhân viên): nhập thực chi + hoá đơn → trừ công nợ bằng hoá đơn (không phát sinh tiền), phiếu chi tạm ứng gắn lại đúng nhóm chi phí + số HĐ; thực chi < ứng → thu phần thừa bằng phiếu thu (hoặc giữ nợ); thực chi > ứng → phiếu chi phần vượt. Đơn bán cũng gắn số đơn/MST vào phiếu thu.
 - Code: `task-data.js` (`approvePurchaseToFinance`, `isPurchase`, `PURCHASE_PAY_MODES`, `PURCHASE_EXPENSE_CATS`); `orders.html` (`setKind`, `#odKindSwitch`); `finance.html` (`openPurchaseApprove`, `ordPcNo`, nhãn "Mua nội bộ" ở hộp Đơn hàng chờ ghi sổ).
+
+## 🏗️ 2 TRANG MỚI: DỰ TOÁN & THANH QUYẾT TOÁN + HỒ SƠ CHẤT LƯỢNG (2026-10-02, sw v195, Apps Script v141)
+
+- **Sheet mới (KHÔNG đụng DG-)**: `DTQT-Dự toán`, `DTQT-Mã công việc`, `DTQT-Đơn giá tỉnh`, `DTQT-Thanh quyết toán`, `QLCL-Danh mục công việc`, `QLCL-Hồ sơ nghiệm thu`. Sheet tự tạo khi có bản ghi đầu tiên → sau đó chạy `sortSheetsByPrefix()` trong Apps Script để xếp cạnh nhau theo tiền tố (DTQT-, QLCL- đã nằm trong SHEETS ngay sau nhóm DG-).
+- **Kiến trúc chung**: bộ lưu trữ `TaskManager.loadColl/listColl/saveColl/removeColl/addCollBatch` (task-data.js) + 1 bộ xử lý Apps Script chung `genericColl_` (get/add/update/delete/addBatch cho 6 bảng). JSON dài cắt nhiều cột (`packJson/unpackJson`, tiền tố `J|`, mỗi ô ≤ 40.000 ký tự). Xoá = xoá mềm (deletedAt).
+- **estimate.html + js/estimate.js** (CSS chung `css/work-pages.css`): tab Dự toán (hạng mục/công tác, đơn giá VL/NC/Máy theo tỉnh · mức giá thấp/TB/cao · kỳ giá, hệ số Knc/Kmtc, tổng hợp chi phí: trực tiếp → chung → thu nhập chịu thuế tính trước → VAT → dự phòng, tỷ lệ mặc định tham khảo TT 11/2021 sửa được; xuất Excel/In PDF; dán khối lượng từ Excel), tab Thanh toán · Quyết toán (đợt thanh toán theo khối lượng kỳ này + phát sinh, trừ tạm ứng, giữ bảo hành; tổng hợp quyết toán so với dự toán), tab Mã công việc & đơn giá tỉnh (thư viện DTQT có định mức hao phí, bảng cập nhật đơn giá theo tỉnh + kỳ giá, nhập Excel/CSV). Thứ tự lấy đơn giá: DTQT-Đơn giá tỉnh (kỳ ≤ kỳ giá) → định mức × giá hao phí → đơn giá gốc thư viện → DG- của tỉnh (đọc trực tiếp qua `getPriceDb`, không sao chép).
+- **Lưu ý trung thực**: web KHÔNG kèm sẵn toàn bộ bộ định mức/đơn giá nhà nước (như ETA/G8/F1) — nạp bằng file Excel/CSV hoặc khai vào thư viện; mã W01… lấy từ DG-.
+- **quality.html + js/quality-docs.js**: danh mục công việc theo dự án (bộ mẫu nhà phố BTCT theo số tầng / nội thất), 15 mẫu hồ sơ (PYC-NT, BB-NTCV, PYC-VL, BB-NTVL, BB-LM, BB-NTGD, BB-NTHT, BB-BG, PL-KL, BB-XNKL, BB-PS, BB-KT, BB-ATLD, BB-SC, NKTC) theo hướng dẫn chung NĐ 06/2021 & TT 10/2021 (mẫu tham khảo — đối chiếu mẫu chủ đầu tư), lập hàng loạt hồ sơ nháp, in PDF / tải Word (.doc), chip hồ sơ xanh/cam, thông tin các bên lưu theo dự án (docType `INFO`).
+- Đăng ký trang: thẻ trang chủ + nhóm tools-hub "Dự án & thi công", tìm kiếm portal.js, ⟳ theo trang (PAGE_TYPES/PAGE_EXTRA, `loadDtqt`/`loadQlcl`), sw.js.
+- Cũng sửa ở trang Đơn hàng: bảng danh sách rộng hơn (container 1480px), cột không bị chồng chữ; ô "Mua nội bộ" bị hiện khi đang ở chế độ Bán hàng (lỗi `hidden` bị CSS grid ghi đè) đã sửa.
 
 ## ⏳ VIỆC CÒN TỒN ĐỌNG (đọc mục này đầu tiên — cập nhật 2026-09-24)
 

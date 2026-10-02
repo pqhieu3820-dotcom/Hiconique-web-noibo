@@ -341,7 +341,13 @@ function syncToGSheets(type, action, data, id) {
     orders: { add: 'addOrder', update: 'updateOrder', delete: 'deleteOrder' },
     spcStandards: { add: 'addSpcStandard', update: 'updateSpcStandard', delete: 'deleteSpcStandard' },
     salaryComponents: { add: 'addSalaryComponent', update: 'updateSalaryComponent', delete: 'deleteSalaryComponent' },
-    units: { add: 'addUnit', update: 'updateUnit', delete: 'deleteUnit' }
+    units: { add: 'addUnit', update: 'updateUnit', delete: 'deleteUnit' },
+    dtqtEstimates: { add: 'addDtqtEstimate', update: 'updateDtqtEstimate', delete: 'deleteDtqtEstimate' },
+    dtqtCodes: { add: 'addDtqtCode', update: 'updateDtqtCode', delete: 'deleteDtqtCode', batch: 'addDtqtCodeBatch' },
+    dtqtPrices: { add: 'addDtqtPrice', update: 'updateDtqtPrice', delete: 'deleteDtqtPrice', batch: 'addDtqtPriceBatch' },
+    dtqtSettlements: { add: 'addDtqtSettlement', update: 'updateDtqtSettlement', delete: 'deleteDtqtSettlement' },
+    qlclTasks: { add: 'addQlclTask', update: 'updateQlclTask', delete: 'deleteQlclTask', batch: 'addQlclTaskBatch' },
+    qlclRecords: { add: 'addQlclRecord', update: 'updateQlclRecord', delete: 'deleteQlclRecord' }
   };
 
   var apiAction = actionMap[type] ? actionMap[type][action] : null;
@@ -546,7 +552,13 @@ var TaskManager = (function() {
     orders: 'hiconique_orders',
     spcStandards: 'hiconique_spc_standards',
     salaryComponents: 'hiconique_salary_components',
-    units: 'hiconique_units'
+    units: 'hiconique_units',
+    dtqtEstimates: 'hiconique_dtqt_estimates',
+    dtqtCodes: 'hiconique_dtqt_codes',
+    dtqtPrices: 'hiconique_dtqt_prices',
+    dtqtSettlements: 'hiconique_dtqt_settlements',
+    qlclTasks: 'hiconique_qlcl_tasks',
+    qlclRecords: 'hiconique_qlcl_records'
   };
 
   // % hoa hồng mặc định theo vai trò — gợi ý khi tạo hoa hồng dự án, admin/
@@ -976,7 +988,8 @@ var TaskManager = (function() {
       lightingFactors: 'getLightingFactors', lightingPlans: 'getLightingPlans',
       equipment: 'getEquipment', pcReports: 'getPcReports', archivedMembers: 'getArchivedMembers', financeAccess: 'getFinanceAccess', customers: 'getCustomers', customerLogs: 'getCustomerLogs', staffActivity: 'getStaffActivity', appUsage: 'getAppUsage',
       receivables: 'getReceivables', bsSnapshots: 'getBsSnapshots', orders: 'getOrders', spcStandards: 'getSpcStandards', salaryComponents: 'getSalaryComponents', units: 'getUnits',
-      attendanceLocations: 'getAttendanceLocations'
+      attendanceLocations: 'getAttendanceLocations',
+      dtqtEstimates: 'getDtqtEstimates', dtqtCodes: 'getDtqtCodes', dtqtPrices: 'getDtqtPrices', dtqtSettlements: 'getDtqtSettlements', qlclTasks: 'getQlclTasks', qlclRecords: 'getQlclRecords'
     };
 
   // 2026-09-29: GÓI DỮ LIỆU — thay vì 16 lệnh GET song song mỗi lần làm mới (mỗi lệnh là 1 lần Apps Script chạy, dồn hàng đợi,
@@ -2595,6 +2608,65 @@ var TaskManager = (function() {
     return true;
   }
 
+  // ===================== BỘ LƯU TRỮ CHUNG cho trang Dự toán/Thanh quyết toán (DTQT-) và Hồ sơ chất lượng (QLCL-) =====================
+  // Mỗi "bộ" = 1 sheet. Đọc: loadColl(type) gộp dữ liệu Sheet với bản ghi mới tạo ở máy mà chưa kịp lên Sheet (10 phút); ghi: saveColl (thêm/sửa), removeColl (xoá mềm — đặt deletedAt, không mất dữ liệu).
+  // JSON dài (hạng mục dự toán…) cắt thành nhiều cột (mỗi ô Sheet ≤ 50.000 ký tự): packJson/unpackJson. Tiền tố "J|" để Apps Script không tự đọc nhầm thành mảng.
+  var COLL_TYPES_ = ['dtqtEstimates', 'dtqtCodes', 'dtqtPrices', 'dtqtSettlements', 'qlclTasks', 'qlclRecords'];
+  var COLL_CHUNK_ = 40000;
+  function packJson(prefix, obj, n) {
+    var s = 'J|' + JSON.stringify(obj == null ? null : obj), out = {};
+    if (s.length > COLL_CHUNK_ * n) return null;   // quá lớn
+    for (var i = 1; i <= n; i++) out[prefix + i] = s.slice((i - 1) * COLL_CHUNK_, i * COLL_CHUNK_);
+    return out;
+  }
+  function unpackJson(rec, prefix, n, fallback) {
+    var s = '';
+    for (var i = 1; i <= n; i++) { var v = rec && rec[prefix + i]; if (v == null || v === '') continue; s += (typeof v === 'string' ? v : JSON.stringify(v)); }
+    if (!s) return fallback === undefined ? null : fallback;
+    if (s.indexOf('J|') === 0) s = s.slice(2);
+    try { return JSON.parse(s); } catch (e) { return fallback === undefined ? null : fallback; }
+  }
+  function loadColl(type, callback) {
+    if (COLL_TYPES_.indexOf(type) === -1) { if (callback) callback(); return; }
+    getFromGSheets(type, function (items) {
+      var key = STORAGE_KEYS[type], local = getAll(key), srv = Array.isArray(items) ? items : [], ids = {}, cut = Date.now() - 10 * 60000;
+      srv.forEach(function (x) { ids[x.id] = 1; });
+      var pending = local.filter(function (x) { return !ids[x.id] && Date.parse(x.updatedAt || x.createdAt || 0) > cut; });
+      if (srv.length || !local.length || pending.length === local.length) save(key, srv.concat(pending));
+      if (callback) callback();
+    });
+  }
+  function listColl(type) { return live_(getAll(STORAGE_KEYS[type])); }
+  function saveColl(type, rec, user) {
+    var key = STORAGE_KEYS[type];
+    if (rec.id && getById(key, rec.id)) {
+      var u = update(key, rec.id, rec);
+      if (u) syncToGSheets(type, 'update', Object.assign({}, rec, { updatedAt: u.updatedAt }), rec.id);
+      return u;
+    }
+    if (user) rec.createdBy = user.id || '';
+    var c = add(key, rec);
+    if (c) syncToGSheets(type, 'add', c);
+    return c;
+  }
+  function removeColl(type, id, user) {
+    var upd = { deletedAt: new Date().toISOString(), deletedBy: (user && user.id) || '' };
+    var u = update(STORAGE_KEYS[type], id, upd);
+    if (u) syncToGSheets(type, 'update', upd, id);
+    return u;
+  }
+  // Thêm nhiều bản ghi 1 lần (nhập Excel/CSV, nạp từ DG-): 1 lệnh addXxxBatch thay vì N lệnh
+  function addCollBatch(type, list, user) {
+    if (typeof Offline !== 'undefined' && Offline.guard('nhập dữ liệu')) return null;
+    var key = STORAGE_KEYS[type], items = getAll(key), d = new Date(), base = type.replace(/s$/, '') + '_' + String(d.getFullYear()).slice(-2) + ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2) + '_' + Date.now();
+    var today = d.toISOString().split('T')[0], made = list.map(function (r, i) { return Object.assign({}, r, { id: base + '_' + i, createdAt: today, createdBy: (user && user.id) || '' }); });
+    save(key, items.concat(made));
+    var act = { dtqtCodes: 'addDtqtCodeBatch', dtqtPrices: 'addDtqtPriceBatch', qlclTasks: 'addQlclTaskBatch' }[type];
+    if (act) { for (var s = 0; s < made.length; s += 150) callGSheetsAPI(act, made.slice(s, s + 150)); }
+    else made.forEach(function (m) { syncToGSheets(type, 'add', m); });
+    return made;
+  }
+
   // ===================== Cơ cấu lương (salary-structure.js) — sheet TLCC-Cơ cấu lương =====================
   // Danh mục khoản chia nhỏ lương hợp đồng (lương đóng BH, hỗ trợ xăng xe/điện thoại/ăn trưa…). Mặc định nằm ở SalaryStructure.DEFAULTS (id cố định);
   // bản lưu trên Sheet ghi đè theo id, khoản thêm mới (id salc_<time>) được nối thêm. Chỉ quản lý (admin/manager) sửa.
@@ -4160,6 +4232,11 @@ var TaskManager = (function() {
     loadUnits: loadUnits,
     getCustomUnits: getCustomUnits,
     addCustomUnit: addCustomUnit,
+
+    // Bộ lưu trữ chung DTQT-/QLCL-
+    loadDtqt: function (cb) { var n = 4, d = function () { if (--n === 0 && cb) cb(); }; ['dtqtEstimates', 'dtqtCodes', 'dtqtPrices', 'dtqtSettlements'].forEach(function (t) { loadColl(t, d); }); },
+    loadQlcl: function (cb) { var n = 2, d = function () { if (--n === 0 && cb) cb(); }; ['qlclTasks', 'qlclRecords'].forEach(function (t) { loadColl(t, d); }); },
+    loadColl: loadColl, listColl: listColl, saveColl: saveColl, removeColl: removeColl, addCollBatch: addCollBatch, packJson: packJson, unpackJson: unpackJson,
 
     // Cơ cấu lương
     loadSalaryComponents: loadSalaryComponents,

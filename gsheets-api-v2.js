@@ -42,6 +42,9 @@ const SHEETS = {
   units: 'TC-Đơn vị tính',
   priceHistory: 'DG-Lịch sử giá',     // 2026-10-01: cập nhật đơn giá thủ công theo tháng (nhóm DG-)
   priceSources: 'DG-Nguồn',          // trạng thái rà soát từng nguồn S01…S38 theo tháng
+  // 2026-10-02: nhóm DTQT- (Dự toán – Thanh quyết toán, trang estimate.html) và QLCL- (Hồ sơ quản lý chất lượng, trang quality.html). KHÔNG đụng nhóm DG-.
+  dtqtEstimates: 'DTQT-Dự toán', dtqtCodes: 'DTQT-Mã công việc', dtqtPrices: 'DTQT-Đơn giá tỉnh', dtqtSettlements: 'DTQT-Thanh quyết toán',
+  qlclTasks: 'QLCL-Danh mục công việc', qlclRecords: 'QLCL-Hồ sơ nghiệm thu',
   priceSettings: 'DG-Cài đặt',      // chỗ gắn khóa API cập nhật giá (CHƯA dùng — mọi việc đang thủ công)   // 2026-10-01: đơn vị tính riêng thêm từ ô Đơn vị ở trang Đơn hàng (nhóm TC-)
   // 2026-09-26: nhóm TTCS- (Tính toán chiếu sáng) cho trang lighting.html — xem
   // GHI_CHU_DU_AN.md mục 6.9. 3 sheet danh mục/cấu hình (đọc-only từ web, sửa
@@ -286,6 +289,39 @@ const FIELD_MAP = {
   ],
   priceSettings: [
     ['Mã', 'id'], ['Giá trị', 'value'], ['Mô tả', 'note'], ['Ngày cập nhật', 'updatedAt']
+  ],
+  // ---- DTQT-: dữ liệu JSON dài được cắt thành nhiều cột 'Hạng mục 1..6' (mỗi ô Google Sheet tối đa 50.000 ký tự; client cắt/ghép bằng TaskManager.packJson/unpackJson) ----
+  dtqtEstimates: [
+    ['Mã DT', 'id'], ['Tên dự toán', 'name'], ['Mã dự án', 'projectId'], ['Tỉnh/Thành', 'province'], ['Loại công trình', 'kind'], ['Mức giá', 'tier'], ['Kỳ giá (tháng)', 'priceMonth'],
+    ['Khách hàng / Chủ đầu tư', 'customer'], ['Số hợp đồng', 'contractNo'], ['Trạng thái', 'status'], ['Tham số chi phí', 'params'], ['Chi phí trực tiếp', 'directCost'], ['Tổng dự toán', 'total'], ['Ghi chú', 'note'],
+    ['Hạng mục 1', 'items1'], ['Hạng mục 2', 'items2'], ['Hạng mục 3', 'items3'], ['Hạng mục 4', 'items4'], ['Hạng mục 5', 'items5'], ['Hạng mục 6', 'items6'],
+    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt'], ['Ngày xóa', 'deletedAt'], ['Người xóa', 'deletedBy']
+  ],
+  dtqtCodes: [
+    ['Mã', 'id'], ['Mã hiệu', 'code'], ['Tên công tác', 'name'], ['ĐVT', 'unit'], ['Nhóm', 'group'], ['Vật liệu', 'vl'], ['Nhân công', 'nc'], ['Máy thi công', 'may'],
+    ['Định mức hao phí', 'res1'], ['Định mức hao phí 2', 'res2'], ['Căn cứ định mức', 'normSource'], ['Ghi chú', 'note'], ['Còn dùng', 'active'],
+    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt'], ['Ngày xóa', 'deletedAt'], ['Người xóa', 'deletedBy']
+  ],
+  dtqtPrices: [
+    ['Mã', 'id'], ['Loại', 'kind'], ['Mã hiệu / hao phí', 'key'], ['Tên', 'name'], ['ĐVT', 'unit'], ['Tỉnh/Thành', 'province'], ['Vật liệu', 'vl'], ['Nhân công', 'nc'], ['Máy thi công', 'may'],
+    ['Đơn giá hao phí', 'price'], ['Hệ số vùng', 'factor'], ['Kỳ giá (tháng)', 'month'], ['Nguồn / văn bản', 'source'], ['Ghi chú', 'note'],
+    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt'], ['Ngày xóa', 'deletedAt'], ['Người xóa', 'deletedBy']
+  ],
+  dtqtSettlements: [
+    ['Mã', 'id'], ['Mã dự toán', 'estimateId'], ['Mã dự án', 'projectId'], ['Tên', 'name'], ['Loại', 'kind'], ['Đợt số', 'periodNo'], ['Ngày', 'date'], ['Trạng thái', 'status'],
+    ['Tạm ứng', 'advance'], ['Giữ lại bảo hành (%)', 'retentionPct'], ['Giá trị đợt này', 'total'], ['Đã thanh toán', 'paid'], ['Ghi chú', 'note'],
+    ['Dữ liệu 1', 'd1'], ['Dữ liệu 2', 'd2'], ['Dữ liệu 3', 'd3'], ['Dữ liệu 4', 'd4'],
+    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt'], ['Ngày xóa', 'deletedAt'], ['Người xóa', 'deletedBy']
+  ],
+  qlclTasks: [
+    ['Mã', 'id'], ['Mã dự án', 'projectId'], ['Hạng mục / vị trí', 'location'], ['Công việc', 'name'], ['Giai đoạn', 'phase'], ['Mã tham chiếu', 'refCode'], ['Ngày dự kiến', 'plannedDate'], ['Trạng thái', 'status'],
+    ['Hồ sơ cần lập', 'requiredDocs'], ['Thứ tự', 'order'], ['Ghi chú', 'note'],
+    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt'], ['Ngày xóa', 'deletedAt'], ['Người xóa', 'deletedBy']
+  ],
+  qlclRecords: [
+    ['Mã', 'id'], ['Mã dự án', 'projectId'], ['Mã công việc', 'taskId'], ['Loại hồ sơ', 'docType'], ['Số hiệu', 'docNo'], ['Tiêu đề', 'title'], ['Ngày lập', 'date'], ['Trạng thái', 'status'], ['Hạng mục / vị trí', 'location'],
+    ['Dữ liệu 1', 'd1'], ['Dữ liệu 2', 'd2'], ['Dữ liệu 3', 'd3'],
+    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt'], ['Ngày xóa', 'deletedAt'], ['Người xóa', 'deletedBy']
   ],
   units: [
     ['Mã', 'id'], ['Đơn vị', 'unit'], ['Nhóm', 'group'], ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
@@ -1098,6 +1134,20 @@ function handleBatchOps_(params) {
   return jsonOut_(JSON.stringify(out));
 }
 
+// 2026-10-02: các bảng mới DTQT-/QLCL- dùng chung 1 bộ xử lý (get/add/update/delete + addBatch cho mã công việc & đơn giá tỉnh)
+var GEN_COLL_ = [['DtqtEstimate', 'dtqtEstimates'], ['DtqtCode', 'dtqtCodes'], ['DtqtPrice', 'dtqtPrices'], ['DtqtSettlement', 'dtqtSettlements'], ['QlclTask', 'qlclTasks'], ['QlclRecord', 'qlclRecords']];
+function genericColl_(ss, action, params) {
+  if (typeof action !== 'string') return undefined;
+  for (let i = 0; i < GEN_COLL_.length; i++) {
+    const n = GEN_COLL_[i][0], key = GEN_COLL_[i][1], sh = SHEETS[key];
+    if (action === 'get' + n + 's') return getAllData(ss, sh);
+    if (action === 'add' + n) return addData(ss, sh, JSON.parse(params.data));
+    if (action === 'update' + n) return updateData(ss, sh, params.id, JSON.parse(params.data));
+    if (action === 'delete' + n) return deleteData(ss, sh, params.id);
+    if (action === 'add' + n + 'Batch') return addDataBatch(ss, sh, JSON.parse(params.data));
+  }
+  return undefined;
+}
 function handleRequestImpl_(e) {
   try {
     const params = e.parameter || {};
@@ -1122,8 +1172,11 @@ function handleRequestImpl_(e) {
 
     const ss = getSS_();
     let result;
+    const genRes_ = genericColl_(ss, action, params);
 
-    if (action === 'getProjects') {
+    if (genRes_ !== undefined) {
+      result = genRes_;
+    } else if (action === 'getProjects') {
       result = getAllData(ss, SHEETS.projects);
     } else if (action === 'getTasks') {
       result = getAllData(ss, SHEETS.tasks);

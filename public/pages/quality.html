@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hồ sơ chất lượng · HICONIQUE</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/reset.css">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/portal.css">
+  <link rel="stylesheet" href="/css/subpage.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-title" content="HICONIQUE" />
+  <link rel="manifest" href="/manifest.json" />
+  <script src="/js/offline.js"></script>
+  <script src="/js/gsheets-config.js"></script>
+  <script src="/js/task-data.js"></script>
+  <script src="/js/auth.js"></script>
+  <link rel="stylesheet" href="/css/work-pages.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/" class="brand">
+        <span class="brand-mark"><img class="brand-logo" src="/logo-mark.png" alt="HICONIQUE" /></span>
+        <span class="brand-name"><span class="brand-name-1">HICONIQUE</span></span>
+      </a>
+      <nav class="primary-nav">
+        <a href="/#tools" class="nav-link">Công cụ</a>
+        <a href="/pages/tasks-manager.html" class="nav-link">Tasks</a>
+        <a href="/pages/projects.html" class="nav-link">Dự án</a>
+        <a href="/pages/wiki.html" class="nav-link">Tài liệu</a>
+        <a href="/#ai" class="nav-link">AI</a>
+        <a href="/pages/notices.html" class="nav-link">Thông báo</a>
+        <a href="/pages/team.html" class="nav-link">Team</a>
+      </nav>
+      <div class="header-actions">
+        <button class="theme-toggle" aria-label="Chuyển đổi sáng/tối" data-theme-toggle>
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" stroke-linecap="round" /></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        </button>
+        <span class="clock"><span class="clock-time" data-clock>--:--</span><span class="clock-meta">GMT+7</span></span>
+        <button class="avatar"><span>--</span></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="subpage">
+    <div class="subpage-inner es-container">
+      <p class="eyebrow">— Quản lý chất lượng thi công</p>
+      <h1 class="subpage-title">Hồ sơ <span class="subpage-title-italic">chất lượng công trình</span></h1>
+      <p class="subpage-lede">Danh mục công việc cần nghiệm thu theo từng dự án và lập nhanh toàn bộ hồ sơ: phiếu yêu cầu nghiệm thu, biên bản nghiệm thu công việc / vật liệu / giai đoạn / hoàn thành, phụ lục khối lượng, biên bản phát sinh, kiểm tra hiện trường, an toàn lao động, sự cố, nhật ký thi công, bàn giao — in PDF hoặc tải Word.</p>
+      <div class="es-toolbar"><select class="es-select" id="qProj" style="min-width:300px"></select><button class="es-btn" id="qInfoBtn" type="button">Thông tin các bên &amp; công trình</button><span class="es-spacer"></span><span class="es-note" id="qStat"></span></div>
+      <div class="es-seg" id="qTabs"><button data-t="tasks" class="on">Danh mục công việc</button><button data-t="make">Lập hồ sơ nhanh</button><button data-t="recs">Hồ sơ đã lập</button><button data-t="help">Hướng dẫn &amp; căn cứ</button></div>
+      <section id="qTasks"></section><section id="qMake" hidden></section><section id="qRecs" hidden></section><section id="qHelp" hidden></section>
+    </div>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js" defer></script>
+  <script src="/js/push-notifications.js" defer></script>
+  <script src="/js/portal.js" defer></script>
+  <script src="/js/quality-docs.js" defer></script>
+</body>
+</html>
