@@ -4821,6 +4821,8 @@ function sortSheetsByPrefix() {
   const pre = function (n) { const i = n.indexOf('-'); return i > 0 ? n.slice(0, i) : ''; };
   const order = [];
   known.forEach(function (n) { const p = pre(n); if (p && order.indexOf(p) === -1) order.push(p); });
+  // 2026-10-02: các tab đơn giá cũ (DG-, DGXD-) xếp NGAY SAU nhóm DGDM- (cùng khu đơn giá) cho tới khi được đổi tên / xoá
+  ['DG', 'DGXD'].forEach(function (p, k) { if (order.indexOf(p) === -1) { const i = order.indexOf('DGDM'); if (i === -1) order.push(p); else order.splice(i + 1 + k, 0, p); } });
   const rank = function (n) { const i = order.indexOf(pre(n)); return i === -1 ? order.length : i; };
   const idx = function (n) { const i = known.indexOf(n); return i === -1 ? 9999 : i; };
   const all = ss.getSheets();
