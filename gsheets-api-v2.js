@@ -1149,7 +1149,7 @@ var DGDM_SEED_ = {"stages":[["Mã GĐ","Tên giai đoạn","Mã hạng mục","T
 function dgdmFind_(ss, name) { return findSheet(ss, name); }
 function dgdmAddHeader_(sh, header, log) {
   const lc = sh.getLastColumn(), hs = sh.getRange(1, 1, 1, lc).getValues()[0].map(function (h) { return normalizeName(h); });
-  if (hs.indexOf(normalizeName(header)) !== -1) return lc;
+  if (hs.indexOf(normalizeName(header)) !== -1) return hs.indexOf(normalizeName(header)) + 1;   // 2026-10-02: trả đúng chỉ số cột đã có (trước đây trả cột cuối → ghi nhầm mã công việc sang Mã hiệu ĐM)
   if (sh.getMaxColumns() < lc + 1) sh.insertColumnAfter(lc);
   sh.getRange(1, lc).copyTo(sh.getRange(1, lc + 1), SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
   sh.getRange(1, lc + 1).setValue(header);
