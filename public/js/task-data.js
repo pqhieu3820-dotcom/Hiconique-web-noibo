@@ -2727,18 +2727,40 @@ var TaskManager = (function() {
       .catch(function (e) { clearTimeout(timer); callback({ error: 'Không quét được: ' + (e && e.message || e) }); });
   }
 
-  function getNextDocCode(dept, type) {
-    if (!dept || !type) return '';
-    var prefix = dept + '-' + type + '-';
+  // 2026-10-02 — QUY CÁCH MÃ MỚI (theo Điều 1, Chương 1 Quy chế quản lý dữ liệu & tài liệu):
+  //   [Mã Loại tài liệu]-[Mã Phòng ban]-[STT 3 số]     VD: SOP-DES-005
+  //   Tài liệu áp dụng cho TOÀN CÔNG TY hoặc số đông phòng ban → BỎ mã phòng ban:  [Mã Loại]-[STT 3 số]   VD: POL-001
+  // Trước đây thứ tự là [Phòng ban]-[Loại]-[STT] (VD DES-WIN-003) → canonDocCode() tự đổi mã cũ sang thứ tự mới; migrateDocCodes() ghi lại lên Sheet.
+  var DOC_TYPE_CODES = ['SOP', 'WIN', 'POL', 'FRM', 'CHK', 'SPC', 'TPL'];
+  function canonDocCode(code) {
+    var c = String(code || '').trim().toUpperCase().replace(/\s+/g, '');
+    var m = /^([A-Z]{2,4})-([A-Z]{2,4})-(\d{3,4})$/.exec(c);
+    if (m && DOC_TYPE_CODES.indexOf(m[1]) < 0 && DOC_TYPE_CODES.indexOf(m[2]) >= 0 && DEPARTMENTS.some(function (d) { return d.code === m[1]; })) return m[2] + '-' + m[1] + '-' + m[3];
+    return c;
+  }
+  // Đổi mã cũ (PHÒNGBAN-LOẠI-STT) sang mã mới (LOẠI-PHÒNGBAN-STT) cho mọi tài liệu có sẵn (chỉ quản lý); trả số tài liệu đã đổi
+  function migrateDocCodes(user) {
+    if (!canManageNotifications(user)) return 0;
+    var n = 0;
+    getAll(STORAGE_KEYS.documents).forEach(function (d) {
+      var nc = d.code ? canonDocCode(d.code) : '';
+      if (nc && nc !== String(d.code)) { updateDocument(d.id, { code: nc }, user); n++; }
+    });
+    return n;
+  }
+  // dept để trống = tài liệu toàn công ty / nhiều phòng ban → mã dạng LOẠI-STT
+  function getNextDocCode(type, dept) {
+    if (!type) return '';
+    var prefix = type + '-' + (dept ? dept + '-' : '');
     var maxSeq = 0;
     getAll(STORAGE_KEYS.documents).concat(getDriveDocCodes()).forEach(function (d) {
-      if (d.code && String(d.code).toUpperCase().indexOf(prefix) === 0) {
-        var seq = parseInt(String(d.code).slice(prefix.length), 10);
-        if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
+      var c = canonDocCode(d.code);
+      if (c && c.indexOf(prefix) === 0) {
+        var rest = c.slice(prefix.length);
+        if (/^\d{3,4}$/.test(rest)) { var seq = parseInt(rest, 10); if (seq > maxSeq) maxSeq = seq; }
       }
     });
-    var next = maxSeq + 1;
-    return prefix + ('00' + next).slice(-3);
+    return prefix + ('00' + (maxSeq + 1)).slice(-3);
   }
 
   // Timesheet
@@ -4045,6 +4067,9 @@ var TaskManager = (function() {
     addDocCategory: addDocCategory,
     deleteDocCategory: deleteDocCategory,
     getNextDocCode: getNextDocCode,
+    canonDocCode: canonDocCode,
+    migrateDocCodes: migrateDocCodes,
+    DOC_TYPE_CODES: DOC_TYPE_CODES,
     getDriveDocCodes: getDriveDocCodes,
     scanDriveDocs: scanDriveDocs,
 

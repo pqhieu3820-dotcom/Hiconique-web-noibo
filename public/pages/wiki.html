@@ -315,7 +315,7 @@
       });
     }
 
-    // Hệ thống Mã tài liệu — [Phòng ban]-[Loại tài liệu]-[STT 3 số]
+    // Hệ thống Mã tài liệu (2026-10-02, theo Điều 1 Chương 1 Quy chế): [Loại tài liệu]-[Phòng ban]-[STT 3 số]; toàn công ty / số đông phòng ban → bỏ mã phòng ban: [Loại]-[STT]
     // Cập nhật 2026-09-27 theo SOP mới: mỗi loại có mô tả + ví dụ. Danh sách
     // PHÒNG BAN lấy thẳng từ TaskManager.getDepartments() (1 nguồn duy nhất
     // với form đăng ký/trang cá nhân — trước đây trang này giữ bản chép tay đã
@@ -347,14 +347,15 @@
         groupsHtml += '<li><code>' + d[0] + '</code> — <b>' + escapeHtml(d[1].split('— ')[1]) + '</b>' + (d[2] ? '. ' + escapeHtml(d[2]) : '') + '</li>';
       });
       if (lastGroup !== null) groupsHtml += '</ul>';
-      return '<h4>Công thức định danh</h4>' +
-        '<p><code>[Mã Phòng ban]-[Mã Loại tài liệu]-[STT 3 số]</code><br>' +
-        'Ví dụ: <code>DRW-SOP-005</code> — Quy trình triển khai bản vẽ kỹ thuật đồ mộc.</p>' +
+      return '<h4>Công thức định danh tiêu chuẩn</h4>' +
+        '<p><code>[Mã Loại tài liệu]-[Mã Phòng ban]-[Số thứ tự 3 chữ số]</code><br>' +
+        'Ví dụ: <code>SOP-DES-005</code> — Quy trình triển khai bản vẽ kỹ thuật đồ mộc và diện tường.</p>' +
+        '<p><b>Rút gọn:</b> nếu tài liệu áp dụng cho <b>toàn bộ công ty</b> hoặc <b>số đông phòng ban kết hợp</b> thì <b>bỏ mã phòng ban</b>: <code>[Mã Loại]-[STT 3 số]</code>. Ví dụ: <code>POL-001</code> — Quy chế Nội quy lao động Công ty.</p>' +
         '<h4>Loại tài liệu</h4><ul>' +
         DOC_TYPES.map(function (t) { return '<li><code>' + t[0] + '</code> — <b>' + escapeHtml(t[1].split('— ')[1]) + '</b>. ' + escapeHtml(t[2]) + '</li>'; }).join('') +
         '</ul>' +
-        '<h4>Phòng ban / chức năng</h4>' + groupsHtml +
-        '<p>STT (3 số) tự động tăng dần theo từng cặp Phòng ban + Loại tài liệu đã dùng, không cần nhập tay.</p>';
+        '<h4>Phòng ban / chức năng (bỏ qua nếu tài liệu toàn công ty)</h4>' + groupsHtml +
+        '<p>STT (3 số) tự động tăng dần theo từng nhóm Loại + Phòng ban (hoặc theo Loại nếu bỏ mã ban), không cần nhập tay. Mã theo thứ tự cũ (PHÒNGBAN-LOẠI-STT) được tự đổi sang thứ tự mới.</p>';
     }
 
     function render() {
@@ -364,6 +365,8 @@
       var user = (typeof Auth !== 'undefined') ? Auth.getCurrentUser() : null;
       var canManage = user && TaskManager.canManageNotifications(user);
       document.getElementById('docAdminBar').style.display = canManage ? 'block' : 'none';
+      // một lần/tải trang: mã theo thứ tự cũ (PHÒNGBAN-LOẠI-STT) → thứ tự mới (LOẠI-PHÒNGBAN-STT), ghi lại lên Sheet (chỉ quản lý)
+      if (canManage && TaskManager.migrateDocCodes && !window.__docMig) { window.__docMig = 1; TaskManager.migrateDocCodes(user); }
 
       if (!groups.length) {
         wrap.innerHTML = '<p style="color:var(--color-text-faint);">Chưa có tài liệu nào.</p>';
@@ -374,7 +377,7 @@
         return '<div class="wiki-col"><h3>' + escapeHtml(g.category) + '</h3><ul>' +
           g.items.map(function (d) {
             return '<li><a href="' + escapeHtml(d.url || '#') + '" target="_blank" rel="noopener">' +
-              '<span>' + (d.code ? '<span class="wiki-doc-code">' + escapeHtml(d.code) + '</span>' : (canManage ? '<span class="wiki-doc-tag">Chưa có mã</span>' : '')) + escapeHtml(d.name) + '</span>' +
+              '<span>' + (d.code ? '<span class="wiki-doc-code">' + escapeHtml(TaskManager.canonDocCode ? TaskManager.canonDocCode(d.code) : d.code) + '</span>' : (canManage ? '<span class="wiki-doc-tag">Chưa có mã</span>' : '')) + escapeHtml(d.name) + '</span>' +
               (canManage ? '<span><button type="button" class="wiki-col-edit" data-edit-id="' + escapeHtml(d.id) + '">Sửa</button><button type="button" class="wiki-col-del" data-id="' + escapeHtml(d.id) + '">Xoá</button></span>' : '<span>&rarr;</span>') +
             '</a></li>';
           }).join('') +
@@ -452,7 +455,8 @@
 
     // ============ 2026-09-30: KIỂM SOÁT MÃ HIỆU + LINK TÀI LIỆU ============
     var CODE_RE = /^[A-Z]{2,4}(?:-[A-Z]{2,4})?-\d{3,4}$/;
-    function normCode(s) { return String(s || '').trim().toUpperCase().replace(/\s+/g, ''); }
+    // normCode đồng thời đổi mã theo thứ tự CŨ (PHÒNGBAN-LOẠI-STT) sang thứ tự MỚI (LOẠI-PHÒNGBAN-STT) để so trùng đúng
+    function normCode(s) { var c = String(s || '').trim().toUpperCase().replace(/\s+/g, ''); return (window.TaskManager && TaskManager.canonDocCode) ? TaskManager.canonDocCode(c) : c; }
     function allDocs() { return TaskManager.getDocuments().reduce(function (a, g) { return a.concat(g.items); }, []); }
     function driveIdOf(url) { var m = /\/(?:d|folders)\/([A-Za-z0-9_-]{15,})/.exec(url || '') || /[?&]id=([A-Za-z0-9_-]{15,})/.exec(url || ''); return m ? m[1] : ''; }
     // So sánh link trùng: đọc TRỌN chuỗi. Giữ phần tham số phân biệt nội dung (VD YouTube ?list=…, ?v=…, Drive ?id=…) — chỉ bỏ tham số theo dõi
@@ -492,8 +496,8 @@
         var c = normCode(d.code);
         if (!c) noCode.push(d); else { (byCode[c] = byCode[c] || []).push(d); }
         var u = normUrl(d.url); if (u && u !== '#') (byUrl[u] = byUrl[u] || []).push(d);
-        var m = /^([A-Z]{2,4})-([A-Z]{2,4})-(\d{3,4})$/.exec(c);
-        if (m) { var k = m[1] + '-' + m[2]; var g = groups[k] = groups[k] || { key: k, n: 0, max: 0, seqs: {} }; g.n++; var s = parseInt(m[3], 10); g.seqs[s] = true; if (s > g.max) g.max = s; }
+        var m = /^([A-Z]{2,4})(?:-([A-Z]{2,4}))?-(\d{3,4})$/.exec(c);
+        if (m) { var k = m[1] + (m[2] ? '-' + m[2] : ''); var g = groups[k] = groups[k] || { key: k, n: 0, max: 0, seqs: {} }; g.n++; var s = parseInt(m[3], 10); g.seqs[s] = true; if (s > g.max) g.max = s; }
       });
       var dupCodes = Object.keys(byCode).filter(function (c) { return byCode[c].length > 1; }).map(function (c) { return { code: c, docs: byCode[c] }; });
       var dupUrls = Object.keys(byUrl).filter(function (u) { return byUrl[u].length > 1; }).map(function (u) { return { url: u, docs: byUrl[u] }; });
@@ -538,10 +542,10 @@
             '<div id="dfUrlMsg" class="dm-msg"></div>' +
           '</section>' +
           '<section class="dm-card"><h4><span class="dm-step">2</span>Mã hiệu tài liệu <button type="button" class="doc-code-info-btn" id="dfInfoBtn" aria-label="Quy ước mã">i</button></h4>' +
-            '<div class="dm-row"><select id="dfDept"><option value="">Phòng ban…</option>' + depts.map(function (d) { return '<option value="' + d[0] + '">' + escapeHtml(d[1]) + '</option>'; }).join('') + '</select>' +
-            '<select id="dfType"><option value="">Loại tài liệu…</option>' + DOC_TYPES.map(function (t) { return '<option value="' + t[0] + '">' + escapeHtml(t[1]) + '</option>'; }).join('') + '</select></div>' +
-            '<label class="dm-lab">Mã hiệu <span class="dm-hint">tự động theo Phòng ban + Loại · có thể gõ tay để sửa</span></label>' +
-            '<div class="dm-row"><input id="dfCode" class="dm-code" placeholder="VD: DRW-SOP-005" maxlength="16" spellcheck="false"><button type="button" class="dm-btn" id="dfAuto" title="Lấy lại mã tự động">Tự động</button></div>' +
+            '<div class="dm-row"><select id="dfType"><option value="">Loại tài liệu…</option>' + DOC_TYPES.map(function (t) { return '<option value="' + t[0] + '">' + escapeHtml(t[1]) + '</option>'; }).join('') + '</select>' +
+            '<select id="dfDept"><option value="">Toàn công ty / nhiều phòng ban (bỏ mã ban)</option>' + depts.map(function (d) { return '<option value="' + d[0] + '">' + escapeHtml(d[1]) + '</option>'; }).join('') + '</select></div>' +
+            '<label class="dm-lab">Mã hiệu <span class="dm-hint">LOẠI-PHÒNGBAN-STT, hoặc LOẠI-STT nếu áp dụng toàn công ty · tự động · có thể gõ tay để sửa</span></label>' +
+            '<div class="dm-row"><input id="dfCode" class="dm-code" placeholder="VD: SOP-DES-005 hoặc POL-001" maxlength="16" spellcheck="false"><button type="button" class="dm-btn" id="dfAuto" title="Lấy lại mã tự động">Tự động</button></div>' +
             '<div id="dfCodeMsg" class="dm-msg"></div>' +
             '<div class="doc-code-info-panel" id="dfInfoPanel" hidden></div>' +
           '</section>' +
@@ -555,7 +559,7 @@
       if (isEdit) {
         if (cats.indexOf(editDoc.category) === -1) { var o = document.createElement('option'); o.textContent = editDoc.category; cat.appendChild(o); }
         cat.value = editDoc.category; name.value = editDoc.name || ''; url.value = editDoc.url && editDoc.url !== '#' ? editDoc.url : ''; code.value = editDoc.code || '';
-        var m = /^([A-Z]{2,4})-([A-Z]{2,4})-\d+$/.exec(normCode(editDoc.code)); if (m) { dept.value = m[1]; type.value = m[2]; }
+        var m = /^([A-Z]{2,4})(?:-([A-Z]{2,4}))?-\d+$/.exec(normCode(editDoc.code)); if (m) { if (type.querySelector('option[value="' + m[1] + '"]')) type.value = m[1]; dept.value = (m[2] && dept.querySelector('option[value="' + m[2] + '"]')) ? m[2] : ''; }
         manual = true;
       }
       function msg(el, cls, html) { el.className = 'dm-msg' + (cls ? ' ' + cls : ''); el.innerHTML = html; }
@@ -570,27 +574,27 @@
       var lastState = { ok: true };
       function checkCode() {
         var c = normCode(code.value), el = $('dfCodeMsg'); lastState = { ok: true };
-        if (!c) { msg(el, '', 'Không gán mã cũng được (tuỳ chọn). Chọn Phòng ban + Loại để lấy mã tự động.'); return; }
-        if (!CODE_RE.test(c)) { lastState = { ok: false }; msg(el, 'bad', '✕ Sai định dạng. Dạng chuẩn: <code>PHÒNGBAN-LOẠI-STT</code> ví dụ <code>DRW-SOP-005</code>.'); return; }
+        if (!c) { msg(el, '', 'Không gán mã cũng được (tuỳ chọn). Chọn Loại tài liệu (và Phòng ban nếu có) để lấy mã tự động.'); return; }
+        if (!CODE_RE.test(c)) { lastState = { ok: false }; msg(el, 'bad', '✕ Sai định dạng. Dạng chuẩn: <code>LOẠI-PHÒNGBAN-STT</code> ví dụ <code>SOP-DRW-005</code>; toàn công ty: <code>LOẠI-STT</code> ví dụ <code>POL-001</code>.'); return; }
         var d = docByCode(c, isEdit ? editDoc.id : null), dr = !d && driveByCode(c, url.value);
         if (d || dr) {
           lastState = { ok: false };
-          var m2 = /^([A-Z]{2,4})-([A-Z]{2,4})-\d+$/.exec(c), sug = m2 ? TaskManager.getNextDocCode(m2[1], m2[2]) : '';
+          var m2 = /^([A-Z]{2,4})(?:-([A-Z]{2,4}))?-\d+$/.exec(c), sug = m2 ? TaskManager.getNextDocCode(m2[1], m2[2] || '') : '';
           msg(el, 'bad', '✕ <b>Mã đã tồn tại</b> — ' + (d ? 'đang dùng cho «' + escapeHtml(d.name) + '»' : 'trùng với file trên Drive «' + escapeHtml(dr.name) + '»') + '.' + (sug ? ' Mã trống tiếp theo: <button type="button" class="dm-use" data-use="' + sug + '">' + sug + '</button>' : ''));
           return;
         }
         msg(el, 'ok', '✓ Mã hợp lệ, chưa có tài liệu nào dùng.');
       }
       function autoCode() {
-        if (dept.value && type.value) { code.value = TaskManager.getNextDocCode(dept.value, type.value); manual = false; } else if (!manual) code.value = '';
+        if (type.value) { code.value = TaskManager.getNextDocCode(type.value, dept.value); manual = false; } else if (!manual) code.value = '';
         refresh();
       }
       function refresh() { checkUrl(); checkCode(); $('dfSummary').textContent = ''; }
       dept.addEventListener('change', autoCode); type.addEventListener('change', autoCode);
-      $('dfAuto').addEventListener('click', function () { if (!dept.value || !type.value) { msg($('dfCodeMsg'), 'warn', 'Chọn Phòng ban và Loại tài liệu trước.'); return; } autoCode(); });
+      $('dfAuto').addEventListener('click', function () { if (!type.value) { msg($('dfCodeMsg'), 'warn', 'Chọn Loại tài liệu trước.'); return; } autoCode(); });
       code.addEventListener('input', function () {
         code.value = code.value.toUpperCase().replace(/[^A-Z0-9-]/g, ''); manual = true;
-        var m3 = /^([A-Z]{2,4})-([A-Z]{2,4})-/.exec(code.value); if (m3) { if (dept.querySelector('option[value="' + m3[1] + '"]')) dept.value = m3[1]; if (type.querySelector('option[value="' + m3[2] + '"]')) type.value = m3[2]; }
+        var m3 = /^([A-Z]{2,4})(?:-([A-Z]{2,4}))?-/.exec(code.value); if (m3) { if (type.querySelector('option[value="' + m3[1] + '"]')) type.value = m3[1]; if (m3[2] && dept.querySelector('option[value="' + m3[2] + '"]')) dept.value = m3[2]; else if (!m3[2]) dept.value = ''; }
         checkCode();
       });
       url.addEventListener('input', refresh);
@@ -676,7 +680,7 @@
             var user = Auth.getCurrentUser(), n = 0, catv = ov.querySelector('#dsCat').value;
             ov.querySelectorAll('input[data-i]:checked').forEach(function (cb) {
               var x = found[Number(cb.dataset.i)]; if (!x || docByCode(x.code)) return;
-              TaskManager.createDocument({ category: catv, name: x.name, url: x.url, code: x.code, driveId: x.driveId, source: 'drive' }, user); n++;
+              TaskManager.createDocument({ category: catv, name: x.name, url: x.url, code: normCode(x.code), driveId: x.driveId, source: 'drive' }, user); n++;
             });
             closeModal('dmSync'); render();
             showConfirmDialog('Đã nhập ' + n + ' tài liệu từ Drive.', function () {}, 'Đóng');
