@@ -176,6 +176,9 @@
     .od-doc-hint.warn { color: var(--od-red, #C75B5B); }
     .od-kind-btn:hover { border-color: var(--od-bronze, var(--color-bronze)); color: var(--od-bronze, var(--color-bronze)); }
     .od-kind-btn.on { background: color-mix(in srgb, var(--od-bronze, var(--color-bronze)) 16%, transparent); border-color: var(--od-bronze, var(--color-bronze)); color: var(--od-bronze, var(--color-bronze)); }
+    .od-no { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 6px 0; }
+    .od-no .od-kindtag { margin-left: 0; }
+    .od-no-date { color: var(--od-faint); font-size: .75rem; }
     .od-kindtag { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--od-bronze, var(--color-bronze)); color: var(--od-bronze, var(--color-bronze)); font-size: 0.625rem; font-weight: 600; vertical-align: 1px; white-space: nowrap; }
     .od-print-invoice { display: none; }
 
@@ -866,7 +869,7 @@
         }).join('');
         var editable = canEdit && (ph === 'draft' || ph === 'rejected');
         return '<tr>' +
-          '<td><b>' + escapeHtml(o.orderNumber || o.id) + '</b>' + (o.orderKind === 'purchase' ? '<span class="od-kindtag">Mua nội bộ</span>' : '') + '<br><span style="color:var(--od-faint);font-size:.6875rem;">' + escapeHtml(vnDate(o.createdAt)) + '</span></td>' +
+          '<td><div class="od-no"><b>' + escapeHtml(o.orderNumber || o.id) + '</b>' + (o.orderKind === 'purchase' ? '<span class="od-kindtag">Mua nội bộ</span>' : '') + '<span class="od-no-date">' + escapeHtml(vnDate(o.createdAt)) + '</span></div></td>' +
           '<td>' + escapeHtml(o.clientName || '') + (o.projectId ? '<br><span style="color:var(--od-muted);font-size:0.75rem;">Dự án: ' + escapeHtml(projectName(o.projectId)) + '</span>' : '') + '</td>' +
           '<td>' + escapeHtml(memberName(o.createdBy)) + '</td>' +
           '<td class="num od-amount">' + fmt(total) + '</td>' +
