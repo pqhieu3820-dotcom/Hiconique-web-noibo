@@ -46,7 +46,7 @@
     #odOrderRows td:nth-child(5) { min-width: 250px; white-space: normal; }
     #odOrderRows td:nth-child(7) { min-width: 260px; }
     #odOrderRows td:nth-child(3) { min-width: 140px; }
-    #odPurchaseFields[hidden], #odPurchasePaySec[hidden], #odSalePaySec[hidden] { display: none !important; }
+    #odPurchaseFields[hidden], #odPurchasePaySec[hidden], #odSalePaySec[hidden], #odAdvBox[hidden] { display: none !important; }
 
     /* ---- tổng quan ---- */
     .od-summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
@@ -298,6 +298,10 @@
           <div style="grid-column: span 2;"><span class="od-field-label">Ai đã chi tiền cho khoản này?</span><select class="od-select" id="odPayMode"></select></div>
           <div><span class="od-field-label">Nhóm chi phí (gợi ý, kế toán chỉnh được)</span><select class="od-select" id="odExpCat"></select></div>
         </div>
+        <div class="od-grid3" id="odAdvBox" hidden style="margin-top:12px;">
+          <div><span class="od-field-label" id="odAdvLbl">Số tiền nhân viên đã tự ứng (₫) *</span><input type="text" inputmode="numeric" class="od-input mono" id="odAdvAmt" data-money-input placeholder="0"></div>
+          <div style="grid-column: span 2; align-self:end;"><span class="od-note-s" id="odAdvHint" style="font-size:.75rem;color:var(--od-muted);"></span></div>
+        </div>
         <div id="odPayModeHint" style="margin-top:10px;font-size:.75rem;color:var(--od-muted);"></div>
         <div style="margin-top:12px;"><span class="od-field-label">Ghi chú</span><input type="text" class="od-input" id="odNote2" placeholder="Mua để làm gì, cho hạng mục/dự án nào…"></div>
       </div>
@@ -379,6 +383,15 @@
     var collectedManual = false;
     var editingPhase = '';   // giai đoạn của đơn đang sửa (đơn đã ghi sổ chỉ được sửa phần mô tả)
     var orderKind = 'sale';   // 'sale' = đơn bán cho khách · 'purchase' = phiếu mua nội bộ (mua hộ / tạm ứng cho công ty)
+    var advManual = false;
+    function advMode() { var m = document.getElementById('odPayMode').value; return orderKind === 'purchase' && (m === 'employee' || m === 'advance'); }
+    function refreshAdv() {
+      var m = document.getElementById('odPayMode').value, on = advMode(), box = document.getElementById('odAdvBox');
+      box.hidden = !on; if (!on) return;
+      document.getElementById('odAdvLbl').textContent = m === 'advance' ? 'Số tiền xin tạm ứng (₫) *' : 'Số tiền nhân viên đã tự ứng (₫) *';
+      document.getElementById('odAdvHint').textContent = m === 'advance' ? 'Xin ứng trước bao nhiêu để mua — chưa có hóa đơn thì không cần nhập hạng mục. Sau khi mua, kế toán quyết toán bằng hóa đơn thực chi.' : 'Tự điền theo tổng hạng mục bên trên; sửa tay nếu số tiền thực ứng khác. Công ty sẽ hoàn lại đúng số này.';
+      if (!advManual) { var g = Math.round(lastTotal || 0); if (g > 0 || m === 'employee') document.getElementById('odAdvAmt').value = g ? HiconiqueMoney.format(g) : ''; }
+    }
     var PURPOSE_HINT = { 'Tiếp khách': 'Tiếp ai (tên khách / đơn vị), vì việc gì, mấy người, địa điểm', 'Công tác': 'Đi đâu, từ ngày … đến ngày …, công việc gì, đi cùng ai', 'Ăn uống': 'Bữa nào, cho ai, tại công trình / văn phòng', 'Xăng xe': 'Biển số xe, lộ trình / công trình' };
     function purposeKey() { var c = (document.getElementById('odExpCat').value || ''); return /tiếp khách/i.test(c) ? 'Tiếp khách' : /công tác/i.test(c) ? 'Công tác' : /ăn uống/i.test(c) ? 'Ăn uống' : /xăng xe/i.test(c) ? 'Xăng xe' : ''; }
     function refreshDocHints() {
@@ -407,6 +420,7 @@
       if (!editingOrderId) $('odFormTitle').textContent = pu ? 'Tạo phiếu mua nội bộ' : 'Tạo đơn hàng mới';
       $('odFormDesc').textContent = pu ? 'Điền nhà cung cấp → hạng mục đã mua → ai đã chi tiền. Kế toán sẽ ghi sổ tài chính.' : 'Điền khách hàng → hạng mục → cách thanh toán. Tổng tiền và công nợ tự tính.';
       $('odPayModeHint').innerHTML = PAY_HINT[$('odPayMode').value] || '';
+      refreshAdv();
       $('odLblTax').textContent = pu ? 'MST nhà cung cấp / cửa hàng' : 'Mã số thuế khách (nếu có)';
       if (pu) refreshDocHints();
     }
@@ -481,6 +495,7 @@
       // chưa tự sửa "Thu ngay" thì mặc định = thu đủ theo tổng mới
       if (!collectedManual) document.getElementById('odCollected').value = HiconiqueMoney.format(Math.round(grandTotal));
       recalcPay();
+      if (typeof refreshAdv === 'function' && orderKind === 'purchase') refreshAdv();
       return { subtotal: subtotal, discountPct: discountPct, discountAmount: discountAmount, vatPct: vatPct, vatAmount: vatAmount, grandTotal: grandTotal };
     }
 
@@ -582,11 +597,12 @@
       document.getElementById('odPartyType').innerHTML = TaskManager.PURCHASE_PARTY_TYPES.map(function (m) { return '<option value="' + m[0] + '">' + escapeHtml(m[1]) + '</option>'; }).join('');
       document.getElementById('odDocType').innerHTML = TaskManager.DOC_TYPES.map(function (m) { return '<option value="' + m[0] + '">' + escapeHtml(m[1]) + '</option>'; }).join('');
       document.getElementById('odDocType').addEventListener('change', refreshDocHints); document.getElementById('odExpCat').addEventListener('change', refreshDocHints);
-      document.getElementById('odPayMode').addEventListener('change', function () { document.getElementById('odPayModeHint').innerHTML = PAY_HINT[this.value] || ''; });
+      document.getElementById('odPayMode').addEventListener('change', function () { document.getElementById('odPayModeHint').innerHTML = PAY_HINT[this.value] || ''; refreshAdv(); });
+      document.getElementById('odAdvAmt').addEventListener('input', function () { advManual = true; });
       document.getElementById('odKindSwitch').addEventListener('click', function (e) { var b = e.target.closest('[data-kind]'); if (b && !editingOrderId) setKind(b.getAttribute('data-kind')); });
     })();
     function resetForm() {
-      editingOrderId = null; editingPhase = ''; collectedManual = false; lastTotal = 0;
+      editingOrderId = null; editingPhase = ''; collectedManual = false; lastTotal = 0; advManual = false; document.getElementById('odAdvAmt').value = '';
       ['odReceiptNo', 'odReceiptUrl', 'odNote2', 'odTaxCode', 'odPurpose'].forEach(function (id) { document.getElementById(id).value = ''; });
       document.getElementById('odPurchaseDate').value = todayStr(); document.getElementById('odPayMode').value = 'employee'; document.getElementById('odExpCat').selectedIndex = 0; document.getElementById('odDocType').value = 'vat'; document.getElementById('odPartyType').value = 'supplier';
       setKind('sale');
@@ -618,6 +634,7 @@
       document.getElementById('odTaxCode').value = order.partyTaxCode || ''; document.getElementById('odPurpose').value = order.purpose || '';
       document.getElementById('odDocType').value = order.docType || 'vat'; document.getElementById('odPartyType').value = order.partyType || 'supplier';
       if (order.payMode) document.getElementById('odPayMode').value = order.payMode;
+      advManual = true; document.getElementById('odAdvAmt').value = (order.payMode === 'employee' || order.payMode === 'advance') && Number(order.totalAmount) ? HiconiqueMoney.format(Math.round(Number(order.totalAmount))) : '';
       if (order.revenueCategory && order.orderKind === 'purchase') document.getElementById('odExpCat').value = order.revenueCategory;
       setKind(order.orderKind === 'purchase' ? 'purchase' : 'sale');
       document.getElementById('odFormTitle').textContent = (order.orderKind === 'purchase' ? 'Sửa phiếu mua ' : 'Sửa đơn hàng ') + (order.orderNumber || '');
@@ -653,10 +670,17 @@
       var clientName = document.getElementById('odClientName').value.trim();
       var items = readItemRows();
       if (!clientName) { alert(orderKind === 'purchase' ? 'Nhập tên nhà cung cấp / nơi mua.' : 'Nhập tên khách hàng.'); return null; }
-      if (items.length === 0) { alert('Thêm ít nhất 1 hạng mục.'); return null; }
+      var advOnly = orderKind === 'purchase' && document.getElementById('odPayMode').value === 'advance';
+      if (items.length === 0 && !advOnly) { alert('Thêm ít nhất 1 hạng mục.'); return null; }
       var totals = recalcTotals();
       if (orderKind === 'purchase') {
         var mode = document.getElementById('odPayMode').value, tot = Math.round(totals.grandTotal), purpose = document.getElementById('odPurpose').value.trim();
+        if (mode === 'employee' || mode === 'advance') {
+          var adv = HiconiqueMoney.parse(document.getElementById('odAdvAmt').value);
+          if (!(adv > 0)) { alert(mode === 'advance' ? 'Nhập số tiền xin tạm ứng.' : 'Nhập số tiền nhân viên đã tự ứng.'); document.getElementById('odAdvAmt').focus(); return null; }
+          if (!items.some(function (i) { return String(i.name || '').trim() || Number(i.price) > 0; })) { items = [{ code: '', name: 'Tạm ứng mua' + (purpose ? ' — ' + purpose : (document.getElementById('odNote2').value.trim() ? ' — ' + document.getElementById('odNote2').value.trim() : '')), unit: 'lần', qty: 1, price: adv, lineTotal: adv }]; totals = { subtotal: adv, discountPct: 0, discountAmount: 0, vatPct: 0, vatAmount: 0, grandTotal: adv }; }
+          tot = Math.round(adv); totals = Object.assign({}, totals, { grandTotal: adv });
+        }
         if (purposeKey() && !purpose) { alert('Nhập "Mục đích / chi tiết chi" — bắt buộc với chi phí ' + purposeKey().toLowerCase() + '.'); return null; }
         if (document.getElementById('odDocType').value === 'none' && !purpose) { alert('Không có hóa đơn: ghi rõ lý do ở "Mục đích / chi tiết chi".'); return null; }
         return {
