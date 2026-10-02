@@ -166,8 +166,9 @@
     .wiki-search-bar input::placeholder { color: var(--color-text-faint); }
     .wiki-col[hidden] { display: none; }
     .wiki-col li[hidden] { display: none; }
-    .wiki-doc-code, .wiki-col li a .wiki-doc-code { font-family: 'JetBrains Mono', monospace; font-size: 0.6875rem; font-weight: 400; color: var(--color-bronze); margin-right: 4px; }
-    .wiki-col li a .wiki-doc-tag { font-family: 'Inter', sans-serif; font-size: 0.625rem; font-weight: 500; color: var(--color-text-faint); margin: 0 0 0 6px; white-space: nowrap; }
+    /* Mã hiệu hiển thị Y HỆT mọi dòng khác: dòng thường có span mã vừa là first-child vừa là last-child nên ăn cả 2 quy tắc của subpage.css (màu đồng, mono, .75rem, đậm 500);
+       dòng nhiều link thêm nhãn "N link" làm mất last-child → phải chỉ rõ lại (selector cùng độ đặc hiệu, nằm sau) */
+    .wiki-col li a span.wiki-doc-code { color: var(--color-bronze); font-family: var(--font-mono); font-size: 0.75rem; font-weight: 500; margin-right: 4px; }
 
     .doc-cat-row { display: flex; align-items: center; gap: 8px; }
     .doc-cat-row select { flex: 1; }
@@ -230,8 +231,12 @@
     .dm-card .dm-row select { flex: 1 1 260px; min-width: 0; }
     .dm-card .dm-row input { flex: 1 1 260px; min-width: 0; }
     .dm-card .dm-row .dm-code { flex: 1 1 280px; }
-    .dm-card .dm-row #dfLabel { flex: 0 0 150px; }
     .dm-card .dm-row .dfLL { flex: 0 0 150px; }
+    .dm-lrow { padding: 2px 0; align-items: center; }
+    .dm-lrow .dfLH { flex: 0 0 auto; width: 18px; cursor: grab; color: var(--color-text-faint); font-size: 1.05rem; line-height: 1; letter-spacing: -3px; text-align: center; user-select: none; touch-action: none; }
+    .dm-lrow .dfLH:hover { color: var(--color-bronze); }
+    .dm-lrow.dragging { opacity: .65; background: color-mix(in srgb, var(--color-bronze) 10%, transparent); border-radius: 8px; }
+    .dm-lrow .dfLX { flex: 0 0 auto; padding: 8px 12px; }
     .dm-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 20px 24px 14px; border-bottom: 1px solid var(--color-border); }
     .dm-title { font-size: 1.125rem; font-weight: 700; color: var(--color-text); }
     .dm-sub { font-size: 0.8125rem; color: var(--color-text-muted); margin-top: 2px; }
@@ -590,9 +595,8 @@
             '<label class="dm-lab">Danh mục</label><div class="dm-row"><select id="dfCat">' + cats.map(function (c) { return '<option>' + escapeHtml(c) + '</option>'; }).join('') + '</select><button type="button" class="dm-link" id="dfCatMgr">Quản lý danh mục</button></div>' +
             '<div id="dfCatBox" hidden class="dm-catbox"><div class="dm-row"><input id="dfCatNew" placeholder="Tên danh mục mới"><button type="button" class="dm-btn" id="dfCatAdd">Thêm</button></div><ul id="dfCatList" class="doc-cat-list"></ul></div>' +
             '<label class="dm-lab">Tên tài liệu</label><input id="dfName" required placeholder="Quy trình nghiệm thu hạng mục sơn">' +
-            '<label class="dm-lab">Link tài liệu <span id="dfKind" class="dm-kind" hidden></span></label><div class="dm-row"><select id="dfLabel" style="max-width:140px">' + LINK_LABELS.map(function (x) { return '<option>' + x + '</option>'; }).join('') + '</select><input id="dfUrl" required placeholder="Dán link Google Drive / Notion / YouTube…"></div>' +
-            '<div id="dfUrlMsg" class="dm-msg"></div>' +
-            '<div id="dfLinks"></div><button type="button" class="dm-link" id="dfAddLink">+ Thêm link bổ trợ (thuyết minh / slide / bản vẽ…) cho cùng mã</button>' +
+            '<label class="dm-lab">Link tài liệu <span id="dfKind" class="dm-kind" hidden></span> <span class="dm-hint">kéo ⋮⋮ để đổi thứ tự · link đầu tiên là link chính</span></label>' +
+            '<div id="dfLinks"></div><div id="dfUrlMsg" class="dm-msg"></div><button type="button" class="dm-link" id="dfAddLink">+ Thêm link (thuyết minh / slide / bản vẽ…) cho cùng mã</button>' +
           '</section>' +
           '<section class="dm-card"><h4><span class="dm-step">2</span>Mã hiệu tài liệu <button type="button" class="doc-code-info-btn" id="dfInfoBtn" aria-label="Quy ước mã">i</button></h4>' +
             '<div class="dm-row"><select id="dfType"><option value="">Loại tài liệu…</option>' + DOC_TYPES.map(function (t) { return '<option value="' + t[0] + '">' + escapeHtml(t[1]) + '</option>'; }).join('') + '</select>' +
@@ -608,27 +612,41 @@
       var ov = openModal('dmForm', isEdit ? 'Sửa tài liệu' : 'Thêm tài liệu', 'Mã hiệu được kiểm tra trùng ngay khi nhập.', body);
       var $ = function (id) { return ov.querySelector('#' + id); };
       var manual = false;
-      var cat = $('dfCat'), name = $('dfName'), url = $('dfUrl'), dept = $('dfDept'), type = $('dfType'), code = $('dfCode');
+      var cat = $('dfCat'), name = $('dfName'), dept = $('dfDept'), type = $('dfType'), code = $('dfCode');
       var dupMode = null, dupFor = '';
+      // url = link ĐẦU TIÊN trong danh sách (link chính) — dùng cho kiểm tra trùng link/huy hiệu nguồn
+      var url = { get value() { var i = ov.querySelector('.dfLU'); return i ? i.value : ''; } };
       function addLinkRow(label, u) {
         var row = document.createElement('div'); row.className = 'dm-row dm-lrow'; row.style.marginTop = '6px';
-        row.innerHTML = '<select class="dfLL" style="max-width:140px">' + LINK_LABELS.map(function (x) { return '<option' + (x === label ? ' selected' : '') + '>' + x + '</option>'; }).join('') + '</select><input class="dfLU" placeholder="Dán link bổ trợ…"><button type="button" class="dm-btn dfLX" title="Bỏ link này">×</button>';
+        row.innerHTML = '<span class="dfLH" title="Kéo để đổi thứ tự">⋮⋮</span><select class="dfLL">' + LINK_LABELS.map(function (x) { return '<option' + (x === label ? ' selected' : '') + '>' + x + '</option>'; }).join('') + '</select><input class="dfLU" placeholder="Dán link Google Drive / Notion / YouTube…"><button type="button" class="dm-btn dfLX" title="Xoá link này">×</button>';
         row.querySelector('.dfLU').value = u || '';
-        row.querySelector('.dfLX').addEventListener('click', function () { row.remove(); });
+        row.querySelector('.dfLX').addEventListener('click', function () { row.remove(); if (!ov.querySelector('.dm-lrow')) addLinkRow('Tài liệu', ''); refresh(); });
+        // kéo-thả đổi thứ tự bằng tay nắm ⋮⋮ (pointer: dùng được cả chuột lẫn cảm ứng)
+        row.querySelector('.dfLH').addEventListener('pointerdown', function (e) {
+          e.preventDefault(); var box = $('dfLinks'); row.classList.add('dragging');
+          var move = function (ev) {
+            var rows = Array.prototype.filter.call(box.children, function (r) { return r !== row; }), target = null;
+            for (var i = 0; i < rows.length; i++) { var rc = rows[i].getBoundingClientRect(); if (ev.clientY < rc.top + rc.height / 2) { target = rows[i]; break; } }
+            if (target) { if (row.nextSibling !== target) box.insertBefore(row, target); } else if (box.lastChild !== row) box.appendChild(row);
+          };
+          var up = function () { row.classList.remove('dragging'); document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); refresh(); };
+          document.addEventListener('pointermove', move); document.addEventListener('pointerup', up);
+        });
         $('dfLinks').appendChild(row);
+        return row;
       }
       function collectLinks() {
-        var out = [{ label: $('dfLabel').value, url: url.value.trim(), driveId: driveIdOf(url.value) }];
+        var out = [];
         Array.prototype.forEach.call(ov.querySelectorAll('.dm-lrow'), function (r) { var u = r.querySelector('.dfLU').value.trim(); if (u) out.push({ label: r.querySelector('.dfLL').value, url: u, driveId: driveIdOf(u) }); });
-        return out.filter(function (x) { return x.url; });
+        return out;
       }
-      $('dfAddLink').addEventListener('click', function () { addLinkRow('Slide', ''); });
+      if (!isEdit) addLinkRow('Tài liệu', '');
+      $('dfAddLink').addEventListener('click', function () { var r = addLinkRow(ov.querySelector('.dm-lrow') ? 'Slide' : 'Tài liệu', ''); r.querySelector('.dfLU').focus(); });
+      $('dfLinks').addEventListener('input', function () { refresh(); });
       if (isEdit) {
         if (cats.indexOf(editDoc.category) === -1) { var o = document.createElement('option'); o.textContent = editDoc.category; cat.appendChild(o); }
         cat.value = editDoc.category; name.value = editDoc.name || ''; code.value = editDoc.code || '';
-        var eLinks = TaskManager.getDocLinks(editDoc);
-        if (eLinks[0]) { url.value = eLinks[0].url; if (LINK_LABELS.indexOf(eLinks[0].label) >= 0) $('dfLabel').value = eLinks[0].label; }
-        eLinks.slice(1).forEach(function (l) { addLinkRow(l.label, l.url); });
+        TaskManager.getDocLinks(editDoc).forEach(function (l) { addLinkRow(LINK_LABELS.indexOf(l.label) >= 0 ? l.label : 'Khác', l.url); });
         var m = /^([A-Z]{2,4})(?:-([A-Z]{2,4}))?-\d+$/.exec(normCode(editDoc.code)); if (m) { if (type.querySelector('option[value="' + m[1] + '"]')) type.value = m[1]; dept.value = (m[2] && dept.querySelector('option[value="' + m[2] + '"]')) ? m[2] : ''; }
         manual = true;
       }
@@ -675,7 +693,6 @@
         var m3 = /^([A-Z]{2,4})(?:-([A-Z]{2,4}))?-/.exec(code.value); if (m3) { if (type.querySelector('option[value="' + m3[1] + '"]')) type.value = m3[1]; if (m3[2] && dept.querySelector('option[value="' + m3[2] + '"]')) dept.value = m3[2]; else if (!m3[2]) dept.value = ''; }
         checkCode();
       });
-      url.addEventListener('input', refresh);
       ov.addEventListener('click', function (e) { var b = e.target.closest('[data-use]'); if (b) { code.value = b.dataset.use; manual = true; dupMode = null; checkCode(); return; } var dd = e.target.closest('[data-dup]'); if (dd) { dupMode = dd.dataset.dup; dupFor = normCode(code.value); checkCode(); } });
       // danh mục
       function catList() {
@@ -694,6 +711,7 @@
         checkCode();
         if (!lastState.ok) { $('dfSummary').className = 'dm-msg bad'; $('dfSummary').textContent = 'Sửa mã hiệu trước khi lưu.'; code.focus(); return; }
         var links = collectLinks();
+        if (!links.length) { $('dfSummary').className = 'dm-msg bad'; $('dfSummary').textContent = 'Cần ít nhất 1 link tài liệu.'; return; }
         var data = Object.assign({ category: cat.value, name: name.value.trim(), code: normCode(code.value) }, TaskManager.docLinkUpdates(links));
         if (!data.name || !data.category) return;
         var today = new Date().toISOString().slice(0, 10);
