@@ -95,10 +95,13 @@
     .fn-chart-yr:hover { border-color: var(--fn-bronze); color: var(--fn-bronze); }
     .fn-chart-yr[hidden] { display: none; }
     .fn-chart-open { cursor: pointer; }
+    .fn-chart-open .fn-chart-col { min-width: 120px; }
     .fn-chart-open .fn-chart-wrap { overflow-x: hidden; }
-    .fn-chart-wrap.is-year { gap: 6px; padding-left: 12px; padding-right: 12px; }
-    .fn-chart-wrap.is-year .fn-chart-col { min-width: 38px; }
-    .fn-chart-wrap.is-year .fn-chart-bar-value { font-size: .5rem; }
+    .fn-chart-wrap.is-year { gap: 8px; padding-left: 16px; padding-right: 16px; }
+    .fn-chart-wrap.is-year .fn-chart-col { min-width: 84px; }
+    .fn-chart-wrap.is-year .fn-chart-bars { gap: 6px; }
+    .fn-chart-wrap.is-year .fn-chart-bar { width: 30px; }
+    .fn-chart-wrap.is-year .fn-chart-bar-value { font-size: .5625rem; }
     .fn-chart-col.is-future { opacity: .3; filter: grayscale(.6); }
     .fn-chart-col.is-future:hover { opacity: .45; }
     .fn-chart-col { flex: 1; min-width: max(96px, calc(96px * var(--cz, 1))); display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; justify-content: flex-end; }
@@ -514,7 +517,7 @@
             '<div class="fn-section" id="sec-overview">' +
               '<div class="fn-summary-grid" id="fnSummaryGrid"></div>' +
               '<div class="fn-dash-row">' +
-                '<div class="fn-card fn-chart-open" id="fnChartCard" style="margin-bottom:0;" title="Bấm vào khoảng trống để xem đủ 12 tháng"><div class="fn-card-head"><div class="fn-card-title" id="fnChartTitle">Dòng tiền 3 tháng gần nhất</div><div class="fn-card-desc" style="margin:0;" id="fnChartDesc">Bấm vào tháng để xem chi tiết · bấm vào biểu đồ để xem đủ 12 tháng</div><div class="fn-chart-ctl"><button type="button" class="fn-btn fn-btn-ghost fn-btn-sm" id="fnChartToggle">Xem cả năm</button></div></div><div class="fn-chart-wrap" id="fnChartWrap"></div><div class="fn-legend"><span><i style="background:var(--fn-green)"></i>Thu</span><span><i style="background:var(--fn-red)"></i>Chi</span></div></div>' +
+                '<div class="fn-card fn-chart-open" id="fnChartCard" style="margin-bottom:0;" title="Bấm vào khoảng trống để xem đủ 12 tháng"><div class="fn-card-head"><div class="fn-card-title" id="fnChartTitle">Dòng tiền 3 tháng gần nhất</div><div class="fn-card-desc" style="margin:0;" id="fnChartDesc">Bấm vào tháng để xem chi tiết · bấm vào biểu đồ để xem đủ 12 tháng</div></div><div class="fn-chart-wrap" id="fnChartWrap"></div><div class="fn-legend"><span><i style="background:var(--fn-green)"></i>Thu</span><span><i style="background:var(--fn-red)"></i>Chi</span></div></div>' +
                 '<div class="fn-card fn-clickable" data-detail="attention" style="margin-bottom:0;" title="Bấm để xem chi tiết"><div class="fn-card-head"><div class="fn-card-title">Cần chú ý</div></div><div class="fn-attention-list" id="fnAttentionList"></div></div>' +
               '</div>' +
               '<div class="fn-dash-row split">' +
@@ -1063,7 +1066,7 @@
     // Rê chuột vào biểu đồ + lăn con lăn → cuộn NGANG (hết mép thì trả cuộn dọc cho trang)
     document.addEventListener('wheel', function (e) {
       var w = e.target.closest && e.target.closest('.fn-chart-wrap');
-      if (!w || w.id === 'fnChartWrap' || e.ctrlKey || w.scrollWidth <= w.clientWidth + 1) return;
+      if (!w || w.id === 'fnChartWrap' || w.id === 'fnChartModalWrap' || e.ctrlKey || w.scrollWidth <= w.clientWidth + 1) return;
       var d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY; if (!d) return;
       var max = w.scrollWidth - w.clientWidth;
       if ((d < 0 && w.scrollLeft <= 0) || (d > 0 && w.scrollLeft >= max - 1)) { e.preventDefault(); return; }
@@ -1154,14 +1157,14 @@
     }
     document.addEventListener('wheel', function (e) {
       var w = e.target.closest && e.target.closest('.fn-chart-wrap');
-      if (!w || w.id === 'fnChartWrap' || !e.ctrlKey) return;
+      if (!w || w.id === 'fnChartWrap' || w.id === 'fnChartModalWrap' || !e.ctrlKey) return;
       e.preventDefault();
       applyChartZoom(w, e.deltaY < 0 ? 0.12 : -0.12);
     }, { passive: false });
-    document.addEventListener('dblclick', function (e) { var w = e.target.closest && e.target.closest('.fn-chart-wrap'); if (w && w.id !== 'fnChartWrap' && chartZoom[w.id] && chartZoom[w.id] !== 1) applyChartZoom(w, 0, true); });
+    document.addEventListener('dblclick', function (e) { var w = e.target.closest && e.target.closest('.fn-chart-wrap'); if (w && w.id !== 'fnChartWrap' && w.id !== 'fnChartModalWrap' && chartZoom[w.id] && chartZoom[w.id] !== 1) applyChartZoom(w, 0, true); });
     function renderChart(targetId, all, historyMonths, forecastMonths) {
       chartArgs[targetId] = [all, historyMonths, forecastMonths];
-      var zoomF = targetId === 'fnChartWrap' ? 1 : (chartZoom[targetId] || 1), wrapEl = document.getElementById(targetId);
+      var zoomF = (targetId === 'fnChartWrap' || targetId === 'fnChartModalWrap') ? 1 : (chartZoom[targetId] || 1), wrapEl = document.getElementById(targetId);
       wrapEl.style.setProperty('--cz', zoomF); wrapEl.style.height = Math.round(240 * zoomF) + 'px';
       var months = [];
       var now = new Date();
@@ -1222,7 +1225,7 @@
       var all = (chartArgs.fnChartWrap || [])[0]; if (!all) return;
       chartYear = new Date().getFullYear(); chartZoom.fnChartModalWrap = 1;
       var ov = document.createElement('div'); ov.className = 'fn-dt-overlay'; ov.id = 'fnChartModal';
-      ov.innerHTML = '<div class="fn-dt-box" role="dialog" aria-modal="true"><div class="fn-dt-head"><div><div class="fn-dt-title" id="fnChartModalTitle"></div><div class="fn-dt-sub">Bấm vào tháng để xem chi tiết · Ctrl + lăn chuột để phóng to/thu nhỏ · tháng chưa tới được làm mờ</div></div><div class="fn-chart-ctl" style="margin-left:auto;margin-right:10px;"><button type="button" class="fn-chart-yr" id="fnChartPrev" aria-label="Năm trước">‹</button><button type="button" class="fn-chart-yr" id="fnChartNext" aria-label="Năm sau">›</button></div><button type="button" class="fn-dt-x" aria-label="Đóng">&times;</button></div><div class="fn-dt-body" style="position:relative;"><div class="fn-chart-wrap" id="fnChartModalWrap"></div><span class="fn-zoom-tip"></span><div class="fn-legend"><span><i style="background:var(--fn-green)"></i>Thu</span><span><i style="background:var(--fn-red)"></i>Chi</span></div></div></div>';
+      ov.innerHTML = '<div class="fn-dt-box" style="max-width:1200px;" role="dialog" aria-modal="true"><div class="fn-dt-head"><div><div class="fn-dt-title" id="fnChartModalTitle"></div><div class="fn-dt-sub">Bấm vào tháng để xem chi tiết · tháng chưa tới được làm mờ</div></div><div class="fn-chart-ctl" style="margin-left:auto;margin-right:10px;"><button type="button" class="fn-chart-yr" id="fnChartPrev" aria-label="Năm trước">‹</button><button type="button" class="fn-chart-yr" id="fnChartNext" aria-label="Năm sau">›</button></div><button type="button" class="fn-dt-x" aria-label="Đóng">&times;</button></div><div class="fn-dt-body" style="position:relative;"><div class="fn-chart-wrap" id="fnChartModalWrap"></div><div class="fn-legend"><span><i style="background:var(--fn-green)"></i>Thu</span><span><i style="background:var(--fn-red)"></i>Chi</span></div></div></div>';
       document.body.appendChild(ov);
       ov.addEventListener('mousedown', function (e) { if (e.target === ov) ov.remove(); });
       ov.querySelector('.fn-dt-x').addEventListener('click', function () { ov.remove(); });
