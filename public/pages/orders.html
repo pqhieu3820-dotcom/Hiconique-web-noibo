@@ -46,6 +46,11 @@
     #odOrderRows td:nth-child(5) { min-width: 250px; white-space: normal; }
     #odOrderRows td:nth-child(7) { min-width: 260px; }
     #odOrderRows td:nth-child(3) { min-width: 140px; }
+    .od-info { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; margin-left: 4px; border-radius: 50%; border: 1px solid var(--od-muted, var(--color-text-muted)); color: var(--od-muted, var(--color-text-muted)); font: 700 .625rem/1 'Inter', sans-serif; text-transform: none; letter-spacing: 0; cursor: help; position: relative; vertical-align: 1px; }
+    .od-info:hover, .od-info:focus { border-color: var(--od-bronze, var(--color-bronze)); color: var(--od-bronze, var(--color-bronze)); outline: none; }
+    .od-info::after { content: attr(data-tip); position: absolute; left: -6px; top: 22px; width: 300px; padding: 9px 12px; border-radius: 9px; background: var(--color-surface, #fff); color: var(--color-text, #222); border: 1px solid var(--od-border, var(--color-border)); box-shadow: 0 8px 24px rgba(0,0,0,.18); font: 400 .75rem/1.55 'Inter', sans-serif; text-transform: none; letter-spacing: 0; white-space: normal; z-index: 50; opacity: 0; pointer-events: none; transform: translateY(-3px); transition: opacity .12s, transform .12s; }
+    .od-info:hover::after, .od-info:focus::after { opacity: 1; transform: none; }
+    #odAdvAmt[readonly] { opacity: .8; cursor: not-allowed; background: color-mix(in srgb, var(--od-bronze, #B8935A) 8%, transparent); }
     #odPurchaseFields[hidden], #odPurchasePaySec[hidden], #odSalePaySec[hidden], #odAdvBox[hidden] { display: none !important; }
 
     /* ---- tổng quan ---- */
@@ -299,7 +304,7 @@
           <div><span class="od-field-label">Nhóm chi phí (gợi ý, kế toán chỉnh được)</span><select class="od-select" id="odExpCat"></select></div>
         </div>
         <div class="od-grid3" id="odAdvBox" hidden style="margin-top:12px;">
-          <div><span class="od-field-label" id="odAdvLbl">Số tiền nhân viên đã tự ứng (₫) *</span><input type="text" inputmode="numeric" class="od-input mono" id="odAdvAmt" data-money-input placeholder="0"></div>
+          <div><span class="od-field-label"><span id="odAdvLbl">Số tiền nhân viên đã tự ứng (₫) *</span> <span class="od-info" tabindex="0" aria-label="Giải thích ô số tiền" data-tip="Nếu đã nhập hạng mục ở bảng số 2 thì ô này tự nhảy theo tổng cộng và bị khóa (muốn đổi thì sửa hạng mục). Nếu bảng số 2 để trống thì bạn nhập thẳng số tiền vào đây — phù hợp khi xin tạm ứng chưa mua hoặc chưa cần ghi rõ từng đầu mục.">i</span></span><input type="text" inputmode="numeric" class="od-input mono" id="odAdvAmt" data-money-input placeholder="0"></div>
           <div style="grid-column: span 2; align-self:end;"><span class="od-note-s" id="odAdvHint" style="font-size:.75rem;color:var(--od-muted);"></span></div>
         </div>
         <div id="odPayModeHint" style="margin-top:10px;font-size:.75rem;color:var(--od-muted);"></div>
@@ -385,12 +390,15 @@
     var orderKind = 'sale';   // 'sale' = đơn bán cho khách · 'purchase' = phiếu mua nội bộ (mua hộ / tạm ứng cho công ty)
     var advManual = false;
     function advMode() { var m = document.getElementById('odPayMode').value; return orderKind === 'purchase' && (m === 'employee' || m === 'advance'); }
+    function itemsFilled() { try { return readItemRows().some(function (i) { return Number(i.price) > 0; }); } catch (e) { return false; } }
     function refreshAdv() {
       var m = document.getElementById('odPayMode').value, on = advMode(), box = document.getElementById('odAdvBox');
       box.hidden = !on; if (!on) return;
+      var inp = document.getElementById('odAdvAmt'), filled = itemsFilled();
       document.getElementById('odAdvLbl').textContent = m === 'advance' ? 'Số tiền xin tạm ứng (₫) *' : 'Số tiền nhân viên đã tự ứng (₫) *';
-      document.getElementById('odAdvHint').textContent = m === 'advance' ? 'Xin ứng trước bao nhiêu để mua — chưa có hóa đơn thì không cần nhập hạng mục. Sau khi mua, kế toán quyết toán bằng hóa đơn thực chi.' : 'Tự điền theo tổng hạng mục bên trên; sửa tay nếu số tiền thực ứng khác. Công ty sẽ hoàn lại đúng số này.';
-      if (!advManual) { var g = Math.round(lastTotal || 0); if (g > 0 || m === 'employee') document.getElementById('odAdvAmt').value = g ? HiconiqueMoney.format(g) : ''; }
+      if (filled) { var g = Math.round(lastTotal || 0); inp.value = g ? HiconiqueMoney.format(g) : ''; inp.readOnly = true; }
+      else { if (inp.readOnly) inp.value = ''; inp.readOnly = false; }
+      document.getElementById('odAdvHint').textContent = filled ? 'Tự lấy từ bảng số 2 (Hạng mục) — muốn đổi thì sửa hạng mục.' : 'Bảng số 2 đang trống: nhập thẳng số tiền ' + (m === 'advance' ? 'xin tạm ứng' : 'đã ứng') + ' ở đây.';
     }
     var PURPOSE_HINT = { 'Tiếp khách': 'Tiếp ai (tên khách / đơn vị), vì việc gì, mấy người, địa điểm', 'Công tác': 'Đi đâu, từ ngày … đến ngày …, công việc gì, đi cùng ai', 'Ăn uống': 'Bữa nào, cho ai, tại công trình / văn phòng', 'Xăng xe': 'Biển số xe, lộ trình / công trình' };
     function purposeKey() { var c = (document.getElementById('odExpCat').value || ''); return /tiếp khách/i.test(c) ? 'Tiếp khách' : /công tác/i.test(c) ? 'Công tác' : /ăn uống/i.test(c) ? 'Ăn uống' : /xăng xe/i.test(c) ? 'Xăng xe' : ''; }
@@ -598,11 +606,10 @@
       document.getElementById('odDocType').innerHTML = TaskManager.DOC_TYPES.map(function (m) { return '<option value="' + m[0] + '">' + escapeHtml(m[1]) + '</option>'; }).join('');
       document.getElementById('odDocType').addEventListener('change', refreshDocHints); document.getElementById('odExpCat').addEventListener('change', refreshDocHints);
       document.getElementById('odPayMode').addEventListener('change', function () { document.getElementById('odPayModeHint').innerHTML = PAY_HINT[this.value] || ''; refreshAdv(); });
-      document.getElementById('odAdvAmt').addEventListener('input', function () { advManual = true; });
       document.getElementById('odKindSwitch').addEventListener('click', function (e) { var b = e.target.closest('[data-kind]'); if (b && !editingOrderId) setKind(b.getAttribute('data-kind')); });
     })();
     function resetForm() {
-      editingOrderId = null; editingPhase = ''; collectedManual = false; lastTotal = 0; advManual = false; document.getElementById('odAdvAmt').value = '';
+      editingOrderId = null; editingPhase = ''; collectedManual = false; lastTotal = 0; advManual = false; document.getElementById('odAdvAmt').value = ''; document.getElementById('odAdvAmt').readOnly = false;
       ['odReceiptNo', 'odReceiptUrl', 'odNote2', 'odTaxCode', 'odPurpose'].forEach(function (id) { document.getElementById(id).value = ''; });
       document.getElementById('odPurchaseDate').value = todayStr(); document.getElementById('odPayMode').value = 'employee'; document.getElementById('odExpCat').selectedIndex = 0; document.getElementById('odDocType').value = 'vat'; document.getElementById('odPartyType').value = 'supplier';
       setKind('sale');
@@ -634,7 +641,7 @@
       document.getElementById('odTaxCode').value = order.partyTaxCode || ''; document.getElementById('odPurpose').value = order.purpose || '';
       document.getElementById('odDocType').value = order.docType || 'vat'; document.getElementById('odPartyType').value = order.partyType || 'supplier';
       if (order.payMode) document.getElementById('odPayMode').value = order.payMode;
-      advManual = true; document.getElementById('odAdvAmt').value = (order.payMode === 'employee' || order.payMode === 'advance') && Number(order.totalAmount) ? HiconiqueMoney.format(Math.round(Number(order.totalAmount))) : '';
+      document.getElementById('odAdvAmt').value = (order.payMode === 'employee' || order.payMode === 'advance') && Number(order.totalAmount) ? HiconiqueMoney.format(Math.round(Number(order.totalAmount))) : '';
       if (order.revenueCategory && order.orderKind === 'purchase') document.getElementById('odExpCat').value = order.revenueCategory;
       setKind(order.orderKind === 'purchase' ? 'purchase' : 'sale');
       document.getElementById('odFormTitle').textContent = (order.orderKind === 'purchase' ? 'Sửa phiếu mua ' : 'Sửa đơn hàng ') + (order.orderNumber || '');
@@ -676,7 +683,7 @@
       if (orderKind === 'purchase') {
         var mode = document.getElementById('odPayMode').value, tot = Math.round(totals.grandTotal), purpose = document.getElementById('odPurpose').value.trim();
         if (mode === 'employee' || mode === 'advance') {
-          var adv = HiconiqueMoney.parse(document.getElementById('odAdvAmt').value);
+          var adv = itemsFilled() ? Math.round(totals.grandTotal) : HiconiqueMoney.parse(document.getElementById('odAdvAmt').value);
           if (!(adv > 0)) { alert(mode === 'advance' ? 'Nhập số tiền xin tạm ứng.' : 'Nhập số tiền nhân viên đã tự ứng.'); document.getElementById('odAdvAmt').focus(); return null; }
           if (!items.some(function (i) { return String(i.name || '').trim() || Number(i.price) > 0; })) { items = [{ code: '', name: 'Tạm ứng mua' + (purpose ? ' — ' + purpose : (document.getElementById('odNote2').value.trim() ? ' — ' + document.getElementById('odNote2').value.trim() : '')), unit: 'lần', qty: 1, price: adv, lineTotal: adv }]; totals = { subtotal: adv, discountPct: 0, discountAmount: 0, vatPct: 0, vatAmount: 0, grandTotal: adv }; }
           tot = Math.round(adv); totals = Object.assign({}, totals, { grandTotal: adv });
