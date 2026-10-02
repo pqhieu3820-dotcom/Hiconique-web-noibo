@@ -1252,7 +1252,7 @@ function handleRequestImpl_(e) {
     } else if (action === 'scanDriveDocs') {
       // 2026-09-30: quét thư mục Google Drive, trả về các file có tên bắt đầu bằng MÃ HIỆU (VD DRW-SOP-005 Quy trình…) để trang Tài liệu
       // đối chiếu/nhập vào danh sách. Chỉ ĐỌC, không sửa gì trên Drive. Cần cấp quyền Drive 1 lần: chạy hàm authorizeDriveScan trong editor.
-      result = scanDriveDocs_(params.folderId);
+      result = scanDriveDocs_(params.folderId, params.resume);
     } else if (action === 'getSpcStandards') {
       result = getAllData(ss, SHEETS.spcStandards);
     } else if (action === 'addSpcStandard') {
@@ -4565,26 +4565,34 @@ function authorizeDriveScan() {
   Logger.log('Drive OK: ' + DriveApp.getRootFolder().getName());
 }
 
-function scanDriveDocs_(folderId) {
+// 2026-10-02: QUÉT SÂU mọi thư mục con. Mỗi lượt chạy tối đa ~45s; hết giờ mà còn thư mục chưa quét thì trả `resume` (danh sách thư mục còn lại) — client gọi tiếp với `resume`
+// cho tới khi hết. Trả cả file CÓ mã (files) lẫn file KHÔNG có mã (noCode, tối đa 2500) kèm đường dẫn + loại file để phân loại/xác nhận.
+function scanDriveDocs_(folderId, resumeJson) {
   var id = String(folderId || '').replace(/^.*\/folders\//, '').replace(/[?&#].*$/, '').replace(/[^A-Za-z0-9_-]/g, '');
   if (!id) return { error: 'Thiếu mã/link thư mục Drive' };
-  var started = Date.now(), LIMIT_MS = 24000, MAX_FILES = 3000;
+  var started = Date.now(), LIMIT_MS = 45000, NOCODE_MAX = 2500;
   var root;
   try { root = DriveApp.getFolderById(id); } catch (err) { return { error: 'Không mở được thư mục (sai link hoặc chưa cấp quyền Drive): ' + err }; }
-  var queue = [{ folder: root, path: root.getName() }], files = [], scanned = 0, truncated = false;
+  var queue = [], resume = null;
+  try { resume = resumeJson ? JSON.parse(resumeJson) : null; } catch (err) { resume = null; }
+  if (resume && resume.length) {
+    resume.forEach(function (r) { try { queue.push({ folder: DriveApp.getFolderById(r.id), path: r.path, id: r.id }); } catch (err) { /* thư mục đã bị xoá/không còn quyền */ } });
+  } else queue.push({ folder: root, path: root.getName(), id: root.getId() });
+  var files = [], noCode = [], scanned = 0, folders = 0, truncated = false;
   while (queue.length) {
-    if (Date.now() - started > LIMIT_MS || scanned > MAX_FILES) { truncated = true; break; }
-    var cur = queue.shift();
+    if (Date.now() - started > LIMIT_MS) { truncated = true; break; }
+    var cur = queue.shift(); folders++;
     var fi = cur.folder.getFiles();
     while (fi.hasNext()) {
       var f = fi.next(); scanned++;
-      var m = DOC_CODE_RE_.exec(f.getName());
-      if (m) files.push({ code: m[1].toUpperCase(), name: f.getName().replace(DOC_CODE_RE_, '').replace(/^[\s:.\-–—_]+/, '') || f.getName(), fileName: f.getName(), url: f.getUrl(), driveId: f.getId(), path: cur.path, modified: Utilities.formatDate(f.getLastUpdated(), 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd') });
+      var name = f.getName(), m = DOC_CODE_RE_.exec(name);
+      if (m) files.push({ code: m[1].toUpperCase(), name: name.replace(DOC_CODE_RE_, '').replace(/^[\s:.\-–—_]+/, '') || name, fileName: name, url: f.getUrl(), driveId: f.getId(), mime: f.getMimeType(), path: cur.path, modified: Utilities.formatDate(f.getLastUpdated(), 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd') });
+      else if (noCode.length < NOCODE_MAX) noCode.push({ fileName: name, url: f.getUrl(), driveId: f.getId(), mime: f.getMimeType(), path: cur.path });
     }
     var di = cur.folder.getFolders();
-    while (di.hasNext()) { var d = di.next(); queue.push({ folder: d, path: cur.path + ' / ' + d.getName() }); }
+    while (di.hasNext()) { var d = di.next(); queue.push({ folder: d, path: cur.path + ' / ' + d.getName(), id: d.getId() }); }
   }
-  return { files: files, scanned: scanned, truncated: truncated, folder: root.getName() };
+  return { files: files, noCode: noCode, scanned: scanned, folders: folders, truncated: truncated, resume: truncated ? queue.map(function (q) { return { id: q.id, path: q.path }; }) : [], folder: root.getName() };
 }
 
 

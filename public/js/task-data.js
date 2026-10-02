@@ -2718,15 +2718,28 @@ var TaskManager = (function() {
   // 2026-09-30: kết quả quét Drive (mã hiệu các file đã đặt tên trên Google Drive) lưu ở máy để getNextDocCode KHÔNG cấp trùng mã đang dùng trên Drive.
   function getDriveDocCodes() { try { var a = JSON.parse(localStorage.getItem('hiconique_drive_doc_codes') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
   function setDriveDocCodes(list) { try { localStorage.setItem('hiconique_drive_doc_codes', JSON.stringify(list || [])); } catch (e) { /* bỏ qua */ } }
-  function scanDriveDocs(folder, callback) {
+  // 2026-10-02: quét SÂU mọi thư mục con, lặp theo `resume` cho tới khi hết; onProgress({scanned, folders, found}) để hiện tiến độ. Kết quả gộp: files (có mã), noCode (không có mã).
+  function scanDriveDocs(folder, callback, onProgress) {
     if (!isUsingGSheets() || !GSHEETS_CONFIG.API_URL) { callback({ error: 'Chưa kết nối Google Sheets' }); return; }
-    var controller = new AbortController(), timer = setTimeout(function () { controller.abort(); }, 60000);
-    fetch(GSHEETS_CONFIG.API_URL + '?action=scanDriveDocs&folderId=' + encodeURIComponent(folder), { redirect: 'follow', signal: controller.signal })
-      .then(function (r) { return r.json(); })
-      .then(function (d) { clearTimeout(timer); if (d && d.files) setDriveDocCodes(d.files.map(function (f) { return { code: f.code, name: f.name, url: f.url, driveId: f.driveId }; })); callback(d || { error: 'Không có phản hồi' }); })
-      .catch(function (e) { clearTimeout(timer); callback({ error: 'Không quét được: ' + (e && e.message || e) }); });
+    var acc = { files: [], noCode: [], scanned: 0, folders: 0, truncated: false, folder: '' }, rounds = 0;
+    function round(resume) {
+      var controller = new AbortController(), timer = setTimeout(function () { controller.abort(); }, 100000);
+      fetch(GSHEETS_CONFIG.API_URL + '?action=scanDriveDocs&folderId=' + encodeURIComponent(folder) + (resume && resume.length ? '&resume=' + encodeURIComponent(JSON.stringify(resume)) : ''), { redirect: 'follow', signal: controller.signal })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          clearTimeout(timer);
+          if (!d || d.error) { callback(d || { error: 'Phản hồi rỗng' }); return; }
+          acc.files = acc.files.concat(d.files || []); acc.noCode = acc.noCode.concat(d.noCode || []); acc.scanned += d.scanned || 0; acc.folders += d.folders || 0; acc.folder = d.folder || acc.folder;
+          if (onProgress) onProgress({ scanned: acc.scanned, folders: acc.folders, found: acc.files.length });
+          if (d.truncated && d.resume && d.resume.length && ++rounds < 40) { round(d.resume); return; }
+          acc.truncated = !!(d.truncated && d.resume && d.resume.length);
+          setDriveDocCodes(acc.files.map(function (f) { return { code: canonDocCode(f.code), name: f.name, url: f.url, driveId: f.driveId }; }));
+          callback(acc);
+        })
+        .catch(function (e) { clearTimeout(timer); callback({ error: 'Không quét được: ' + (e && e.message || e) }); });
+    }
+    round(null);
   }
-
   // 2026-10-02 — QUY CÁCH MÃ MỚI (theo Điều 1, Chương 1 Quy chế quản lý dữ liệu & tài liệu):
   //   [Mã Loại tài liệu]-[Mã Phòng ban]-[STT 3 số]     VD: SOP-DES-005
   //   Tài liệu áp dụng cho TOÀN CÔNG TY hoặc số đông phòng ban → BỎ mã phòng ban:  [Mã Loại]-[STT 3 số]   VD: POL-001

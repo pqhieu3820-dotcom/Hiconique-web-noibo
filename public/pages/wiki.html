@@ -644,48 +644,103 @@
     // ---------- Đồng bộ từ Google Drive ----------
     var DRIVE_FOLDER_KEY = 'hiconique_doc_drive_folder';
     var DEFAULT_DRIVE_FOLDER = 'https://drive.google.com/drive/folders/1c5sglRIYx_0tRxgvhgFULkBkGuAgfwAg?usp=sharing';   // thư mục tài liệu công ty (Founder cung cấp 2026-09-30)
+    // ---- Phân loại kết quả quét Drive theo quy cách mã mới (2026-10-02) ----
+    var TYPE_GUESS = [['SOP', /quy trình|quy trinh|\bsop\b/i], ['WIN', /hướng dẫn|huong dan|work instruction|\bwin\b/i], ['POL', /chính sách|quy chế|quy định|nội quy|\bpolicy\b|\bpol\b/i],
+      ['CHK', /checklist|danh mục kiểm tra|\bchk\b/i], ['FRM', /biểu mẫu|biên bản|phiếu|\bform\b|\bfrm\b/i], ['SPC', /tiêu chuẩn|quy chuẩn|\bspec\b|\bspc\b/i], ['TPL', /template|tệp mẫu|\btpl\b|\bmẫu\b/i]];
+    function guessType(text) { for (var i = 0; i < TYPE_GUESS.length; i++) if (TYPE_GUESS[i][1].test(text || '')) return TYPE_GUESS[i][0]; return ''; }
+    function parseDocCode(raw) {
+      var rawN = String(raw || '').trim().toUpperCase().replace(/\s+/g, ''), c = normCode(raw);
+      var m = /^([A-Z]{2,4})(?:-([A-Z]{2,4}))?-(\d{3,4})$/.exec(c);
+      var types = DOC_TYPES.map(function (x) { return x[0]; }), depts = getDocDepartments().map(function (x) { return x[0]; });
+      if (!m) return { canon: c, fmt: 'bad', why: 'không đúng dạng LOẠI-PHÒNGBAN-STT / LOẠI-STT' };
+      if (types.indexOf(m[1]) < 0) return { canon: c, type: m[1], dept: m[2] || '', fmt: 'bad', why: 'mã loại «' + m[1] + '» không có trong danh sách loại tài liệu' };
+      if (m[2] && depts.indexOf(m[2]) < 0) return { canon: c, type: m[1], dept: m[2], fmt: 'bad', why: 'mã phòng ban «' + m[2] + '» không có trong danh sách phòng ban' };
+      return { canon: c, type: m[1], dept: m[2] || '', fmt: c !== rawN ? 'old' : (m[2] ? 'new' : 'company') };
+    }
+    var FMT_LABEL = { new: 'Đúng quy cách (LOẠI-PHÒNGBAN-STT)', company: 'Toàn công ty (LOẠI-STT)', old: 'Mã thứ tự cũ — nên đổi tên file', bad: 'Sai quy cách' };
+    function analyzeScan(r) {
+      var coded = (r.files || []).map(function (x) { var pc = parseDocCode(x.code); return Object.assign({}, x, pc); });
+      var byCanon = {}; coded.forEach(function (x) { (byCanon[x.canon] = byCanon[x.canon] || []).push(x); });
+      var dups = Object.keys(byCanon).filter(function (k) { return byCanon[k].length > 1; });
+      var byType = {}; coded.forEach(function (x) { var k = x.type || '?'; var g = byType[k] = byType[k] || { n: 0, depts: {} }; g.n++; var dk = x.dept || '(toàn công ty)'; g.depts[dk] = (g.depts[dk] || 0) + 1; });
+      var cnt = { new: 0, company: 0, old: 0, bad: 0 }; coded.forEach(function (x) { cnt[x.fmt]++; });
+      var noCode = (r.noCode || []).map(function (x) { return Object.assign({}, x, { guess: guessType(x.fileName + ' ' + x.path) }); });
+      var byFolder = {}; noCode.forEach(function (x) { var parts = String(x.path).split(' / '); var k = parts.slice(0, 3).join(' / '); var g = byFolder[k] = byFolder[k] || { n: 0, guess: {} }; g.n++; var gk = x.guess || '—'; g.guess[gk] = (g.guess[gk] || 0) + 1; });
+      return { coded: coded, dups: dups, byCanon: byCanon, byType: byType, cnt: cnt, noCode: noCode, byFolder: byFolder };
+    }
+    function scanReportHtml(r, A) {
+      var stat = function (n, l, bad) { return '<div class="dm-stat' + (bad && n ? ' bad' : '') + '"><b>' + n + '</b><span>' + l + '</span></div>'; };
+      var typeRows = Object.keys(A.byType).sort().map(function (k) {
+        var g = A.byType[k], tn = (DOC_TYPES.filter(function (x) { return x[0] === k; })[0] || [k, k])[1];
+        return '<tr><td><code>' + escapeHtml(k) + '</code> <span class="dm-dim">' + escapeHtml(String(tn).split('— ')[1] || '') + '</span></td><td>' + g.n + '</td><td class="dm-dim">' + Object.keys(g.depts).sort().map(function (d) { return escapeHtml(d) + ' ×' + g.depts[d]; }).join(' · ') + '</td></tr>';
+      }).join('');
+      var oldList = A.coded.filter(function (x) { return x.fmt === 'old'; }), badList = A.coded.filter(function (x) { return x.fmt === 'bad'; });
+      var folderRows = Object.keys(A.byFolder).sort().map(function (k) { var g = A.byFolder[k]; return '<tr><td class="dm-dim">' + escapeHtml(k) + '</td><td>' + g.n + '</td><td>' + Object.keys(g.guess).map(function (x) { return escapeHtml(x) + ' ×' + g.guess[x]; }).join(' · ') + '</td></tr>'; }).join('');
+      return '<div class="dm-stats">' + stat(r.scanned, 'File đã quét') + stat(r.folders, 'Thư mục con') + stat(A.coded.length, 'Có mã hiệu') + stat(A.noCode.length + (r.noCode && r.noCode.length >= 2500 ? '+' : ''), 'Chưa có mã') + stat(A.cnt.new + A.cnt.company, 'Đúng quy cách mới') + stat(A.cnt.old, 'Mã thứ tự cũ', 1) + stat(A.cnt.bad, 'Sai quy cách', 1) + stat(A.dups.length, 'Mã trùng', 1) + '</div>' +
+        '<section class="dm-card"><h4>Theo loại tài liệu (đã có mã)</h4>' + (typeRows ? '<table class="dm-table"><thead><tr><th>Loại</th><th>Số file</th><th>Phòng ban</th></tr></thead><tbody>' + typeRows + '</tbody></table>' : '<div class="dm-dim">Chưa có file nào mang mã hiệu.</div>') + '</section>' +
+        (oldList.length ? '<section class="dm-card dm-alert"><h4>Mã theo thứ tự cũ (' + oldList.length + ') — nên đổi tên file trên Drive</h4><ul class="dm-list">' + oldList.slice(0, 60).map(function (x) { return '<li><code>' + escapeHtml(x.code) + '</code> → <code>' + escapeHtml(x.canon) + '</code> <span class="dm-dim">· ' + escapeHtml(x.fileName) + '</span></li>'; }).join('') + (oldList.length > 60 ? '<li class="dm-dim">… và ' + (oldList.length - 60) + ' file nữa (xem file .csv)</li>' : '') + '</ul></section>' : '') +
+        (badList.length ? '<section class="dm-card dm-alert"><h4>Mã sai quy cách (' + badList.length + ')</h4><ul class="dm-list">' + badList.slice(0, 60).map(function (x) { return '<li><code>' + escapeHtml(x.code) + '</code> — ' + escapeHtml(x.why) + ' <span class="dm-dim">· ' + escapeHtml(x.path) + '</span></li>'; }).join('') + '</ul></section>' : '') +
+        (A.dups.length ? '<section class="dm-card dm-alert"><h4>Mã bị trùng giữa nhiều file (' + A.dups.length + ')</h4><ul class="dm-list">' + A.dups.slice(0, 40).map(function (k) { return '<li><code>' + escapeHtml(k) + '</code> × ' + A.byCanon[k].length + ' file: <span class="dm-dim">' + A.byCanon[k].map(function (x) { return escapeHtml(x.path); }).join(' | ') + '</span></li>'; }).join('') + '</ul></section>' : '') +
+        (A.noCode.length ? '<section class="dm-card"><h4>File chưa có mã hiệu (' + A.noCode.length + ') — gợi ý loại theo tên</h4><div class="dm-tablewrap" style="max-height:240px"><table class="dm-table"><thead><tr><th>Thư mục</th><th>Số file</th><th>Gợi ý loại</th></tr></thead><tbody>' + folderRows + '</tbody></table></div><div class="dm-dim" style="margin-top:6px">Chi tiết từng file + gợi ý loại có trong file .csv. Đây chỉ là gợi ý theo từ khoá tên file/thư mục — bạn xác nhận trước khi gán mã.</div></section>' : '');
+    }
+    function scanCsv(A) {
+      var q = function (v) { v = String(v == null ? '' : v); return /[";\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+      var rows = [['Nhóm', 'Mã trên Drive', 'Mã chuẩn mới', 'Loại', 'Phòng ban', 'Tình trạng quy cách', 'Gợi ý loại (chưa có mã)', 'Tên file', 'Thư mục', 'Link']];
+      A.coded.forEach(function (x) { rows.push(['Có mã', x.code, x.canon, x.type || '', x.dept || '', FMT_LABEL[x.fmt] + (x.why ? ' — ' + x.why : ''), '', x.fileName, x.path, x.url]); });
+      A.noCode.forEach(function (x) { rows.push(['Chưa có mã', '', '', '', '', '', x.guess, x.fileName, x.path, x.url]); });
+      return '\ufeff' + rows.map(function (r) { return r.map(q).join(';'); }).join('\r\n');
+    }
+
     function openSync() {
       var saved = DEFAULT_DRIVE_FOLDER; try { saved = localStorage.getItem(DRIVE_FOLDER_KEY) || DEFAULT_DRIVE_FOLDER; } catch (e) { /* bỏ qua */ }
       var body =
-        '<p class="dm-dim" style="margin:0 0 10px;">Quét thư mục Google Drive chứa tài liệu. Web lấy các file có <b>tên bắt đầu bằng mã hiệu</b> (VD <code>DRW-SOP-005 Quy trình…</code>), đối chiếu với danh sách và cho nhập những file chưa có. Chỉ đọc, không sửa gì trên Drive.</p>' +
+        '<p class="dm-dim" style="margin:0 0 10px;">Quét <b>sâu tất cả thư mục con</b> của thư mục Google Drive chứa tài liệu. Web nhận các file có <b>tên bắt đầu bằng mã hiệu</b> (VD <code>SOP-DES-005 Quy trình…</code>, <code>POL-001 Nội quy…</code>; mã thứ tự cũ <code>DES-SOP-005</code> cũng được nhận và quy đổi), phân loại theo Loại / Phòng ban, báo mã sai quy cách, mã trùng, file chưa có mã — rồi cho bạn xác nhận trước khi nhập. Chỉ đọc, không sửa gì trên Drive.</p>' +
         '<div class="dm-row"><input id="dsFolder" placeholder="Dán link thư mục Google Drive…" value="' + escapeHtml(saved) + '"><button type="button" class="doc-submit-btn dm-primary" id="dsScan" style="white-space:nowrap;">Quét thư mục</button></div>' +
         '<div id="dsOut" class="dm-msg" style="margin-top:12px;"></div>';
-      var ov = openModal('dmSync', 'Đồng bộ mã hiệu từ Google Drive', 'Đối chiếu tên file trên Drive với mã hiệu trên web.', body, true);
+      var ov = openModal('dmSync', 'Đồng bộ mã hiệu từ Google Drive', 'Quét sâu · phân loại theo quy cách mã mới · xác nhận trước khi nhập.', body, true);
       var out = ov.querySelector('#dsOut'), found = [];
       ov.querySelector('#dsScan').addEventListener('click', function () {
         var f = ov.querySelector('#dsFolder').value.trim(); if (!f) { out.className = 'dm-msg warn'; out.textContent = 'Dán link thư mục Drive trước.'; return; }
         try { localStorage.setItem(DRIVE_FOLDER_KEY, f); } catch (e) { /* bỏ qua */ }
-        out.className = 'dm-msg'; out.textContent = 'Đang quét thư mục… (có thể mất 10–30 giây)';
+        out.className = 'dm-msg'; out.textContent = 'Đang quét sâu thư mục… (có thể vài phút nếu thư mục lớn)';
         TaskManager.scanDriveDocs(f, function (r) {
           if (!r || r.error) {
             var needAuth = r && /quyền|permission|authoriz|DriveApp/i.test(r.error || '');
             out.className = 'dm-msg bad'; out.innerHTML = '✕ ' + escapeHtml((r && r.error) || 'Lỗi không rõ') + (needAuth ? '<br>Cần cấp quyền Drive 1 lần: mở Apps Script, chạy hàm <code>authorizeDriveScan</code>, bấm cho phép, rồi Deploy phiên bản mới.' : ''); return;
           }
-          found = r.files || [];
+          var A = analyzeScan(r);
+          found = A.coded;
           var docs = allDocs();
           var rows = found.map(function (x, i) {
             var did = x.driveId, byDrive = docs.filter(function (d) { return d.driveId === did || driveIdOf(d.url) === did; })[0];
-            var byCode = docs.filter(function (d) { return normCode(d.code) === x.code; })[0];
-            var st = byDrive ? { k: 'ok', t: 'Đã có' } : byCode ? { k: 'bad', t: 'Trùng mã với «' + byCode.name + '»' } : { k: 'new', t: 'Mới' };
+            var byCode = docs.filter(function (d) { return normCode(d.code) === x.canon; })[0];
+            var st = byDrive ? { k: 'ok', t: 'Đã có' } : x.fmt === 'bad' ? { k: 'bad', t: 'Sai quy cách' } : byCode ? { k: 'bad', t: 'Trùng mã với «' + byCode.name + '»' } : { k: 'new', t: 'Mới' };
             x._st = st.k;
-            return '<tr><td>' + (st.k === 'new' ? '<input type="checkbox" data-i="' + i + '" checked>' : '') + '</td><td><code>' + escapeHtml(x.code) + '</code></td><td>' + escapeHtml(x.name) + '<div class="dm-dim">' + escapeHtml(x.path) + '</div></td><td><span class="dm-tag ' + st.k + '">' + escapeHtml(st.t) + '</span></td></tr>';
+            return '<tr><td>' + (st.k === 'new' ? '<input type="checkbox" data-i="' + i + '" checked>' : '') + '</td><td><code>' + escapeHtml(x.canon) + '</code>' + (x.fmt === 'old' ? '<div class="dm-dim">tên file: ' + escapeHtml(x.code) + '</div>' : '') + '</td><td>' + escapeHtml(x.name) + '<div class="dm-dim">' + escapeHtml(x.path) + '</div></td><td><span class="dm-tag ' + st.k + '">' + escapeHtml(st.t) + '</span></td></tr>';
           }).join('');
           var nNew = found.filter(function (x) { return x._st === 'new'; }).length, nBad = found.filter(function (x) { return x._st === 'bad'; }).length;
           out.className = 'dm-msg';
-          out.innerHTML = 'Đã quét <b>' + r.scanned + '</b> file trong «' + escapeHtml(r.folder || '') + '»' + (r.truncated ? ' <span class="warn">(chưa hết — thư mục quá lớn, hãy quét thư mục con)</span>' : '') + ' — tìm thấy <b>' + found.length + '</b> file có mã hiệu: <b>' + nNew + '</b> mới, <b>' + nBad + '</b> trùng mã.' +
-            (found.length ? '<div class="dm-tablewrap"><table class="dm-table"><thead><tr><th></th><th>Mã hiệu</th><th>Tên file</th><th>Trạng thái</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
-            '<div class="dm-foot"><select id="dsCat">' + TaskManager.getDocCategories().map(function (c) { return '<option>' + escapeHtml(c) + '</option>'; }).join('') + '</select><button type="button" class="doc-submit-btn dm-primary" id="dsImport"' + (nNew ? '' : ' disabled') + '>Nhập ' + nNew + ' tài liệu mới</button></div>' : '');
+          out.innerHTML = 'Đã quét <b>' + r.scanned + '</b> file trong <b>' + r.folders + '</b> thư mục của «' + escapeHtml(r.folder || '') + '»' + (r.truncated ? ' <span class="warn">(chưa hết — thư mục rất lớn, hãy quét lại hoặc quét thư mục con)</span>' : '') + '.' +
+            scanReportHtml(r, A) +
+            '<section class="dm-card"><h4>Nhập vào danh sách tài liệu — ' + nNew + ' file mới, ' + nBad + ' trùng/sai</h4>' +
+            (found.length ? '<div class="dm-tablewrap"><table class="dm-table"><thead><tr><th></th><th>Mã chuẩn mới</th><th>Tên file</th><th>Trạng thái</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+            '<div class="dm-foot"><select id="dsCat">' + TaskManager.getDocCategories().map(function (c) { return '<option>' + escapeHtml(c) + '</option>'; }).join('') + '</select><button type="button" class="doc-submit-btn dm-primary" id="dsImport"' + (nNew ? '' : ' disabled') + '>Nhập ' + nNew + ' tài liệu mới</button><button type="button" class="dm-btn" id="dsCsv">Tải kết quả (.csv)</button></div>' : '<div class="dm-dim">Không có file nào mang mã hiệu.</div><div class="dm-foot"><button type="button" class="dm-btn" id="dsCsv">Tải kết quả (.csv)</button></div>') + '</section>';
+          var csvBtn = ov.querySelector('#dsCsv');
+          if (csvBtn) csvBtn.addEventListener('click', function () {
+            var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([scanCsv(A)], { type: 'text/csv;charset=utf-8' })); a.download = 'ket-qua-quet-drive-' + new Date().toISOString().slice(0, 10) + '.csv';
+            document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+          });
           var imp = ov.querySelector('#dsImport');
           if (imp) imp.addEventListener('click', function () {
             var user = Auth.getCurrentUser(), n = 0, catv = ov.querySelector('#dsCat').value;
             ov.querySelectorAll('input[data-i]:checked').forEach(function (cb) {
-              var x = found[Number(cb.dataset.i)]; if (!x || docByCode(x.code)) return;
-              TaskManager.createDocument({ category: catv, name: x.name, url: x.url, code: normCode(x.code), driveId: x.driveId, source: 'drive' }, user); n++;
+              var x = found[Number(cb.dataset.i)]; if (!x || docByCode(x.canon)) return;
+              TaskManager.createDocument({ category: catv, name: x.name, url: x.url, code: x.canon, driveId: x.driveId, source: 'drive' }, user); n++;
             });
             closeModal('dmSync'); render();
             showConfirmDialog('Đã nhập ' + n + ' tài liệu từ Drive.', function () {}, 'Đóng');
           });
-        });
+        }, function (pr) { out.textContent = 'Đang quét sâu… đã xem ' + pr.scanned + ' file / ' + pr.folders + ' thư mục (tìm thấy ' + pr.found + ' file có mã)'; });
       });
     }
 
