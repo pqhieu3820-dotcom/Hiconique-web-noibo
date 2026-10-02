@@ -90,6 +90,15 @@
     .fn-dash-row.thirds { grid-template-columns: repeat(3, 1fr); }
 
     .fn-chart-wrap { display: flex; align-items: flex-end; gap: 12px; height: 240px; padding: 44px 20px 12px; overflow-x: auto; overflow-y: hidden; }
+    .fn-chart-ctl { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+    .fn-chart-yr { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--fn-border); background: transparent; color: var(--fn-muted); cursor: pointer; font-size: 1rem; line-height: 1; }
+    .fn-chart-yr:hover { border-color: var(--fn-bronze); color: var(--fn-bronze); }
+    .fn-chart-yr[hidden] { display: none; }
+    .fn-chart-wrap.is-year { gap: 6px; padding-left: 12px; padding-right: 12px; }
+    .fn-chart-wrap.is-year .fn-chart-col { min-width: 38px; }
+    .fn-chart-wrap.is-year .fn-chart-bar-value { font-size: .5rem; }
+    .fn-chart-col.is-future { opacity: .3; filter: grayscale(.6); }
+    .fn-chart-col.is-future:hover { opacity: .45; }
     .fn-chart-col { flex: 1; min-width: max(96px, calc(96px * var(--cz, 1))); display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; justify-content: flex-end; }
     .fn-chart-bars { position: relative; display: flex; gap: max(8px, calc(8px * var(--cz, 1))); align-items: flex-end; height: 100%; }
     .fn-chart-bar { width: max(36px, calc(36px * var(--cz, 1))); border-radius: 4px 4px 0 0; position: relative; transition: opacity 0.15s; }
@@ -503,7 +512,7 @@
             '<div class="fn-section" id="sec-overview">' +
               '<div class="fn-summary-grid" id="fnSummaryGrid"></div>' +
               '<div class="fn-dash-row">' +
-                '<div class="fn-card" style="margin-bottom:0;"><div class="fn-card-head"><div class="fn-card-title">Dòng tiền 6 tháng gần nhất</div><div class="fn-card-desc" style="margin:0;">Bấm vào tháng để xem chi tiết · Ctrl + lăn chuột để phóng to/thu nhỏ</div></div><div class="fn-chart-wrap" id="fnChartWrap"></div><span class="fn-zoom-tip"></span><div class="fn-legend"><span><i style="background:var(--fn-green)"></i>Thu</span><span><i style="background:var(--fn-red)"></i>Chi</span></div></div>' +
+                '<div class="fn-card" style="margin-bottom:0;"><div class="fn-card-head"><div class="fn-card-title" id="fnChartTitle">Dòng tiền 3 tháng gần nhất</div><div class="fn-card-desc" style="margin:0;" id="fnChartDesc">Bấm vào tháng để xem chi tiết · Ctrl + lăn chuột để phóng to/thu nhỏ</div><div class="fn-chart-ctl"><button type="button" class="fn-chart-yr" id="fnChartPrev" aria-label="Năm trước" hidden>‹</button><button type="button" class="fn-btn fn-btn-ghost fn-btn-sm" id="fnChartToggle">Xem cả năm</button><button type="button" class="fn-chart-yr" id="fnChartNext" aria-label="Năm sau" hidden>›</button></div></div><div class="fn-chart-wrap" id="fnChartWrap"></div><span class="fn-zoom-tip"></span><div class="fn-legend"><span><i style="background:var(--fn-green)"></i>Thu</span><span><i style="background:var(--fn-red)"></i>Chi</span></div></div>' +
                 '<div class="fn-card fn-clickable" data-detail="attention" style="margin-bottom:0;" title="Bấm để xem chi tiết"><div class="fn-card-head"><div class="fn-card-title">Cần chú ý</div></div><div class="fn-attention-list" id="fnAttentionList"></div></div>' +
               '</div>' +
               '<div class="fn-dash-row split">' +
@@ -1154,13 +1163,17 @@
       wrapEl.style.setProperty('--cz', zoomF); wrapEl.style.height = Math.round(240 * zoomF) + 'px';
       var months = [];
       var now = new Date();
-      for (var i = historyMonths - 1; i >= 0; i--) {
+      var isOv = targetId === 'fnChartWrap', curYM = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+      wrapEl.classList.toggle('is-year', isOv && chartFull);
+      if (isOv) { historyMonths = chartFull ? 12 : 3; forecastMonths = 0; }
+      if (isOv && chartFull) { for (var mi = 1; mi <= 12; mi++) months.push(chartYear + '-' + String(mi).padStart(2, '0')); }
+      else for (var i = historyMonths - 1; i >= 0; i--) {
         var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
         months.push(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'));
       }
       var data = months.map(function (m) {
         var entries = all.filter(function (e) { return e.month === m; });
-        return { month: m, revenue: sumByType(entries, 'revenue'), expense: sumByType(entries, 'expense'), forecast: false };
+        return { month: m, revenue: sumByType(entries, 'revenue'), expense: sumByType(entries, 'expense'), forecast: false, future: m > curYM };
       });
 
       if (forecastMonths > 0) {
@@ -1182,7 +1195,7 @@
         var rH = Math.max(3, Math.round((d.revenue / max) * maxBarPx));
         var eH = Math.max(3, Math.round((d.expense / max) * maxBarPx));
         var fcls = d.forecast ? ' forecast' : '';
-        return '<div class="fn-chart-col fn-clickable" data-detail="month:' + d.month + '" title="Bấm để xem chi tiết tháng ' + d.month + '">' +
+        return '<div class="fn-chart-col fn-clickable' + (d.future ? ' is-future' : '') + '" data-detail="month:' + d.month + '" title="' + (d.future ? 'Tháng ' + d.month + ' chưa tới' : 'Bấm để xem chi tiết tháng ' + d.month) + '">' +
           '<div class="fn-chart-bars">' +
             '<div class="fn-chart-bar revenue' + fcls + '" style="height:' + rH + 'px;" title="Thu: ' + fmt(d.revenue) + '">' +
               (d.revenue > 0 ? '<span class="fn-chart-bar-value">' + fmtShort(d.revenue) + '</span>' : '') +
@@ -1194,7 +1207,21 @@
           '<span class="fn-chart-label' + (d.forecast ? ' is-forecast' : '') + '">Th.' + Number(d.month.slice(5)) + (d.forecast ? ' *' : '') + '</span>' +
         '</div>';
       }).join('');
+      if (isOv) {
+        var ti = document.getElementById('fnChartTitle'), tg = document.getElementById('fnChartToggle');
+        if (ti) ti.textContent = chartFull ? 'Dòng tiền năm ' + chartYear : 'Dòng tiền 3 tháng gần nhất';
+        if (tg) tg.textContent = chartFull ? 'Chỉ 3 tháng' : 'Xem cả năm';
+        ['fnChartPrev', 'fnChartNext'].forEach(function (id) { var b = document.getElementById(id); if (b) b.hidden = !chartFull; });
+        if (chartFull) wrapEl.scrollLeft = 0;
+      }
     }
+    var chartFull = false, chartYear = new Date().getFullYear();
+    document.addEventListener('click', function (e) {
+      var b = e.target.closest && e.target.closest('#fnChartToggle, #fnChartPrev, #fnChartNext'); if (!b) return;
+      if (b.id === 'fnChartToggle') { chartFull = !chartFull; if (chartFull) chartYear = new Date().getFullYear(); }
+      else chartYear += b.id === 'fnChartPrev' ? -1 : 1;
+      var a = chartArgs.fnChartWrap; if (a) renderChart('fnChartWrap', a[0], a[1], a[2]);
+    });
 
     // Rút gọn số tiền lớn cho gọn nhãn trên biểu đồ (1.500.000 -> 1.5tr).
     function fmtShort(n) {
