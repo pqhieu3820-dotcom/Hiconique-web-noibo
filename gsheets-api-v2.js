@@ -424,7 +424,8 @@ const FIELD_MAP = {
     ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt'],
     ['Trạng thái sổ', 'financeStatus'], ['Thu ngay', 'collectedAmount'], ['Công nợ', 'debtAmount'], ['Hạn công nợ', 'debtDueDate'], ['Loại công nợ', 'debtKind'],
     ['Danh mục doanh thu', 'revenueCategory'], ['Tài khoản quỹ', 'account'], ['Ghi chú kế toán', 'financeNote'], ['Người duyệt sổ', 'financeReviewedBy'],
-    ['Ngày duyệt sổ', 'financeReviewedAt'], ['Mã công nợ liên kết', 'linkedReceivableId'], ['Ngày gửi kế toán', 'submittedAt'], ['Ngày xóa', 'deletedAt'], ['Người xóa', 'deletedBy']
+    ['Ngày duyệt sổ', 'financeReviewedAt'], ['Mã công nợ liên kết', 'linkedReceivableId'], ['Ngày gửi kế toán', 'submittedAt'],
+    ['Loại phiếu', 'orderKind'], ['Hình thức chi', 'payMode'], ['Số hóa đơn/chứng từ', 'receiptNo'], ['Ngày mua', 'purchaseDate'], ['Link ảnh hóa đơn', 'receiptUrl'], ['Ngày xóa', 'deletedAt'], ['Người xóa', 'deletedBy']
   ],
   // 6 sheet công cụ theo dự án dưới đây (2026-09-09) đi cùng các tab mới trong
   // pricing.html — mỗi tab lấy TEMPLATE cố định (tên nhóm công việc, tiêu chí

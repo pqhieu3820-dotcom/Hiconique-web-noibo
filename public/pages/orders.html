@@ -152,6 +152,13 @@
     .od-tl b { color: var(--od-text); font-weight: 600; }
     .od-note-bad { padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--od-red) 40%, transparent); border-radius: 8px; color: var(--od-red); font-size: .75rem; margin-top: 8px; }
 
+    /* Bán hàng / Mua nội bộ */
+    .od-kind { display: flex; gap: 8px; padding: 14px 24px 0; flex-wrap: wrap; }
+    .od-kind-btn { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--od-border, var(--color-border)); background: transparent; color: var(--od-muted, var(--color-text-muted)); font: 600 0.8125rem 'Inter', sans-serif; cursor: pointer; }
+    .od-kind-btn span { font-weight: 500; font-size: 0.75rem; opacity: .8; }
+    .od-kind-btn:hover { border-color: var(--od-bronze, var(--color-bronze)); color: var(--od-bronze, var(--color-bronze)); }
+    .od-kind-btn.on { background: color-mix(in srgb, var(--od-bronze, var(--color-bronze)) 16%, transparent); border-color: var(--od-bronze, var(--color-bronze)); color: var(--od-bronze, var(--color-bronze)); }
+    .od-kindtag { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--od-bronze, var(--color-bronze)); color: var(--od-bronze, var(--color-bronze)); font-size: 0.625rem; font-weight: 600; vertical-align: 1px; white-space: nowrap; }
     .od-print-invoice { display: none; }
 
     @media (max-width: 1000px) {
@@ -232,13 +239,20 @@
         </div>
       </div>
 
+      <div class="od-kind" id="odKindSwitch"><button type="button" class="od-kind-btn on" data-kind="sale">Bán hàng <span>· đơn cho khách</span></button><button type="button" class="od-kind-btn" data-kind="purchase">Mua nội bộ <span>· mua hộ / tạm ứng cho công ty</span></button></div>
+
       <div class="od-sec">
-        <div class="od-sec-h"><i>1</i>Khách hàng <span>· ai mua, ở đâu, thuộc dự án nào</span></div>
+        <div class="od-sec-h"><i>1</i><b id="odSec1T" style="font-weight:inherit">Khách hàng</b> <span id="odSec1S">· ai mua, ở đâu, thuộc dự án nào</span></div>
         <div class="od-grid4">
-          <div><span class="od-field-label">Tên khách hàng *</span><input type="text" class="od-input" id="odClientName" placeholder="Anh/Chị..."></div>
-          <div><span class="od-field-label">SĐT khách hàng</span><input type="text" class="od-input" id="odClientPhone" placeholder="09xx xxx xxx"></div>
+          <div><span class="od-field-label" id="odLblName">Tên khách hàng *</span><input type="text" class="od-input" id="odClientName" placeholder="Anh/Chị..."></div>
+          <div><span class="od-field-label" id="odLblPhone">SĐT khách hàng</span><input type="text" class="od-input" id="odClientPhone" placeholder="09xx xxx xxx"></div>
           <div><span class="od-field-label">Địa chỉ</span><input type="text" class="od-input" id="odClientAddress" placeholder="Địa chỉ giao hàng/thi công"></div>
-          <div><span class="od-field-label">Dự án liên quan</span><select class="od-select" id="odProjectId"><option value="">— Không gắn dự án —</option></select></div>
+          <div><span class="od-field-label" id="odLblProj">Dự án liên quan</span><select class="od-select" id="odProjectId"><option value="">— Không gắn dự án —</option></select></div>
+        </div>
+        <div class="od-grid4" id="odPurchaseFields" hidden style="margin-top:12px;">
+          <div><span class="od-field-label">Số hóa đơn / chứng từ</span><input type="text" class="od-input" id="odReceiptNo" placeholder="VD: 0001234 / biên lai"></div>
+          <div><span class="od-field-label">Ngày mua</span><input type="date" class="od-input" id="odPurchaseDate"></div>
+          <div style="grid-column: span 2;"><span class="od-field-label">Link ảnh / file hóa đơn (Drive…)</span><input type="text" class="od-input" id="odReceiptUrl" placeholder="Dán link ảnh chụp hóa đơn, nếu có"></div>
         </div>
       </div>
 
@@ -260,7 +274,17 @@
         </div>
       </div>
 
-      <div class="od-sec">
+      <div class="od-sec" id="odPurchasePaySec" hidden>
+        <div class="od-sec-h"><i>3</i>Hình thức chi <span>· để kế toán ghi đúng phiếu chi / công nợ hoàn ứng</span></div>
+        <div class="od-grid3">
+          <div style="grid-column: span 2;"><span class="od-field-label">Ai đã chi tiền cho khoản này?</span><select class="od-select" id="odPayMode"></select></div>
+          <div><span class="od-field-label">Nhóm chi phí (gợi ý, kế toán chỉnh được)</span><select class="od-select" id="odExpCat"></select></div>
+        </div>
+        <div id="odPayModeHint" style="margin-top:10px;font-size:.75rem;color:var(--od-muted);"></div>
+        <div style="margin-top:12px;"><span class="od-field-label">Ghi chú</span><input type="text" class="od-input" id="odNote2" placeholder="Mua để làm gì, cho hạng mục/dự án nào…"></div>
+      </div>
+
+      <div class="od-sec" id="odSalePaySec">
         <div class="od-sec-h"><i>3</i>Thanh toán &amp; công nợ <span>· phân loại ngay để kế toán chỉ cần duyệt</span></div>
         <div class="od-pay">
           <div>
@@ -335,6 +359,25 @@
     var editingOrderId = null;
     var filter = 'all', query = '', flowSel = '';
     var collectedManual = false;
+    var orderKind = 'sale';   // 'sale' = đơn bán cho khách · 'purchase' = phiếu mua nội bộ (mua hộ / tạm ứng cho công ty)
+    var PAY_HINT = { employee: 'Nhân viên tự bỏ tiền mua → kế toán duyệt sẽ tạo <b>công nợ phải trả nhân viên</b> (hoàn ứng); khi công ty trả tiền mới sinh phiếu chi.', company: 'Công ty đã trả → kế toán duyệt sẽ ghi <b>phiếu chi</b> vào Sổ tài chính ngay.', advance: 'Xin ứng trước tiền để mua → kế toán duyệt sẽ ghi <b>phiếu chi tạm ứng</b> và theo dõi <b>công nợ phải thu nhân viên</b> tới khi nộp hóa đơn/hoàn tiền.' };
+    function setKind(k) {
+      orderKind = k === 'purchase' ? 'purchase' : 'sale';
+      var pu = orderKind === 'purchase', $ = function (id) { return document.getElementById(id); };
+      Array.prototype.forEach.call(document.querySelectorAll('#odKindSwitch .od-kind-btn'), function (b) { b.classList.toggle('on', b.getAttribute('data-kind') === orderKind); });
+      $('odSec1T').textContent = pu ? 'Nhà cung cấp / nơi mua' : 'Khách hàng';
+      $('odSec1S').textContent = pu ? '· mua của ai, hóa đơn nào, chi phí cho dự án nào' : '· ai mua, ở đâu, thuộc dự án nào';
+      $('odLblName').textContent = pu ? 'Tên nhà cung cấp / cửa hàng *' : 'Tên khách hàng *';
+      $('odLblPhone').textContent = pu ? 'SĐT nhà cung cấp' : 'SĐT khách hàng';
+      $('odLblProj').textContent = pu ? 'Chi phí cho dự án (nếu có)' : 'Dự án liên quan';
+      $('odClientName').placeholder = pu ? 'Cửa hàng / công ty bán…' : 'Anh/Chị...';
+      $('odPurchaseFields').hidden = !pu; $('odPurchasePaySec').hidden = !pu; $('odSalePaySec').hidden = pu;
+      $('odSubmitBtn').textContent = pu ? 'Lập phiếu mua & gửi kế toán' : 'Lập hóa đơn & gửi kế toán';
+      $('odFormHint').textContent = pu ? 'Lưu nháp để làm tiếp sau, hoặc gửi kế toán để ghi phiếu chi / công nợ hoàn ứng trong Sổ tài chính.' : 'Lưu nháp để làm tiếp sau, hoặc gửi kế toán để duyệt ghi sổ.';
+      if (!editingOrderId) $('odFormTitle').textContent = pu ? 'Tạo phiếu mua nội bộ' : 'Tạo đơn hàng mới';
+      $('odFormDesc').textContent = pu ? 'Điền nhà cung cấp → hạng mục đã mua → ai đã chi tiền. Kế toán sẽ ghi sổ tài chính.' : 'Điền khách hàng → hạng mục → cách thanh toán. Tổng tiền và công nợ tự tính.';
+      $('odPayModeHint').innerHTML = PAY_HINT[$('odPayMode').value] || '';
+    }
 
     // ---------- Dropdown ----------
     function renderProjectOptions() {
@@ -501,8 +544,17 @@
     document.getElementById('odAddRowBtn2').addEventListener('click', function () { addItemRow(); });
 
     // ---------- Form: reset / load để sửa ----------
+    (function initPurchaseControls() {
+      document.getElementById('odPayMode').innerHTML = TaskManager.PURCHASE_PAY_MODES.map(function (m) { return '<option value="' + m[0] + '">' + escapeHtml(m[1]) + '</option>'; }).join('');
+      document.getElementById('odExpCat').innerHTML = TaskManager.PURCHASE_EXPENSE_CATS.map(function (c) { return '<option>' + escapeHtml(c) + '</option>'; }).join('');
+      document.getElementById('odPayMode').addEventListener('change', function () { document.getElementById('odPayModeHint').innerHTML = PAY_HINT[this.value] || ''; });
+      document.getElementById('odKindSwitch').addEventListener('click', function (e) { var b = e.target.closest('[data-kind]'); if (b && !editingOrderId) setKind(b.getAttribute('data-kind')); });
+    })();
     function resetForm() {
       editingOrderId = null; collectedManual = false; lastTotal = 0;
+      ['odReceiptNo', 'odReceiptUrl', 'odNote2'].forEach(function (id) { document.getElementById(id).value = ''; });
+      document.getElementById('odPurchaseDate').value = todayStr(); document.getElementById('odPayMode').value = 'employee'; document.getElementById('odExpCat').selectedIndex = 0;
+      setKind('sale');
       document.getElementById('odFormTitle').textContent = 'Tạo đơn hàng mới';
       document.getElementById('odFormDesc').textContent = 'Điền khách hàng → hạng mục → cách thanh toán. Tổng tiền và công nợ tự tính.';
       document.getElementById('odResetFormBtn').hidden = true;
@@ -526,7 +578,12 @@
 
     function loadOrderIntoForm(order) {
       editingOrderId = order.id;
-      document.getElementById('odFormTitle').textContent = 'Sửa đơn hàng ' + (order.orderNumber || '');
+      document.getElementById('odReceiptNo').value = order.receiptNo || ''; document.getElementById('odReceiptUrl').value = order.receiptUrl || ''; document.getElementById('odNote2').value = order.note || '';
+      document.getElementById('odPurchaseDate').value = order.purchaseDate ? String(order.purchaseDate).slice(0, 10) : todayStr();
+      if (order.payMode) document.getElementById('odPayMode').value = order.payMode;
+      if (order.revenueCategory && order.orderKind === 'purchase') document.getElementById('odExpCat').value = order.revenueCategory;
+      setKind(order.orderKind === 'purchase' ? 'purchase' : 'sale');
+      document.getElementById('odFormTitle').textContent = (order.orderKind === 'purchase' ? 'Sửa phiếu mua ' : 'Sửa đơn hàng ') + (order.orderNumber || '');
       document.getElementById('odFormDesc').textContent = TaskManager.orderPhase(order) === 'rejected' && order.financeNote ? 'Kế toán trả lại: ' + order.financeNote : 'Chỉnh sửa rồi lưu nháp hoặc gửi kế toán.';
       document.getElementById('odResetFormBtn').hidden = false;
       document.getElementById('odSaveDraftBtn').textContent = 'Cập nhật nháp';
@@ -558,11 +615,23 @@
     function collectFormData() {
       var clientName = document.getElementById('odClientName').value.trim();
       var items = readItemRows();
-      if (!clientName) { alert('Nhập tên khách hàng.'); return null; }
+      if (!clientName) { alert(orderKind === 'purchase' ? 'Nhập tên nhà cung cấp / nơi mua.' : 'Nhập tên khách hàng.'); return null; }
       if (items.length === 0) { alert('Thêm ít nhất 1 hạng mục.'); return null; }
-      var totals = recalcTotals(), pay = payState();
+      var totals = recalcTotals();
+      if (orderKind === 'purchase') {
+        var mode = document.getElementById('odPayMode').value, tot = Math.round(totals.grandTotal);
+        return {
+          orderKind: 'purchase', clientName: clientName, clientPhone: document.getElementById('odClientPhone').value.trim(), clientAddress: document.getElementById('odClientAddress').value.trim(), projectId: document.getElementById('odProjectId').value,
+          items: items, subtotal: totals.subtotal, discountPercent: totals.discountPct, discountAmount: totals.discountAmount, vatPercent: totals.vatPct, vatAmount: totals.vatAmount, totalAmount: totals.grandTotal,
+          payMode: mode, receiptNo: document.getElementById('odReceiptNo').value.trim(), purchaseDate: document.getElementById('odPurchaseDate').value, receiptUrl: document.getElementById('odReceiptUrl').value.trim(),
+          paymentMethod: (TaskManager.PURCHASE_PAY_MODES.filter(function (m) { return m[0] === mode; })[0] || ['', ''])[1], account: '111',
+          collectedAmount: mode === 'company' ? tot : 0, debtAmount: mode === 'company' ? 0 : tot, debtKind: '', debtDueDate: '', revenueCategory: document.getElementById('odExpCat').value, note: document.getElementById('odNote2').value.trim()
+        };
+      }
+      var pay = payState();
       var method = document.getElementById('odPaymentMethod').value;
       return {
+        orderKind: 'sale',
         clientName: clientName,
         clientPhone: document.getElementById('odClientPhone').value.trim(),
         clientAddress: document.getElementById('odClientAddress').value.trim(),
@@ -587,7 +656,7 @@
 
     function save(submit) {
       var data = collectFormData(); if (!data) return;
-      if (submit && data.debtAmount > 0 && !data.debtDueDate) { alert('Nhập hạn thanh toán cho phần công nợ trước khi gửi kế toán.'); return; }
+      if (submit && data.orderKind !== 'purchase' && data.debtAmount > 0 && !data.debtDueDate) { alert('Nhập hạn thanh toán cho phần công nợ trước khi gửi kế toán.'); return; }
       var id = editingOrderId;
       if (id) {
         data.status = 'draft'; data.financeStatus = ''; data.financeNote = '';
@@ -719,12 +788,12 @@
         }).join('');
         var editable = canEdit && (ph === 'draft' || ph === 'rejected');
         return '<tr>' +
-          '<td><b>' + escapeHtml(o.orderNumber || o.id) + '</b><br><span style="color:var(--od-faint);font-size:.6875rem;">' + escapeHtml(vnDate(o.createdAt)) + '</span></td>' +
+          '<td><b>' + escapeHtml(o.orderNumber || o.id) + '</b>' + (o.orderKind === 'purchase' ? '<span class="od-kindtag">Mua nội bộ</span>' : '') + '<br><span style="color:var(--od-faint);font-size:.6875rem;">' + escapeHtml(vnDate(o.createdAt)) + '</span></td>' +
           '<td>' + escapeHtml(o.clientName || '') + (o.projectId ? '<br><span style="color:var(--od-muted);font-size:0.75rem;">Dự án: ' + escapeHtml(projectName(o.projectId)) + '</span>' : '') + '</td>' +
           '<td>' + escapeHtml(memberName(o.createdBy)) + '</td>' +
           '<td class="num od-amount">' + fmt(total) + '</td>' +
-          '<td><span style="font-size:.75rem;color:var(--od-muted)">Thu ' + fmt(col) + ' · Nợ ' + fmt(Math.max(0, total - col)) + '</span><div class="od-prog"><i style="width:' + pc + '%"></i></div></td>' +
-          '<td><span class="od-status ' + ph + '">' + PHASE_LABEL[ph] + '</span></td>' +
+          '<td><span style="font-size:.75rem;color:var(--od-muted)">' + (o.orderKind === 'purchase' ? 'Đã chi ' + fmt(col) + ' · ' + (o.payMode === 'advance' ? 'Chờ hoàn tạm ứng ' : 'Chờ hoàn ứng ') + fmt(Math.max(0, total - (o.payMode === 'advance' ? 0 : col))) : 'Thu ' + fmt(col) + ' · Nợ ' + fmt(Math.max(0, total - col))) + '</span><div class="od-prog"><i style="width:' + pc + '%"></i></div>' + (o.orderKind === 'purchase' && o.payMode ? '<div style="font-size:.6875rem;color:var(--od-faint);margin-top:2px;">' + escapeHtml(TaskManager.purchaseModeLabel(o.payMode)) + '</div>' : '') + '</td>' +
+          '<td><span class="od-status ' + ph + '">' + (o.orderKind === 'purchase' && ph === 'paid' ? 'Đã chi xong' : o.orderKind === 'purchase' && ph === 'debt' ? 'Đã ghi sổ · chờ hoàn' : PHASE_LABEL[ph]) + '</span></td>' +
           '<td><div class="od-toolbar">' +
             '<button class="od-btn od-btn-ghost od-btn-sm" data-toggle-detail="' + o.id + '">Chi tiết</button>' +
             '<button class="od-btn od-btn-ghost od-btn-sm" data-print-invoice="' + o.id + '">In</button>' +

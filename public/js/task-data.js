@@ -3539,7 +3539,7 @@ var TaskManager = (function() {
     var upd = { paidAmount: r.paidAmount + amt, payments: JSON.stringify(pays), status: (r.paidAmount + amt) >= r.amount ? 'paid' : 'unpaid' };
     var u = update(STORAGE_KEYS.receivables, id, upd);
     if (u) syncToGSheets('receivables', 'update', upd, id);
-    if (upd.status === 'paid' && isIn) settleOrderForReceivable(r, user);
+    if (upd.status === 'paid' && r.orderId) settleOrderForReceivable(r, user);   // phải thu (đơn bán) lẫn phải trả hoàn ứng (phiếu mua nội bộ)
     return { debt: normalizeDebt_(Object.assign({}, raw, upd)), entry: entry, payment: pays[pays.length - 1] };
   }
 
@@ -3782,6 +3782,14 @@ var TaskManager = (function() {
   // Doanh thu ghi nhận theo TIỀN THỰC THU (đồng bộ cách Sổ tài chính hiện hành): phần thu ngay ghi lúc duyệt, phần nợ ghi khi thu nợ.
   var DEBT_KINDS = ['Phải thu thông thường', 'Thanh toán theo đợt / tiến độ', 'Giữ lại bảo hành', 'Tạm ứng — thu bù sau'];
   var REVENUE_CATEGORIES = ['Thiết kế', 'Thi công', 'Nội thất / đồ rời', 'Tư vấn / giám sát', 'Vật tư', 'Khác'];
+  // ===== PHIẾU MUA NỘI BỘ (2026-10-02): nhân viên mua/tạm ứng cho công ty gửi hoá đơn → kế toán ghi Sổ tài chính. Dùng chung bảng đơn hàng với orderKind = 'purchase'. =====
+  //  payMode 'employee' : nhân viên tự ứng tiền mua → kế toán duyệt tạo CÔNG NỢ PHẢI TRẢ nhân viên (hoàn ứng); khi trả tiền mới sinh phiếu chi (sổ quỹ chỉ tính tiền thật ra/vào)
+  //  payMode 'company'  : đã chi bằng tiền/thẻ công ty → duyệt tạo PHIẾU CHI ngay
+  //  payMode 'advance'  : xin tạm ứng để mua → duyệt tạo PHIẾU CHI tạm ứng (TK 141) + công nợ PHẢI THU nhân viên (thu hồi khi nộp hoá đơn/hoàn tiền)
+  var PURCHASE_PAY_MODES = [['employee', 'Nhân viên tự ứng tiền mua — công ty hoàn ứng'], ['company', 'Đã chi bằng tiền / thẻ công ty'], ['advance', 'Xin tạm ứng để mua (chưa mua)']];
+  var PURCHASE_EXPENSE_CATS = ['Vật liệu xây dựng', 'Vật liệu nội thất (gỗ, tấm, đá, sơn…)', 'Thiết bị – phụ kiện (điện, nước, đèn…)', 'Máy móc – dụng cụ thi công', 'Văn phòng phẩm – thiết bị văn phòng', 'Vận chuyển – bốc xếp', 'Tiếp khách – hội họp', 'Điện – nước – internet – điện thoại', 'Marketing – quảng cáo – thương hiệu', 'Tạm ứng nhân viên', 'Chi phí khác'];
+  function isPurchase(o) { return !!o && o.orderKind === 'purchase'; }
+  function purchaseModeLabel(m) { var x = PURCHASE_PAY_MODES.filter(function (p) { return p[0] === m; })[0]; return x ? x[1] : ''; }
   function ordFin_(o) { return o.financeStatus || ''; }
   function orderPhase(o) {
     if (o.status === 'cancelled') return 'cancelled';
@@ -3810,10 +3818,16 @@ var TaskManager = (function() {
     var o = getById(STORAGE_KEYS.orders, id);
     if (!o || !canEditOrder(o, user)) return null;
     var total = Number(o.totalAmount) || 0, col = Math.max(0, Math.min(total, Number(o.collectedAmount) || 0));
+    if (isPurchase(o)) col = o.payMode === 'company' ? total : 0;   // phiếu mua: chỉ "đã chi" khi công ty đã trả; tự ứng/tạm ứng còn chờ kế toán
     var upd = { financeStatus: 'pending', status: 'confirmed', collectedAmount: col, debtAmount: Math.max(0, total - col), submittedAt: new Date().toISOString(), financeNote: '', financeReviewedBy: '', financeReviewedAt: '' };
     var u = update(STORAGE_KEYS.orders, id, upd);
     if (!u) return null;
     syncToGSheets('orders', 'update', upd, id);
+    if (isPurchase(o)) {
+      ordNotify_(financeRecipients_(user).map(function (m) { return m.id; }), 'Phiếu mua nội bộ chờ ghi sổ',
+        (user.name || user.id) + ' gửi phiếu mua ' + (o.orderNumber || o.id) + ' (' + (o.clientName || 'NCC') + ') ' + total.toLocaleString('vi-VN') + ' ₫ — ' + purchaseModeLabel(o.payMode) + '. Vào Sổ tài chính › Đơn hàng chờ ghi sổ để duyệt.');
+      return u;
+    }
     ordNotify_(financeRecipients_(user).map(function (m) { return m.id; }), 'Đơn hàng chờ ghi sổ',
       (user.name || user.id) + ' gửi đơn ' + (o.orderNumber || o.id) + ' (' + (o.clientName || 'Khách lẻ') + ') ' + total.toLocaleString('vi-VN') + ' ₫ — thu ngay ' + col.toLocaleString('vi-VN') + ', công nợ ' + (total - col).toLocaleString('vi-VN') + '. Vào Sổ tài chính › Đơn hàng chờ ghi sổ để duyệt.');
     return u;
@@ -3842,6 +3856,35 @@ var TaskManager = (function() {
     var u = update(STORAGE_KEYS.orders, id, upd);
     if (u) syncToGSheets('orders', 'update', upd, id);
     if (o.createdBy && o.createdBy !== user.id) ordNotify_([o.createdBy], 'Đơn hàng đã được ghi sổ', 'Đơn ' + (o.orderNumber || o.id) + ' đã được ' + (user.name || 'kế toán') + ' duyệt: thu ' + col.toLocaleString('vi-VN') + ' ₫' + (debt > 0 ? ', công nợ ' + debt.toLocaleString('vi-VN') + ' ₫ (' + upd.debtKind + ').' : ' — đã thu đủ.'));
+    return u;
+  }
+  // p: { category, date, account('111'|'112'), counterAccount, voucherNo, dueDate, note, payMode? } — duyệt PHIẾU MUA NỘI BỘ
+  function approvePurchaseToFinance(id, p, user) {
+    if (!canManageFinance(user)) return null;
+    var o = getById(STORAGE_KEYS.orders, id);
+    if (!o || !isPurchase(o) || ordFin_(o) === 'booked') return null;
+    p = p || {};
+    var total = Number(o.totalAmount) || 0, mode = p.payMode || o.payMode || 'company', date = p.date || todayStr(), cat = p.category || o.revenueCategory || PURCHASE_EXPENSE_CATS[0];
+    var who = memberName_(o.createdBy), desc = 'Mua nội bộ ' + (o.orderNumber || o.id) + ' — ' + (o.clientName || 'NCC') + (o.receiptNo ? ' · HĐ ' + o.receiptNo : '');
+    var upd = { financeStatus: 'booked', payMode: mode, revenueCategory: cat, account: p.account || o.account || '111', financeNote: p.note || '', financeReviewedBy: user.id, financeReviewedAt: new Date().toISOString() };
+    if (mode === 'company' || mode === 'advance') {
+      var isAdv = mode === 'advance';
+      var entry = createFinanceEntry({ type: 'expense', category: isAdv ? 'Tạm ứng nhân viên' : cat, description: (isAdv ? 'Tạm ứng cho ' + who + ' — ' : '') + desc, amount: total, date: date, month: date.slice(0, 7), voucherDate: date,
+        voucherNo: p.voucherNo || debtVoucherNo_('PC', date), account: upd.account, counterAccount: p.counterAccount || (isAdv ? '141 — Tạm ứng' : '642 — Chi phí quản lý doanh nghiệp'), actor: who, note: 'Từ phiếu mua nội bộ ' + (o.orderNumber || o.id) }, user);
+      if (!entry) return null;
+      upd.linkedFinanceEntryId = entry.id;
+    }
+    if (mode === 'company') { upd.collectedAmount = total; upd.debtAmount = 0; upd.status = 'paid'; }
+    else {
+      var rc = createReceivable(mode === 'employee'
+        ? { direction: 'payable', partyType: 'employee', clientName: who, projectId: o.projectId || '', description: 'Hoàn ứng — ' + desc, amount: total, dueDate: p.dueDate || date, status: 'unpaid', orderId: o.id, orderNumber: o.orderNumber || '', kind: 'Hoàn ứng chi phí mua hộ', note: p.note || '' }
+        : { direction: 'receivable', partyType: 'employee', clientName: who, projectId: o.projectId || '', description: 'Tạm ứng mua — ' + desc, amount: total, dueDate: p.dueDate || date, status: 'unpaid', orderId: o.id, orderNumber: o.orderNumber || '', kind: 'Tạm ứng — thu bù sau', note: p.note || '' }, user);
+      if (!rc) return null;
+      upd.linkedReceivableId = rc.id; upd.collectedAmount = mode === 'advance' ? total : 0; upd.debtAmount = total; upd.status = 'confirmed';
+    }
+    var u = update(STORAGE_KEYS.orders, id, upd);
+    if (u) syncToGSheets('orders', 'update', upd, id);
+    if (o.createdBy && o.createdBy !== user.id) ordNotify_([o.createdBy], 'Phiếu mua nội bộ đã được ghi sổ', 'Phiếu ' + (o.orderNumber || o.id) + ' đã được ' + (user.name || 'kế toán') + ' duyệt: ' + purchaseModeLabel(mode) + ' — ' + total.toLocaleString('vi-VN') + ' ₫.');
     return u;
   }
   function rejectOrderFinance(id, reason, user) {
@@ -4191,6 +4234,11 @@ var TaskManager = (function() {
     orderPhase: orderPhase,
     submitOrderToFinance: submitOrderToFinance,
     approveOrderToFinance: approveOrderToFinance,
+    approvePurchaseToFinance: approvePurchaseToFinance,
+    isPurchase: isPurchase,
+    purchaseModeLabel: purchaseModeLabel,
+    PURCHASE_PAY_MODES: PURCHASE_PAY_MODES,
+    PURCHASE_EXPENSE_CATS: PURCHASE_EXPENSE_CATS,
     rejectOrderFinance: rejectOrderFinance,
     settleOrderForReceivable: settleOrderForReceivable,
     DEBT_KINDS: DEBT_KINDS,

@@ -1580,12 +1580,13 @@
       var list = ordTab === 'all' ? all : by(ordTab);
       if (!list.length) { rows.innerHTML = '<tr><td colspan="9" class="fn-empty">' + (ordTab === 'pending' ? 'Không có đơn nào đang chờ duyệt.' : 'Không có đơn trong mục này.') + '</td></tr>'; return; }
       rows.innerHTML = list.map(function (o) {
-        var ph = ordPhase(o), total = Number(o.totalAmount) || 0, col = ph === 'paid' ? total : (Number(o.collectedAmount) || 0), debtAmt = ph === 'paid' ? 0 : Math.max(0, total - col);
-        return '<tr><td style="font-family:JetBrains Mono,monospace;font-size:.75rem;">' + escapeHtml(o.orderNumber || o.id) + '<br><span style="color:var(--fn-muted)">' + escapeHtml(vnDate(o.submittedAt || o.createdAt)) + '</span></td>' +
+        var ph = ordPhase(o), pu = TaskManager.isPurchase(o), total = Number(o.totalAmount) || 0, col = ph === 'paid' ? total : (Number(o.collectedAmount) || 0), debtAmt = ph === 'paid' ? 0 : Math.max(0, total - col);
+        if (pu && o.payMode !== 'company' && ph !== 'paid') { col = (o.payMode === 'advance' && ph === 'debt') ? total : 0; debtAmt = total; }
+        return '<tr><td style="font-family:JetBrains Mono,monospace;font-size:.75rem;">' + escapeHtml(o.orderNumber || o.id) + (pu ? ' <span class="fn-status-badge unpaid" style="font-family:Inter,sans-serif;">Mua nội bộ</span>' : '') + '<br><span style="color:var(--fn-muted)">' + escapeHtml(vnDate(o.submittedAt || o.createdAt)) + '</span></td>' +
           '<td>' + escapeHtml(o.clientName || '—') + (o.projectId ? '<br><span style="color:var(--fn-muted);font-size:.75rem;">' + escapeHtml(o.projectId) + '</span>' : '') + '</td>' +
-          '<td>' + escapeHtml(ordMember(o.createdBy)) + '</td><td class="fn-amount pos">' + fmt(total) + '</td><td class="fn-amount">' + fmt(col) + '</td><td class="fn-amount">' + fmt(debtAmt) + '</td>' +
-          '<td style="font-size:.75rem;">' + escapeHtml(o.revenueCategory || '—') + '<br><span style="color:var(--fn-muted)">' + (debtAmt > 0 ? escapeHtml(o.debtKind || '') + (o.debtDueDate ? ' · hạn ' + vnDate(o.debtDueDate) : '') : 'Không nợ') + ' · TK ' + escapeHtml(o.account || '111') + '</span></td>' +
-          '<td><span class="fn-status-badge ' + (ph === 'pending' ? 'unpaid' : ph === 'rejected' ? 'overdue' : 'paid') + '">' + ORD_LABEL[ph] + '</span></td>' +
+          '<td>' + escapeHtml(ordMember(o.createdBy)) + '</td><td class="fn-amount ' + (pu ? 'neg' : 'pos') + '">' + fmt(total) + '</td><td class="fn-amount">' + fmt(col) + '</td><td class="fn-amount">' + fmt(debtAmt) + '</td>' +
+          '<td style="font-size:.75rem;">' + escapeHtml(o.revenueCategory || '—') + '<br><span style="color:var(--fn-muted)">' + (pu ? escapeHtml(TaskManager.purchaseModeLabel(o.payMode)) + (o.receiptNo ? ' · HĐ ' + escapeHtml(o.receiptNo) : '') : (debtAmt > 0 ? escapeHtml(o.debtKind || '') + (o.debtDueDate ? ' · hạn ' + vnDate(o.debtDueDate) : '') : 'Không nợ') + ' · TK ' + escapeHtml(o.account || '111')) + '</span></td>' +
+          '<td><span class="fn-status-badge ' + (ph === 'pending' ? 'unpaid' : ph === 'rejected' ? 'overdue' : 'paid') + '">' + (pu && ph === 'debt' ? 'Đã ghi sổ · chờ hoàn' : pu && ph === 'paid' ? 'Đã chi xong' : ORD_LABEL[ph]) + '</span></td>' +
           '<td style="white-space:nowrap;">' + (ph === 'pending' ? '<button class="fn-btn fn-btn-primary fn-btn-sm" data-ordapprove="' + o.id + '">Duyệt &amp; ghi sổ</button> <button class="fn-btn fn-btn-ghost fn-btn-sm" data-ordreject="' + o.id + '">Từ chối</button>' : '<button class="fn-btn fn-btn-ghost fn-btn-sm" data-ordview="' + o.id + '">Xem</button>') + '</td></tr>';
       }).join('');
     }
@@ -1645,18 +1646,65 @@
         ov.remove(); ordTab = s.debt > 0 ? 'debt' : 'paid'; renderAll();
       });
     }
+    // Duyệt PHIẾU MUA NỘI BỘ (nhân viên mua hộ / tạm ứng): phiếu chi hoặc công nợ hoàn ứng / thu hồi tạm ứng
+    function ordPcNo(date) {
+      var ym = String(date || '').slice(2, 7).replace('-', ''), head = 'PC-' + ym + '-', max = 0;
+      TaskManager.getFinanceEntries().forEach(function (e) { if (e.voucherNo && String(e.voucherNo).indexOf(head) === 0) { var n = parseInt(String(e.voucherNo).slice(head.length), 10); if (n > max) max = n; } });
+      return head + ('00' + (max + 1)).slice(-3);
+    }
+    function openPurchaseApprove(o) {
+      var total = Number(o.totalAmount) || 0, today = new Date().toISOString().split('T')[0], who = ordMember(o.createdBy);
+      var cats = TaskManager.PURCHASE_EXPENSE_CATS, modes = TaskManager.PURCHASE_PAY_MODES;
+      var opt = function (arr, cur) { return arr.map(function (x) { return '<option' + (x === cur ? ' selected' : '') + '>' + escapeHtml(x) + '</option>'; }).join(''); };
+      var items = (Array.isArray(o.items) ? o.items : []).map(function (it) { return escapeHtml(it.name) + ' ×' + fmt(it.qty); }).join('; ');
+      var ov = ordOverlay('<div class="fn-dt-head"><div><div class="fn-dt-title">Duyệt phiếu mua nội bộ — ' + escapeHtml(o.orderNumber || o.id) + '</div><div class="fn-dt-sub">' + escapeHtml(o.clientName || '') + ' · lập bởi ' + escapeHtml(who) + ' · tổng <b>' + fmt(total) + ' ₫</b>' + (o.receiptNo ? ' · HĐ ' + escapeHtml(o.receiptNo) : '') + '</div></div><button type="button" class="fn-dt-x" data-x aria-label="Đóng">×</button></div>' +
+        '<div class="fn-dt-body"><div style="font-size:.75rem;color:var(--fn-muted);margin-bottom:10px;">' + escapeHtml(items) + (o.receiptUrl ? ' · <a href="' + escapeHtml(o.receiptUrl) + '" target="_blank" rel="noopener" style="color:var(--fn-bronze,#B8935A)">Xem ảnh hóa đơn</a>' : '') + '</div><div class="fn-ord-form">' +
+          '<div class="span3"><span class="fn-field-label">Hình thức chi</span><select class="fn-select" id="paMode">' + modes.map(function (m) { return '<option value="' + m[0] + '"' + (m[0] === (o.payMode || 'employee') ? ' selected' : '') + '>' + escapeHtml(m[1]) + '</option>'; }).join('') + '</select></div>' +
+          '<div><span class="fn-field-label">Nhóm chi phí</span><select class="fn-select" id="paCat">' + opt(cats, o.revenueCategory || cats[0]) + '</select></div>' +
+          '<div><span class="fn-field-label">Ngày ghi sổ</span><input type="date" class="fn-input" id="paDate" value="' + today + '"></div>' +
+          '<div><span class="fn-field-label">Tài khoản quỹ</span><select class="fn-select" id="paAcc"><option value="111"' + (o.account !== '112' ? ' selected' : '') + '>111 — Tiền mặt</option><option value="112"' + (o.account === '112' ? ' selected' : '') + '>112 — Tiền gửi ngân hàng</option></select></div>' +
+          '<div><span class="fn-field-label" id="paVL">Số phiếu chi</span><input type="text" class="fn-input mono" id="paVoucher" value="' + ordPcNo(today) + '"></div>' +
+          '<div><span class="fn-field-label">Hạn hoàn ứng / thu hồi</span><input type="date" class="fn-input" id="paDue"></div>' +
+          '<div><span class="fn-field-label">TK đối ứng</span><input type="text" class="fn-input" id="paCounter"></div>' +
+          '<div class="span3"><span class="fn-field-label">Ghi chú kế toán</span><input type="text" class="fn-input" id="paNote" placeholder="Ghi chú (tuỳ chọn)"></div>' +
+          '<div class="span3 fn-ord-pre" id="paPre"></div>' +
+          '<div class="span3" id="paErr" style="color:#C75B5B;font-size:.75rem;min-height:1em;"></div>' +
+        '</div><div style="display:flex;justify-content:flex-end;gap:10px;margin-top:14px;"><button type="button" class="fn-btn fn-btn-ghost" data-x>Huỷ</button><button type="button" class="fn-btn fn-btn-primary" id="paOk">Duyệt &amp; ghi sổ</button></div></div>');
+      var $ = function (id) { return ov.querySelector('#' + id); }, lastMode = '';
+      function calc() {
+        var m = $('paMode').value, needVoucher = m !== 'employee';
+        if (m !== lastMode) { lastMode = m; $('paCounter').value = m === 'advance' ? '141 — Tạm ứng' : m === 'employee' ? '334 — Phải trả người lao động' : '642 — Chi phí quản lý doanh nghiệp'; }
+        $('paVoucher').disabled = !needVoucher; $('paAcc').disabled = !needVoucher; $('paCounter').disabled = !needVoucher; $('paDue').disabled = m === 'company';
+        if (m !== 'company' && !$('paDue').value) { var d = new Date(); d.setDate(d.getDate() + (m === 'advance' ? 15 : 7)); $('paDue').value = d.toISOString().split('T')[0]; }
+        $('paPre').innerHTML = '<b>Sẽ ghi:</b> ' + (m === 'company' ? 'Phiếu chi <b>' + escapeHtml($('paVoucher').value) + '</b> = <b>' + fmt(total) + ' ₫</b> (TK ' + $('paAcc').value + ', «' + escapeHtml($('paCat').value) + '»), không còn công nợ'
+          : m === 'advance' ? 'Phiếu chi tạm ứng <b>' + escapeHtml($('paVoucher').value) + '</b> = <b>' + fmt(total) + ' ₫</b> cho ' + escapeHtml(who) + ' + công nợ <b>phải thu nhân viên</b> ' + fmt(total) + ' ₫ (hạn ' + vnDate($('paDue').value) + ')'
+          : 'Công nợ <b>phải trả ' + escapeHtml(who) + '</b> (hoàn ứng) ' + fmt(total) + ' ₫, hạn ' + vnDate($('paDue').value) + ' — phiếu chi sinh ra khi thanh toán công nợ');
+      }
+      ov.addEventListener('input', calc); ov.addEventListener('change', calc); calc();
+      ov.addEventListener('click', function (e) { if (e.target.closest('[data-x]')) ov.remove(); });
+      $('paOk').addEventListener('click', function () {
+        calc(); var m = $('paMode').value, v = $('paVoucher').value.trim().toUpperCase();
+        if (m !== 'employee') {
+          if (!/^[A-Z0-9][A-Z0-9\/.-]{2,19}$/.test(v)) { $('paErr').textContent = 'Số phiếu chỉ gồm chữ, số và - / .'; return; }
+          if (TaskManager.getFinanceEntries().some(function (e) { return String(e.voucherNo || '').toUpperCase() === v; })) { $('paErr').textContent = 'Số phiếu đã tồn tại. Chọn số khác.'; return; }
+        }
+        var res = TaskManager.approvePurchaseToFinance(o.id, { payMode: m, category: $('paCat').value, date: $('paDate').value || today, account: $('paAcc').value, voucherNo: v, counterAccount: $('paCounter').value.trim(), dueDate: $('paDue').value, note: $('paNote').value.trim() }, user);
+        if (!res) { $('paErr').textContent = 'Không ghi sổ được (phiếu đã xử lý hoặc không đủ quyền).'; return; }
+        ov.remove(); ordTab = m === 'company' ? 'paid' : 'debt'; renderAll();
+      });
+    }
     function openOrderView(o) {
       var items = (Array.isArray(o.items) ? o.items : []).map(function (it) { return '<tr><td>' + escapeHtml(it.name) + '</td><td>' + escapeHtml(it.unit || '') + '</td><td style="text-align:right">' + fmt(it.qty) + '</td><td style="text-align:right">' + fmt(it.price) + '</td><td style="text-align:right">' + fmt(it.lineTotal) + '</td></tr>'; }).join('');
       var ov = ordOverlay('<div class="fn-dt-head"><div><div class="fn-dt-title">' + escapeHtml(o.orderNumber || o.id) + ' — ' + escapeHtml(o.clientName || '') + '</div><div class="fn-dt-sub">' + ORD_LABEL[ordPhase(o)] + ' · lập bởi ' + escapeHtml(ordMember(o.createdBy)) + (o.financeReviewedBy ? ' · duyệt bởi ' + escapeHtml(ordMember(o.financeReviewedBy)) : '') + '</div></div><button type="button" class="fn-dt-x" data-x aria-label="Đóng">×</button></div>' +
         '<div class="fn-dt-body"><table class="fn-table"><thead><tr><th>Hạng mục</th><th>ĐV</th><th style="text-align:right">SL</th><th style="text-align:right">Đơn giá</th><th style="text-align:right">Thành tiền</th></tr></thead><tbody>' + items + '</tbody></table>' +
-        '<div style="margin-top:12px;font-size:.8125rem;line-height:1.7;">Tổng <b>' + fmt(o.totalAmount) + ' ₫</b> · Thu ngay <b>' + fmt(ordPhase(o) === 'paid' ? o.totalAmount : o.collectedAmount) + ' ₫</b> · Công nợ <b>' + fmt(ordPhase(o) === 'paid' ? 0 : o.debtAmount) + ' ₫</b>' + (o.debtKind ? ' (' + escapeHtml(o.debtKind) + ')' : '') + (o.financeNote ? '<br>Ghi chú kế toán: ' + escapeHtml(o.financeNote) : '') + '</div></div>');
+        '<div style="margin-top:12px;font-size:.8125rem;line-height:1.7;">' + (TaskManager.isPurchase(o) ? 'Phiếu mua nội bộ · ' + escapeHtml(TaskManager.purchaseModeLabel(o.payMode)) + (o.receiptNo ? ' · HĐ ' + escapeHtml(o.receiptNo) : '') + '<br>' : '') + 'Tổng <b>' + fmt(o.totalAmount) + ' ₫</b> · ' + (TaskManager.isPurchase(o) ? 'Đã chi' : 'Thu ngay') + ' <b>' + fmt(ordPhase(o) === 'paid' ? o.totalAmount : o.collectedAmount) + ' ₫</b> · Công nợ <b>' + fmt(ordPhase(o) === 'paid' ? 0 : o.debtAmount) + ' ₫</b>' + (o.debtKind ? ' (' + escapeHtml(o.debtKind) + ')' : '') + (o.financeNote ? '<br>Ghi chú kế toán: ' + escapeHtml(o.financeNote) : '') + '</div></div>');
       ov.addEventListener('click', function (e) { if (e.target.closest('[data-x]')) ov.remove(); });
     }
     document.addEventListener('click', function (e) {
       var b;
       if ((b = e.target.closest('[data-ordtab]'))) { ordTab = b.getAttribute('data-ordtab'); renderOrdersInbox(); return; }
       var find = function (id) { return TaskManager.getOrders().filter(function (x) { return x.id === id; })[0]; };
-      if ((b = e.target.closest('[data-ordapprove]'))) { var o = find(b.getAttribute('data-ordapprove')); if (o) openOrderApprove(o); }
+      if ((b = e.target.closest('[data-ordapprove]'))) { var o = find(b.getAttribute('data-ordapprove')); if (o) { if (TaskManager.isPurchase(o)) openPurchaseApprove(o); else openOrderApprove(o); } }
       else if ((b = e.target.closest('[data-ordview]'))) { var v = find(b.getAttribute('data-ordview')); if (v) openOrderView(v); }
       else if ((b = e.target.closest('[data-ordreject]'))) {
         var r = find(b.getAttribute('data-ordreject')); if (!r) return;
