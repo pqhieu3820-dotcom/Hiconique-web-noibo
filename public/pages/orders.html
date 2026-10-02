@@ -38,6 +38,10 @@
     .od-container { max-width: 1480px; }
     /* Quy tắc giao diện: bảng danh sách đủ rộng, chữ không chồng/bẻ dòng xấu (người dùng chốt 2026-10-02) */
     #odOrderRows { white-space: nowrap; }
+    .od-card:has(#odOrderRows) { overflow-x: auto; }
+    .od-table:has(#odOrderRows) { min-width: 980px; }
+    #odOrderRows td:last-child { white-space: normal; min-width: 230px; }
+    #odOrderRows td:last-child .od-toolbar { flex-wrap: wrap; gap: 6px; max-width: 280px; }
     #odOrderRows td:nth-child(2) { min-width: 190px; white-space: normal; }
     #odOrderRows td:nth-child(5) { min-width: 250px; white-space: normal; }
     #odOrderRows td:nth-child(7) { min-width: 260px; }
@@ -694,7 +698,8 @@
       var data = collectFormData(); if (!data) return;
       if (submit && data.orderKind !== 'purchase' && data.debtAmount > 0 && !data.debtDueDate) { alert('Nhập hạn thanh toán cho phần công nợ trước khi gửi kế toán.'); return; }
       var id = editingOrderId;
-      if (id && (editingPhase === 'debt' || editingPhase === 'paid')) {
+      if (id && (editingPhase === 'debt' || editingPhase === 'paid')) { alert('Đơn đã được kế toán ghi sổ — chỉ bên Sổ tài chính sửa được.'); return; }
+      if (false) {
         // Đơn ĐÃ ghi sổ: chỉ cập nhật thông tin mô tả; trạng thái, phiếu thu/chi, công nợ đã tạo giữ nguyên (kế toán sửa tiếp ở Sổ tài chính)
         ['status', 'financeStatus', 'financeNote', 'collectedAmount', 'debtAmount', 'paymentMethod', 'account', 'debtKind', 'debtDueDate', 'revenueCategory', 'payMode'].forEach(function (k) { delete data[k]; });
         if (!TaskManager.updateOrder(id, data, user)) { alert('Không sửa được đơn này.'); return; }
@@ -843,7 +848,7 @@
             '<select class="od-btn od-btn-ghost od-btn-sm" data-doc-order="' + o.id + '" title="Xuất văn bản Word / PDF"><option value="">Word/PDF…</option><option value="ob">Bảng kê & đề nghị thanh toán</option><option value="oq">Bảng báo giá</option><option value="oh">Biên bản giao nhận, nghiệm thu</option>' + (col > 0 ? '<option value="or">Phiếu thu (phần đã thu)</option>' : '') + '</select>' +
             (editable && ph === 'draft' ? '<button class="od-btn od-btn-primary od-btn-sm" data-submit-order="' + o.id + '">Gửi kế toán</button>' : '') +
             (canEdit && ph === 'pending' ? '<button class="od-btn od-btn-ghost od-btn-sm" data-recall-order="' + o.id + '">Thu hồi</button>' : '') +
-            ((canEdit && ph !== 'cancelled') ? '<button class="od-btn od-btn-ghost od-btn-sm" data-edit-order="' + o.id + '" title="' + (ph === 'debt' || ph === 'paid' ? 'Đơn đã ghi sổ: chỉ sửa thông tin mô tả, phiếu thu/chi & công nợ giữ nguyên' : ph === 'pending' ? 'Sửa đơn đang chờ kế toán (đơn quay về Nháp để gửi lại)' : 'Sửa đơn') + '">Sửa</button>' : '') +
+            ((canEdit && (ph === 'draft' || ph === 'pending' || ph === 'rejected')) ? '<button class="od-btn od-btn-ghost od-btn-sm" data-edit-order="' + o.id + '" title="' + (ph === 'pending' ? 'Sửa đơn đang chờ kế toán (đơn quay về Nháp để gửi lại)' : 'Sửa đơn') + '">Sửa</button>' : '') +
             (canEdit && (ph === 'draft' || ph === 'rejected') ? '<button class="od-btn od-btn-danger od-btn-sm" data-delete-order="' + o.id + '">Xoá</button>' : '') +
           '</div></td>' +
         '</tr>' +

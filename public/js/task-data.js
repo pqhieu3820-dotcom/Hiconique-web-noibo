@@ -3513,18 +3513,54 @@ var TaskManager = (function() {
       return (!actor || m.id !== actor.id) && (m.roleLevel === 'admin' || m.level === 'founder' || hasFinanceAccess(m));
     });
   }
-  function notifyFinanceChange_(kind, e, user) {
+  // Người nhận thông báo khi có thêm/sửa/xoá ở Sổ tài chính: (1) người có quyền tài chính / admin / founder; (2) người LIÊN QUAN — người lập đơn hàng gắn với giao dịch/công nợ,
+  // người tạo bản ghi, người giao dịch (actor) và nhân viên là đối tượng công nợ. Không gửi cho chính người thao tác.
+  function notifyTargets_(rec, user) {
+    var ids = {}, act = getActiveMembers(), put = function (id) { if (id && id !== 'SYSTEM' && (!user || id !== user.id) && act.some(function (m) { return m.id === id; })) ids[id] = 1; };
+    financeRecipients_(user).forEach(function (m) { put(m.id); });
+    if (!rec) return Object.keys(ids);
+    if (rec.orderId) { var o = getById(STORAGE_KEYS.orders, rec.orderId); if (o) put(o.createdBy); }
+    put(rec.createdBy);
+    var byName = function (n) { n = String(n || '').trim().toLowerCase(); if (!n) return; act.forEach(function (m) { if (String(m.name || '').trim().toLowerCase() === n) put(m.id); }); };
+    byName(rec.actor); if (rec.partyType === 'employee') byName(rec.clientName);
+    return Object.keys(ids);
+  }
+  var FIN_FIELD_LABEL_ = { type: 'loại', category: 'danh mục', amount: 'số tiền', date: 'ngày', voucherNo: 'số phiếu', account: 'TK quỹ', counterAccount: 'TK đối ứng', actor: 'người GD', description: 'mô tả', note: 'ghi chú', voucherDate: 'ngày chứng từ',
+    clientName: 'tên đối tượng', dueDate: 'hạn', status: 'trạng thái', totalAmount: 'tổng tiền', collectedAmount: 'đã thu/chi', receiptNo: 'số hóa đơn', docType: 'loại chứng từ', partyTaxCode: 'MST', projectId: 'dự án', payMode: 'hình thức chi', purpose: 'mục đích' };
+  function diffText_(oldRec, upd) {
+    var out = [];
+    Object.keys(upd || {}).forEach(function (k) {
+      if (!FIN_FIELD_LABEL_[k] || k === 'updatedAt') return;
+      var a = oldRec[k] == null ? '' : String(oldRec[k]), b = upd[k] == null ? '' : String(upd[k]);
+      if (a === b) return;
+      var fmtV = function (v) { return (k === 'amount' || k === 'totalAmount' || k === 'collectedAmount') && v !== '' ? (Number(v) || 0).toLocaleString('vi-VN') + ' ₫' : (v === '' ? '(trống)' : v); };
+      out.push(FIN_FIELD_LABEL_[k] + ': ' + fmtV(a) + ' → ' + fmtV(b));
+    });
+    return out.join('; ');
+  }
+  function sendNotes_(targets, title, msg, type, user) {
+    targets.forEach(function (id) {
+      var n = add(STORAGE_KEYS.notifications, { title: title, message: msg, type: type || 'info', scope: id, active: true, recurring: false, createdBy: (user && user.id) || 'SYSTEM' });
+      if (n) syncToGSheets('notifications', 'add', n);
+    });
+  }
+  // kind: 'add' | 'update' | 'delete'; extra = đoạn mô tả thay đổi (với 'update')
+  function notifyFinanceChange_(kind, e, user, extra) {
     try {
       var lbl = { revenue: 'Doanh thu', expense: 'Chi phí', loan: 'Vay nợ (nhận)', repayment: 'Trả nợ', bonus: 'Thưởng nhân viên', penalty: 'Phạt nhân viên (thu về)', idle: 'Tiền ứ đọng', undisbursed: 'Chưa giải ngân' }[e.type] || e.type;
       var d = String(e.date || '').split('-').reverse().join('/');
-      var verb = kind === 'delete' ? 'ĐÃ XOÁ' : 'đã THÊM';
+      var verb = kind === 'delete' ? 'ĐÃ XOÁ' : kind === 'update' ? 'đã SỬA' : 'đã THÊM';
       var msg = (user.name || user.id) + ' ' + verb + ' giao dịch: ' + lbl + ' ' + (Number(e.amount) || 0).toLocaleString('vi-VN') + ' ₫' +
-        (e.category ? ' · ' + e.category : '') + (e.voucherNo ? ' · ' + e.voucherNo : '') + (d ? ' · ' + d : '') + (e.description ? ' · ' + e.description : '') + '.';
-      financeRecipients_(user).forEach(function (m) {
-        var n = add(STORAGE_KEYS.notifications, { title: kind === 'delete' ? 'Sổ tài chính: xoá giao dịch' : 'Sổ tài chính: thêm giao dịch', message: msg, type: kind === 'delete' ? 'warning' : 'info', scope: m.id, active: true, recurring: false, createdBy: user.id });
-        syncToGSheets('notifications', 'add', n);
-      });
+        (e.category ? ' · ' + e.category : '') + (e.voucherNo ? ' · ' + e.voucherNo : '') + (d ? ' · ' + d : '') + (e.description ? ' · ' + e.description : '') + '.' + (extra ? ' Thay đổi — ' + extra + '.' : '');
+      sendNotes_(notifyTargets_(e, user), kind === 'delete' ? 'Sổ tài chính: xoá giao dịch' : kind === 'update' ? 'Sổ tài chính: sửa giao dịch' : 'Sổ tài chính: thêm giao dịch', msg, kind === 'add' ? 'info' : 'warning', user);
     } catch (err) { console.error('Gửi thông báo sổ tài chính lỗi:', err); }
+  }
+  function notifyDebtChange_(kind, r, user, extra) {
+    try {
+      var verb = kind === 'delete' ? 'ĐÃ XOÁ' : kind === 'update' ? 'đã SỬA' : 'đã THÊM';
+      var msg = (user.name || user.id) + ' ' + verb + ' công nợ ' + (r.direction === 'payable' ? 'phải trả' : 'phải thu') + ': ' + (r.clientName || '') + ' · ' + (Number(r.amount) || 0).toLocaleString('vi-VN') + ' ₫' + (r.description ? ' · ' + r.description : '') + '.' + (extra ? ' Thay đổi — ' + extra + '.' : '');
+      sendNotes_(notifyTargets_(r, user), 'Sổ tài chính: ' + (kind === 'delete' ? 'xoá' : kind === 'update' ? 'sửa' : 'thêm') + ' công nợ', msg, kind === 'add' ? 'info' : 'warning', user);
+    } catch (err) { console.error('Gửi thông báo công nợ lỗi:', err); }
   }
 
   function createFinanceEntry(data, user) {
@@ -3538,8 +3574,9 @@ var TaskManager = (function() {
 
   function updateFinanceEntry(id, updates, user) {
     if (!canManageFinance(user)) return null;
+    var before = getById(STORAGE_KEYS.financeEntries, id), df = before ? diffText_(before, updates) : '';
     var updated = update(STORAGE_KEYS.financeEntries, id, updates);
-    if (updated) syncToGSheets('financeEntries', 'update', updates, id);
+    if (updated) { syncToGSheets('financeEntries', 'update', updates, id); if (df) notifyFinanceChange_('update', updated, user, df); }
     return updated;
   }
 
@@ -3635,13 +3672,15 @@ var TaskManager = (function() {
     data.createdBy = user.id;
     var created = add(STORAGE_KEYS.receivables, data);
     syncToGSheets('receivables', 'add', created);
+    if (created && !data.orderId) notifyDebtChange_('add', created, user);   // công nợ sinh từ duyệt đơn hàng đã có thông báo riêng
     return created;
   }
 
   function updateReceivable(id, updates, user) {
     if (!canManageFinance(user)) return null;
+    var beforeR = getById(STORAGE_KEYS.receivables, id), dfR = beforeR ? diffText_(beforeR, updates) : '';
     var updated = update(STORAGE_KEYS.receivables, id, updates);
-    if (updated) syncToGSheets('receivables', 'update', updates, id);
+    if (updated) { syncToGSheets('receivables', 'update', updates, id); if (dfR) notifyDebtChange_('update', updated, user, dfR); }
     return updated;
   }
 
@@ -3717,10 +3756,7 @@ var TaskManager = (function() {
     try {
       var d = trashDescribe_(kind, rec);
       var msg = (user.name || user.id) + ' ' + verb + ' [' + TRASH_LABELS[kind] + ']: ' + d.title + (d.money ? ' · ' + d.money : '') + (d.sub ? ' · ' + d.sub : '') + '.';
-      financeRecipients_(user).forEach(function (m) {
-        var n = add(STORAGE_KEYS.notifications, { title: 'Tiền: ' + verb.replace(/^đã /, ''), message: msg, type: 'warning', scope: m.id, active: true, recurring: false, createdBy: user.id });
-        syncToGSheets('notifications', 'add', n);
-      });
+      sendNotes_(notifyTargets_(rec, user), 'Tiền: ' + verb.replace(/^đã /, ''), msg, 'warning', user);
     } catch (err) { console.error('Gửi thông báo thùng rác lỗi:', err); }
   }
   // Phiếu thu/chi ⇄ lần thu/trả nợ: vô hiệu (voided=true) hoặc phục hồi (false) các khoản thanh toán trỏ tới phiếu `entryId`
@@ -4021,8 +4057,11 @@ var TaskManager = (function() {
     if (!canManageFinance(user)) return null;
     var o = getById(STORAGE_KEYS.orders, id);
     if (!o || ordFin_(o) !== 'pending') return null;
-    var u = update(STORAGE_KEYS.orders, id, updates);
-    if (u) syncToGSheets('orders', 'update', updates, id);
+    var df = diffText_(o, updates), u = update(STORAGE_KEYS.orders, id, updates);
+    if (u) {
+      syncToGSheets('orders', 'update', updates, id);
+      sendNotes_(notifyTargets_(o, user), 'Đơn hàng được kế toán sửa', (user.name || user.id) + ' đã SỬA đơn ' + (o.orderNumber || o.id) + ' (' + (o.clientName || '') + ') trước khi ghi sổ.' + (df ? ' Thay đổi — ' + df + '.' : ''), 'warning', user);
+    }
     return u;
   }
   function rejectOrderFinance(id, reason, user) {
