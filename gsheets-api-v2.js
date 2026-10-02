@@ -275,7 +275,7 @@ const FIELD_MAP = {
     ['Khấu trừ', 'deduction'], ['Ghi chú khấu trừ', 'deductionNote'], ['Thực lãnh', 'totalAmount'],
     ['Trạng thái', 'status'], ['Ghi chú', 'note'], ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'],
     ['Ngày cập nhật', 'updatedAt'], ['Ngày duyệt', 'reviewedAt'], ['Mã người duyệt', 'reviewerId'],
-    ['Khấu trừ BH người lao động', 'bhEmployee'], ['Chi tiết cơ cấu lương', 'breakdown']
+    ['Khấu trừ BH người lao động', 'bhEmployee'], ['Chi tiết cơ cấu lương', 'breakdown'], ['Ngày xóa', 'deletedAt'], ['Người xóa', 'deletedBy']
   ],
   priceHistory: [
     ['Mã', 'id'], ['Tháng', 'month'], ['Tỉnh/Thành', 'province'], ['Loại bảng', 'kind'], ['Mã mục', 'code'], ['Tên', 'name'], ['ĐVT', 'unit'], ['Biến thể', 'variant'],
@@ -297,7 +297,7 @@ const FIELD_MAP = {
   commissions: [
     ['Mã dòng', 'id'], ['Dự án', 'projectId'], ['Mã thành viên', 'memberId'], ['Giá trị dự án', 'projectValue'],
     ['Phần trăm', 'percent'], ['Số tiền', 'amount'], ['Tháng', 'month'], ['Ghi chú', 'note'],
-    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
+    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt'], ['Ngày xóa', 'deletedAt'], ['Người xóa', 'deletedBy']
   ],
   commissionRates: [
     ['Mã dòng', 'id'], ['Cấp bậc', 'roleLevel'], ['Phần trăm', 'percent'], ['Ngày cập nhật', 'updatedAt']
@@ -381,7 +381,7 @@ const FIELD_MAP = {
   financeEntries: [
     ['Mã GD', 'id'], ['Loại', 'type'], ['Danh mục', 'category'], ['Mô tả', 'description'],
     ['Số tiền', 'amount'], ['Tháng', 'month'], ['Ngày', 'date'], ['Ghi chú', 'note'], ['Người giao dịch', 'actor'], ['Số phiếu', 'voucherNo'], ['TK đối ứng', 'counterAccount'], ['Tài khoản quỹ', 'account'], ['Ngày chứng từ', 'voucherDate'],
-    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
+    ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt'], ['Ngày xóa', 'deletedAt'], ['Người xóa', 'deletedBy']
   ],
   // Công nợ phải thu từ khách hàng (không phải giao dịch tiền mặt thật —
   // chỉ là khoản đã xuất hoá đơn/báo giá nhưng khách chưa trả). Tách riêng
@@ -394,7 +394,7 @@ const FIELD_MAP = {
     ['Mã đơn hàng', 'orderId'], ['Số đơn hàng', 'orderNumber'], ['Loại công nợ', 'kind'],
     // 2026-10-01: Công nợ phải thu + phải trả theo đối tượng
     ['Hướng', 'direction'], ['Loại đối tượng', 'partyType'], ['SĐT', 'partyPhone'], ['Mã số thuế', 'partyTaxCode'], ['Địa chỉ', 'partyAddress'],
-    ['Người liên hệ', 'partyContact'], ['Số hợp đồng/chứng từ', 'refNo'], ['Ngày phát sinh', 'issueDate'], ['Đã thanh toán', 'paidAmount'], ['Lịch sử thanh toán', 'payments']
+    ['Người liên hệ', 'partyContact'], ['Số hợp đồng/chứng từ', 'refNo'], ['Ngày phát sinh', 'issueDate'], ['Đã thanh toán', 'paidAmount'], ['Lịch sử thanh toán', 'payments'], ['Ngày xóa', 'deletedAt'], ['Người xóa', 'deletedBy']
   ],
   // Ảnh chụp bảng cân đối kế toán theo năm, nhập tay 1 lần/năm — phục vụ
   // riêng "Sổ tay CFO" trong finance.html (thanh khoản, đòn bẩy, Altman
@@ -407,7 +407,7 @@ const FIELD_MAP = {
     ['Vay dài hạn', 'longTermDebt'], ['Tổng nợ phải trả', 'totalLiabilities'], ['Vốn chủ sở hữu', 'equity'],
     ['Chi phí lãi vay', 'interestExpense'], ['Chi mua sắm TSCĐ', 'capex'], ['Vốn hóa thị trường', 'marketCap'],
     ['LNST lũy kế', 'retainedEarnings'], ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'],
-    ['Ngày cập nhật', 'updatedAt']
+    ['Ngày cập nhật', 'updatedAt'], ['Ngày xóa', 'deletedAt'], ['Người xóa', 'deletedBy']
   ],
   // Đơn hàng / hoá đơn — AI NHÂN VIÊN CŨNG TẠO ĐƯỢC (không chỉ CEO như
   // financeEntries). Khi 1 đơn được đánh dấu "paid", client tự tạo thêm 1
@@ -424,7 +424,7 @@ const FIELD_MAP = {
     ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt'],
     ['Trạng thái sổ', 'financeStatus'], ['Thu ngay', 'collectedAmount'], ['Công nợ', 'debtAmount'], ['Hạn công nợ', 'debtDueDate'], ['Loại công nợ', 'debtKind'],
     ['Danh mục doanh thu', 'revenueCategory'], ['Tài khoản quỹ', 'account'], ['Ghi chú kế toán', 'financeNote'], ['Người duyệt sổ', 'financeReviewedBy'],
-    ['Ngày duyệt sổ', 'financeReviewedAt'], ['Mã công nợ liên kết', 'linkedReceivableId'], ['Ngày gửi kế toán', 'submittedAt']
+    ['Ngày duyệt sổ', 'financeReviewedAt'], ['Mã công nợ liên kết', 'linkedReceivableId'], ['Ngày gửi kế toán', 'submittedAt'], ['Ngày xóa', 'deletedAt'], ['Người xóa', 'deletedBy']
   ],
   // 6 sheet công cụ theo dự án dưới đây (2026-09-09) đi cùng các tab mới trong
   // pricing.html — mỗi tab lấy TEMPLATE cố định (tên nhóm công việc, tiêu chí
@@ -992,7 +992,37 @@ function md5Hex_(s) {
 
 // "CHỈ TẢI PHẦN ĐÃ ĐỔI": client gửi kèm `hashes` = {getProjects:'<md5>', ...} của bản đang có; loại nào nội dung không đổi thì trả {same:true}
 // (không gửi lại dữ liệu), loại nào đổi thì trả mảng mới; luôn kèm `_h` = mã băm hiện tại của từng loại để lần sau so.
+// ===== THÙNG RÁC: tự xoá HẲN sau 60 ngày (2026-10-02) =====
+// Web "xoá" = đánh dấu cột "Ngày xóa"/"Người xóa" (deletedAt/deletedBy); mục nằm trong thùng rác 60 ngày. Hàm này chạy tối đa 1 lần/ngày (gọi từ handleBundle_ — mỗi lần
+// có người làm mới dữ liệu) và xoá dòng thật khi "Ngày xóa" quá 60 ngày. Chạy tay purgeExpiredTrash_(true) để ép chạy ngay.
+var TRASH_SHEET_KEYS_ = ['orders', 'financeEntries', 'receivables', 'payslips', 'commissions', 'bsSnapshots'];
+var TRASH_DAYS_ = 60;
+function purgeExpiredTrash_(force) {
+  const props = PropertiesService.getScriptProperties();
+  const today = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd');
+  if (!force && props.getProperty('lastTrashPurge') === today) return;
+  props.setProperty('lastTrashPurge', today);
+  withScriptLock_(function () {
+    const ss = getSS_(), cutoff = Date.now() - TRASH_DAYS_ * 86400000, log = [];
+    TRASH_SHEET_KEYS_.forEach(function (k) {
+      const sh = findSheet(ss, SHEETS[k]); if (!sh) return;
+      const ci = getHeaders(sh).indexOf('Ngày xóa'); if (ci < 0) return;
+      const last = sh.getLastRow(); if (last < 2) return;
+      const vals = sh.getRange(2, ci + 1, last - 1, 1).getValues();
+      let n = 0;
+      for (let i = vals.length - 1; i >= 0; i--) {
+        const v = vals[i][0]; if (!v) continue;
+        const ts = (Object.prototype.toString.call(v) === '[object Date]') ? v.getTime() : Date.parse(String(v));
+        if (isFinite(ts) && ts < cutoff) { sh.deleteRow(i + 2); n++; }
+      }
+      if (n) log.push(k + ':' + n);
+    });
+    if (log.length) Logger.log('purgeExpiredTrash_ ' + log.join(', '));
+  });
+}
+
 function handleBundle_(params) {
+  try { purgeExpiredTrash_(); } catch (err) { Logger.log("purgeExpiredTrash_: " + err); }   // thùng rác: dọn mục quá 60 ngày (tối đa 1 lần/ngày)
   const actions = String(params.types || '').split(',').map(function (s) { return s.trim(); }).filter(isReadAction_).slice(0, 40);
   let known = {};
   try { known = JSON.parse(params.hashes || '{}') || {}; } catch (err) { known = {}; }

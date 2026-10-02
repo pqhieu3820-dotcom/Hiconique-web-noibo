@@ -22,6 +22,7 @@
   <script src="/js/task-data.js"></script>
   <script src="/js/auth.js"></script>
   <script src="/js/money-input.js"></script>
+  <script src="/js/trash.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js" defer></script>
   <script src="/js/finance-categories.js"></script>
   <script src="/js/finance-export.js" defer></script>
@@ -521,7 +522,7 @@
                 '</div>' +
               '</div>' +
               '<div class="fn-card">' +
-                '<div class="fn-card-head"><div class="fn-card-title" id="fnListTitle">Giao dịch trong tháng</div></div>' +
+                '<div class="fn-card-head"><div class="fn-card-title" id="fnListTitle">Giao dịch trong tháng</div><span class="hq-trash-slot" data-kind="financeEntries" data-title="Giao dịch Sổ tài chính"></span></div>' +
                 '<table class="fn-table"><thead><tr><th>Số phiếu</th><th>Loại</th><th>Danh mục</th><th>TK đối ứng</th><th>Mô tả</th><th>Người GD</th><th>Ngày</th><th>Số tiền</th><th></th></tr></thead><tbody id="fnEntryRows"></tbody></table>' +
               '</div>' +
             '</div>' +
@@ -529,14 +530,14 @@
             '<div class="fn-section" id="sec-orders">' +
               '<div class="fn-section-head"><div class="fn-section-title">Đơn hàng chờ ghi sổ</div><div class="fn-section-desc">Đơn hàng nhân viên lập rồi gửi sang đây. Duyệt → hệ thống tự tạo <b>phiếu thu</b> (phần thu ngay) và <b>công nợ phải thu</b> (phần còn lại) đúng phân loại người lập đã chọn; có thể chỉnh lại trước khi duyệt.</div></div>' +
               '<div class="fn-summary-grid" id="fnOrdSummary" style="grid-template-columns:repeat(4,1fr);"></div>' +
-              '<div class="fn-card"><div class="fn-card-head"><div class="fn-card-title">Đơn hàng</div><div class="fn-ord-tabs" id="fnOrdTabs"></div></div>' +
+              '<div class="fn-card"><div class="fn-card-head"><div class="fn-card-title">Đơn hàng</div><div class="fn-ord-tabs" id="fnOrdTabs"></div><span class="hq-trash-slot" data-kind="orders" data-title="Đơn hàng / hóa đơn"></span></div>' +
                 '<table class="fn-table"><thead><tr><th>Số ĐH</th><th>Khách hàng</th><th>Người lập</th><th>Tổng</th><th>Thu ngay</th><th>Công nợ</th><th>Phân loại</th><th>Trạng thái</th><th></th></tr></thead><tbody id="fnOrdRows"></tbody></table></div>' +
             '</div>' +
             '<div class="fn-section" id="sec-receivables">' +
               '<div class="fn-section-head"><div class="fn-section-title">Công nợ</div><div class="fn-section-desc">Theo dõi mọi khoản <b>phải thu</b> (khách hàng nợ mình) và <b>phải trả</b> (mình nợ nhà cung cấp, thầu phụ, nhân viên, ngân hàng…) theo từng đối tượng. Mỗi lần thu/trả tiền tự tạo phiếu thu/phiếu chi vào sổ; có thể xuất công văn, biên bản đối chiếu, phiếu thu – chi, giấy đề nghị thanh toán (Word/PDF) theo mẫu quy định.</div></div>' +
               '<div class="fn-summary-grid" id="fnCnSummary" style="grid-template-columns:repeat(4,1fr);"></div>' +
               '<div class="fn-card">' +
-                '<div class="fn-card-head"><div class="fn-card-title">Danh sách công nợ</div><button class="fn-btn fn-btn-primary fn-btn-sm" id="fnDebtAddBtn">+ Thêm công nợ</button></div>' +
+                '<div class="fn-card-head"><div class="fn-card-title">Danh sách công nợ</div><span class="hq-trash-slot" data-kind="receivables" data-title="Công nợ"></span><button class="fn-btn fn-btn-primary fn-btn-sm" id="fnDebtAddBtn">+ Thêm công nợ</button></div>' +
                 '<div style="padding:12px 20px 0;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">' +
                   '<div class="fn-ord-tabs" id="fnDebtTabs"></div>' +
                   '<select class="fn-select" id="fnDebtParty" style="max-width:230px;"></select>' +
@@ -1357,8 +1358,8 @@
           fnConfirm('Xoá giao dịch này?',
             '<div class="fn-dt-stats" style="grid-template-columns:1fr 1fr;margin-bottom:10px;"><div class="fn-dt-stat"><b>' + fmt(en.amount) + ' ₫</b><span>' + escapeHtml(ty.label) + '</span></div><div class="fn-dt-stat"><b style="font-size:.85rem;">' + vnDate(en.date) + '</b><span>' + escapeHtml(en.voucherNo || 'Không có số phiếu') + '</span></div></div>' +
             escapeHtml([en.category, en.description].filter(Boolean).join(' · ') || '') +
-            '<div class="fn-dt-note" style="margin-top:10px;">Giao dịch bị xoá khỏi Sổ tài chính và Google Sheet. <b>CEO, Founder và người được ủy quyền sẽ nhận thông báo</b> về việc xoá này.</div>',
-            'Xoá giao dịch', function () { TaskManager.deleteFinanceEntry(eid, user); renderAll(); }, true);
+            '<div class="fn-dt-note" style="margin-top:10px;">Giao dịch được chuyển vào <b>Thùng rác</b> (giữ 60 ngày, khôi phục được; sau 60 ngày tự xoá hẳn trên Google Sheet). Nếu là phiếu thu/chi của một lần trả nợ hoặc của đơn hàng, khoản đó tự bị <b>vô hiệu</b> trong công nợ/đơn hàng. <b>CEO, Founder và người được ủy quyền sẽ nhận thông báo.</b></div>',
+            'Chuyển vào thùng rác', function () { TaskManager.deleteFinanceEntry(eid, user); renderAll(); }, true);
         });
       });
     }
@@ -1453,7 +1454,7 @@
         e.stopPropagation(); var b = e.target.closest('[data-act]'); if (!b) return; var k = b.getAttribute('data-act'); closeDebtMenu();
         if (k === 'view') openDebtDetail(d.id);
         else if (k === 'edit') openDebtForm(d.id);
-        else if (k === 'del') fnConfirm('Xoá công nợ này?', 'Xoá khoản <b>' + fmt(d.amount) + ' ₫</b> của <b>' + escapeHtml(d.clientName || '') + '</b>' + (d.paidAmount > 0 ? ' (đã ' + (recv ? 'thu' : 'trả') + ' ' + fmt(d.paidAmount) + ' ₫)' : '') + ' khỏi danh sách và Google Sheet. Các phiếu thu/chi đã ghi trong sổ giao dịch <b>không</b> bị xoá.', 'Xoá công nợ', function () { TaskManager.deleteReceivable(d.id, user); renderAll(); }, true);
+        else if (k === 'del') fnConfirm('Xoá công nợ này?', 'Xoá khoản <b>' + fmt(d.amount) + ' ₫</b> của <b>' + escapeHtml(d.clientName || '') + '</b>' + (d.paidAmount > 0 ? ' (đã ' + (recv ? 'thu' : 'trả') + ' ' + fmt(d.paidAmount) + ' ₫)' : '') + ' vào <b>Thùng rác</b> (giữ 60 ngày, khôi phục được). Các phiếu thu/chi đã ghi trong sổ giao dịch <b>không</b> bị xoá.', 'Xoá công nợ', function () { TaskManager.deleteReceivable(d.id, user); renderAll(); }, true);
         else debtDoc(k, d);
       });
     }
@@ -1532,7 +1533,7 @@
     function openDebtDetail(id) {
       var d = debtById(id); if (!d) return; var recv = d.direction === 'receivable';
       var pays = d.payments.map(function (p, i) {
-        return '<tr><td>' + (i + 1) + '</td><td>' + vnDate(p.date) + '</td><td style="font-family:JetBrains Mono,monospace;font-size:.75rem;">' + escapeHtml(p.voucherNo || '') + '</td><td>' + escapeHtml(p.method || '') + '</td><td class="num">' + fmt(p.amount) + '</td><td>' + escapeHtml(p.note || '') + '</td><td><button class="fn-btn fn-btn-ghost fn-btn-sm" data-paydoc="' + i + '">' + (recv ? 'In phiếu thu' : 'In phiếu chi') + '</button></td></tr>';
+        return '<tr' + (p.voided ? ' style="opacity:.5;text-decoration:line-through" title="Phiếu thu/chi này đã bị xoá (đang trong thùng rác) nên không tính vào số đã thu/trả — khôi phục phiếu để tính lại"' : '') + '><td>' + (i + 1) + '</td><td>' + vnDate(p.date) + '</td><td style="font-family:JetBrains Mono,monospace;font-size:.75rem;">' + escapeHtml(p.voucherNo || '') + '</td><td>' + escapeHtml(p.method || '') + '</td><td class="num">' + fmt(p.amount) + '</td><td>' + escapeHtml(p.note || '') + '</td><td><button class="fn-btn fn-btn-ghost fn-btn-sm" data-paydoc="' + i + '">' + (recv ? 'In phiếu thu' : 'In phiếu chi') + '</button></td></tr>';
       }).join('');
       var kv = function (k, v) { return v ? '<div><span class="fn-field-label">' + k + '</span><div style="font-size:.8125rem;">' + escapeHtml(v) + '</div></div>' : ''; };
       var ov = debtModal('fnDebtDetail', escapeHtml(d.clientName) + ' <span class="fn-status-badge ' + debtCls(d.dStatus) + '">' + DEBT_ST[d.dStatus] + '</span>',
@@ -1552,7 +1553,7 @@
       ov.querySelector('[data-edit]').addEventListener('click', function () { ov._close(); openDebtForm(d.id); });
       var pb = ov.querySelector('[data-pay]'); if (pb) pb.addEventListener('click', function () { ov._close(); openDebtPay(d.id); });
       ov.querySelector('[data-del]').addEventListener('click', function () {
-        fnConfirm('Xoá công nợ này?', 'Khoản công nợ sẽ bị xoá khỏi danh sách và Google Sheet. Các phiếu thu/chi đã ghi trong sổ giao dịch <b>không</b> bị xoá.', 'Xoá công nợ', function () { ov._close(); TaskManager.deleteReceivable(d.id, user); renderAll(); }, true);
+        fnConfirm('Xoá công nợ này?', 'Khoản công nợ được chuyển vào <b>Thùng rác</b> (giữ 60 ngày, khôi phục được). Các phiếu thu/chi đã ghi trong sổ giao dịch <b>không</b> bị xoá.', 'Chuyển vào thùng rác', function () { ov._close(); TaskManager.deleteReceivable(d.id, user); renderAll(); }, true);
       });
     }
 

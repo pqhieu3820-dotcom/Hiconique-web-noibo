@@ -3068,7 +3068,7 @@ var TaskManager = (function() {
   // Hoa hồng dự án — mỗi dòng là hoa hồng của 1 thành viên trên 1 dự án, cho 1 tháng.
   function getCommissions(filters) {
     filters = filters || {};
-    var list = getAll(STORAGE_KEYS.commissions);
+    var list = live_(getAll(STORAGE_KEYS.commissions));
     if (filters.projectId) list = list.filter(function (c) { return c.projectId === filters.projectId; });
     if (filters.memberId) list = list.filter(function (c) { return c.memberId === filters.memberId; });
     if (filters.month) list = list.filter(function (c) { return c.month === filters.month; });
@@ -3089,12 +3089,7 @@ var TaskManager = (function() {
     return updated;
   }
 
-  function deleteCommission(id, user) {
-    if (!canManageNotifications(user)) return null;
-    var result = remove(STORAGE_KEYS.commissions, id);
-    syncToGSheets('commissions', 'delete', {}, id);
-    return result;
-  }
+  function deleteCommission(id, user) { return trashMove_('commissions', id, user); }
 
   function getMemberCommissionTotal(memberId, month) {
     return getCommissions({ memberId: memberId, month: month }).reduce(function (sum, c) {
@@ -3367,7 +3362,7 @@ var TaskManager = (function() {
   // các hàm này, nhưng vẫn kiểm tra lại ở đây cho chắc).
   function getFinanceEntries(filters) {
     filters = filters || {};
-    var list = getAll(STORAGE_KEYS.financeEntries).map(function (e) {
+    var list = live_(getAll(STORAGE_KEYS.financeEntries)).map(function (e) {
       // Sheets tự đổi '2026-09' thành ngày → API trả '2026-09-01': chuẩn hóa về yyyy-MM
       var m = String(e.month || '');
       var nm = /^\d{4}-\d{2}/.test(m) ? m.slice(0, 7) : String(e.date || '').slice(0, 7);
@@ -3415,14 +3410,7 @@ var TaskManager = (function() {
     return updated;
   }
 
-  function deleteFinanceEntry(id, user) {
-    if (!canManageFinance(user)) return null;
-    var old = getAll(STORAGE_KEYS.financeEntries).filter(function (x) { return x.id === id; })[0];
-    var result = remove(STORAGE_KEYS.financeEntries, id);
-    if (old) notifyFinanceChange_('delete', old, user);
-    syncToGSheets('financeEntries', 'delete', {}, id);
-    return result;
-  }
+  function deleteFinanceEntry(id, user) { return trashMove_('financeEntries', id, user); }
 
   // Công nợ phải thu — khoản đã báo giá/xuất hoá đơn cho khách nhưng chưa
   // thu tiền thật. Khi đánh dấu 'paid', UI (finance.html) tự tạo thêm 1
@@ -3466,7 +3454,7 @@ var TaskManager = (function() {
   }
   function getDebts(filters) {
     filters = filters || {};
-    var list = getAll(STORAGE_KEYS.receivables).map(normalizeDebt_);
+    var list = live_(getAll(STORAGE_KEYS.receivables)).map(normalizeDebt_);
     if (filters.direction) list = list.filter(function (r) { return r.direction === filters.direction; });
     if (filters.partyType) list = list.filter(function (r) { return r.partyType === filters.partyType; });
     if (filters.status) list = list.filter(function (r) { return r.status === filters.status || r.dStatus === filters.status; });
@@ -3524,12 +3512,7 @@ var TaskManager = (function() {
     return updated;
   }
 
-  function deleteReceivable(id, user) {
-    if (!canManageFinance(user)) return null;
-    var result = remove(STORAGE_KEYS.receivables, id);
-    syncToGSheets('receivables', 'delete', {}, id);
-    return result;
-  }
+  function deleteReceivable(id, user) { return trashMove_('receivables', id, user); }
 
   // Ảnh chụp bảng cân đối kế toán theo năm — các khoản mục (Tài sản ngắn
   // hạn, Hàng tồn kho, Vốn chủ sở hữu...) không tồn tại trong sổ giao dịch
@@ -3538,7 +3521,7 @@ var TaskManager = (function() {
   // chuẩn (thanh khoản, đòn bẩy, Altman Z-score...). Khoá theo `year`, mỗi
   // năm chỉ có tối đa 1 bản ghi (upsert).
   function getBsSnapshots() {
-    return getAll(STORAGE_KEYS.bsSnapshots);
+    return live_(getAll(STORAGE_KEYS.bsSnapshots));
   }
 
   function getBsSnapshotByYear(year) {
@@ -3560,12 +3543,7 @@ var TaskManager = (function() {
     return created;
   }
 
-  function deleteBsSnapshot(id, user) {
-    if (!canManageFinance(user)) return null;
-    var result = remove(STORAGE_KEYS.bsSnapshots, id);
-    syncToGSheets('bsSnapshots', 'delete', {}, id);
-    return result;
-  }
+  function deleteBsSnapshot(id, user) { return trashMove_('bsSnapshots', id, user); }
 
   // Đơn hàng & hoá đơn — CỐ Ý MỞ CHO MỌI THÀNH VIÊN (không gate bằng
   // canManageFinance như financeEntries): bất kỳ ai đã đăng nhập cũng tạo
@@ -3575,6 +3553,111 @@ var TaskManager = (function() {
   // bước ghi này KHÔNG qua canManageFinance vì đây là hành động tự động do
   // chính nhân viên tạo đơn kích hoạt, không phải thao tác trực tiếp trên
   // Sổ tài chính (trang finance.html vẫn khoá xem/sửa cho CEO như cũ).
+  // ===================== THÙNG RÁC (xoá mềm, giữ 60 ngày) =====================
+  // 2026-10-02: MỌI thao tác "Xoá" liên quan tới tiền (đơn hàng/hóa đơn, giao dịch Sổ tài chính, công nợ, phiếu lương, hoa hồng, bảng cân đối) KHÔNG xoá dòng nữa mà đánh dấu
+  // deletedAt/deletedBy (cột "Ngày xóa"/"Người xóa" trên Google Sheet) → vào THÙNG RÁC của từng hạng mục: khôi phục được hoặc xoá hẳn (xoá dòng thật trên Sheet).
+  // Quá 60 ngày tự xoá hẳn: Apps Script (purgeExpiredTrash_, chạy 1 lần/ngày khi có người làm mới dữ liệu) + dọn phía trình duyệt khi mở thùng rác.
+  // CHẶN/HOÀN LIÊN KẾT: xoá phiếu thu/chi sinh từ 1 lần thu/trả nợ → khoản đó bị "vô hiệu" trong công nợ (trừ lại số đã thu/trả), khôi phục phiếu → cộng lại;
+  // xoá phiếu thu ghi từ đơn hàng → đơn quay về "chờ ghi sổ", khôi phục → đơn về "đã ghi sổ".
+  var TRASH_DAYS = 60;
+  var TRASH_LABELS = { orders: 'Đơn hàng / hóa đơn', financeEntries: 'Giao dịch Sổ tài chính', receivables: 'Công nợ', payslips: 'Phiếu lương', commissions: 'Hoa hồng', bsSnapshots: 'Bảng cân đối kế toán' };
+  function live_(list) { return list.filter(function (r) { return !r.deletedAt; }); }
+  function trashAgeDays_(r) { var d = Date.parse(r.deletedAt); return isNaN(d) ? 0 : (Date.now() - d) / 86400000; }
+  function canTrash_(kind, rec, user) {
+    if (!user || !rec) return false;
+    if (kind === 'orders') return canEditOrder(rec, user);
+    if (kind === 'payslips') return rec.memberId === user.id || canManageNotifications(user);
+    if (kind === 'commissions') return canManageNotifications(user);
+    return canManageFinance(user);
+  }
+  function memberName_(id) { var m = getById(STORAGE_KEYS.members, id); return m ? m.name : (id || ''); }
+  function trashDescribe_(kind, r) {
+    var money = function (n) { return (Number(n) || 0).toLocaleString('vi-VN') + ' ₫'; };
+    if (kind === 'orders') return { title: 'ĐH ' + (r.orderNumber || r.id) + ' — ' + (r.clientName || 'Khách lẻ'), sub: r.status ? 'Trạng thái: ' + r.status : '', amount: Number(r.totalAmount) || 0, money: money(r.totalAmount) };
+    if (kind === 'financeEntries') return { title: [r.category, r.description].filter(Boolean).join(' · ') || (r.type || 'Giao dịch'), sub: [r.type, r.voucherNo, r.date].filter(Boolean).join(' · '), amount: Number(r.amount) || 0, money: money(r.amount) };
+    if (kind === 'receivables') return { title: (r.clientName || 'Công nợ') + (r.description ? ' · ' + r.description : ''), sub: (r.direction === 'payable' ? 'Phải trả' : 'Phải thu') + (r.dueDate ? ' · hạn ' + String(r.dueDate).slice(0, 10) : ''), amount: Number(r.amount) || 0, money: money(r.amount) };
+    if (kind === 'payslips') return { title: 'Phiếu lương ' + (r.month || '') + ' — ' + memberName_(r.memberId), sub: r.status || '', amount: Number(r.totalAmount) || 0, money: money(r.totalAmount) };
+    if (kind === 'commissions') return { title: 'Hoa hồng ' + (r.month || '') + ' — ' + memberName_(r.memberId), sub: r.projectId || '', amount: Number(r.amount) || 0, money: money(r.amount) };
+    return { title: 'Bảng cân đối năm ' + (r.year || ''), sub: '', amount: 0, money: '' };
+  }
+  function trashNotify_(verb, kind, rec, user) {
+    try {
+      var d = trashDescribe_(kind, rec);
+      var msg = (user.name || user.id) + ' ' + verb + ' [' + TRASH_LABELS[kind] + ']: ' + d.title + (d.money ? ' · ' + d.money : '') + (d.sub ? ' · ' + d.sub : '') + '.';
+      financeRecipients_(user).forEach(function (m) {
+        var n = add(STORAGE_KEYS.notifications, { title: 'Tiền: ' + verb.replace(/^đã /, ''), message: msg, type: 'warning', scope: m.id, active: true, recurring: false, createdBy: user.id });
+        syncToGSheets('notifications', 'add', n);
+      });
+    } catch (err) { console.error('Gửi thông báo thùng rác lỗi:', err); }
+  }
+  // Phiếu thu/chi ⇄ lần thu/trả nợ: vô hiệu (voided=true) hoặc phục hồi (false) các khoản thanh toán trỏ tới phiếu `entryId`
+  function setDebtPaymentsVoid_(entryId, voided) {
+    getAll(STORAGE_KEYS.receivables).forEach(function (raw) {
+      var pays = debtParsePayments_(raw.payments), changed = false, paid = debtNum_(raw.paidAmount);
+      pays.forEach(function (p) {
+        if (p.entryId !== entryId || !!p.voided === voided) return;
+        p.voided = voided; changed = true; paid += (voided ? -1 : 1) * debtNum_(p.amount);
+      });
+      if (!changed) return;
+      paid = Math.max(0, paid);
+      var upd = { paidAmount: paid, payments: JSON.stringify(pays), status: paid >= debtNum_(raw.amount) ? 'paid' : 'unpaid' };
+      if (update(STORAGE_KEYS.receivables, raw.id, upd)) syncToGSheets('receivables', 'update', upd, raw.id);
+    });
+  }
+  // Phiếu thu ghi từ đơn hàng: xoá phiếu → đơn về "chờ ghi sổ"; khôi phục phiếu → đơn về "đã ghi sổ"
+  var ORDER_UNBOOK_NOTE = 'Phiếu thu đã bị xoá — cần ghi sổ lại.';
+  function setOrderBookingForEntry_(entryId, booked) {
+    getAll(STORAGE_KEYS.orders).forEach(function (o) {
+      if (o.linkedFinanceEntryId !== entryId) return;
+      var upd = booked ? (o.financeNote === ORDER_UNBOOK_NOTE ? { financeStatus: 'booked', financeNote: '' } : null) : { financeStatus: 'pending', financeNote: ORDER_UNBOOK_NOTE };
+      if (upd && update(STORAGE_KEYS.orders, o.id, upd)) syncToGSheets('orders', 'update', upd, o.id);
+    });
+  }
+  function trashMove_(kind, id, user) {
+    var rec = getById(STORAGE_KEYS[kind], id);
+    if (!rec || rec.deletedAt || !canTrash_(kind, rec, user)) return null;
+    var upd = { deletedAt: new Date().toISOString(), deletedBy: user.id };
+    var u = update(STORAGE_KEYS[kind], id, upd);
+    if (!u) return null;
+    syncToGSheets(kind, 'update', upd, id);
+    if (kind === 'financeEntries') { setDebtPaymentsVoid_(id, true); setOrderBookingForEntry_(id, false); }
+    trashNotify_('đã chuyển vào THÙNG RÁC', kind, rec, user);
+    return u;
+  }
+  function getTrash(kind, user) {
+    return getAll(STORAGE_KEYS[kind]).filter(function (r) { return r.deletedAt && trashAgeDays_(r) < TRASH_DAYS && canTrash_(kind, r, user); })
+      .map(function (r) { var d = trashDescribe_(kind, r); return Object.assign({}, d, { id: r.id, deletedAt: r.deletedAt, deletedBy: r.deletedBy || '', deletedByName: memberName_(r.deletedBy), daysLeft: Math.max(0, Math.ceil(TRASH_DAYS - trashAgeDays_(r))) }); })
+      .sort(function (a, b) { return Date.parse(b.deletedAt) - Date.parse(a.deletedAt); });
+  }
+  function trashCount(kind, user) { return getTrash(kind, user).length; }
+  function trashRestore(kind, id, user) {
+    var rec = getById(STORAGE_KEYS[kind], id);
+    if (!rec || !rec.deletedAt || !canTrash_(kind, rec, user)) return null;
+    var upd = { deletedAt: '', deletedBy: '' };
+    var u = update(STORAGE_KEYS[kind], id, upd);
+    if (!u) return null;
+    syncToGSheets(kind, 'update', upd, id);
+    if (kind === 'financeEntries') { setDebtPaymentsVoid_(id, false); setOrderBookingForEntry_(id, true); }
+    trashNotify_('đã KHÔI PHỤC', kind, rec, user);
+    return u;
+  }
+  function trashPurge(kind, id, user, silent) {
+    var rec = getById(STORAGE_KEYS[kind], id);
+    if (!rec || !rec.deletedAt || !canTrash_(kind, rec, user)) return null;
+    remove(STORAGE_KEYS[kind], id);
+    syncToGSheets(kind, 'delete', {}, id);
+    if (!silent) trashNotify_('đã XOÁ HẲN', kind, rec, user);
+    return true;
+  }
+  // Dọn các mục quá 60 ngày mà người dùng này có quyền (Apps Script cũng tự dọn 1 lần/ngày)
+  function purgeExpiredTrash(user) {
+    var n = 0;
+    Object.keys(TRASH_LABELS).forEach(function (kind) {
+      getAll(STORAGE_KEYS[kind]).forEach(function (r) { if (r.deletedAt && trashAgeDays_(r) >= TRASH_DAYS && trashPurge(kind, r.id, user, true)) n++; });
+    });
+    return n;
+  }
+
   function canEditOrder(order, user) {
     return !!user && (order.createdBy === user.id || user.roleLevel === 'admin' || user.roleLevel === 'manager');
   }
@@ -3589,7 +3672,7 @@ var TaskManager = (function() {
 
   function getOrders(filters) {
     filters = filters || {};
-    var list = getAll(STORAGE_KEYS.orders);
+    var list = live_(getAll(STORAGE_KEYS.orders));
     if (filters.status) list = list.filter(function (o) { return o.status === filters.status; });
     if (filters.createdBy) list = list.filter(function (o) { return o.createdBy === filters.createdBy; });
     return list.sort(function (a, b) { return new Date(b.createdAt || 0) - new Date(a.createdAt || 0); });
@@ -3613,13 +3696,7 @@ var TaskManager = (function() {
     return updated;
   }
 
-  function deleteOrder(id, user) {
-    var order = getById(STORAGE_KEYS.orders, id);
-    if (!order || !canEditOrder(order, user)) return null;
-    var result = remove(STORAGE_KEYS.orders, id);
-    syncToGSheets('orders', 'delete', {}, id);
-    return result;
-  }
+  function deleteOrder(id, user) { return trashMove_('orders', id, user); }
 
   // Đánh dấu đơn hàng đã thanh toán -> tự tạo đúng 1 lần 1 khoản doanh thu
   // tương ứng trong Sổ tài chính (idempotent nhờ `linkedFinanceEntryId`).
@@ -3744,7 +3821,7 @@ var TaskManager = (function() {
 
   function getPayslips(filters) {
     filters = filters || {};
-    var list = getAll(STORAGE_KEYS.payslips);
+    var list = live_(getAll(STORAGE_KEYS.payslips));
     if (filters.memberId) list = list.filter(function (p) { return p.memberId === filters.memberId; });
     if (filters.month) list = list.filter(function (p) { return p.month === filters.month; });
     if (filters.status) list = list.filter(function (p) { return p.status === filters.status; });
@@ -3782,12 +3859,8 @@ var TaskManager = (function() {
   function deletePayslip(id, user) {
     var slip = getPayslip(id);
     if (!slip || !user) return null;
-    var isOwner = slip.memberId === user.id;
-    if (!isOwner && !canManageNotifications(user)) return null;
-    if (slip.status !== 'pending') return null;
-    var result = remove(STORAGE_KEYS.payslips, id);
-    syncToGSheets('payslips', 'delete', {}, id);
-    return result;
+    if (slip.status !== 'pending') return null;   // chỉ phiếu còn chờ duyệt mới xoá được (đã duyệt/từ chối giữ nguyên)
+    return trashMove_('payslips', id, user);
   }
 
   // Statistics
@@ -3977,6 +4050,7 @@ var TaskManager = (function() {
 
     // Lương cơ bản (Members.baseSalary)
     setMemberBaseSalary: setMemberBaseSalary,
+    getTrash: getTrash, trashCount: trashCount, trashRestore: trashRestore, trashPurge: trashPurge, purgeExpiredTrash: purgeExpiredTrash, TRASH_DAYS: TRASH_DAYS, TRASH_LABELS: TRASH_LABELS,
     getSalaryPercent: getSalaryPercent,
     effectiveBaseSalary: effectiveBaseSalary,
 

@@ -22,6 +22,7 @@
   <script src="/js/task-data.js"></script>
   <script src="/js/auth.js"></script>
   <script src="/js/money-input.js"></script>
+  <script src="/js/trash.js"></script>
   <style>
     :root {
       --cm-bg: var(--color-bg);
@@ -130,7 +131,7 @@
 
     <div class="cm-card">
       <div class="cm-card-head">
-        <div class="cm-card-title">Hoa hồng theo dự án</div>
+        <div class="cm-card-title" style="display:flex;justify-content:space-between;gap:10px;align-items:center">Hoa hồng theo dự án <span class="hq-trash-slot" data-kind="commissions" data-title="Hoa hồng"></span></div>
         <div class="cm-card-desc">Nhập giá trị dự án và % cho từng thành viên — bấm Lưu để tính và ghi vào phiếu lương của tháng đang chọn.</div>
       </div>
       <div id="cmProjectBlocks"></div>
