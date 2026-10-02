@@ -17,8 +17,10 @@
   function vnDate(iso) { var d = new Date(iso); if (isNaN(d)) return String(iso || '').slice(0, 10); var p = function (n) { return ('0' + n).slice(-2); }; return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear(); }
   function notifyRefresh() { try { window.dispatchEvent(new CustomEvent('hiconique:data-refreshed')); } catch (e) { /* bỏ qua */ } }
 
-  var CSS = '.hq-trash-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:9px;border:1px solid var(--color-border);background:transparent;color:var(--color-text-muted);font:600 .75rem inherit;font-family:inherit;cursor:pointer;white-space:nowrap}' +
-    '.hq-trash-btn:hover{border-color:var(--color-bronze);color:var(--color-bronze)}.hq-trash-btn svg{width:14px;height:14px}.hq-trash-btn .n{background:var(--color-bronze);color:#0B0D10;border-radius:999px;padding:0 7px;font-size:.6875rem;line-height:1.5}' +
+  // Nút thùng rác gọn: chỉ icon vuông 32px (có chú thích khi rê chuột); có mục trong thùng thì hiện chấm số nhỏ ở góc. Nút "Xoá hẳn tất cả" trong hộp thoại vẫn dùng kiểu chữ.
+  var CSS = '.hq-trash-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:32px;height:32px;padding:0 9px;border-radius:9px;border:1px solid var(--color-border);background:transparent;color:var(--color-text-muted);font-family:inherit;font-size:.75rem;font-weight:600;line-height:1;cursor:pointer;white-space:nowrap;transition:border-color .15s,color .15s}' +
+    '.hq-trash-btn[data-icon]{width:32px;padding:0}.hq-trash-btn:hover{border-color:var(--color-bronze);color:var(--color-bronze)}.hq-trash-btn svg{width:15px;height:15px;flex:none}' +
+    '.hq-trash-btn .n{position:absolute;top:-7px;right:-7px;min-width:16px;height:16px;box-sizing:border-box;padding:0 4px;display:flex;align-items:center;justify-content:center;background:var(--color-bronze);color:#0B0D10;border-radius:999px;font-size:.625rem;font-weight:700;line-height:1;border:2px solid var(--color-surface)}' +
     '.hq-tr-ov{position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.55);display:flex;align-items:flex-start;justify-content:center;padding:32px 16px;overflow:auto}' +
     '.hq-tr-box{background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;width:100%;max-width:820px;color:var(--color-text)}' +
     '.hq-tr-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:18px 22px;border-bottom:1px solid var(--color-border)}.hq-tr-head h3{margin:0;font-size:1.0625rem}.hq-tr-head p{margin:4px 0 0;font-size:.75rem;color:var(--color-text-muted);line-height:1.5}' +
@@ -65,7 +67,7 @@
     if (slot.getAttribute('data-mounted')) return;
     slot.setAttribute('data-mounted', '1');
     var kind = slot.getAttribute('data-kind'), title = slot.getAttribute('data-title') || '';
-    var btn = document.createElement('button'); btn.type = 'button'; btn.className = 'hq-trash-btn';
+    var btn = document.createElement('button'); btn.type = 'button'; btn.className = 'hq-trash-btn'; btn.setAttribute('data-icon', '1'); btn.setAttribute('aria-label', 'Thùng rác'); btn.title = 'Thùng rác — xem / khôi phục mục đã xoá (giữ 60 ngày)';
     btn.addEventListener('click', function (e) { e.stopPropagation(); open(kind, title); });
     slot.appendChild(btn); slot._btn = btn; slot._kind = kind;
     paint(slot);
@@ -73,7 +75,7 @@
   function paint(slot) {
     var u = user(); if (!u || !slot._btn) return;
     var n = 0; try { n = TM.trashCount(slot._kind, u); } catch (e) { n = 0; }
-    var h = ICON + 'Thùng rác' + (n ? ' <span class="n">' + n + '</span>' : '');
+    var h = ICON + (n ? '<span class="n">' + (n > 99 ? '99+' : n) + '</span>' : '');
     if (slot._h !== h) { slot._h = h; slot._btn.innerHTML = h; }   // chỉ ghi khi đổi → MutationObserver không tự kích hoạt vòng lặp
   }
   function scan() { ensureCss(); Array.prototype.forEach.call(document.querySelectorAll('.hq-trash-slot'), function (s) { if (!s.getAttribute('data-mounted')) mount(s); else paint(s); }); }

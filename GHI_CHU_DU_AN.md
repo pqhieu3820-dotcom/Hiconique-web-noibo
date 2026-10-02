@@ -2,6 +2,7 @@
 
 - Mọi nút, ô nhập, hàng, bảng, hộp thoại làm mới/sửa phải **cân đối, thẳng hàng, cùng chiều cao/độ rộng hợp lý**; không để chữ bị cắt/bị bẻ dòng xấu, không để nút lệch kích thước, không để 1 phần tử trông khác các phần tử cùng loại (font, màu, cỡ chữ phải đồng bộ với phần còn lại của web). Làm xong tự rà bằng mắt (preview) trước khi báo.
 - **Bảng/danh sách phải đủ rộng, không để chữ chồng lên nhau hay bẻ dòng xấu (người dùng chốt 2026-10-02, từ trang Đơn hàng & hóa đơn)**: khi làm/sửa bảng nào, nới khung (max-width ~1480px), đặt min-width cho cột chữ dài (tên, trạng thái, số tiền kèm chú thích), cho cột mã/số không xuống dòng; rà lại bằng mắt trước khi báo xong. Phần tử dùng thuộc tính `hidden` mà có CSS `display:grid/flex` thì phải thêm `[hidden]{display:none!important}`.
+- **Nút Thùng rác (trash.js) chỉ là icon vuông 32px** có chú thích khi rê chuột + chấm số nhỏ ở góc khi có mục (người dùng chốt 2026-10-02 vì nút chữ to, trông nặng nề). Bảng "Đơn hàng chờ ghi sổ" (finance.html) đã đặt độ rộng cột, nút Duyệt/Từ chối xếp dọc, không còn bị cắt.
 - Khi thêm phần tử vào danh sách/bảng đã có, **đối chiếu với phần tử cũ và dùng đúng kiểu cũ** (chú ý các quy tắc CSS chung như `.wiki-col li a span:first/last-child` có thể làm phần tử mới lệch); không tạo kiểu mới nếu không cần.
 - Hộp thoại xác nhận dùng nút "Xác nhận"; nút hành động cùng hàng phải cùng kích thước; font bảng = Inter như toàn web.
 
