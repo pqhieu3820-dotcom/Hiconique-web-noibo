@@ -4578,12 +4578,14 @@ function scanDriveDocs_(folderId, resumeJson, token) {
   if (token) { var cached = CacheService.getScriptCache().get('scanq_' + token); if (!cached) return { error: 'Phiên quét đã hết hạn (quá 1 giờ) — bấm quét lại từ đầu.' }; try { resume = JSON.parse(cached); } catch (err) { resume = null; } }
   else { try { resume = resumeJson ? JSON.parse(resumeJson) : null; } catch (err) { resume = null; } }
   if (resume && resume.length) {
-    resume.forEach(function (r) { try { queue.push({ folder: DriveApp.getFolderById(r.id), path: r.path, id: r.id }); } catch (err) { /* thư mục đã bị xoá/không còn quyền */ } });
+    resume.forEach(function (r) { queue.push({ folder: null, path: r.path, id: r.id }); });   // mở thư mục theo id KHI tới lượt (mở hàng trăm thư mục cùng lúc mất > 45s)
   } else queue.push({ folder: root, path: root.getName(), id: root.getId() });
   var files = [], noCode = [], scanned = 0, folders = 0, truncated = false;
   while (queue.length) {
     if (Date.now() - started > LIMIT_MS) { truncated = true; break; }
-    var cur = queue.shift(); folders++;
+    var cur = queue.shift();
+    if (!cur.folder) { try { cur.folder = DriveApp.getFolderById(cur.id); } catch (err) { continue; } }   // thư mục đã bị xoá/không còn quyền
+    folders++;
     var fi = cur.folder.getFiles();
     while (fi.hasNext()) {
       var f = fi.next(); scanned++;
