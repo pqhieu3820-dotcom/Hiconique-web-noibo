@@ -166,7 +166,8 @@
     .wiki-search-bar input::placeholder { color: var(--color-text-faint); }
     .wiki-col[hidden] { display: none; }
     .wiki-col li[hidden] { display: none; }
-    .wiki-doc-code { font-family: 'JetBrains Mono', monospace; font-size: 0.6875rem; color: var(--color-bronze); margin-right: 4px; }
+    .wiki-doc-code, .wiki-col li a .wiki-doc-code { font-family: 'JetBrains Mono', monospace; font-size: 0.6875rem; font-weight: 400; color: var(--color-bronze); margin-right: 4px; }
+    .wiki-col li a .wiki-doc-tag { font-family: 'Inter', sans-serif; font-size: 0.625rem; font-weight: 500; color: var(--color-text-faint); margin: 0 0 0 6px; white-space: nowrap; }
 
     .doc-cat-row { display: flex; align-items: center; gap: 8px; }
     .doc-cat-row select { flex: 1; }
@@ -283,7 +284,12 @@
     .dm-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; color: var(--color-text); }
     .dm-table th { text-align: left; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-muted); padding: 8px 10px; border-bottom: 1px solid var(--color-border); position: sticky; top: 0; background: var(--color-surface); }
     .dm-table td { padding: 8px 10px; border-bottom: 1px solid var(--color-border); vertical-align: top; }
-    .dm-tag { padding: 1px 8px; border-radius: 10px; font-size: 0.6875rem; border: 1px solid var(--color-border); }
+    .dm-box, .dm-table, .dm-table td, .dm-table th { font-family: 'Inter', sans-serif; }
+    .dm-tag { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 0.6875rem; line-height: 1.5; border: 1px solid var(--color-border); white-space: normal; }
+    .dm-open { display: inline-block; padding: 3px 12px; border-radius: 6px; border: 1px solid var(--color-border); background: var(--color-bg); color: var(--color-text); font: 600 0.75rem 'Inter', sans-serif; text-decoration: none; white-space: nowrap; }
+    .dm-open:hover { border-color: var(--color-bronze); color: var(--color-bronze); }
+    .dm-foot select { flex: 1 1 auto; min-width: 0; }
+    #dsImport, #dsCsv { min-width: 200px; height: 44px; padding: 0 20px !important; white-space: nowrap; box-sizing: border-box; font-size: 0.875rem; }
     .dm-tag.new { border-color: #4F8A5B; color: #4F8A5B; } .dm-tag.bad { border-color: #C75B5B; color: #C75B5B; } .dm-tag.ok { color: var(--color-text-faint); }
     .dm-box .doc-code-info-panel { position: static; margin-top: 10px; max-height: 260px; }
   </style>
@@ -550,7 +556,7 @@
       var links = TaskManager.getDocLinks(d);
       var rows = links.map(function (l, i) {
         var k = linkKind(l.url) || { t: '', c: '#7A8CA5' };
-        return '<tr><td>' + (i + 1) + '</td><td><b>' + escapeHtml(l.label || 'Tài liệu') + '</b></td><td><span class="dm-tag" style="background:' + k.c + '22;color:' + k.c + '">' + escapeHtml(k.t) + '</span></td><td class="dm-dim" style="word-break:break-all">' + escapeHtml(String(l.url).slice(0, 70)) + '</td><td><a class="dm-btn" href="' + escapeHtml(l.url) + '" target="_blank" rel="noopener" style="text-decoration:none">Mở</a></td></tr>';
+        return '<tr><td>' + (i + 1) + '</td><td><b>' + escapeHtml(l.label || 'Tài liệu') + '</b></td><td><span class="dm-tag" style="background:' + k.c + '22;color:' + k.c + '">' + escapeHtml(k.t) + '</span></td><td class="dm-dim" style="word-break:break-all">' + escapeHtml(String(l.url).slice(0, 70)) + '</td><td><a class="dm-open" href="' + escapeHtml(l.url) + '" target="_blank" rel="noopener">Mở</a></td></tr>';
       }).join('');
       openModal('dmLinks', (d.code ? '<code>' + escapeHtml(TaskManager.canonDocCode ? TaskManager.canonDocCode(d.code) : d.code) + '</code> ' : '') + escapeHtml(d.name), links.length + ' link bổ trợ cho cùng một tài liệu', '<div class="dm-tablewrap"><table class="dm-table"><thead><tr><th>#</th><th>Nội dung</th><th>Nguồn</th><th>Link</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>');
     }
@@ -825,7 +831,7 @@
           out.innerHTML = 'Đã quét <b>' + r.scanned + '</b> file trong <b>' + r.folders + '</b> thư mục của «' + escapeHtml(r.folder || '') + '»' + (r.truncated ? ' <span class="warn">(chưa hết — thư mục rất lớn, hãy quét lại hoặc quét thư mục con)</span>' : '') + '.' +
             scanReportHtml(r, A) +
             '<section class="dm-card"><h4>Nhập vào danh sách tài liệu — ' + nNew + ' tài liệu mới/bổ sung, ' + nBad + ' trùng/sai</h4>' +
-            (found.length ? '<div class="dm-tablewrap"><table class="dm-table"><thead><tr><th></th><th>Mã chuẩn mới</th><th>Tài liệu · link</th><th>Trạng thái</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+            (found.length ? '<div class="dm-tablewrap"><table class="dm-table"><thead><tr><th></th><th>Mã chuẩn mới</th><th>Tài liệu · link</th><th style="min-width:320px">Trạng thái</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
             '<div class="dm-foot"><select id="dsCat">' + TaskManager.getDocCategories().map(function (c) { return '<option>' + escapeHtml(c) + '</option>'; }).join('') + '</select><button type="button" class="doc-submit-btn dm-primary" id="dsImport"' + (nNew ? '' : ' disabled') + '>Nhập ' + nNew + ' tài liệu</button><button type="button" class="dm-btn" id="dsCsv">Tải kết quả (.csv)</button></div>' : '<div class="dm-dim">Không có file nào mang mã hiệu.</div><div class="dm-foot"><button type="button" class="dm-btn" id="dsCsv">Tải kết quả (.csv)</button></div>') + '</section>';
           var csvBtn = ov.querySelector('#dsCsv');
           if (csvBtn) csvBtn.addEventListener('click', function () {
@@ -842,7 +848,7 @@
               TaskManager.createDocument(Object.assign({ category: catv, name: g._name, code: g.canon, source: 'drive' }, TaskManager.docLinkUpdates(g._links)), user); n++;
             });
             closeModal('dmSync'); render();
-            showConfirmDialog('Đã nhập/bổ sung ' + n + ' tài liệu từ Drive.', function () {}, 'Đóng');
+            showConfirmDialog('Đã nhập/bổ sung ' + n + ' tài liệu từ Drive.', function () {}, 'Xác nhận');
           });
         }, function (pr) { out.textContent = 'Đang quét sâu… đã xem ' + pr.scanned + ' file / ' + pr.folders + ' thư mục (tìm thấy ' + pr.found + ' file có mã)'; });
       });
