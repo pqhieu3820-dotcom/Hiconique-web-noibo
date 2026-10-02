@@ -226,7 +226,7 @@
       'payslip': ['payslips', 'timesheet', 'members', 'commissions'], 'commission': ['commissions', 'commissionRates', 'projects', 'members'],
       'notices': ['notices', 'notifications'], 'team': ['members'], 'profile': ['members'], 'spc': ['members'],
       'pricing': ['priceCatalog', 'projects', 'members'], 'crm': ['members', 'projects'], 'equipment': ['members', 'projects'],
-      'lighting': ['projects'], 'estimate': ['projects', 'members'], 'quality': ['projects', 'members'], 'hicon-bim': ['members', 'projects'], 'wiki': ['documents', 'members']
+      'lighting': ['projects'], 'estimate': ['projects', 'members'], 'dgdm': ['projects'], 'quality': ['projects', 'members'], 'hicon-bim': ['members', 'projects'], 'wiki': ['documents', 'members']
     };
     // Dữ liệu RIÊNG của từng trang (ngoài 16 bảng chung): ⟳ cũng đọc lại; reload:true = trang không tự vẽ lại theo sự kiện → tải lại trang sau khi đọc xong
     var PAGE_EXTRA = {
@@ -326,6 +326,7 @@
     { title: 'Phiếu lương', sub: 'Đề xuất thanh toán lương hàng tháng', url: '/pages/payslip.html', keywords: 'luong' },
     { title: 'Hoa hồng dự án', sub: 'Cấu hình và tính hoa hồng theo dự án', url: '/pages/commission.html', keywords: 'hoa hong' },
     { title: 'Bảng giá dịch vụ', sub: 'Soạn báo giá, xuất Excel/PDF cho khách', url: '/pages/pricing.html', keywords: 'bao gia don gia du toan' },
+    { title: 'Đơn giá – Định mức', sub: 'Mã công việc, mã vật liệu, đơn vị tính, giai đoạn – hạng mục (DGDM-)', url: '/pages/dgdm.html', keywords: 'don gia dinh muc ma cong viec ma vat lieu dgdm dg don vi tinh hang muc' },
     { title: 'Dự toán & thanh quyết toán', sub: 'Dự toán theo mã công việc, đơn giá từng tỉnh, thanh toán, quyết toán', url: '/pages/estimate.html', keywords: 'du toan thanh toan quyet toan don gia ma cong viec eta g8 f1' },
     { title: 'Hồ sơ chất lượng', sub: 'Biên bản nghiệm thu, phiếu yêu cầu, phụ lục khối lượng, nhật ký thi công', url: '/pages/quality.html', keywords: 'ho so chat luong nghiem thu bien ban phieu yeu cau pm360 xda gxd nhat ky thi cong' },
     { title: 'Khái toán nhanh', sub: 'Khái toán chi phí và kế hoạch tiến độ thi công', url: '/pages/khai-toan.html', keywords: 'khai toan du toan chi phi' },

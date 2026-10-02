@@ -40,12 +40,12 @@ const SHEETS = {
   bsSnapshots: 'TC-Chỉ số cân đối kế toán',
   orders: 'TC-Đơn hàng',
   units: 'TC-Đơn vị tính',
-  priceHistory: 'DG-Lịch sử giá',     // 2026-10-01: cập nhật đơn giá thủ công theo tháng (nhóm DG-)
-  priceSources: 'DG-Nguồn',          // trạng thái rà soát từng nguồn S01…S38 theo tháng
+  priceHistory: 'DGDM-Lịch sử giá',     // 2026-10-01: cập nhật đơn giá thủ công theo tháng (nhóm DG-)
+  priceSources: 'DGDM-Nguồn',          // trạng thái rà soát từng nguồn S01…S38 theo tháng
   // 2026-10-02: nhóm DTQT- (Dự toán – Thanh quyết toán, trang estimate.html) và QLCL- (Hồ sơ quản lý chất lượng, trang quality.html). KHÔNG đụng nhóm DG-.
   dtqtEstimates: 'DTQT-Dự toán', dtqtCodes: 'DTQT-Mã công việc', dtqtPrices: 'DTQT-Đơn giá tỉnh', dtqtSettlements: 'DTQT-Thanh quyết toán',
   qlclTasks: 'QLCL-Danh mục công việc', qlclRecords: 'QLCL-Hồ sơ nghiệm thu',
-  priceSettings: 'DG-Cài đặt',      // chỗ gắn khóa API cập nhật giá (CHƯA dùng — mọi việc đang thủ công)   // 2026-10-01: đơn vị tính riêng thêm từ ô Đơn vị ở trang Đơn hàng (nhóm TC-)
+  priceSettings: 'DGDM-Cài đặt',      // chỗ gắn khóa API cập nhật giá (CHƯA dùng — mọi việc đang thủ công)   // 2026-10-01: đơn vị tính riêng thêm từ ô Đơn vị ở trang Đơn hàng (nhóm TC-)
   // 2026-09-26: nhóm TTCS- (Tính toán chiếu sáng) cho trang lighting.html — xem
   // GHI_CHU_DU_AN.md mục 6.9. 3 sheet danh mục/cấu hình (đọc-only từ web, sửa
   // trực tiếp trên Sheet) + 1 sheet lưu phương án tính toán người dùng đã lưu.
@@ -721,7 +721,7 @@ function getProvincePricing(ss, provinceName) {
 // Trước đây: 34 sheet "DGXD-<tỉnh>" (mỗi sheet 680 dòng, 4 bảng xếp chồng A nhân công khoán / B phần thô & trọn gói / C vật tư-thiết bị / D công tác hoàn chỉnh,
 // cấu trúc GIỐNG HỆT nhau, chỉ khác số giá). Nay gộp theo NỘI DUNG, thêm cột "Tỉnh/Thành" ở đầu → 1 bảng phẳng lọc/pivot/VLOOKUP được, dùng cho kế toán báo giá.
 // 34 sheet DGXD-* GIỮ NGUYÊN (không sửa/xoá) làm bản gốc đối chiếu. Tạo bằng buildPriceDb() (chạy tay trong editor); các hàm đọc: getPriceDb / getPriceDbProvinces.
-var PRICE_DB_SHEETS = { prov: 'DG-Tỉnh thành', nc: 'DG-Nhân công khoán', tho: 'DG-Phần thô & trọn gói', vt: 'DG-Vật tư thiết bị', ct: 'DG-Công tác hoàn chỉnh' };
+var PRICE_DB_SHEETS = { prov: 'DGDM-Tỉnh thành', nc: 'DGDM-Nhân công khoán', tho: 'DGDM-Phần thô và trọn gói', vt: 'DGDM-Vật tư thiết bị', ct: 'DGDM-Mã công việc công tác' };   // 2026-10-02: đổi từ DG- (findSheet vẫn tìm được tên cũ nhờ DGDM_ALIAS_)
 var PRICE_DB_KEYS = ['nc', 'tho', 'vt', 'ct'];
 function priceDbIsNumCol_(h) { return /thấp|cao|^VL|^NC |^DGHT|Mức điển hình|Đơn giá|Giá /i.test(String(h)); }
 // Đọc 1 sheet tỉnh (lưới giá trị) → { nc|tho|vt|ct: { headers, rows } } (nhận diện bảng theo dòng tiêu đề, không phụ thuộc số dòng cố định)
@@ -1134,10 +1134,162 @@ function handleBatchOps_(params) {
   return jsonOut_(JSON.stringify(out));
 }
 
+// ===================== DGDM- : ĐƠN GIÁ – ĐỊNH MỨC (2026-10-02) =====================
+// Đổi tên nhóm DG- → DGDM- theo "3. DGDM_Bang_doi_ten_sheet.csv". CHỈ ĐỔI TÊN TAB + THÊM CỘT, KHÔNG xoá/sửa dữ liệu; các sheet DGXD-<tỉnh> giữ nguyên (người dùng chốt 02/10/2026: chưa xoá).
+// Trong lúc chuyển tiếp mọi hàm đọc/ghi tìm sheet theo CẢ tên cũ lẫn tên mới (findSheet + DGDM_ALIAS_) nên web không bị gãy dù đã đổi tên hay chưa.
+// Chạy trong editor: migrateDgdm() = CHẠY THỬ (chỉ in báo cáo); migrateDgdm(false) = đổi tên thật (tự sao lưu cả file Sheet trước; không sao lưu được thì dừng).
+var DGDM_RENAMES_ = [
+  ['DG-Tỉnh thành', 'DGDM-Tỉnh thành'], ['DG-Nguồn', 'DGDM-Nguồn'], ['DG-Nhân công khoán', 'DGDM-Nhân công khoán'], ['DG-Phần thô & trọn gói', 'DGDM-Phần thô và trọn gói'],
+  ['DG-Vật tư thiết bị', 'DGDM-Vật tư thiết bị'], ['DG-Công tác hoàn chỉnh', 'DGDM-Mã công việc công tác'], ['DG-Lịch sử giá', 'DGDM-Lịch sử giá'], ['DG-Cài đặt', 'DGDM-Cài đặt'],
+  ['DGXD-Khối lượng sơ bộ', 'DGDM-Định mức khối lượng sơ bộ'], ['DGXD-So sánh nhà thầu', 'DGDM-Nhóm so sánh nhà thầu'], ['DGXD-Dòng tiền', 'DGDM-Mẫu mốc thanh toán'], ['DGXD-Tiến độ', 'DGDM-Mẫu tiến độ'],
+  ['DGXD-Nghiệm thu', 'DGDM-Mẫu nghiệm thu'], ['DGXD-Hồ sơ công trình', 'DGDM-Mẫu hồ sơ công trình'], ['DGXD-Hướng dẫn', 'DGDM-Hướng dẫn']
+];
+var DGDM_ALIAS_ = (function () { var m = {}; DGDM_RENAMES_.forEach(function (p) { m[normalizeName(p[0])] = p[1]; m[normalizeName(p[1])] = p[0]; }); return m; })();
+var DGDM_SEED_ = {"stages":[["Mã GĐ","Tên giai đoạn","Mã hạng mục","Tên hạng mục","Phạm vi công việc","Nhóm chi phí dự toán","Đưa vào phần mềm dự toán?","Mã cũ tương ứng"],["TK","Thiết kế","TK-CD","Thiết kế ý tưởng","Concept, mặt bằng công năng, moodboard","Tư vấn","Không (chi phí tư vấn)","Mới"],["TK","Thiết kế","TK-KT","Hồ sơ kiến trúc","Mặt bằng, mặt đứng, mặt cắt, chi tiết kiến trúc","Tư vấn","Không (chi phí tư vấn)","Mới"],["TK","Thiết kế","TK-KC","Hồ sơ kết cấu","Móng, khung, sàn, mái; thuyết minh tính toán","Tư vấn","Không (chi phí tư vấn)","Mới"],["TK","Thiết kế","TK-ME","Hồ sơ cơ điện (MEP)","Điện, nước, điều hòa, thông gió, PCCC, điện nhẹ","Tư vấn","Không (chi phí tư vấn)","Mới"],["TK","Thiết kế","TK-NT","Thiết kế nội thất","Layout, 3D, bản vẽ triển khai nội thất","Tư vấn","Không (chi phí tư vấn)","Mới"],["TK","Thiết kế","TK-NG","Thiết kế ngoại thất, cảnh quan","Sân vườn, cổng, hàng rào, tiểu cảnh","Tư vấn","Không (chi phí tư vấn)","Mới"],["TK","Thiết kế","TK-DT","Dự toán & bóc tách khối lượng","Bóc khối lượng, lập dự toán, hồ sơ mời thầu","Tư vấn","Không (chi phí tư vấn)","Mới"],["TK","Thiết kế","TK-PC","Phối cảnh & mô hình 3D","Render, video, VR","Tư vấn","Không (chi phí tư vấn)","Mới"],["TK","Thiết kế","TK-GS","Giám sát tác giả","Thăm công trình, xử lý thay đổi thiết kế","Tư vấn","Không (chi phí tư vấn)","Mới"],["TK","Thiết kế","TK-TD","Thẩm tra thiết kế","Thẩm tra kết cấu, PCCC, hồ sơ cấp phép","Tư vấn","Không (chi phí tư vấn)","Mới"],["HSPL","Hồ sơ pháp lý & quản lý chất lượng","HSPL-GP","Xin giấy phép xây dựng","Giấy phép xây dựng, cải tạo, sử dụng vỉa hè","Chi phí khác","Không (chi phí khác)","HSPL-GP"],["HSPL","Hồ sơ pháp lý & quản lý chất lượng","HSPL-BB","Biên bản khảo sát","Biên bản hiện trạng, cam kết với hàng xóm / BQL","Chi phí khác","Không (chi phí khác)","HSPL-BB"],["HSPL","Hồ sơ pháp lý & quản lý chất lượng","HSPL-KQ","Ký quỹ thi công","Ký quỹ, phí quản lý, phí vệ sinh môi trường","Chi phí khác","Không (chi phí khác)","HSPL-KQ"],["HSPL","Hồ sơ pháp lý & quản lý chất lượng","HSPL-AT","Đăng ký an toàn","Nhân sự, thẻ ra vào, nội quy ATLĐ, bảo hiểm công trình","Chi phí khác","Không (chi phí khác)","HSPL-AT"],["HSPL","Hồ sơ pháp lý & quản lý chất lượng","HSPL-BV","Trình duyệt bản vẽ","Biện pháp thi công, shop-drawing","Chi phí khác","Không (chi phí khác)","HSPL-BV"],["HSPL","Hồ sơ pháp lý & quản lý chất lượng","HSPL-VL","Trình duyệt vật liệu","Material board, mock-up","Chi phí khác","Không (chi phí khác)","HSPL-VL"],["HSPL","Hồ sơ pháp lý & quản lý chất lượng","HSPL-NT","Biên bản nghiệm thu","Nghiệm thu giai đoạn, vật liệu đầu vào","Chi phí khác","Không (chi phí khác)","HSPL-NT"],["HSPL","Hồ sơ pháp lý & quản lý chất lượng","HSPL-PS","Hồ sơ phát sinh","Báo giá phát sinh tăng/giảm (VO), phụ lục hợp đồng","Chi phí khác","Không (chi phí khác)","HSPL-PS"],["HSPL","Hồ sơ pháp lý & quản lý chất lượng","HSPL-CQ","Thu thập chứng từ","Hóa đơn VAT, CO/CQ vật tư","Chi phí khác","Không (chi phí khác)","HSPL-CQ"],["HSPL","Hồ sơ pháp lý & quản lý chất lượng","HSPL-HC","Hồ sơ hoàn công","Bản vẽ hoàn công, quyết toán, thanh lý hợp đồng","Chi phí khác","Không (chi phí khác)","HSPL-HC"],["PDCB","Phá dỡ & chuẩn bị mặt bằng","PDCB-KS","Khảo sát hiện trạng","Trắc đạc, định vị ranh giới, đánh giá kết cấu hiện hữu","Xây lắp","Có","PDCB-KS"],["PDCB","Phá dỡ & chuẩn bị mặt bằng","PDCB-TD","Tháo dỡ thu hồi","Tháo cửa, thiết bị vệ sinh, đèn, điều hòa, đồ cũ giữ lại","Xây lắp","Có","PDCB-TD"],["PDCB","Phá dỡ & chuẩn bị mặt bằng","PDCB-DP","Đập phá kiến trúc","Đục gạch ốp lát, dỡ trần, đập tường gạch ngăn phòng","Xây lắp","Có","PDCB-DP"],["PDCB","Phá dỡ & chuẩn bị mặt bằng","PDCB-KC","Phá dỡ kết cấu","Khoan cắt rút lõi, phá sàn/dầm/cột BTCT","Xây lắp","Có","PDCB-KC"],["PDCB","Phá dỡ & chuẩn bị mặt bằng","PDCB-PL","Phân loại phế thải","Tách sắt thép tái chế, xà bần, rác sinh hoạt","Xây lắp","Có","PDCB-PL"],["PDCB","Phá dỡ & chuẩn bị mặt bằng","PDCB-VC","Vận chuyển phế thải","Bốc xếp, vận chuyển xà bần, bãi đổ quy định","Xây lắp","Có","PDCB-VC"],["PDCB","Phá dỡ & chuẩn bị mặt bằng","PDCB-VS","Vệ sinh mặt bằng","Vệ sinh công nghiệp mặt bằng thô, bàn giao thi công","Xây lắp","Có","PDCB-VS"],["BP","Biện pháp & công trình tạm","BP-LT","Lán trại & công trình tạm","Lán trại, nhà vệ sinh tạm, kho bãi","Xây lắp (trực tiếp phí khác)","Có (trực tiếp phí khác)","PDCB-PT"],["BP","Biện pháp & công trình tạm","BP-AT","An toàn & rào chắn","Hàng rào tôn, biển báo, bình chữa cháy, lưới che","Xây lắp (trực tiếp phí khác)","Có (trực tiếp phí khác)","PDCB-AQ"],["BP","Biện pháp & công trình tạm","BP-BC","Bao che bảo vệ","Bạt lót sàn, ốp formex, nilon che đồ nội thất","Xây lắp (trực tiếp phí khác)","Có (trực tiếp phí khác)","PDCB-BC"],["BP","Biện pháp & công trình tạm","BP-DN","Điện nước thi công","Kéo điện nước tạm, đồng hồ riêng","Xây lắp (trực tiếp phí khác)","Có (trực tiếp phí khác)","Mới"],["BP","Biện pháp & công trình tạm","BP-VC","Vận chuyển ngang & đứng","Cẩu, vận thăng, bốc xếp lên tầng","Xây lắp (trực tiếp phí khác)","Có (trực tiếp phí khác)","Mới"],["BP","Biện pháp & công trình tạm","BP-GG","Giàn giáo & chống đỡ dùng chung","Giàn giáo hoàn thiện, thang, sàn thao tác","Xây lắp (trực tiếp phí khác)","Có (trực tiếp phí khác)","Mới"],["TH","Phần thô","TH-DD","Đào đất san lấp","Đào, san lấp, đầm chặt, vận chuyển đất thừa","Xây lắp","Có","TH-DD"],["TH","Phần thô","TH-EC","Ép cọc nền móng","Ép cọc, cừ tràm, khoan nhồi, xử lý đầu cọc","Xây lắp","Có","TH-EC"],["TH","Phần thô","TH-NG","Cấu kiện ngầm","Bể phốt, bể nước ngầm, hố ga, rãnh thoát nước","Xây lắp","Có","TH-NG"],["TH","Phần thô","TH-CP","Công tác cốp pha","Gia công, lắp dựng, tháo dỡ cốp pha","Xây lắp","Có","TH-CP"],["TH","Phần thô","TH-CT","Công tác cốt thép","Cắt, uốn, buộc, hàn, nối thép","Xây lắp","Có","TH-CT"],["TH","Phần thô","TH-BT","Công tác bê tông","Bê tông lót, thương phẩm, đầm, bảo dưỡng","Xây lắp","Có","TH-BT"],["TH","Phần thô","TH-XD","Công tác xây thô","Xây tường bao, tường ngăn, gạch đặc, lanh tô","Xây lắp","Có","TH-XD"],["TH","Phần thô","TH-TR","Công tác trát vữa","Trát tường trong/ngoài, trần, đắp phào (định mức nhóm AK)","Xây lắp","Có","TH-TR"],["TH","Phần thô","TH-CN","Công tác cán nền","Cán nền tạo phẳng, tạo dốc, xoa nền","Xây lắp","Có","TH-CN"],["TH","Phần thô","TH-WS","Công tác chống thấm","Màng bitum, hóa chất gốc xi măng, test nước","Xây lắp","Có","TH-WS"],["TH","Phần thô","TH-KS","Kết cấu thép thô","Khung kèo, mái, sàn deck, cầu thang sắt","Xây lắp","Có","TH-KS"],["TH","Phần thô","TH-MA","Mái & chống nóng","Mái BTCT, tôn, ngói; lớp chống nóng","Xây lắp","Có","Mới"],["TH","Phần thô","TH-CM","Chống mối","Xử lý mối nền móng, phun phòng mối","Xây lắp","Có","Mới (có trong AQ8)"],["MEP","Cơ điện nước (MEP)","MEP-E-CD","Điện – Cấp điện nặng","Ống gen ngầm, cáp nguồn, cáp chiếu sáng, động lực","Xây lắp","Có","MEP-CD"],["MEP","Cơ điện nước (MEP)","MEP-E-TD","Điện – Tủ điện & đóng cắt","Vỏ tủ, aptomat tổng/nhánh, thanh cái, tiếp địa","Xây lắp","Có","MEP-TD"],["MEP","Cơ điện nước (MEP)","MEP-E-TB","Điện – Thiết bị điện","Công tắc, ổ cắm, đèn chiếu sáng, đèn trang trí","Xây lắp","Có","MEP-TB"],["MEP","Cơ điện nước (MEP)","MEP-E-EL","Điện – Hệ thống điện nhẹ","LAN, truyền hình, điện thoại nội bộ","Xây lắp","Có","MEP-EL"],["MEP","Cơ điện nước (MEP)","MEP-E-CM","Điện – Hệ thống an ninh","Camera, chuông cửa hình, kiểm soát ra vào","Xây lắp","Có","MEP-CM"],["MEP","Cơ điện nước (MEP)","MEP-E-SM","Điện – Hệ thống Smarthome","Dây tín hiệu, thiết bị điều khiển, lập trình","Xây lắp","Có","MEP-SM"],["MEP","Cơ điện nước (MEP)","MEP-P-CN","Nước – Hệ thống cấp nước","Ống PPR nóng/lạnh, bơm tăng áp, bồn chứa, test áp lực","Xây lắp","Có","MEP-CN"],["MEP","Cơ điện nước (MEP)","MEP-P-TN","Nước – Hệ thống thoát nước","Ống PVC thoát sinh hoạt, thoát phân, nước mưa","Xây lắp","Có","MEP-TN"],["MEP","Cơ điện nước (MEP)","MEP-P-VS","Nước – Thiết bị vệ sinh","Bồn cầu, lavabo, sen tắm, bình nóng lạnh","Xây lắp","Có","MEP-VS"],["MEP","Cơ điện nước (MEP)","MEP-P-PC","Nước – Phòng cháy chữa cháy","Ống thép mạ kẽm, đầu phun, báo cháy","Xây lắp","Có","MEP-PC"],["MEP","Cơ điện nước (MEP)","MEP-M-DH","Cơ – Điều hòa không khí","Ống đồng, bảo ôn, dây điều khiển, cục nóng/lạnh","Xây lắp","Có","MEP-DH"],["MEP","Cơ điện nước (MEP)","MEP-M-TG","Cơ – Hệ thống thông gió","Ống gió, quạt hút, cấp khí tươi","Xây lắp","Có","MEP-TG"],["MEP","Cơ điện nước (MEP)","MEP-M-TM","Cơ – Thang máy","Thang máy gia đình, hố pit, lắp đặt, nghiệm thu","Xây lắp","Có","Mới"],["HT","Hoàn thiện xây dựng","HT-TC","Thi công thạch cao","Khung xương, tấm trần phẳng/giật cấp, vách","Xây lắp","Có","HT-TC"],["HT","Hoàn thiện xây dựng","HT-SN","Công tác sơn bả","Bả matit, xả nhám, sơn lót, sơn phủ","Xây lắp","Có","HT-SN"],["HT","Hoàn thiện xây dựng","HT-OL","Ốp lát gạch","Lát nền, ốp tường, len chân tường","Xây lắp","Có","HT-OL"],["HT","Hoàn thiện xây dựng","HT-DA","Ốp đá trang trí","Đá mặt tiền, tam cấp, mặt bếp, lavabo","Xây lắp","Có","HT-DA"],["HT","Hoàn thiện xây dựng","HT-GO","Sàn gỗ & sàn nhựa","Sàn gỗ tự nhiên/công nghiệp, sàn nhựa","Xây lắp","Có","HT-GO"],["HT","Hoàn thiện xây dựng","HT-NK","Hạng mục nhôm kính","Cửa đi, cửa sổ, vách kính, mặt dựng","Xây lắp","Có","HT-NK"],["HT","Hoàn thiện xây dựng","HT-KK","Kính trang trí","Vách tắm kính, gương, kính ốp","Xây lắp","Có","HT-KK"],["HT","Hoàn thiện xây dựng","HT-CK","Cơ khí hoàn thiện","Khung thép sơn tĩnh điện, lan can, cổng","Xây lắp","Có","HT-CK"],["HT","Hoàn thiện xây dựng","HT-IX","Inox & xi mạ","Nẹp inox, ốp inox, xi mạ","Xây lắp","Có","HT-IX"],["HT","Hoàn thiện xây dựng","HT-LC","Lắp đặt cầu thang","Tay vịn, mặt bậc, lan can cầu thang","Xây lắp","Có","HT-LC"],["HT","Hoàn thiện xây dựng","HT-CG","Cửa gỗ các loại","Cửa gỗ tự nhiên/công nghiệp, phụ kiện","Xây lắp","Có","HT-CG"],["NT","Nội thất","NT-MC","Mộc công nghiệp (fit-out)","Tủ bếp, tủ quần áo, kệ, vách ốp, giường","Ngoài định mức BXD","Nhập đơn giá riêng","HT-MC"],["NT","Nội thất","NT-DR","Đồ rời & decor","Sofa, bàn ghế, tranh, thảm, cây","Ngoài định mức BXD","Nhập đơn giá riêng","HT-DR"],["NT","Nội thất","NT-RM","Mành rèm & giấy dán tường","Rèm, mành, giấy/vải dán tường","Ngoài định mức BXD","Nhập đơn giá riêng","HT-RM"],["NT","Nội thất","NT-DE","Đèn trang trí & chiếu sáng nghệ thuật","Đèn chùm, đèn thả, đèn tường, ray nam châm","Ngoài định mức BXD","Nhập đơn giá riêng","Mới"],["NT","Nội thất","NT-TB","Thiết bị bếp & gia dụng","Bếp, hút mùi, lò, máy rửa bát, tủ lạnh","Ngoài định mức BXD","Nhập đơn giá riêng","Mới"],["NGT","Ngoại thất & cảnh quan","NGT-SV","Sân vườn & cây xanh","Đất trồng, cây, cỏ, chậu","Xây lắp / ngoài ĐM","Có, mục ngoài ĐM nhập đơn giá riêng","Mới"],["NGT","Ngoại thất & cảnh quan","NGT-HR","Hàng rào & cổng","Hàng rào, cổng, cổng điện","Xây lắp / ngoài ĐM","Có, mục ngoài ĐM nhập đơn giá riêng","Mới"],["NGT","Ngoại thất & cảnh quan","NGT-SN","Sân nền & lát","Lát sân, bó vỉa, thoát nước sân","Xây lắp / ngoài ĐM","Có, mục ngoài ĐM nhập đơn giá riêng","Mới"],["NGT","Ngoại thất & cảnh quan","NGT-TC","Tiểu cảnh & hồ nước","Hồ cá, thác, bể bơi nhỏ","Xây lắp / ngoài ĐM","Có, mục ngoài ĐM nhập đơn giá riêng","Mới"],["NGT","Ngoại thất & cảnh quan","NGT-DS","Điện & chiếu sáng sân vườn","Đèn sân vườn, ổ cắm ngoài trời","Xây lắp / ngoài ĐM","Có, mục ngoài ĐM nhập đơn giá riêng","Mới"],["NGT","Ngoại thất & cảnh quan","NGT-TT","Hệ thống tưới tự động","Đường ống, đầu phun, bộ điều khiển","Xây lắp / ngoài ĐM","Có, mục ngoài ĐM nhập đơn giá riêng","Mới"],["BTBD","Bảo hành – bảo trì","BTBD-TN","Tiếp nhận sự cố","Phiếu ghi nhận, phản hồi 24h","Dịch vụ","Chỉ khi lập dự toán sửa chữa","BTBD-TN"],["BTBD","Bảo hành – bảo trì","BTBD-KT","Khảo sát kỹ thuật","Kiểm tra, xác định nguyên nhân","Dịch vụ","Chỉ khi lập dự toán sửa chữa","BTBD-KT"],["BTBD","Bảo hành – bảo trì","BTBD-PA","Lập phương án xử lý","Dự toán sửa chữa, chốt biện pháp","Dịch vụ","Chỉ khi lập dự toán sửa chữa","BTBD-PA"],["BTBD","Bảo hành – bảo trì","BTBD-BC","Che chắn bảo vệ","Che chắn khu vực sửa chữa","Dịch vụ","Chỉ khi lập dự toán sửa chữa","BTBD-BC"],["BTBD","Bảo hành – bảo trì","BTBD-TD","Tháo dỡ vật tư hỏng","Tháo, cách ly phần hư hỏng","Dịch vụ","Chỉ khi lập dự toán sửa chữa","BTBD-TD"],["BTBD","Bảo hành – bảo trì","BTBD-SC","Thi công sửa chữa","Sửa phần thô, chống thấm, điện nước","Dịch vụ","Chỉ khi lập dự toán sửa chữa","BTBD-SC"],["BTBD","Bảo hành – bảo trì","BTBD-TT","Thay thế linh kiện","Bản lề, ray, thiết bị hỏng","Dịch vụ","Chỉ khi lập dự toán sửa chữa","BTBD-TT"],["BTBD","Bảo hành – bảo trì","BTBD-DM","Dặm vá bề mặt","Bả vá nứt, chấm sơn","Dịch vụ","Chỉ khi lập dự toán sửa chữa","BTBD-DM"],["BTBD","Bảo hành – bảo trì","BTBD-TS","Test vận hành","Đo, thử, kiểm tra sau sửa","Dịch vụ","Chỉ khi lập dự toán sửa chữa","BTBD-TS"],["BTBD","Bảo hành – bảo trì","BTBD-VS","Vệ sinh hoàn trả","Dọn dẹp, hoàn trả mặt bằng","Dịch vụ","Chỉ khi lập dự toán sửa chữa","BTBD-VS"],["BTBD","Bảo hành – bảo trì","BTBD-NT","Nghiệm thu bảo hành","Biên bản đóng ca bảo hành","Dịch vụ","Chỉ khi lập dự toán sửa chữa","BTBD-NT"],["CPK","Chi phí quản lý chung","CPK-CC","Chi phí chung","Quản lý doanh nghiệp, điều hành công trường","Khoản mục","Tự tính ở bảng tổng hợp","Mới"],["CPK","Chi phí quản lý chung","CPK-TN","Thu nhập chịu thuế tính trước","Lợi nhuận định mức","Khoản mục","Tự tính ở bảng tổng hợp","Mới"],["CPK","Chi phí quản lý chung","CPK-TP","Chi phí trực tiếp khác","Di chuyển lực lượng, an toàn lao động, nhà tạm nhỏ lẻ","Khoản mục","Tự tính ở bảng tổng hợp","Mới"],["CPK","Chi phí quản lý chung","CPK-QL","Chi phí quản lý dự án","Khi chủ đầu tư giao thầu trọn gói","Khoản mục","Tự tính ở bảng tổng hợp","Mới"],["CPK","Chi phí quản lý chung","CPK-DP","Dự phòng","Dự phòng khối lượng, trượt giá","Khoản mục","Tự tính ở bảng tổng hợp","Mới"],["CPK","Chi phí quản lý chung","CPK-BH","Giữ lại bảo hành","Tiền giữ lại theo hợp đồng","Khoản mục","Tự tính ở bảng tổng hợp","Y90 cũ"],["CPK","Chi phí quản lý chung","CPK-GT","Thuế giá trị gia tăng","Thuế suất theo THAM_SO_THUE","Khoản mục","Tự tính ở bảng tổng hợp","Mới"]],"units":[["ĐVT chuẩn","ĐVT cũ trên app","Số dòng (lúc đối chiếu)","Chuyển thành","Ghi chú điều kiện đo"],["m2","m2",6290,"m2","Giữ nguyên"],["m3","bộ",4760,"bộ","Giữ nguyên"],["m","md",1938,"md","Mét dài theo tuyến (ống, dây, len, thanh, ray, gờ). TÁCH RIÊNG với m"],["md","m",1734,"m","Mét thẳng đo từng đoạn (chiều cao, độ sâu, chiều dài cọc, chiều rộng). TÁCH RIÊNG với md"],["kg","m3",1054,"m3","Giữ nguyên"],["tấn","kg",816,"kg","Giữ nguyên"],["cái","tấm",782,"tấm","Giữ nguyên"],["bộ","cái",748,"cái","Giữ nguyên"],["hệ","điểm",612,"điểm","Giữ nguyên"],["điểm","bao",544,"bao","Giữ nguyên"],["tấm","thùng",442,"thùng","Giữ nguyên"],["viên","m2 VL",374,"m2","Đo theo diện tích vật liệu (gồm chồng mí, hao hụt); ghi rõ ở cột Quy cách"],["bao","md kép",340,"md","Đo theo mét dài, tính cho 2 mặt hoặc 2 lớp; ghi rõ ở Quy cách"],["thùng","viên",272,"viên","Giữ nguyên"],["cuộn","m2 mặt",238,"m2","Đo theo diện tích mặt hoàn thiện"],["lít","m2 sàn quy đổi",136,"m2 sàn quy đổi","Diện tích sàn đã nhân hệ số quy đổi (móng, mái, sân…) — ĐVT riêng (người dùng chốt 02/10/2026)"],["lon","hệ",102,"hệ","Giữ nguyên"],["tuýp","m ngang",102,"md","Đo theo chiều ngang"],["cây","cây/tháng",102,"cây","Hình thức thuê theo tháng, xếp vào tài nguyên M hoặc VL thuê"],["tủ","lít",102,"lít","Giữ nguyên"],["cặp","tuýp",102,"tuýp","Giữ nguyên"],["mối","cây",68,"cây","Giữ nguyên"],["lỗ","tủ",68,"tủ","Giữ nguyên"],["cọc","bao 25kg",68,"bao","Khối lượng bao ghi ở cột Quy cách"],["ca","cuộn",68,"cuộn","Giữ nguyên"],["ngày","lon",68,"lon","Giữ nguyên"],["tháng","cặp",68,"cặp","Giữ nguyên"],["gói","m2 sàn",34,"m2 sàn","Diện tích sàn xây dựng thực tế (người dùng chốt 02/10/2026)"],["m2 sàn","mối",34,"mối","Giữ nguyên"],["m2 sàn quy đổi","lỗ",34,"lỗ","Giữ nguyên"],["","bộ/25kg",34,"bộ","Bộ 2 thành phần 25kg; ghi ở cột Quy cách"],["","ca",34,"ca","Giữ nguyên"],["","bộ/tháng",34,"bộ","Hình thức thuê theo tháng"],["","tấm/tháng",34,"tấm","Hình thức thuê theo tháng"],["","cọc",34,"cọc","Giữ nguyên"],["","m2 sàn xây dựng",34,"m2 sàn","Diện tích sàn xây dựng thực tế (người dùng chốt 02/10/2026)"]],"groups":[["Loại","Nhóm","Tên nhóm","Ví dụ"],["VL","TP","Thép & kim loại","Thép cuộn, thép cây, thép hình, lưới thép"],["VL","BT","Bê tông & vữa","Bê tông thương phẩm, vữa khô"],["VL","XD","Xi măng, cát, đá, gạch xây","Xi măng, cát vàng, đá 1x2, gạch 2 lỗ, gạch đặc, AAC"],["VL","CP","Cốp pha & giàn giáo","Ván phủ phim, cây chống, giàn giáo"],["VL","CT","Chống thấm & hóa chất","Sika, Kova, màng bitum, phụ gia"],["VL","DN","Điện","Dây cáp, ống gen, tủ, aptomat, công tắc, ổ cắm"],["VL","NN","Nước, ống & phụ kiện","Ống PPR, PVC, van, co nối"],["VL","TB","Thiết bị","Thiết bị vệ sinh, điều hòa, bình nóng lạnh, thiết bị bếp"],["VL","HT","Vật liệu hoàn thiện","Gạch ốp lát, đá, sơn, bột bả, thạch cao, sàn gỗ"],["VL","CK","Cửa, nhôm kính, inox, sắt","Cửa nhôm, kính, inox, khung thép"],["VL","MC","Gỗ & ván công nghiệp","MDF, MFC, plywood, gỗ tự nhiên, laminate"],["VL","DR","Đồ rời, decor, đèn","Sofa, rèm, tranh, đèn trang trí"],["VL","PK","Phụ kiện kim khí","Bản lề, ray, tay nắm, khóa"],["VL","PT","Vật tư phụ & tiêu hao","Băng dính, sơn xịt đánh dấu, đinh, keo, bao bọc"],["NC","NE","Thợ nề (xây, trát, cán)",""],["NC","SH","Thợ sắt, cốt thép, hàn",""],["NC","CP","Thợ cốp pha, giàn giáo",""],["NC","BT","Thợ bê tông",""],["NC","DI","Thợ điện",""],["NC","NU","Thợ nước",""],["NC","SN","Thợ sơn bả",""],["NC","OL","Thợ ốp lát",""],["NC","TC","Thợ thạch cao",""],["NC","MC","Thợ mộc",""],["NC","CK","Thợ cơ khí, nhôm kính, inox",""],["NC","PT","Lao động phổ thông",""],["NC","KS","Kỹ sư, KTS, họa viên, giám sát","Nhân sự kỹ thuật tính theo ca/giờ"],["M","DD","Máy đào, san, đầm",""],["M","BT","Máy trộn, bơm, đầm bê tông",""],["M","CT","Máy cẩu, vận thăng, nâng hạ",""],["M","HN","Máy hàn, cắt",""],["M","KT","Máy khoan, đục, cắt",""],["M","DK","Thiết bị đo đạc, khảo sát","Toàn đạc, laser, flycam, scanner 3D"],["M","DG","Dụng cụ thi công khác",""],["M","VC","Xe vận chuyển",""]],"prov":{"Tuyên Quang":"TQU","Cao Bằng":"CBA","Lào Cai":"LCA","Điện Biên":"DBI","Lai Châu":"LCH","Sơn La":"SLA","Lạng Sơn":"LSO","Thái Nguyên":"TNG","Phú Thọ":"PTH","Bắc Ninh":"BNI","Quảng Ninh":"QNI","Hà Nội":"HNO","Hải Phòng":"HPH","Hưng Yên":"HYE","Ninh Bình":"NBI","Thanh Hóa":"THA","Nghệ An":"NAN","Hà Tĩnh":"HTI","Quảng Trị":"QTR","Huế":"HUE","Đà Nẵng":"DNA","Quảng Ngãi":"QNG","Gia Lai":"GLA","Khánh Hòa":"KHO","Đắk Lắk":"DLA","Lâm Đồng":"LDO","Đồng Nai":"DNI","TP. Hồ Chí Minh":"HCM","Tây Ninh":"TNI","Đồng Tháp":"DTH","Vĩnh Long":"VLO","An Giang":"AGI","Cần Thơ":"CTH","Cà Mau":"CMA"}};
+function dgdmFind_(ss, name) { return findSheet(ss, name); }
+function dgdmAddHeader_(sh, header, log) {
+  const lc = sh.getLastColumn(), hs = sh.getRange(1, 1, 1, lc).getValues()[0].map(function (h) { return normalizeName(h); });
+  if (hs.indexOf(normalizeName(header)) !== -1) return lc;
+  if (sh.getMaxColumns() < lc + 1) sh.insertColumnAfter(lc);
+  sh.getRange(1, lc).copyTo(sh.getRange(1, lc + 1), SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
+  sh.getRange(1, lc + 1).setValue(header);
+  if (log) log.push('  + thêm cột "' + header + '" vào ' + sh.getName());
+  return lc + 1;
+}
+function dgdmMakeSeedSheet_(ss, name, rows, log, dryRun) {
+  if (dgdmFind_(ss, name)) { log.push('BO QUA tạo ' + name + ' (đã có)'); return; }
+  log.push((dryRun ? '[THỬ] sẽ tạo ' : 'TẠO ') + name + ' (' + (rows.length - 1) + ' dòng)');
+  if (dryRun) return;
+  const sh = ss.insertSheet(name), w = rows[0].length;
+  sh.getRange(1, 1, rows.length, w).setNumberFormat('@').setValues(rows.map(function (r) { return r.map(function (c) { return c === null || c === undefined ? '' : String(c); }); }));
+  sh.getRange(1, 1, 1, w).setFontWeight('bold').setBackground('#22272E').setFontColor('#FFFFFF').setWrap(true).setVerticalAlignment('middle');
+  sh.setFrozenRows(1); sh.setTabColor('#7A7568');
+  SHEET_MEMO_ = null;
+}
+function migrateDgdm(dryRun) {
+  dryRun = dryRun !== false;
+  const ss = getSS_(), log = [];
+  log.push(dryRun ? '=== CHẠY THỬ (không thay đổi gì) ===' : '=== ĐỔI TÊN THẬT ===');
+  if (!dryRun) {
+    try {
+      const stamp = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd HH:mm');
+      const copy = DriveApp.getFileById(ss.getId()).makeCopy('SAO LƯU trước khi đổi tên DGDM — ' + stamp);
+      log.push('ĐÃ SAO LƯU: ' + copy.getUrl());
+    } catch (e) { log.push('KHÔNG SAO LƯU ĐƯỢC (' + e + ') → DỪNG, chưa đổi gì.'); Logger.log(log.join('\n')); return log.join('\n'); }
+  }
+  SHEET_MEMO_ = null;
+  const all = {}; ss.getSheets().forEach(function (s) { all[normalizeName(s.getName())] = s; });
+  DGDM_RENAMES_.forEach(function (p) {
+    const src = all[normalizeName(p[0])], dst = all[normalizeName(p[1])];
+    if (dst) { log.push('BO QUA ' + p[0] + ' → ' + p[1] + ' (tên mới đã có)'); return; }
+    if (!src) { log.push('THIEU sheet ' + p[0] + ' (không có để đổi tên)'); return; }
+    log.push((dryRun ? '[THỬ] ' : 'ĐỔI TÊN ') + p[0] + ' → ' + p[1] + ' (' + Math.max(0, src.getLastRow() - 1) + ' dòng)');
+    if (!dryRun) { src.setName(p[1]); all[normalizeName(p[1])] = src; delete all[normalizeName(p[0])]; }
+  });
+  SHEET_MEMO_ = null;
+  // Gộp DGXD-Nguồn vào DGDM-Nguồn (chỉ THÊM dòng mã nguồn chưa có; KHÔNG xoá DGXD-Nguồn)
+  const nguon = findSheet(ss, 'DGDM-Nguồn'), oldN = ss.getSheets().filter(function (s) { return normalizeName(s.getName()) === normalizeName('DGXD-Nguồn'); })[0];
+  if (nguon && oldN && nguon.getSheetId() !== oldN.getSheetId()) {
+    const nv = nguon.getDataRange().getValues(), ov = oldN.getDataRange().getValues();
+    const nh = nv[0].map(normalizeName), have = {}; nv.slice(1).forEach(function (r) { have[String(r[0]).trim()] = 1; });
+    const oh = ov[0].map(normalizeName), add = [];
+    ov.slice(1).forEach(function (r) { const code = String(r[0]).trim(); if (!code || have[code]) return; add.push(nh.map(function (h) { const j = oh.indexOf(h); return j === -1 ? '' : r[j]; })); have[code] = 1; });
+    log.push((dryRun ? '[THỬ] ' : 'GỘP ') + 'DGXD-Nguồn → DGDM-Nguồn: thêm ' + add.length + ' mã nguồn mới (giữ nguyên DGXD-Nguồn)');
+    if (!dryRun && add.length) nguon.getRange(nguon.getLastRow() + 1, 1, add.length, nh.length).setValues(add);
+  } else log.push('Gộp nguồn: không có DGXD-Nguồn hoặc chưa có DGDM-Nguồn → bỏ qua');
+  // 3 sheet danh mục mới (từ form v2)
+  if (DGDM_SEED_.stages.length) {
+    dgdmMakeSeedSheet_(ss, 'DGDM-Giai đoạn hạng mục', DGDM_SEED_.stages, log, dryRun);
+    dgdmMakeSeedSheet_(ss, 'DGDM-Đơn vị tính', DGDM_SEED_.units, log, dryRun);
+    dgdmMakeSeedSheet_(ss, 'DGDM-Nhóm tài nguyên', DGDM_SEED_.groups, log, dryRun);
+  } else log.push('3 sheet danh mục mới (Giai đoạn hạng mục / Đơn vị tính / Nhóm tài nguyên) + Mã tỉnh: tạo bằng nút ở trang Đơn giá – Định mức (dgdm.html), không tạo ở bước này.');
+  // Thêm cột (không sửa / xoá cột hiện có)
+  const prov = findSheet(ss, 'DGDM-Tỉnh thành'), ct = findSheet(ss, PRICE_DB_SHEETS.ct), vt = findSheet(ss, PRICE_DB_SHEETS.vt);
+  if (!dryRun) {
+    if (prov) {
+      const col = dgdmAddHeader_(prov, 'Mã tỉnh', log), v = prov.getDataRange().getValues(), hs = v[0].map(normalizeName), ni = hs.indexOf(normalizeName('Tỉnh/thành'));
+      if (ni !== -1) { const out = v.slice(1).map(function (r) { return [String(r[col - 1] || '') || DGDM_SEED_.prov[String(r[ni]).trim()] || '']; }); if (out.length) prov.getRange(2, col, out.length, 1).setNumberFormat('@').setValues(out); }
+    }
+    if (ct) { dgdmAddHeader_(ct, 'Mã công việc', log); dgdmAddHeader_(ct, 'Mã hiệu ĐM', log); }
+    if (vt) dgdmAddHeader_(vt, 'Mã tài nguyên', log);
+  } else log.push('[THỬ] sẽ thêm cột: Mã tỉnh (DGDM-Tỉnh thành), Mã công việc + Mã hiệu ĐM (DGDM-Mã công việc công tác), Mã tài nguyên (DGDM-Vật tư thiết bị)');
+  SHEET_MEMO_ = null;
+  log.push('XONG. Sheet DGXD-<tỉnh> được GIỮ NGUYÊN. Sau khi đổi tên thật có thể chạy sortSheetsByPrefix() để xếp các tab DGDM- cạnh nhau.');
+  Logger.log(log.join('\n'));
+  return log.join('\n');
+}
+// Ghi mã mới (người dùng đã duyệt trên trang Đơn giá – Định mức) vào 2 CỘT MỚI; không đụng cột khác. data = { ct: {mã cũ: mã mới}, vt: {mã cũ: mã mới}, force: false }
+// Hai hàm để CHỌN trong menu Chạy của editor (không cần sửa code): Thu = chạy thử, That = đổi tên thật (tự sao lưu trước)
+function migrateDgdmThu() { return migrateDgdm(true); }
+function migrateDgdmThat() { return migrateDgdm(false); }
+// Nạp 3 sheet danh mục + cột Mã tỉnh từ trang web (dữ liệu lấy từ form v2). Chỉ TẠO sheet chưa có; sheet đã có thì bỏ qua (không ghi đè). data = { stages, units, groups, prov: {tên tỉnh: mã} }
+function seedDgdm_(ss, data) {
+  return withScriptLock_(function () {
+    const log = [];
+    [['DGDM-Giai đoạn hạng mục', data.stages], ['DGDM-Đơn vị tính', data.units], ['DGDM-Nhóm tài nguyên', data.groups]].forEach(function (p) {
+      if (!p[1] || p[1].length < 2) { log.push('BO QUA ' + p[0] + ' (không có dữ liệu)'); return; }
+      dgdmMakeSeedSheet_(ss, p[0], p[1], log, false);
+    });
+    const prov = findSheet(ss, 'DGDM-Tỉnh thành');
+    if (prov && data.prov) {
+      const col = dgdmAddHeader_(prov, 'Mã tỉnh', log), v = prov.getDataRange().getValues(), hs = v[0].map(normalizeName), ni = hs.indexOf(normalizeName('Tỉnh/thành'));
+      if (ni !== -1) { let n = 0; const out = v.slice(1).map(function (r) { const cur = String(r[col - 1] || '').trim(); if (cur) return [cur]; const c = data.prov[String(r[ni]).trim()] || ''; if (c) n++; return [c]; }); if (out.length) prov.getRange(2, col, out.length, 1).setNumberFormat('@').setValues(out); log.push('Mã tỉnh: điền ' + n + ' dòng'); }
+    } else log.push('Chưa có DGDM-Tỉnh thành / DG-Tỉnh thành → chưa điền Mã tỉnh');
+    SHEET_MEMO_ = null;
+    return { ok: true, log: log };
+  });
+}
+function applyDgdmCodes_(ss, data) {
+  return withScriptLock_(function () {
+    const res = { ok: true, written: {}, conflicts: [], missing: [] };
+    [['ct', 'Mã công việc'], ['vt', 'Mã tài nguyên']].forEach(function (p) {
+      const map = data[p[0]] || {}, keys = Object.keys(map);
+      if (!keys.length) return;
+      const sh = findSheet(ss, PRICE_DB_SHEETS[p[0]]);
+      if (!sh) { res.ok = false; res.missing.push(PRICE_DB_SHEETS[p[0]]); return; }
+      const col = dgdmAddHeader_(sh, p[1]);
+      if (p[0] === 'ct') dgdmAddHeader_(sh, 'Mã hiệu ĐM');
+      const lr = sh.getLastRow(); if (lr < 2) return;
+      const hs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(normalizeName), ci = hs.indexOf('Mã');
+      if (ci === -1) { res.ok = false; res.missing.push('cột Mã ở ' + sh.getName()); return; }
+      const codes = sh.getRange(2, ci + 1, lr - 1, 1).getValues(), cur = sh.getRange(2, col, lr - 1, 1).getValues(), out = [];
+      let n = 0;
+      for (let i = 0; i < codes.length; i++) {
+        const old = String(codes[i][0]).trim(), nw = map[old], have = String(cur[i][0] || '').trim();
+        if (nw && (!have || have === nw || data.force)) { out.push([nw]); if (have !== nw) n++; }
+        else { if (nw && have && have !== nw && res.conflicts.length < 50) res.conflicts.push(old + ': đang là ' + have + ', muốn ' + nw); out.push([cur[i][0]]); }
+      }
+      sh.getRange(2, col, out.length, 1).setNumberFormat('@').setValues(out);
+      res.written[p[0]] = n;
+    });
+    return res;
+  });
+}
+// Trạng thái chuyển đổi: danh sách tab DG*/DGDM*/DGXD* + số dòng + các cột mã mới đã có / đã điền bao nhiêu dòng
+function getDgdmStatus_(ss) {
+  const out = { sheets: [], renames: [], codes: {} };
+  ss.getSheets().forEach(function (s) {
+    const n = s.getName();
+    if (/^DG/i.test(n)) out.sheets.push({ name: n, rows: Math.max(0, s.getLastRow() - 1), cols: s.getLastColumn() });
+  });
+  const names = {}; out.sheets.forEach(function (s) { names[normalizeName(s.name)] = 1; });
+  DGDM_RENAMES_.forEach(function (p) { out.renames.push({ from: p[0], to: p[1], fromExists: !!names[normalizeName(p[0])], toExists: !!names[normalizeName(p[1])] }); });
+  [['ct', 'Mã công việc'], ['vt', 'Mã tài nguyên']].forEach(function (p) {
+    const sh = findSheet(ss, PRICE_DB_SHEETS[p[0]]); if (!sh || sh.getLastRow() < 2) { out.codes[p[0]] = { sheet: sh ? sh.getName() : '', has: false, filled: 0, rows: 0 }; return; }
+    const hs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(normalizeName), ci = hs.indexOf(normalizeName(p[1]));
+    let filled = 0; if (ci !== -1) { sh.getRange(2, ci + 1, sh.getLastRow() - 1, 1).getValues().forEach(function (r) { if (String(r[0]).trim()) filled++; }); }
+    out.codes[p[0]] = { sheet: sh.getName(), has: ci !== -1, filled: filled, rows: sh.getLastRow() - 1 };
+  });
+  return out;
+}
+
 // 2026-10-02: các bảng mới DTQT-/QLCL- dùng chung 1 bộ xử lý (get/add/update/delete + addBatch cho mã công việc & đơn giá tỉnh)
 var GEN_COLL_ = [['DtqtEstimate', 'dtqtEstimates'], ['DtqtCode', 'dtqtCodes'], ['DtqtPrice', 'dtqtPrices'], ['DtqtSettlement', 'dtqtSettlements'], ['QlclTask', 'qlclTasks'], ['QlclRecord', 'qlclRecords']];
 function genericColl_(ss, action, params) {
   if (typeof action !== 'string') return undefined;
+  if (action === 'getDgdmStatus') return getDgdmStatus_(ss);
+  if (action === 'seedDgdm') return seedDgdm_(ss, JSON.parse(params.data));
+  if (action === 'applyDgdmCodes') return applyDgdmCodes_(ss, JSON.parse(params.data));
   for (let i = 0; i < GEN_COLL_.length; i++) {
     const n = GEN_COLL_[i][0], key = GEN_COLL_[i][1], sh = SHEETS[key];
     if (action === 'get' + n + 's') return getAllData(ss, sh);
@@ -1643,7 +1795,7 @@ function findSheet(ss, sheetName) {
       if (!(k in SHEET_MEMO_)) SHEET_MEMO_[k] = sheets[i];
     }
   }
-  return SHEET_MEMO_[target] || null;
+  return SHEET_MEMO_[target] || (typeof DGDM_ALIAS_ !== 'undefined' && DGDM_ALIAS_[target] ? SHEET_MEMO_[normalizeName(DGDM_ALIAS_[target])] : null) || null;   // 2026-10-02: tên cũ ⇄ tên mới (DG- ⇄ DGDM-)
 }
 // Only creates when the tab genuinely does not exist (matched via findSheet,
 // so a Unicode/whitespace variant is reused, never duplicated). Used by the

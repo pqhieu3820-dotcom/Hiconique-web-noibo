@@ -7,7 +7,7 @@
   'use strict';
   var GROUPS = [
     { id: 'project', title: 'Dự án & thi công', hint: 'Bản vẽ, tiến độ, thi công', tools: ['dashboard', 'meeting', 'drive', 'lighting', 'khai-toan', 'estimate', 'quality', 'hicon-bim'] },
-    { id: 'sales', title: 'Kinh doanh & khách hàng', hint: 'Khách, báo giá, đơn hàng, hoa hồng', tools: ['crm', 'pricing', 'orders', 'commission'] },
+    { id: 'sales', title: 'Kinh doanh & khách hàng', hint: 'Khách, báo giá, đơn hàng, hoa hồng', tools: ['crm', 'pricing', 'dgdm', 'orders', 'commission'] },
     { id: 'hr', title: 'Nhân sự & chấm công', hint: 'Chấm công, lương, hiệu suất', tools: ['timesheet', 'payslip', 'staff-monitor'] },
     { id: 'finance', title: 'Tài chính & tài sản', hint: 'Sổ tài chính, tài sản – vật tư', tools: ['finance', 'equipment'] }
   ];

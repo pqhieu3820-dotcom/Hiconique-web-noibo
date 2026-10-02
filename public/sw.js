@@ -68,7 +68,7 @@ self.addEventListener('notificationclick', function (event) {
   );
 });
 
-const CACHE_VERSION = 'hiconique-shell-v203';
+const CACHE_VERSION = 'hiconique-shell-v204';
 
 const PRECACHE_URLS = [
   '/',
@@ -89,6 +89,7 @@ const PRECACHE_URLS = [
   '/pages/lighting.html',
   '/pages/crm.html',
   '/pages/equipment.html',
+  '/pages/dgdm.html',
   '/pages/estimate.html',
   '/pages/quality.html',
   '/pages/staff-monitor.html',
@@ -121,6 +122,9 @@ const PRECACHE_URLS = [
   '/js/lighting.js',
   '/js/crm.js',
   '/js/equipment.js',
+  '/js/dgdm.js',
+  '/js/dgdm-data.js',
+  '/js/dgdm-map.js',
   '/js/estimate.js',
   '/js/norms-data.js',
   '/js/quality-docs.js',
