@@ -541,6 +541,7 @@
     overlay.classList.remove('closing');
     var nIn = 1 + Math.floor(Math.random() * 10);   // 1 trong 5 kiểu hiệu ứng vào
     overlay.style.setProperty('--ain', nIn === 1 ? 'sGlassIn' : 'sIn' + nIn);
+    overlay.setAttribute('data-fi', String(nIn));   // hiệu ứng nền riêng của từng kiểu (css fx1..fx10)
     Array.prototype.forEach.call(document.querySelectorAll('.notif-panel'), function (n) { n.hidden = true; });   // đóng bảng thông báo nếu đang mở
     overlay.hidden = false;
     searchFilter = '';
@@ -559,6 +560,7 @@
     if (reduce) { overlay.hidden = true; return; }
     var nOut = 1 + Math.floor(Math.random() * 10);   // 1 trong 5 kiểu hiệu ứng thoát (độc lập với kiểu lúc vào)
     overlay.style.setProperty('--aout', nOut === 1 ? 'sGlassOut' : 'sOut' + nOut);
+    overlay.setAttribute('data-fo', String(nOut));
     overlay.classList.add('closing');   // chạy hiệu ứng thoát (css/portal.css: sGlassOut) rồi mới ẩn hẳn
     closeTimer = setTimeout(function () { overlay.hidden = true; overlay.classList.remove('closing'); closeTimer = null; }, 800);
   }

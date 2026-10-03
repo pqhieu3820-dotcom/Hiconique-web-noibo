@@ -63,6 +63,8 @@
 
 - 2026-10-04 (sw v239): **Hiệu ứng ngẫu nhiên**: ô tìm kiếm có 10 kiểu vào/thoát (`sGlassIn/sIn2..10`, `sGlassOut/sOut2..10`; 6 xoáy, 7 lướt ngang nghiêng, 8 rèm mở/khép từ giữa, 9 neon chớp, 10 bong bóng thạch); đổi sáng/tối có 5 kiểu ngẫu nhiên (loang tròn từ nút, quét chéo, rèm rơi, mở từ đường giữa, tan mờ phóng nhẹ — portal.js theme toggle, View Transitions). **Nút menu điện thoại**: 3 gạch biến hình thành × + gợn sóng, menu xổ xuống có rèm mở và các mục trượt vào lần lượt (css `.menu-toggle`, `.primary-nav` ≤1024px dùng visibility/clip-path thay display). **Logo HICONIQUE**: rê chuột nghiêng + quét sáng, bấm xoay một vòng nảy kèm vòng sáng rồi mới về trang chủ (`initBrandLinks`; đang ở trang chủ thì cuộn mượt lên đầu).
 
+- 2026-10-04 (sw v240): bỏ vầng tròn chung của ô tìm kiếm; mỗi kiểu vào/thoát có HIỆU ỨNG NỀN riêng chọn theo `data-fi`/`data-fo` trên `.search-overlay` (css `fx1..fx10`, dùng `::before/::after` của overlay; thoát = chạy ngược): 1 tia sáng ngang, 2 màn sáng quét xuống, 3 chớp chạm đất, 4 sương trôi, 5 tia nắng xoay, 6 xoáy ánh sáng, 7 vệt tốc độ ngang, 8 trụ sáng mở từ giữa, 9 vạch quét + viền neon chớp, 10 bong bóng nổi. Số kiểu khớp với kiểu chuyển động của ô kính cùng số.
+
 # Ghi chú dự án — đọc trước khi làm việc
 
 File này tồn tại để không phải hỏi lại các thông tin dưới đây mỗi khi đổi máy hoặc mở đoạn
