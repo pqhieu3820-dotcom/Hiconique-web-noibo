@@ -712,6 +712,21 @@
     </div>
 
     <div class="pr-tab-panel" data-tab-panel="prelim">
+    <style>
+      #prPrelimQtyCard .pr-table { min-width: 1280px; }
+      .est-coef-guide { margin: 4px 24px 12px; font-size: .8125rem; } .est-coef-guide summary { cursor: pointer; color: var(--pr-bronze); font-weight: 600; padding: 6px 0; } .est-coef-guide .pr-table td { white-space: normal; }
+      #prPrelimQtyCard { overflow-x: auto; }
+      #prelimRows input.pr-input { height: 32px; min-width: 70px; }
+      #prelimRows input.dm { width: 78px; text-align: right; }
+      #prelimRows input.nm { min-width: 180px; } #prelimRows input.gp { min-width: 110px; } #prelimRows input.un { width: 80px; }
+      #prelimRows select.pr-input { height: 32px; min-width: 110px; }
+      #prelimRows td.note { font-size: .75rem; color: var(--pr-muted); min-width: 200px; white-space: normal; }
+      #prelimRows .prelim-del { border: none; background: transparent; color: var(--pr-muted); cursor: pointer; font-size: 1rem; padding: 4px 8px; }
+      #prelimRows .prelim-del:hover { color: #C55555; }
+      #prelimRows tr.custom td { background: color-mix(in srgb, var(--pr-bronze, #B08D57) 6%, transparent); }
+      .prelim-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 24px 0; }
+      .prelim-hint { font-size: .75rem; color: var(--pr-muted); line-height: 1.5; }
+    </style>
     <div class="pr-card" id="prPrelimQtyCard">
       <div class="pr-card-head">
         <div>
@@ -725,9 +740,14 @@
         <div><span class="pr-field-label">Số phòng vệ sinh</span><input type="number" min="0" step="1" class="pr-input mono" id="prelimToiletCount" value="2"></div>
       </div>
       <table class="pr-table">
-        <thead><tr><th>Nhóm</th><th>Hạng mục</th><th class="num">KL thấp</th><th class="num">KL cao</th><th>ĐVT</th><th class="num">Đơn giá tham khảo</th><th class="num">Thành tiền thấp</th><th class="num">Thành tiền cao</th></tr></thead>
+        <thead><tr><th>Nhóm</th><th>Hạng mục</th><th>ĐVT</th><th>Cơ sở tính</th><th class="num">ĐM thấp</th><th class="num">ĐM cao</th><th class="num">KL thấp</th><th class="num">KL cao</th><th class="num">Đơn giá tham khảo</th><th class="num">Thành tiền thấp</th><th class="num">Thành tiền cao</th><th>Ghi chú</th><th></th></tr></thead>
         <tbody id="prelimRows"></tbody>
       </table>
+      <div class="prelim-tools">
+        <button type="button" class="pr-btn pr-btn-primary" id="prelimAddRow">+ Thêm dòng</button>
+        <button type="button" class="pr-btn pr-btn-ghost" id="prelimReset">Khôi phục định mức mặc định</button>
+        <span class="prelim-hint">Công thức: <b>KL = ĐM × cơ sở tính</b> (m² sàn · số phòng VS · cố định 1) · <b>Thành tiền = KL × đơn giá</b>. Sửa ĐM/đơn giá trực tiếp trên bảng; dòng thêm tay & số đã sửa được nhớ trên máy này.</span>
+      </div>
       <div class="pr-totals">
         <div class="pr-totals-row grand"><span>TỔNG THÀNH TIỀN (KHOẢNG)</span><span class="pr-amount" id="prelimGrandTotal">0</span></div>
       </div>
@@ -763,6 +783,17 @@
         <div><span class="pr-field-label">Đơn giá mái (đ/m²)</span><input type="text" inputmode="numeric" class="pr-input mono" id="estRoofPrice" data-money-input></div>
         <div><span class="pr-field-label">Diện tích mái quy đổi</span><div class="pr-amount" id="estRoofArea" style="padding-top:8px;">0</div></div>
       </div>
+      <!-- 2026-10-03: chép từ sheet "DGDM-Tính nhanh" (CÁCH CHỌN HỆ SỐ DIỆN TÍCH) -->
+      <details class="est-coef-guide">
+        <summary>Cách chọn hệ số diện tích móng / mái</summary>
+        <table class="pr-table"><thead><tr><th>Hạng mục</th><th>Giá trị gợi ý</th><th>Mô tả</th></tr></thead><tbody>
+          <tr><td>Móng đơn</td><td class="mono">0,30 – 0,40</td><td>Nền đất tốt, tải trọng vừa; chỉ dùng khi hồ sơ kết cấu cho phép.</td></tr>
+          <tr><td>Móng băng</td><td class="mono">0,50 – 0,70</td><td>Nhà phố phổ biến; phụ thuộc địa chất, nhịp và tải trọng.</td></tr>
+          <tr><td>Mái tôn / mái BTCT / mái ngói</td><td class="mono">0,20–0,30 / 0,40–0,50 / 0,60–0,80</td><td>Chọn theo cấu tạo thực tế và quy ước của nhà thầu.</td></tr>
+          <tr><td>Tầng hầm, cọc, nền yếu</td><td>Báo riêng</td><td>Không dùng công thức nhanh; phải có khảo sát địa chất và thiết kế.</td></tr>
+          <tr><td>Dự phòng phát sinh</td><td class="mono">5% – 10%</td><td>Ngân sách nên chuẩn bị = chi phí × (1 + dự phòng); file gốc dùng 7%.</td></tr>
+        </tbody></table>
+      </details>
 
       <div class="pr-client-grid" style="grid-template-columns:repeat(3,1fr);border-top:none;">
         <div><span class="pr-field-label">Đơn giá phần thô (đ/m²)</span><input type="text" inputmode="numeric" class="pr-input mono" id="estRoughPrice" data-money-input value="2.800.000"></div>
@@ -1435,27 +1466,38 @@
     // khoá thay vì khớp tên chính xác vì 2 bên đặt tên khác hệ thống (VD "Thép
     // cốt bê tông" ở đây vs "Thép cuộn D6 CB240-T" bên vật tư tỉnh).
     var PRELIM_QTY_ITEMS = [
-      { group: 'Kết cấu', name: 'Bê tông kết cấu', unit: 'm3', basis: 'area', demLow: 0.25, demHigh: 0.38, keywords: ['bê tông'] },
-      { group: 'Kết cấu', name: 'Thép cốt bê tông', unit: 'kg', basis: 'area', demLow: 35, demHigh: 60, keywords: ['thép'] },
-      { group: 'Kết cấu', name: 'Cốp pha', unit: 'm2', basis: 'area', demLow: 2.2, demHigh: 3.2, keywords: ['cốp pha', 'copha'] },
-      { group: 'Xây trát', name: 'Gạch xây quy đổi', unit: 'viên', basis: 'area', demLow: 120, demHigh: 200, keywords: ['gạch xây', 'gạch'] },
-      { group: 'Xây trát', name: 'Diện tích tường xây', unit: 'm2', basis: 'area', demLow: 2.2, demHigh: 3.2, keywords: ['xây tường', 'gạch xây', 'gạch'] },
-      { group: 'Xây trát', name: 'Diện tích trát hai mặt', unit: 'm2', basis: 'area', demLow: 4.5, demHigh: 6.5, keywords: ['trát'] },
-      { group: 'Xây trát', name: 'Xi măng xây-trát-cán', unit: 'bao 50kg', basis: 'area', demLow: 0.45, demHigh: 0.75, keywords: ['xi măng'] },
-      { group: 'Xây trát', name: 'Cát xây-tô-cán', unit: 'm3', basis: 'area', demLow: 0.06, demHigh: 0.10, keywords: ['cát'] },
-      { group: 'Chống thấm', name: 'Diện tích chống thấm', unit: 'm2', basis: 'area', demLow: 0.08, demHigh: 0.15, keywords: ['chống thấm'] },
-      { group: 'Hoàn thiện', name: 'Gạch lát nền', unit: 'm2', basis: 'area', demLow: 0.75, demHigh: 0.95, keywords: ['gạch lát', 'gạch ốp'] },
-      { group: 'Hoàn thiện', name: 'Diện tích sơn', unit: 'm2', basis: 'area', demLow: 3.5, demHigh: 5.5, keywords: ['sơn'] },
-      { group: 'Hoàn thiện', name: 'Trần thạch cao', unit: 'm2', basis: 'area', demLow: 0.55, demHigh: 0.85, keywords: ['thạch cao', 'trần'] },
-      { group: 'Cửa', name: 'Cửa nhôm kính/vách kính', unit: 'm2', basis: 'area', demLow: 0.15, demHigh: 0.30, keywords: ['kính', 'nhôm'] },
-      { group: 'Cửa', name: 'Bộ cửa đi', unit: 'bộ', basis: 'area', demLow: 0.04, demHigh: 0.06, keywords: ['cửa đi', 'cửa gỗ'] },
-      { group: 'Điện', name: 'Điểm điện', unit: 'điểm', basis: 'area', demLow: 0.30, demHigh: 0.55, keywords: ['điện', 'ổ cắm', 'công tắc', 'đèn'] },
-      { group: 'Nước', name: 'Điểm cấp/thoát nước', unit: 'điểm', basis: 'area', demLow: 0.05, demHigh: 0.09, keywords: ['ống nước', 'cấp nước', 'thoát nước'] },
-      { group: 'Thiết bị VS', name: 'Bồn cầu', unit: 'bộ', basis: 'toilet', demLow: 1, demHigh: 1, keywords: ['bồn cầu'] },
-      { group: 'Thiết bị VS', name: 'Lavabo', unit: 'bộ', basis: 'toilet', demLow: 1, demHigh: 1, keywords: ['lavabo', 'chậu rửa'] },
-      { group: 'Thiết bị VS', name: 'Sen tắm', unit: 'bộ', basis: 'toilet', demLow: 1, demHigh: 1, keywords: ['sen tắm', 'vòi sen'] }
+      { group: 'Kết cấu', name: 'Bê tông kết cấu', note: 'Không gồm bê tông lót/cọc đặc biệt', unit: 'm3', basis: 'area', demLow: 0.25, demHigh: 0.38, keywords: ['bê tông'] },
+      { group: 'Kết cấu', name: 'Thép cốt bê tông', note: 'Nhịp lớn, công xôn hoặc tải trọng cao có thể vượt', unit: 'kg', basis: 'area', demLow: 35, demHigh: 60, keywords: ['thép'] },
+      { group: 'Kết cấu', name: 'Cốp pha', note: 'Tính theo diện tích tiếp xúc bê tông', unit: 'm2', basis: 'area', demLow: 2.2, demHigh: 3.2, keywords: ['cốp pha', 'copha'] },
+      { group: 'Xây trát', name: 'Gạch xây quy đổi', note: 'Phụ thuộc tỷ lệ tường 100/200 và loại gạch', unit: 'viên', basis: 'area', demLow: 120, demHigh: 200, keywords: ['gạch xây', 'gạch'] },
+      { group: 'Xây trát', name: 'Diện tích tường xây', note: 'Chưa trừ cửa ở bước dự toán nhanh', unit: 'm2', basis: 'area', demLow: 2.2, demHigh: 3.2, keywords: ['xây tường', 'gạch xây', 'gạch'] },
+      { group: 'Xây trát', name: 'Diện tích trát hai mặt', note: 'Phụ thuộc mặt đứng và vách ngăn', unit: 'm2', basis: 'area', demLow: 4.5, demHigh: 6.5, keywords: ['trát'] },
+      { group: 'Xây trát', name: 'Xi măng xây-trát-cán', note: 'Không gồm xi măng trong bê tông thương phẩm', unit: 'bao 50kg', basis: 'area', demLow: 0.45, demHigh: 0.75, keywords: ['xi măng'] },
+      { group: 'Xây trát', name: 'Cát xây-tô-cán', note: 'Kiểm soát bùn sét và hao hụt', unit: 'm3', basis: 'area', demLow: 0.06, demHigh: 0.10, keywords: ['cát'] },
+      { group: 'Chống thấm', name: 'Diện tích chống thấm', note: 'WC, ban công, mái, cổ ống', unit: 'm2', basis: 'area', demLow: 0.08, demHigh: 0.15, keywords: ['chống thấm'] },
+      { group: 'Hoàn thiện', name: 'Gạch lát nền', note: 'Chưa cộng hao hụt 3%-7%', unit: 'm2', basis: 'area', demLow: 0.75, demHigh: 0.95, keywords: ['gạch lát', 'gạch ốp'] },
+      { group: 'Hoàn thiện', name: 'Diện tích sơn', note: 'Tường và trần; phụ thuộc mật độ phòng', unit: 'm2', basis: 'area', demLow: 3.5, demHigh: 5.5, keywords: ['sơn'] },
+      { group: 'Hoàn thiện', name: 'Trần thạch cao', note: 'Không phải mọi khu vực đều làm trần', unit: 'm2', basis: 'area', demLow: 0.55, demHigh: 0.85, keywords: ['thạch cao', 'trần'] },
+      { group: 'Cửa', name: 'Cửa nhôm kính/vách kính', note: 'Phụ thuộc mặt đứng và số phòng', unit: 'm2', basis: 'area', demLow: 0.15, demHigh: 0.30, keywords: ['kính', 'nhôm'] },
+      { group: 'Cửa', name: 'Bộ cửa đi', note: 'Bao gồm cửa phòng/WC ở mức sơ bộ', unit: 'bộ', basis: 'area', demLow: 0.035, demHigh: 0.06, keywords: ['cửa đi', 'cửa gỗ'] },
+      { group: 'Điện', name: 'Điểm điện', note: 'Ổ cắm, công tắc, đèn và nguồn cơ bản', unit: 'điểm', basis: 'area', demLow: 0.30, demHigh: 0.55, keywords: ['điện', 'ổ cắm', 'công tắc', 'đèn'] },
+      { group: 'Nước', name: 'Điểm cấp/thoát nước', note: 'Chưa gồm tưới sân vườn/hồ bơi', unit: 'điểm', basis: 'area', demLow: 0.05, demHigh: 0.09, keywords: ['ống nước', 'cấp nước', 'thoát nước'] },
+      { group: 'Thiết bị VS', name: 'Bồn cầu', note: 'Một bộ/phòng vệ sinh', unit: 'bộ', basis: 'toilet', demLow: 1, demHigh: 1, keywords: ['bồn cầu'] },
+      { group: 'Thiết bị VS', name: 'Lavabo', note: 'Một bộ/phòng vệ sinh', unit: 'bộ', basis: 'toilet', demLow: 1, demHigh: 1, keywords: ['lavabo', 'chậu rửa'] },
+      { group: 'Thiết bị VS', name: 'Sen tắm', note: 'Một bộ/phòng vệ sinh có khu tắm', unit: 'bộ', basis: 'toilet', demLow: 1, demHigh: 1, keywords: ['sen tắm', 'vòi sen'] }
     ];
-    var prelimPriceOverrides = {}; // { itemName: giá tay do user sửa, ghi đè giá gợi ý }
+    // 2026-10-03: KHUNG CỨNG thay sheet "DGDM-Định mức khối lượng sơ bộ" (đã chép hết định mức + ghi chú vào PRELIM_QTY_ITEMS).
+    // Sửa ĐM thấp/cao, đơn giá ngay trên bảng; "+ Thêm dòng" để thêm hạng mục riêng (cơ sở tính: m² sàn / phòng VS / cố định).
+    // Phần người dùng chỉnh (ĐM, giá, dòng thêm) lưu localStorage 'hq_prelim_v2' trên máy này; "Khôi phục" xoá hết chỉnh sửa.
+    var PRELIM_KEY = 'hq_prelim_v2', PRELIM_BASIS = { area: 'm² sàn', toilet: 'Phòng VS', fixed: 'Cố định (×1)' };
+    var prelimState = (function () { try { return JSON.parse(localStorage.getItem(PRELIM_KEY) || '') || {}; } catch (e) { return {}; } })();
+    prelimState.edits = prelimState.edits || {}; prelimState.custom = prelimState.custom || []; prelimState.prices = prelimState.prices || {};
+    var prelimPriceOverrides = prelimState.prices; // { key: giá tay do user sửa, ghi đè giá gợi ý }
+    function savePrelim() { try { localStorage.setItem(PRELIM_KEY, JSON.stringify(prelimState)); } catch (e) { /* bỏ qua */ } }
+    function prelimItems() {
+      var base = PRELIM_QTY_ITEMS.map(function (it) { var e = prelimState.edits[it.name] || {}; return Object.assign({}, it, { key: it.name, demLow: e.demLow != null ? e.demLow : it.demLow, demHigh: e.demHigh != null ? e.demHigh : it.demHigh, custom: false }); });
+      return base.concat(prelimState.custom.map(function (c) { return Object.assign({ keywords: [] }, c, { key: c.id, custom: true }); }));
+    }
     document.getElementById('prelimToiletCount').addEventListener('input', recalcPrelimQty);
 
     function recalcPrelimQty() {
@@ -1469,39 +1511,65 @@
       notice.textContent = provinceName
         ? 'Đơn giá tham khảo tự dò theo tỉnh: ' + provinceName + ' — dò không ra thì để 0, tự nhập tay.'
         : 'Chưa chọn tỉnh ở tab "Đơn giá theo tỉnh" nên chưa có đơn giá tham khảo — tự nhập tay hoặc quay lại chọn tỉnh trước.';
-
+      var dm = function (v) { return String(+(+v).toFixed(4)).replace('.', ','); };
       var grandLow = 0, grandHigh = 0;
-      document.getElementById('prelimRows').innerHTML = PRELIM_QTY_ITEMS.map(function (item) {
-        var basisValue = item.basis === 'toilet' ? toiletCount : floorArea;
-        var klLow = item.demLow * basisValue;
-        var klHigh = item.demHigh * basisValue;
-        var override = prelimPriceOverrides[item.name];
-        var suggested = entries ? suggestUnitPrice(entries, item.keywords, item.unit) : null;
+      document.getElementById('prelimRows').innerHTML = prelimItems().map(function (item) {
+        var basisValue = item.basis === 'toilet' ? toiletCount : item.basis === 'fixed' ? 1 : floorArea;
+        var klLow = (+item.demLow || 0) * basisValue, klHigh = (+item.demHigh || 0) * basisValue;
+        var override = prelimPriceOverrides[item.key];
+        var suggested = entries && item.keywords && item.keywords.length ? suggestUnitPrice(entries, item.keywords, item.unit) : null;
         var priceLow = override !== undefined ? override : (suggested ? suggested.low : 0);
         var priceHigh = override !== undefined ? override : (suggested ? suggested.high : 0);
-        var totalLow = klLow * priceLow;
-        var totalHigh = klHigh * priceHigh;
-        grandLow += totalLow;
-        grandHigh += totalHigh;
-        return '<tr data-prelim-row="' + escapeHtml(item.name) + '">' +
-          '<td>' + escapeHtml(item.group) + '</td>' +
-          '<td>' + escapeHtml(item.name) + '</td>' +
+        var totalLow = klLow * priceLow, totalHigh = klHigh * priceHigh;
+        grandLow += totalLow; grandHigh += totalHigh;
+        var basisSel = '<select class="pr-input" data-pf="basis">' + Object.keys(PRELIM_BASIS).map(function (k) { return '<option value="' + k + '"' + (item.basis === k ? ' selected' : '') + '>' + PRELIM_BASIS[k] + '</option>'; }).join('') + '</select>';
+        return '<tr data-prelim-row="' + escapeHtml(item.key) + '"' + (item.custom ? ' class="custom"' : '') + '>' +
+          '<td>' + (item.custom ? '<input class="pr-input gp" data-pf="group" value="' + escapeHtml(item.group || '') + '">' : escapeHtml(item.group)) + '</td>' +
+          '<td>' + (item.custom ? '<input class="pr-input nm" data-pf="name" value="' + escapeHtml(item.name || '') + '" placeholder="Tên hạng mục">' : escapeHtml(item.name)) + '</td>' +
+          '<td>' + (item.custom ? '<input class="pr-input un" data-pf="unit" value="' + escapeHtml(item.unit || '') + '">' : escapeHtml(item.unit)) + '</td>' +
+          '<td>' + (item.custom ? basisSel : PRELIM_BASIS[item.basis] || item.basis) + '</td>' +
+          '<td class="num"><input class="pr-input mono dm" data-pf="demLow" inputmode="decimal" value="' + dm(item.demLow) + '"></td>' +
+          '<td class="num"><input class="pr-input mono dm" data-pf="demHigh" inputmode="decimal" value="' + dm(item.demHigh) + '"></td>' +
           '<td class="num">' + fmt(klLow) + '</td>' +
           '<td class="num">' + fmt(klHigh) + '</td>' +
-          '<td>' + escapeHtml(item.unit) + '</td>' +
           '<td class="num"><input class="pr-input mono" type="text" inputmode="numeric" data-money-input data-prelim-price value="' + HiconiqueMoney.format(Math.round(priceLow)) + '"></td>' +
           '<td class="num pr-amount">' + fmt(totalLow) + '</td>' +
           '<td class="num pr-amount">' + fmt(totalHigh) + '</td>' +
+          '<td class="note">' + (item.custom ? '<input class="pr-input" data-pf="note" value="' + escapeHtml(item.note || '') + '" placeholder="Ghi chú">' : escapeHtml(item.note || '')) + '</td>' +
+          '<td>' + (item.custom ? '<button type="button" class="prelim-del" title="Xoá dòng" data-prelim-del>×</button>' : '') + '</td>' +
         '</tr>';
       }).join('');
       if (typeof HiconiqueMoney !== 'undefined') HiconiqueMoney.bindAll(document.getElementById('prelimRows'));
       document.getElementById('prelimGrandTotal').textContent = fmt(grandLow) + ' – ' + fmt(grandHigh);
     }
-    document.getElementById('prelimRows').addEventListener('input', function (e) {
-      if (!e.target.matches('[data-prelim-price]')) return;
-      var name = e.target.closest('tr').getAttribute('data-prelim-row');
-      prelimPriceOverrides[name] = HiconiqueMoney.parse(e.target.value);
-      recalcPrelimQty();
+    var prelimTimer = null;
+    function prelimField(e) {
+      var tr = e.target.closest('tr'); if (!tr) return;
+      var key = tr.getAttribute('data-prelim-row');
+      if (e.target.matches('[data-prelim-price]')) { prelimPriceOverrides[key] = HiconiqueMoney.parse(e.target.value); }
+      else if (e.target.matches('[data-pf]')) {
+        var f = e.target.getAttribute('data-pf'), v = e.target.value;
+        if (f === 'demLow' || f === 'demHigh') v = parseFloat(String(v).replace(',', '.')) || 0;
+        var c = prelimState.custom.filter(function (x) { return x.id === key; })[0];
+        if (c) c[f] = v; else { prelimState.edits[key] = prelimState.edits[key] || {}; prelimState.edits[key][f] = v; }
+      } else return;
+      savePrelim();
+      clearTimeout(prelimTimer); prelimTimer = setTimeout(recalcPrelimQty, e.type === 'change' ? 0 : 700);   // gõ xong mới tính lại để không mất con trỏ
+    }
+    document.getElementById('prelimRows').addEventListener('change', prelimField);
+    document.getElementById('prelimRows').addEventListener('input', function (e) { if (e.target.matches('[data-prelim-price], input.dm')) prelimField(e); });
+    document.getElementById('prelimRows').addEventListener('click', function (e) {
+      if (!e.target.matches('[data-prelim-del]')) return;
+      var key = e.target.closest('tr').getAttribute('data-prelim-row');
+      prelimState.custom = prelimState.custom.filter(function (x) { return x.id !== key; }); delete prelimPriceOverrides[key]; savePrelim(); recalcPrelimQty();
+    });
+    document.getElementById('prelimAddRow').addEventListener('click', function () {
+      prelimState.custom.push({ id: 'c' + Date.now(), group: 'Khác', name: '', unit: 'm2', basis: 'area', demLow: 0, demHigh: 0, note: '' });
+      savePrelim(); recalcPrelimQty();
+      var rows = document.querySelectorAll('#prelimRows tr.custom'), last = rows[rows.length - 1]; if (last) { var n = last.querySelector('[data-pf="name"]'); if (n) n.focus(); }
+    });
+    document.getElementById('prelimReset').addEventListener('click', function () {
+      prelimState = { edits: {}, custom: [], prices: {} }; prelimPriceOverrides = prelimState.prices; savePrelim(); recalcPrelimQty();
     });
 
     // ---------- Helpers gọi thẳng Apps Script cho 6 công cụ theo dự án + 2 tab tham khảo ----------
