@@ -158,19 +158,16 @@
     .wiki-col-del:hover { color: var(--color-destructive); }
     .wiki-col li a { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     /* 2026-10-03: mỗi danh mục hiện tối đa 8 tài liệu; nhiều hơn → khung có thanh trượt (chiều cao do JS đo theo 8 dòng thật, xem fitColumns) */
-    .wiki-col ul.wiki-ul-scroll { overflow-y: auto; overscroll-behavior: contain; padding-right: 6px; scrollbar-width: thin; scrollbar-color: var(--color-bronze) transparent; }
-    .wiki-col ul.wiki-ul-scroll::-webkit-scrollbar { width: 6px; }
-    .wiki-col ul.wiki-ul-scroll::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--color-bronze) 60%, transparent); border-radius: 6px; }
+    .wiki-col ul.wiki-ul-scroll { overflow-y: auto; overscroll-behavior: contain; padding-right: 6px; }   /* thanh cuộn dùng kiểu xám chung của web (tokens.css) */
     .wiki-col h3 { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     .wiki-col h3 .wiki-col-n { font-family: var(--font-mono); font-size: 0.6875rem; font-weight: 500; color: var(--color-text-faint); margin-left: 8px; }
     .wiki-col h3 .wiki-col-title { min-width: 0; }
     .wiki-sort-btn { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 4px; background: none; border: 1px solid var(--color-border); border-radius: 6px; color: var(--color-text-faint); font-family: 'Inter', sans-serif; font-size: 0.6875rem; font-weight: 500; padding: 3px 8px; cursor: pointer; transition: border-color .15s ease, color .15s ease; }
     .wiki-sort-btn:hover { border-color: var(--color-bronze); color: var(--color-bronze); }
     .wiki-sort-btn svg { width: 12px; height: 12px; }
-    .wiki-mv { display: inline-flex; flex-direction: column; margin-right: 8px; vertical-align: middle; }
-    .wiki-mv button { background: none; border: none; padding: 1px 4px; line-height: 1; font-size: 0.6875rem; color: var(--color-text-faint); cursor: pointer; }
-    .wiki-mv button:hover:not(:disabled) { color: var(--color-bronze); }
-    .wiki-mv button:disabled { opacity: .25; cursor: default; }
+    /* đường kẻ định vị chỗ chèn khi kéo-thả: mảnh, nằm giữa khe 2 dòng, chấm tròn nhỏ ở đầu */
+    .wiki-drop-line { position: fixed; z-index: 920; height: 2px; border-radius: 2px; background: color-mix(in srgb, var(--color-bronze) 85%, transparent); pointer-events: none; transition: top .08s ease; }
+    .wiki-drop-line::before { content: ''; position: absolute; left: -2px; top: -2px; width: 6px; height: 6px; border-radius: 50%; background: var(--color-bronze); }
     .wiki-act { display: inline-flex; align-items: center; flex: 0 0 auto; }
     .wiki-sort-menu { position: absolute; z-index: 950; min-width: 230px; padding: 6px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 10px; box-shadow: 0 12px 32px rgba(0,0,0,.28); }
     .wiki-sort-menu .wsm-h { padding: 6px 10px 4px; font-size: 0.625rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--color-text-faint); }
@@ -245,8 +242,10 @@
     .dc-badge { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: #C75B5B; color: #fff; font-size: 0.6875rem; display: inline-flex; align-items: center; justify-content: center; }
     .dc-badge[hidden] { display: none; }
     .wiki-col li.dragging { opacity: .45; }
-    .wiki-drag-ghost { position: fixed; z-index: 900; pointer-events: none; list-style: none; background: var(--color-surface); border: 1px solid var(--color-bronze); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,.3); opacity: .95; }
-    .wiki-drag-ghost a { display: flex; padding: 10px 14px; color: var(--color-text); text-decoration: none; }
+    .wiki-drag-ghost { position: fixed; z-index: 900; pointer-events: none; list-style: none; max-width: 420px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md, 10px); box-shadow: 0 8px 24px rgba(0,0,0,.18); opacity: .92; transform: rotate(-1deg); }
+    .wiki-drag-ghost a { display: flex; align-items: center; padding: 10px 14px; color: var(--color-text); text-decoration: none; font-size: var(--text-sm, .875rem); font-weight: 500; }
+    .wiki-drag-ghost .wiki-doc-code { color: var(--color-bronze); font-family: var(--font-mono); font-size: 0.75rem; margin-right: 6px; }
+    .wiki-drag-ghost .wiki-act, .wiki-drag-ghost .wiki-doc-tag { display: none; }
     .wiki-col.wiki-drop { outline: 2px dashed var(--color-bronze); outline-offset: 6px; border-radius: 10px; background: color-mix(in srgb, var(--color-bronze) 6%, transparent); }
     body.wiki-dragging { user-select: none; cursor: grabbing; }
     body.wiki-dragging .wiki-col li { cursor: grabbing; }
@@ -433,9 +432,9 @@
           '</h3><ul>' +
           g.items.map(function (d, di) {
             var dl = TaskManager.getDocLinks(d), multi = dl.length > 1;
-            return '<li><a href="' + (multi ? '#' : escapeHtml(d.url || '#')) + '"' + (multi ? ' data-multi="' + escapeHtml(d.id) + '"' : ' target="_blank" rel="noopener"') + '>' +
+            return '<li data-docid="' + escapeHtml(d.id) + '"><a href="' + (multi ? '#' : escapeHtml(d.url || '#')) + '"' + (multi ? ' data-multi="' + escapeHtml(d.id) + '"' : ' target="_blank" rel="noopener"') + '>' +
               '<span>' + (d.code ? '<span class="wiki-doc-code">' + escapeHtml(TaskManager.canonDocCode ? TaskManager.canonDocCode(d.code) : d.code) + '</span>' : (canManage ? '<span class="wiki-doc-tag">Chưa có mã</span>' : '')) + escapeHtml(d.name) + (multi ? ' <span class="wiki-doc-tag">' + dl.length + ' link</span>' : '') + '</span>' +
-              (canManage ? '<span class="wiki-act">' + (g.items.length > 1 ? '<span class="wiki-mv"><button type="button" class="wiki-up" data-mv="-1" data-id="' + escapeHtml(d.id) + '" title="Đưa lên"' + (di === 0 ? ' disabled' : '') + '>▲</button><button type="button" class="wiki-dn" data-mv="1" data-id="' + escapeHtml(d.id) + '" title="Đưa xuống"' + (di === g.items.length - 1 ? ' disabled' : '') + '>▼</button></span>' : '') + '<button type="button" class="wiki-col-edit" data-edit-id="' + escapeHtml(d.id) + '">Sửa</button><button type="button" class="wiki-col-del" data-id="' + escapeHtml(d.id) + '">Xoá</button></span>' : '<span>&rarr;</span>') +
+              (canManage ? '<span class="wiki-act">' + '<button type="button" class="wiki-col-edit" data-edit-id="' + escapeHtml(d.id) + '">Sửa</button><button type="button" class="wiki-col-del" data-id="' + escapeHtml(d.id) + '">Xoá</button></span>' : '<span>&rarr;</span>') +
             '</a></li>';
           }).join('') +
         '</ul></div>';
@@ -466,9 +465,6 @@
           if (d) openDocForm(d);
         });
       });
-      wrap.querySelectorAll('.wiki-mv button').forEach(function (btn) {
-        btn.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); moveDoc(btn.dataset.id, parseInt(btn.dataset.mv, 10)); });
-      });
       wrap.querySelectorAll('.wiki-sort-btn').forEach(function (btn) {
         btn.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); openSortMenu(btn, btn.dataset.sortcat); });
       });
@@ -480,13 +476,6 @@
     // ---- 2026-10-03: Sắp xếp vị trí tài liệu (▲▼ từng dòng + "Sắp xếp nhanh" theo mã/tên/ngày), lưu cột Thứ tự trên Sheet ----
     function categoryItems(cat) { var g = TaskManager.getDocuments().filter(function (x) { return x.category === cat; })[0]; return g ? g.items.slice() : []; }
     function applyOrder(items) { var n = TaskManager.setDocumentOrder(items.map(function (d) { return d.id; }), Auth.getCurrentUser()); render(); return n; }
-    function moveDoc(id, dir) {
-      var d = allDocs().filter(function (x) { return x.id === id; })[0]; if (!d) return;
-      var items = categoryItems(d.category), i = items.findIndex(function (x) { return x.id === id; }), j = i + dir;
-      if (i < 0 || j < 0 || j >= items.length) return;
-      var t = items[i]; items[i] = items[j]; items[j] = t;
-      applyOrder(items);
-    }
     var SORT_MODES = [
       ['code', 'Theo mã hiệu (A → Z, STT tăng dần)'],
       ['name', 'Theo tên tài liệu (A → Z)'],
@@ -546,7 +535,10 @@
     var fitTimer = null;
     window.addEventListener('resize', function () { clearTimeout(fitTimer); fitTimer = setTimeout(fitColumns, 150); });
 
-    // Kéo-thả tài liệu sang danh mục khác: giữ chuột (hoặc ngón tay) trên 1 tài liệu → kéo tới khung danh mục khác → thả → hộp xác nhận → chuyển danh mục
+    // Kéo-thả tài liệu: giữ chuột (hoặc ngón tay) trên 1 tài liệu rồi kéo.
+    //  · Kéo trong CÙNG danh mục → hiện ĐƯỜNG KẺ định vị chỗ sẽ chèn → thả để đổi vị trí (lưu cột Thứ tự trên Sheet).
+    //  · Kéo sang danh mục KHÁC → khung đứt nét → thả → hộp xác nhận → chuyển danh mục.
+    // Khung danh mục có thanh trượt: kéo sát mép trên/dưới khung thì khung tự cuộn.
     var dragJustEnded = false;
     function bindDocDrag(wrap) {
       wrap.querySelectorAll('.wiki-col li').forEach(function (li) { li.style.cursor = 'grab'; }); wrap.querySelectorAll('.wiki-col li a').forEach(function (a) { a.draggable = false; });
@@ -554,24 +546,52 @@
       wrap.onpointerdown = function (e) {
         if (e.button > 0 || e.target.closest('button')) return;
         var li = e.target.closest('.wiki-col li'); if (!li) return;
-        var a = li.querySelector('a'), idBtn = li.querySelector('[data-edit-id]'); if (!idBtn) return;
-        var docId = idBtn.getAttribute('data-edit-id'), sx = e.clientX, sy = e.clientY, ghost = null, started = false, target = null, fromCol = li.closest('.wiki-col');
-        var move = function (ev) {
-          if (!started) { if (Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 8) return; started = true; li.classList.add('dragging');
-            ghost = li.cloneNode(true); ghost.className = 'wiki-drag-ghost'; ghost.style.width = li.offsetWidth + 'px'; document.body.appendChild(ghost); document.body.classList.add('wiki-dragging'); }
-          ev.preventDefault();
-          ghost.style.left = (ev.clientX + 10) + 'px'; ghost.style.top = (ev.clientY + 6) + 'px';
+        var docId = li.getAttribute('data-docid'); if (!docId) return;
+        var sx = e.clientX, sy = e.clientY, ghost = null, started = false, target = null, fromCol = li.closest('.wiki-col'), line = null, insertBefore = null, sameCol = false, lastEv = null, scrollTimer = null;
+        function updateTarget(ev) {
           var el = document.elementFromPoint(ev.clientX, ev.clientY), col = el && el.closest('.wiki-col');
           if (col !== target) { if (target) target.classList.remove('wiki-drop'); target = col && col !== fromCol ? col : null; if (target) target.classList.add('wiki-drop'); }
+          sameCol = !!col && col === fromCol; insertBefore = null;
+          if (!sameCol) { if (line) line.style.display = 'none'; return; }
+          var ul = fromCol.querySelector('ul'), ur = ul.getBoundingClientRect();
+          var items = Array.prototype.filter.call(ul.children, function (x) { return x !== li && !x.hidden; }), y = null, w = ul.clientWidth;
+          for (var i = 0; i < items.length; i++) { var r = items[i].getBoundingClientRect(); if (ev.clientY < r.top + r.height / 2) { insertBefore = items[i]; y = r.top - 5; break; } }
+          if (!insertBefore && items.length) y = items[items.length - 1].getBoundingClientRect().bottom + 5;
+          if (y === null) { line.style.display = 'none'; return; }
+          y = Math.max(ur.top, Math.min(y, ur.bottom - 2));   // đường kẻ không tràn ra ngoài khung cuộn
+          line.style.display = 'block'; line.style.top = y + 'px'; line.style.left = ur.left + 'px'; line.style.width = w + 'px';
+        }
+        var autoScroll = function () {
+          if (!started || !lastEv) return;
+          var ul = fromCol.querySelector('ul'), r = ul.getBoundingClientRect();
+          if (!ul.classList.contains('wiki-ul-scroll') || lastEv.clientX < r.left || lastEv.clientX > r.right) return;
+          if (lastEv.clientY < r.top + 36) { ul.scrollTop -= 12; updateTarget(lastEv); } else if (lastEv.clientY > r.bottom - 36) { ul.scrollTop += 12; updateTarget(lastEv); }
+        };
+        var move = function (ev) {
+          if (!started) { if (Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 8) return; started = true; li.classList.add('dragging');
+            ghost = li.cloneNode(true); ghost.className = 'wiki-drag-ghost'; ghost.style.width = li.offsetWidth + 'px'; document.body.appendChild(ghost); document.body.classList.add('wiki-dragging');
+            line = document.createElement('div'); line.className = 'wiki-drop-line'; line.style.display = 'none'; document.body.appendChild(line); scrollTimer = setInterval(autoScroll, 40); }
+          ev.preventDefault(); lastEv = ev;
+          ghost.style.left = (ev.clientX + 10) + 'px'; ghost.style.top = (ev.clientY + 6) + 'px';
+          updateTarget(ev);
         };
         var up = function () {
           document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); document.removeEventListener('pointercancel', up);
           if (!started) return;
-          li.classList.remove('dragging'); if (ghost) ghost.remove(); document.body.classList.remove('wiki-dragging'); if (target) target.classList.remove('wiki-drop');
+          clearInterval(scrollTimer);
+          li.classList.remove('dragging'); if (ghost) ghost.remove(); if (line) line.remove(); document.body.classList.remove('wiki-dragging'); if (target) target.classList.remove('wiki-drop');
           dragJustEnded = true; setTimeout(function () { dragJustEnded = false; }, 60);
+          var d = allDocs().filter(function (x) { return x.id === docId; })[0]; if (!d) return;
+          if (sameCol) {   // đổi vị trí trong cùng danh mục
+            var ids = categoryItems(d.category).map(function (x) { return x.id; }).filter(function (x) { return x !== docId; });
+            var at = insertBefore ? ids.indexOf(insertBefore.getAttribute('data-docid')) : ids.length;
+            if (at < 0) at = ids.length;
+            ids.splice(at, 0, docId);
+            applyOrder(ids.map(function (id) { return { id: id }; }));
+            return;
+          }
           if (!target) return;
-          var d = allDocs().filter(function (x) { return x.id === docId; })[0], to = target.getAttribute('data-cat'), from = fromCol.getAttribute('data-cat');
-          if (!d) return;
+          var to = target.getAttribute('data-cat'), from = fromCol.getAttribute('data-cat');
           showConfirmDialog('Chuyển tài liệu <b>' + escapeHtml((d.code ? d.code + ' ' : '') + d.name) + '</b><br>từ danh mục <b>' + escapeHtml(from) + '</b> sang <b>' + escapeHtml(to) + '</b>?', function () { TaskManager.updateDocument(docId, { category: to }, Auth.getCurrentUser()); render(); }, 'Chuyển');
         };
         document.addEventListener('pointermove', move, { passive: false }); document.addEventListener('pointerup', up); document.addEventListener('pointercancel', up);

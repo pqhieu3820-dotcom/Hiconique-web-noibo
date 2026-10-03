@@ -2,7 +2,7 @@
  * Thông báo đẩy (Web Push qua Firebase Cloud Messaging) — 2026-09-23.
  *
  * Cho phép thông báo popup thật trên điện thoại/máy tính (giống Zalo), kể cả
- * khi không mở web — khác hẳn chuông 🔔 hiện có (chỉ thấy khi đang mở trang).
+ * khi không mở web — khác hẳn chuông trên thanh đầu trang (chỉ thấy khi đang mở trang).
  *
  * Cần nạp 2 script Firebase (compat, không cần bundler) TRƯỚC file này ở mọi
  * trang có portal.js:
@@ -258,7 +258,7 @@
       : (!isSupported() || status === 'denied') ? reasonText(!isSupported() ? (isIos() && !isStandalone() ? 'ios' : 'unsupported') : 'denied')
       : 'Bấm “Bật thông báo trên thiết bị này”, sau đó làm tương tự trên thiết bị còn lại.';
     ov.innerHTML = '<div style="width:100%;max-width:440px;background:var(--color-surface,#1a1d21);color:var(--color-text,#eee);border:1px solid var(--color-border,#333);border-radius:16px;padding:22px 22px 18px;box-shadow:0 24px 60px rgba(0,0,0,.4);font-family:Inter,sans-serif;">' +
-      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;"><span style="width:34px;height:34px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;background:rgba(176,141,87,.16);color:var(--color-bronze,#B08D57);font-size:18px;">🔔</span>' +
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;"><span style="width:38px;height:38px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(145deg,rgba(176,141,87,.22),rgba(176,141,87,.08));box-shadow:inset 0 0 0 1px rgba(176,141,87,.28);color:var(--color-bronze,#B08D57);flex:0 0 auto;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9a6 6 0 0 1 12 0c0 6.5 2.5 8 2.5 8h-17S6 15.5 6 9z"/><path d="M10.2 20.5a2 2 0 0 0 3.6 0"/><path d="M12 3V2" /></svg></span>' +
       '<div style="font-weight:700;font-size:1rem;">Đăng ký nhận thông báo (' + count + '/' + REQUIRED_DEVICES + ' thiết bị)</div></div>' +
       '<div style="font-size:.875rem;line-height:1.55;color:var(--color-text-muted,#aaa);margin-bottom:6px;">Mỗi tài khoản cần nhận thông báo trên <b>2 thiết bị</b> (máy tính + điện thoại) để không bỏ lỡ việc mới, duyệt/từ chối, bảng tin…</div>' +
       '<div id="pdpHint" style="font-size:.8125rem;line-height:1.55;margin:10px 0 16px;padding:10px 12px;border-radius:10px;background:var(--color-surface-2,#222);">' + hint + '</div>' +
