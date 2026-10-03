@@ -1525,6 +1525,7 @@ function genericColl_(ss, action, params) {
   if (action === 'getDgdmStatus') return getDgdmStatus_(ss);
   if (action === 'getDgdmRows') return getDgdmRows_(ss, params);
   if (action === 'dgdmWrite') return dgdmWrite_(ss, JSON.parse(params.data));
+  if (action === 'dgdmApplyFormV2') return dgdmApplyFormV2_(ss, JSON.parse(params.data));
   if (action === 'seedDgdm') return seedDgdm_(ss, JSON.parse(params.data));
   if (action === 'applyDgdmCodes') return applyDgdmCodes_(ss, JSON.parse(params.data));
   for (let i = 0; i < GEN_COLL_.length; i++) {
@@ -5194,4 +5195,62 @@ function testPushDevice_(ss, data) {
   if (code >= 400) return { ok: false, code: code, error: txt.slice(0, 300) };
   if (!(g.dev.active === true || g.dev.active === 'TRUE')) updateData(ss, SHEETS.pushDevices, g.dev.id, { active: true });
   return { ok: true, code: code };
+}
+
+// ===== 2026-10-03: ÁP DỤNG FORM MỚI CHO CÁC CỘT CÒN THÔNG TIN CŨ (action dgdmApplyFormV2, chỉ Founder/CEO) =====
+// - Công tác: "Nhóm" = <Tên giai đoạn> – <Tên hạng mục> (tra DGDM-Giai đoạn hạng mục theo cột "Hạng mục").
+// - Vật tư: "Nhóm" = Tên nhóm (tra DGDM-Nhóm tài nguyên theo cột "Nhóm tài nguyên").
+// - Nhân công khoán: "Mã" = NC-KH-01…05 theo Loại nhà (thêm nhóm NC-KH "Nhân công khoán theo m² sàn" vào DGDM-Nhóm tài nguyên nếu chưa có).
+// - Phần thô & trọn gói: "Mã" = DGS-XD-01…04 theo Loại nhà (đơn giá suất xây dựng).
+// Chỉ ghi giá trị (không định dạng — các sheet là Bảng đã định kiểu). Ghi 1 dòng tóm tắt vào DGDM-Nhật ký thay đổi. Chạy lại được.
+var DGDM_HOUSE_NO_ = { 'nhà cấp 4': '01', 'nhà hiện đại': '02', 'biệt thự hiện đại': '03', 'nhà tân cổ điển': '04', 'điện nước khoán toàn nhà': '05' };
+var DGDM_HOUSE_SUFFIX_ = { 'C4': '01', 'HD': '02', 'BT': '03', 'TCD': '04', 'MEP': '05' };
+function dgdmApplyFormV2_(ss, data) {
+  const a = pushActor_(ss, data.actorId);
+  if (!a.admin) return { ok: false, error: 'Chỉ Founder/CEO được chạy chuyển đổi hàng loạt' };
+  return withScriptLock_(function () {
+    const fd = function (n) { return ss.getSheets().filter(function (x) { return dgNorm_(x.getName()) === dgNorm_(n); })[0]; };
+    const hdr = function (sh) { return sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(dgNorm_); };
+    const col = function (sh, name) { return hdr(sh).indexOf(dgNorm_(name)) + 1; };
+    const out = { ok: true, log: [] };
+    // danh mục
+    const sSh = fd('DGDM-Giai đoạn hạng mục'), gSh = fd('DGDM-Nhóm tài nguyên');
+    if (!sSh || !gSh) return { ok: false, error: 'Thiếu sheet danh mục' };
+    const sv = sSh.getDataRange().getValues(), sh0 = sv[0].map(dgNorm_), hm = {};
+    const iGd = sh0.indexOf(dgNorm_('Tên giai đoạn')), iHm = sh0.indexOf(dgNorm_('Mã hạng mục')), iHn = sh0.indexOf(dgNorm_('Tên hạng mục'));
+    sv.slice(1).forEach(function (r) { const k = String(r[iHm]).trim(); if (k) hm[k] = String(r[iGd]).trim() + ' – ' + String(r[iHn]).trim(); });
+    let gv = gSh.getDataRange().getValues(); const gh = gv[0].map(dgNorm_), gr = {};
+    const iMn = gh.indexOf(dgNorm_('Mã nhóm')), iTn = gh.indexOf(dgNorm_('Tên nhóm')), iL = gh.indexOf(dgNorm_('Loại')), iN = gh.indexOf(dgNorm_('Nhóm')), iVd = gh.indexOf(dgNorm_('Ví dụ'));
+    if (!gv.slice(1).some(function (r) { return String(r[iMn]).trim() === 'NC-KH'; })) {
+      const nr = gv[0].map(function () { return ''; });
+      if (iL !== -1) nr[iL] = 'NC'; if (iN !== -1) nr[iN] = 'KH'; if (iTn !== -1) nr[iTn] = 'Nhân công khoán theo m² sàn'; if (iMn !== -1) nr[iMn] = 'NC-KH';
+      if (iVd !== -1) nr[iVd] = 'Khoán nhân công trọn nhà: nhà cấp 4, nhà phố hiện đại, biệt thự, tân cổ điển, điện nước toàn nhà';
+      gSh.getRange(gSh.getLastRow() + 1, 1, 1, nr.length).setValues([nr]); out.log.push('Thêm nhóm NC-KH vào DGDM-Nhóm tài nguyên');
+      gv = gSh.getDataRange().getValues();
+    }
+    gv.slice(1).forEach(function (r) { const k = String(r[iMn]).trim(); if (k) gr[k] = String(r[iTn]).trim(); });
+    // công tác + vật tư: cột Nhóm
+    [['DGDM-Mã công việc công tác', 'Hạng mục', hm], ['DGDM-Vật tư thiết bị', 'Nhóm tài nguyên', gr]].forEach(function (p) {
+      const sh = fd(p[0]); if (!sh) { out.log.push('THIẾU ' + p[0]); return; }
+      const cN = col(sh, 'Nhóm'), cK = col(sh, p[1]), n = sh.getLastRow() - 1; if (!cN || !cK || n < 1) { out.log.push(p[0] + ': thiếu cột Nhóm/' + p[1]); return; }
+      const keys = sh.getRange(2, cK, n, 1).getValues(), cur = sh.getRange(2, cN, n, 1).getValues(); let ch = 0, miss = 0;
+      const nv = keys.map(function (r, i) { const k = String(r[0]).trim(), v = p[2][k]; if (!v) { if (k) miss++; return [cur[i][0]]; } if (v !== cur[i][0]) ch++; return [v]; });
+      sh.getRange(2, cN, n, 1).setValues(nv); out.log.push(p[0] + ': Nhóm đổi ' + ch + '/' + n + ' dòng' + (miss ? ' (không tra được ' + miss + ')' : ''));
+    });
+    // nhân công khoán + phần thô: cột Mã
+    [['DGDM-Nhân công khoán', 'NC-KH-'], ['DGDM-Phần thô và trọn gói', 'DGS-XD-']].forEach(function (p) {
+      const sh = fd(p[0]); if (!sh) { out.log.push('THIẾU ' + p[0]); return; }
+      const cM = col(sh, 'Mã'), cT = col(sh, 'Loại nhà'), n = sh.getLastRow() - 1; if (!cM || !cT || n < 1) { out.log.push(p[0] + ': thiếu cột Mã/Loại nhà'); return; }
+      const ms = sh.getRange(2, cM, n, 1).getValues(), ts = sh.getRange(2, cT, n, 1).getValues(); let ch = 0, miss = 0;
+      const nv = ms.map(function (r, i) {
+        const old = String(r[0]).trim(); if (old.indexOf(p[1]) === 0) return [old];
+        const no = DGDM_HOUSE_NO_[dgNorm_(ts[i][0])] || DGDM_HOUSE_SUFFIX_[old.replace(/^[A-Z]+-/, '')];
+        if (!no) { if (old) miss++; return [old]; } ch++; return [p[1] + no];
+      });
+      sh.getRange(2, cM, n, 1).setValues(nv); out.log.push(p[0] + ': Mã đổi ' + ch + '/' + n + ' dòng' + (miss ? ' (không xác định ' + miss + ')' : ''));
+    });
+    try { dgdmLog_(ss, data.actor || '', 'CHUYỂN FORM MỚI', '(nhiều sheet)', '', '', out.log.join(' | ')); } catch (e) { /* bỏ qua */ }
+    SHEET_MEMO_ = null;
+    return out;
+  });
 }
