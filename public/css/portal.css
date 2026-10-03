@@ -564,7 +564,40 @@ html.theme-fade, html.theme-fade *, html.theme-fade *::before, html.theme-fade *
 .brand-tip.float { position: fixed; top: 0; left: 0; margin: 0; transform-origin: 0 0; transform: translateY(6px) scale(.94); transition: opacity .2s ease, transform .3s cubic-bezier(.2, 1.3, .4, 1), filter .2s ease, visibility 0s linear .3s; }
 .brand-tip.float::before { display: none; }
 .brand-tip.float.show { opacity: 1; visibility: visible; transform: none; filter: none; transition-delay: 0s; }
-@media (prefers-reduced-motion: reduce) { .avatar, .avatar.avatar-pop, .avatar::after, .user-menu-panel.um-in, .user-menu-panel.um-out, .user-menu-panel.um-in > *, .brand-tip, .bt-row { animation: none !important; transition: none !important; } }
+/* 2026-10-04: hiệu ứng riêng cho từng dòng/icon trong menu tài khoản (rê chuột) */
+.user-menu-meta div { transition: color .25s ease, transform .35s cubic-bezier(.2, 1.2, .4, 1); }
+.user-menu-meta div:hover { color: var(--color-text); transform: translateX(4px); }
+.user-menu-meta svg { transition: color .25s ease; transform-origin: 50% 50%; overflow: visible; }
+.user-menu-meta div:hover svg { color: var(--color-bronze); }
+.user-menu-meta div:nth-child(1):hover svg { animation: umMail .7s ease; }
+.user-menu-meta div:nth-child(2):hover svg { animation: umPin .75s cubic-bezier(.3, .7, .4, 1); }
+.user-menu-meta div:nth-child(3):hover svg { animation: umCal .8s ease; }
+.user-menu-link { position: relative; overflow: hidden; transition: background .3s ease, padding-left .35s cubic-bezier(.2, 1.2, .4, 1), color .25s ease; }
+.user-menu-link::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--color-bronze); transform: scaleY(0); transition: transform .3s cubic-bezier(.2, .9, .3, 1); }
+.user-menu-link::after { content: ""; position: absolute; top: 0; bottom: 0; width: 45%; left: -60%; transform: skewX(-20deg); pointer-events: none; background: linear-gradient(90deg, transparent, rgba(214, 170, 100, .16), transparent); }
+.user-menu-link:hover { padding-left: calc(var(--um-pl, 16px) + 6px); }
+.user-menu-link:hover::before { transform: scaleY(1); }
+.user-menu-link:hover::after { animation: umSweep .7s ease; }
+.user-menu-link:active { transform: scale(.98); }
+.user-menu-logout::before { background: var(--color-destructive); }
+.user-menu-logout::after { background: linear-gradient(90deg, transparent, rgba(190, 80, 80, .16), transparent); }
+.user-menu-link svg { overflow: visible; transform-origin: 50% 50%; }
+.user-menu-link svg * { transform-box: fill-box; transform-origin: center; }
+.user-menu-link:nth-of-type(1):hover svg circle { animation: umHead .7s cubic-bezier(.3, 1.5, .4, 1); }
+.user-menu-link:nth-of-type(1):hover svg path { animation: umBody .7s ease; }
+.user-menu-link:nth-of-type(2):hover svg { animation: umBars .7s cubic-bezier(.3, 1.4, .4, 1); transform-origin: 50% 100%; }
+.user-menu-logout:hover svg path:nth-child(2), .user-menu-logout:hover svg path:nth-child(3) { animation: umExit .7s ease; }
+.user-menu-logout:hover svg path:nth-child(1) { animation: umDoor .7s ease; }
+@keyframes umSweep { to { left: 130%; } }
+@keyframes umMail { 0%, 100% { transform: none; } 25% { transform: translateY(-3px) rotate(-12deg); } 50% { transform: translateY(0) rotate(8deg) scale(1.15); } 75% { transform: rotate(-4deg); } }
+@keyframes umPin { 0% { transform: none; } 30% { transform: translateY(-6px); } 55% { transform: translateY(0) scale(1.12, .85); } 75% { transform: translateY(-2px); } 100% { transform: none; } }
+@keyframes umCal { 0% { transform: none; } 40% { transform: perspective(60px) rotateX(70deg) scale(1.1); } 100% { transform: none; } }
+@keyframes umHead { 0% { transform: none; } 40% { transform: translateY(-3px) scale(1.25); } 100% { transform: none; } }
+@keyframes umBody { 0% { transform: none; } 40% { transform: scale(1.1, .85) translateY(1px); } 100% { transform: none; } }
+@keyframes umBars { 0% { transform: scaleY(1); } 30% { transform: scaleY(.4); } 65% { transform: scaleY(1.25); } 100% { transform: scaleY(1); } }
+@keyframes umExit { 0% { transform: none; } 45% { transform: translateX(5px); } 100% { transform: none; } }
+@keyframes umDoor { 0% { transform: none; } 45% { transform: translateX(-2px); } 100% { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .user-menu-meta svg, .user-menu-link svg, .user-menu-link svg *, .user-menu-link::after { animation: none !important; } .avatar, .avatar.avatar-pop, .avatar::after, .user-menu-panel.um-in, .user-menu-panel.um-out, .user-menu-panel.um-in > *, .brand-tip, .bt-row { animation: none !important; transition: none !important; } }
 
 /* ===== CHUẨN HÌNH DẠNG AVATAR TOÀN HỆ THỐNG (chốt cứng 2026-09-11) =====
    Trước đây avatar đại diện người/dự án mỗi nơi 1 kiểu khác nhau — có chỗ
