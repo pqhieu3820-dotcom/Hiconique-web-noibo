@@ -29,7 +29,7 @@
   };
   var HDR = lsGet('dgdm_hdr', {}), PROV = lsGet('dgdm_prov', {});
   function frameOf(sheet) { return HDR[sheet] || FRAME[sheet] || null; }
-  var st = { sheets: [], sheet: '', prov: '', q: '', offset: 0, data: null, loading: false, page: lsGet('dgdm_page', 100), comfy: lsGet('dgdm_comfy', false), hidden: lsGet('dgdm_hidden', {}), sel: -1 };
+  var st = { sheets: [], sheet: '', prov: '', all: false, q: '', offset: 0, data: null, loading: false, page: lsGet('dgdm_page', 100), comfy: lsGet('dgdm_comfy', false), hidden: lsGet('dgdm_hidden', {}), sel: -1 };
 
   function user() { return (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null; }
   function canEdit() { var u = user(); return !!u && (u.roleLevel === 'admin' || u.roleLevel === 'manager'); }
@@ -61,9 +61,11 @@
   // ---------- thanh tab (khung cố định trong HTML; chỉ gắn số dòng + ẩn tab chưa có sheet) ----------
   // đoán tỉnh ngay từ đầu (đã chọn lần trước, hoặc Hải Phòng nếu sheet có cột Tỉnh/Thành) để KHÔNG phải tải thêm 1 vòng chỉ để biết danh sách tỉnh
   function guessProv(sheet) {
+    if (PROV[sheet] === '*') return '';   // đã chọn "Tất cả các tỉnh"
     if (PROV[sheet]) return PROV[sheet];
     var h = frameOf(sheet); return h && h.indexOf('Tỉnh/Thành') !== -1 ? 'Hải Phòng' : '';
   }
+  function setProvFor(sheet) { st.prov = guessProv(sheet); st.all = PROV[sheet] === '*'; }
   function loadSheets() {
     return jget(API + '?action=getDgdmStatus&_=' + Date.now()).then(function (s) {
       st.sheets = (s.sheets || []).filter(function (x) { return /^DGDM-/i.test(x.name) && norm(x.name) !== norm('DGDM-Cài đặt'); });
@@ -106,8 +108,8 @@
       if (d.error) { $('dbBody').innerHTML = '<tr><td class="es-empty" style="padding:30px">' + esc(d.error) + '</td></tr>'; return; }
       st.data = d; st.sel = -1;
       if (d.headers && d.headers.length) { HDR[st.sheet] = d.headers; lsSet('dgdm_hdr', HDR); }
-      if (d.provinces && d.provinces.length && st.prov && d.provinces.indexOf(st.prov) === -1) st.prov = '';   // tỉnh nhớ lại không còn trong sheet
-      if (d.provinces && d.provinces.length && !st.prov && st.sheet !== LOG) { st.prov = d.provinces.indexOf('Hải Phòng') !== -1 ? 'Hải Phòng' : d.provinces[0]; return loadRows(); }
+      if (d.provinces && d.provinces.length && st.prov && d.provinces.indexOf(st.prov) === -1) { st.prov = ''; st.all = false; }   // tỉnh nhớ lại không còn trong sheet
+      if (d.provinces && d.provinces.length && !st.prov && !st.all && st.sheet !== LOG) { st.prov = d.provinces.indexOf('Hải Phòng') !== -1 ? 'Hải Phòng' : d.provinces[0]; return loadRows(); }
       render();
     }).catch(function () { st.loading = false; $('dbBody').innerHTML = '<tr><td class="es-empty" style="padding:30px">Không tải được dữ liệu (kiểm tra kết nối) — bấm Tải lại.</td></tr>'; });
   }
@@ -122,7 +124,7 @@
     $('dbTitle').textContent = d.sheet.replace(/^DGDM-/, '');
     $('dbSub').textContent = (d.total || 0).toLocaleString('vi-VN') + ' dòng' + (st.prov ? ' · ' + st.prov : '') + (st.q ? ' · lọc “' + st.q + '”' : '');
     var ps = $('dbProv');
-    if (d.provinces && d.provinces.length) { ps.hidden = false; ps.innerHTML = d.provinces.map(function (p) { return '<option' + (p === st.prov ? ' selected' : '') + '>' + esc(p) + '</option>'; }).join(''); } else ps.hidden = true;
+    if (d.provinces && d.provinces.length) { ps.hidden = false; ps.innerHTML = '<option value=""' + (st.all && !st.prov ? ' selected' : '') + '>Tất cả các tỉnh</option>' + d.provinces.map(function (p) { return '<option' + (p === st.prov ? ' selected' : '') + '>' + esc(p) + '</option>'; }).join(''); } else ps.hidden = true;
     if (document.activeElement !== $('dbQ')) $('dbQ').value = st.q;
     $('dbAdd').hidden = ro; $('dbRo').hidden = !(ro && st.sheet !== LOG && !canEdit());
     $('dbDens').classList.toggle('on', st.comfy); $('dbTable').classList.toggle('db-comfy', st.comfy);
@@ -158,7 +160,7 @@
   function bind() {
     var t, q = $('dbQ');
     q.addEventListener('input', function () { clearTimeout(t); var v = q.value; t = setTimeout(function () { st.q = v.trim(); st.offset = 0; loadRows().then(function () { var e = $('dbQ'); if (e) { e.focus(); e.setSelectionRange(e.value.length, e.value.length); } }); }, 450); });
-    $('dbProv').addEventListener('change', function () { st.prov = this.value; PROV[st.sheet] = st.prov; lsSet('dgdm_prov', PROV); st.offset = 0; loadRows(); });
+    $('dbProv').addEventListener('change', function () { st.prov = this.value; st.all = !st.prov; PROV[st.sheet] = st.prov || '*'; lsSet('dgdm_prov', PROV); st.offset = 0; loadRows(); });
     $('dbReload').addEventListener('click', function () { loadRows(); loadSheets(); });
     $('dbAdd').addEventListener('click', function () { openForm(null); });
     $('dbPrev').addEventListener('click', function () { st.offset = Math.max(0, st.offset - st.page); loadRows(); });
@@ -175,7 +177,7 @@
     $('dbColAll').addEventListener('click', function () { st.hidden[st.sheet] = []; lsSet('dgdm_hidden', st.hidden); render(); });
     $('dbTabsWrap').addEventListener('click', function (e) {
       var b = e.target.closest('[data-s]'); if (!b) return;
-      st.sheet = b.dataset.s; st.prov = guessProv(st.sheet); st.q = ''; st.offset = 0; renderTabs(); loadRows();
+      st.sheet = b.dataset.s; setProvFor(st.sheet); st.q = ''; st.offset = 0; renderTabs(); loadRows();
     });
     $('dbBody').addEventListener('click', function (e) {
       var tr = e.target.closest('tr[data-i]'); if (!tr) return;
@@ -354,7 +356,7 @@
     bind();
     try { var qp = new URLSearchParams(location.search); if (qp.get('sheet')) st.sheet = qp.get('sheet'); if (qp.get('q')) st.q = qp.get('q'); } catch (e) { /* bỏ qua */ }   // mở từ kết quả tìm kiếm chung
     if (!st.sheet) st.sheet = 'DGDM-Mã công việc công tác';   // mở sẵn sheet mặc định — không chờ danh sách sheet
-    st.prov = guessProv(st.sheet);
+    setProvFor(st.sheet);
     loadRows();   // tải dòng và danh sách tab SONG SONG (trước đây nối đuôi nhau: danh sách sheet → dòng → dòng lần 2 có tỉnh)
     loadSheets().catch(function (e) { if (window.console) console.error('DGDM:', e); });
   }
