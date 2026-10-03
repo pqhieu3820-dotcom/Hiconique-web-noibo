@@ -19,43 +19,86 @@
   <script src="/js/auth.js"></script>
   <link rel="stylesheet" href="/css/work-pages.css">
   <style>
-    /* 2026-10-03: trang kiểm soát CSDL DGDM (js/dgdm-db.js) */
-    .db-container { max-width: min(1760px, calc(100vw - 48px)); width: 100%; }
-    .db-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 22px; align-items: start; margin-top: 8px; }
-    .db-nav { position: sticky; top: 16px; background: var(--es-surface); border: 1px solid var(--es-border); border-radius: 14px; padding: 10px; max-height: calc(100vh - 40px); overflow: auto; }
-    .db-nav-g { font-size: .625rem; text-transform: uppercase; letter-spacing: .07em; color: var(--es-muted); font-weight: 700; padding: 12px 10px 6px; }
-    .db-nav-g:first-child { padding-top: 4px; }
-    .db-nav-i { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 8px 10px; border: none; border-radius: 9px; background: transparent; color: var(--es-text); font: 500 .8125rem Inter, sans-serif; text-align: left; cursor: pointer; }
-    .db-nav-i em { font-style: normal; font: 600 .6875rem 'JetBrains Mono', monospace; color: var(--es-muted); }
-    .db-nav-i:hover { background: var(--es-bg); }
-    .db-nav-i.on { background: color-mix(in srgb, var(--es-bronze) 16%, transparent); color: var(--es-bronze); font-weight: 600; }
-    .db-main { min-width: 0; }
-    .db-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
-    .db-title { display: flex; flex-direction: column; margin-right: auto; min-width: 200px; }
-    .db-title b { font-size: 1.0625rem; } .db-title span { font-size: .75rem; color: var(--es-muted); margin-top: 2px; }
-    .db-wrap { max-height: calc(100vh - 230px); overflow: auto; }
-    .db-table { min-width: 100%; font-size: .8125rem; }
-    .db-table th { white-space: nowrap; padding: 10px 12px !important; z-index: 1; }
-    .db-table td { padding: 8px 12px !important; white-space: nowrap; max-width: 420px; overflow: hidden; text-overflow: ellipsis; }
-    .db-table td.num, .db-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
-    .db-table td.mono { font-family: 'JetBrains Mono', monospace; font-size: .75rem; }
-    .db-rn { color: var(--es-muted); font: .6875rem 'JetBrains Mono', monospace; width: 46px; }
-    .db-table tbody tr:hover td { background: color-mix(in srgb, var(--es-bronze) 6%, transparent); }
-    .db-act-h, .db-act { position: sticky; right: 0; background: var(--es-surface); text-align: right; }
-    .db-act button { height: 28px; padding: 0 10px; margin-left: 6px; border-radius: 7px; border: 1px solid var(--es-border); background: transparent; color: var(--es-text); font: 600 .75rem Inter, sans-serif; cursor: pointer; }
-    .db-act button:hover { border-color: var(--es-bronze); color: var(--es-bronze); }
-    .db-act button.danger:hover { border-color: var(--es-bad); color: var(--es-bad); }
-    .db-pager { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 12px; font: 600 .8125rem 'JetBrains Mono', monospace; color: var(--es-muted); }
-    .db-form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 14px; max-height: 62vh; overflow: auto; padding: 2px; }
-    .db-f { display: block; } .db-f.wide { grid-column: span 3; } .db-f i { text-transform: none; font-style: normal; color: var(--es-muted); }
+    /* 2026-10-04: làm lại giao diện trang kiểm soát CSDL DGDM — KHUNG CỐ ĐỊNH (thanh tab trên cùng như trang Bảng giá, thanh công cụ, bảng, phân trang đều là HTML tĩnh);
+       dữ liệu từ Google Sheet chỉ được nạp vào bảng và ghi ngược lại. Tối đa bề ngang, thao tác nhanh (sửa tại chỗ bằng double-click, nhân bản, cột ghim, chọn cột hiện). */
+    .db-container { max-width: none; width: 100%; padding-left: 20px; padding-right: 20px; }
+    .db-head { display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; margin-bottom: 14px; }
+    .db-head .subpage-title { margin: 0; font-size: clamp(1.6rem, 2.4vw, 2.2rem); }
+    .db-head .db-sub { color: var(--es-muted); font-size: .8125rem; }
+    /* thanh tab trên cùng */
+    .db-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; padding: 6px; margin-bottom: 14px; background: var(--es-surface); border: 1px solid var(--es-border); border-radius: 14px; }
+    .db-tab-g { font-size: .625rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--es-muted); padding: 0 8px 0 10px; }
+    .db-tab-sep { width: 1px; height: 22px; background: var(--es-border); margin: 0 6px; }
+    .db-tab { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 10px; border: 1px solid transparent; background: transparent; color: var(--es-muted); font: 600 .8125rem Inter, sans-serif; cursor: pointer; transition: color .15s ease, background .15s ease; }
+    .db-tab:hover { color: var(--es-text); background: color-mix(in srgb, var(--es-bronze) 7%, transparent); }
+    .db-tab.on { color: var(--es-bronze); background: color-mix(in srgb, var(--es-bronze) 14%, transparent); border-color: color-mix(in srgb, var(--es-bronze) 35%, transparent); }
+    .db-tab em { font-style: normal; font: 600 .6875rem 'JetBrains Mono', monospace; color: var(--es-muted); }
+    .db-tab.on em { color: var(--es-bronze); }
+    /* thanh công cụ */
+    .db-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .db-title { display: flex; flex-direction: column; margin-right: auto; min-width: 180px; }
+    .db-title b { font-size: 1.0625rem; line-height: 1.2; } .db-title span { font-size: .75rem; color: var(--es-muted); margin-top: 3px; }
+    .db-toolbar .es-input { width: 280px; } .db-toolbar .es-select { width: auto; min-width: 190px; }
+    .db-tool { position: relative; }
+    .db-ib { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 38px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--es-border); background: var(--es-surface); color: var(--es-text); font: 600 .8125rem Inter, sans-serif; cursor: pointer; }
+    .db-ib:hover { border-color: var(--es-bronze); color: var(--es-bronze); } .db-ib.on { border-color: var(--es-bronze); color: var(--es-bronze); background: color-mix(in srgb, var(--es-bronze) 10%, transparent); }
+    .db-ib svg { width: 15px; height: 15px; }
+    .db-pop { position: absolute; right: 0; top: 44px; z-index: 60; min-width: 230px; max-height: 340px; overflow: auto; padding: 8px; background: var(--es-surface); border: 1px solid var(--es-border); border-radius: 12px; box-shadow: 0 14px 36px rgba(0,0,0,.28); }
+    .db-pop h5 { margin: 4px 8px 6px; font-size: .625rem; letter-spacing: .08em; text-transform: uppercase; color: var(--es-muted); }
+    .db-pop label { display: flex; align-items: center; gap: 9px; padding: 6px 8px; border-radius: 7px; font-size: .8125rem; cursor: pointer; }
+    .db-pop label:hover { background: color-mix(in srgb, var(--es-bronze) 8%, transparent); }
+    .db-pop input { accent-color: var(--es-bronze); width: 15px; height: 15px; }
+    .db-pop[hidden] { display: none; }
+    /* bảng */
+    .db-card { background: var(--es-surface); border: 1px solid var(--es-border); border-radius: 14px; overflow: hidden; }
+    .db-wrap { max-height: calc(100vh - 290px); min-height: 260px; overflow: auto; }
+    .db-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: .8125rem; }
+    .db-table th { position: sticky; top: 0; z-index: 3; background: var(--es-bg); padding: 10px 12px; text-align: left; font-size: .6875rem; text-transform: uppercase; letter-spacing: .05em; color: var(--es-muted); font-weight: 600; white-space: nowrap; border-bottom: 1px solid var(--es-border); }
+    .db-table td { padding: 9px 12px; border-bottom: 1px solid color-mix(in srgb, var(--es-border) 70%, transparent); vertical-align: middle; background: var(--es-surface); }
+    .db-comfy td { padding: 12px 14px; }
+    .db-table tbody tr:hover td { background: color-mix(in srgb, var(--es-bronze) 6%, var(--es-surface)); }
+    .db-table tbody tr.sel td { background: color-mix(in srgb, var(--es-bronze) 12%, var(--es-surface)); }
+    .db-table th.num, .db-table td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .db-table td.k-code { font: 500 .75rem 'JetBrains Mono', monospace; white-space: nowrap; color: var(--es-bronze); }
+    .db-table td.k-name { min-width: 230px; max-width: 360px; line-height: 1.4; } .db-table td.k-note { min-width: 200px; max-width: 320px; line-height: 1.4; color: var(--es-muted); }
+    .db-table td.k-name > div, .db-table td.k-note > div { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .db-table td.k-unit { white-space: nowrap; color: var(--es-muted); }
+    .db-table td.k-text { max-width: 170px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .db-rn { width: 48px; color: var(--es-muted); font: .6875rem 'JetBrains Mono', monospace; position: sticky; left: 0; z-index: 2; }
+    th.db-rn { z-index: 4; }
+    .db-pin { position: sticky; left: 48px; z-index: 2; box-shadow: 1px 0 0 var(--es-border); }
+    th.db-pin { z-index: 4; }
+    .db-act-h, .db-act { position: sticky; right: 0; z-index: 2; width: 1%; white-space: nowrap; text-align: right; box-shadow: -1px 0 0 var(--es-border); }
+    th.db-act-h { z-index: 4; }
+    .db-act .db-a { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; margin-left: 3px; border-radius: 7px; border: 1px solid transparent; background: transparent; color: var(--es-muted); cursor: pointer; opacity: .55; }
+    .db-table tr:hover .db-a, .db-table tr.sel .db-a { opacity: 1; }
+    .db-act .db-a:hover { border-color: var(--es-bronze); color: var(--es-bronze); background: var(--es-surface); }
+    .db-act .db-a.danger:hover { border-color: var(--es-bad); color: var(--es-bad); }
+    .db-act .db-a svg { width: 14px; height: 14px; }
+    .db-skel td { height: 40px; } .db-skel i { display: block; height: 10px; border-radius: 5px; background: linear-gradient(90deg, var(--es-border), transparent, var(--es-border)); background-size: 200% 100%; animation: dbSk 1.2s linear infinite; }
+    @keyframes dbSk { to { background-position: -200% 0; } }
+    .db-foot-bar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 10px 14px; border-top: 1px solid var(--es-border); background: var(--es-bg); font-size: .75rem; color: var(--es-muted); }
+    .db-foot-bar .es-spacer { flex: 1; }
+    .db-pg { display: inline-flex; align-items: center; gap: 8px; font: 600 .75rem 'JetBrains Mono', monospace; }
+    .db-pg button { height: 28px; padding: 0 10px; border-radius: 7px; border: 1px solid var(--es-border); background: var(--es-surface); color: var(--es-text); font: 600 .75rem Inter, sans-serif; cursor: pointer; }
+    .db-pg button:disabled { opacity: .4; cursor: default; } .db-pg button:not(:disabled):hover { border-color: var(--es-bronze); color: var(--es-bronze); }
+    .db-foot-bar select { height: 28px; border-radius: 7px; border: 1px solid var(--es-border); background: var(--es-surface); color: var(--es-text); font-size: .75rem; padding: 0 6px; }
+    .db-key { font: 600 .625rem 'JetBrains Mono', monospace; padding: 2px 5px; border: 1px solid var(--es-border); border-radius: 4px; color: var(--es-muted); }
+    /* form */
+    .db-modal { max-width: min(1120px, 96vw) !important; width: 100%; }
+    .db-form { display: grid; gap: 16px; max-height: 66vh; overflow: auto; padding: 2px 4px 2px 2px; }
+    .db-sec { border: 1px solid var(--es-border); border-radius: 12px; padding: 12px 14px 14px; }
+    .db-sec > h4 { margin: 0 0 10px; font-size: .6875rem; letter-spacing: .07em; text-transform: uppercase; color: var(--es-bronze); }
+    .db-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 14px; }
+    .db-f { display: block; min-width: 0; } .db-f.wide { grid-column: span 2; } .db-f.full { grid-column: 1 / -1; } .db-f i { text-transform: none; font-style: normal; color: var(--es-muted); }
     .db-f input.num { text-align: right; font-variant-numeric: tabular-nums; }
-    .db-ta { height: 64px; padding: 8px 10px; resize: vertical; line-height: 1.45; }
-    .db-conv { margin: 0 0 12px; padding: 9px 12px; border-radius: 10px; font-size: .8125rem; line-height: 1.5; background: color-mix(in srgb, var(--es-bronze) 10%, transparent); border: 1px solid color-mix(in srgb, var(--es-bronze) 35%, transparent); }
+    .db-ta { height: 68px; padding: 8px 10px; resize: vertical; line-height: 1.45; }
+    .db-conv { margin: 0 0 12px; padding: 9px 12px; border-radius: 10px; font-size: .8125rem; line-height: 1.5; background: color-mix(in srgb, var(--es-bronze) 10%, transparent); border: 1px solid color-mix(in srgb, var(--es-bronze) 30%, transparent); }
     .db-chk { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: .8125rem; cursor: pointer; }
     .db-chk input { width: 16px; height: 16px; accent-color: var(--es-bronze); }
-    .db-foot { display: flex; align-items: center; gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--es-border); }
-    @media (max-width: 1000px) { .db-layout { grid-template-columns: 1fr; } .db-nav { position: static; max-height: none; display: flex; flex-wrap: wrap; gap: 4px; } .db-nav-g { width: 100%; padding: 6px 4px 2px; } .db-nav-i { width: auto; } .db-form { grid-template-columns: 1fr 1fr; } .db-f.wide { grid-column: span 2; } }
-    @media (max-width: 600px) { .db-form { grid-template-columns: 1fr; } .db-f.wide { grid-column: auto; } }
+    .db-foot { display: flex; align-items: center; gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--es-border); flex-wrap: wrap; }
+    @media (max-width: 1100px) { .db-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .db-toolbar .es-input { width: 100%; } .db-wrap { max-height: none; } }
+    @media (max-width: 600px) { .db-grid { grid-template-columns: 1fr; } .db-f.wide { grid-column: auto; } }
   </style>
 </head>
 <body>
@@ -87,12 +130,57 @@
 
   <main class="subpage">
     <div class="subpage-inner es-container db-container">
-      <p class="eyebrow">— Cơ sở dữ liệu đơn giá · định mức · mã hóa</p>
-      <h1 class="subpage-title">Đơn giá <span class="subpage-title-italic">– định mức</span></h1>
-      <p class="subpage-lede">Kiểm soát toàn bộ cơ sở dữ liệu đơn giá – định mức của HICONIQUE (nhóm sheet DGDM-): mã công việc, vật tư, nhân công, phần thô &amp; trọn gói theo 34 tỉnh, cùng các danh mục chuẩn. Xem, tìm, thêm, sửa, xoá trực tiếp — mọi thay đổi được ghi vào Nhật ký thay đổi.</p>
-      <div class="db-layout">
-        <nav class="db-nav" id="dbNav"><div class="es-empty" style="padding:12px">Đang tải…</div></nav>
-        <section class="db-main" id="dbBody"><div class="es-empty" style="padding:30px">Đang tải…</div></section>
+      <div class="db-head">
+        <h1 class="subpage-title">Đơn giá <span class="subpage-title-italic">– định mức</span></h1>
+        <span class="db-sub">Cơ sở dữ liệu đơn giá · định mức · mã hóa (sheet DGDM-) — xem, tìm, thêm, sửa, nhân bản, xoá; mọi thay đổi ghi vào Nhật ký</span>
+      </div>
+
+      <!-- Thanh tab: KHUNG CỐ ĐỊNH (như trang Bảng giá) — số dòng do dữ liệu điền vào -->
+      <nav class="db-tabs" id="dbTabsWrap">
+        <span class="db-tab-g">Giá theo tỉnh</span>
+        <button type="button" class="db-tab" data-s="DGDM-Mã công việc công tác">Mã công việc<em>–</em></button>
+        <button type="button" class="db-tab" data-s="DGDM-Vật tư thiết bị">Vật tư thiết bị<em>–</em></button>
+        <button type="button" class="db-tab" data-s="DGDM-Nhân công khoán">Nhân công khoán<em>–</em></button>
+        <button type="button" class="db-tab" data-s="DGDM-Phần thô và trọn gói">Phần thô &amp; trọn gói<em>–</em></button>
+        <span class="db-tab-sep"></span><span class="db-tab-g">Danh mục chuẩn</span>
+        <button type="button" class="db-tab" data-s="DGDM-Giai đoạn hạng mục">Giai đoạn – hạng mục<em>–</em></button>
+        <button type="button" class="db-tab" data-s="DGDM-Nhóm tài nguyên">Nhóm tài nguyên<em>–</em></button>
+        <button type="button" class="db-tab" data-s="DGDM-Đơn vị tính">Đơn vị tính<em>–</em></button>
+        <button type="button" class="db-tab" data-s="DGDM-Tỉnh thành">Tỉnh thành<em>–</em></button>
+        <button type="button" class="db-tab" data-s="DGDM-Nguồn">Nguồn<em>–</em></button>
+        <button type="button" class="db-tab" data-s="DGDM-Quy đổi ĐVT cũ">Quy đổi ĐVT cũ<em>–</em></button>
+        <span class="db-tab-sep"></span><span class="db-tab-g">Lịch sử</span>
+        <button type="button" class="db-tab" data-s="DGDM-Nhật ký thay đổi">Nhật ký thay đổi<em>–</em></button>
+        <span id="dbTabsExtra" style="display:contents"></span>
+      </nav>
+
+      <!-- Thanh công cụ cố định -->
+      <div class="db-toolbar">
+        <div class="db-title"><b id="dbTitle">Đang tải…</b><span id="dbSub"></span></div>
+        <select class="es-select" id="dbProv" hidden aria-label="Tỉnh/Thành"></select>
+        <input class="es-input" id="dbQ" placeholder="Tìm mã, tên, ghi chú…   ( / )" autocomplete="off">
+        <span id="dbRo" class="es-note" hidden style="margin:0">Chế độ <b>chỉ xem</b></span>
+        <div class="db-tool">
+          <button type="button" class="db-ib" id="dbCols" title="Chọn cột hiển thị"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/></svg>Cột</button>
+          <div class="db-pop" id="dbColPop" hidden><h5>Cột hiển thị <button type="button" class="es-x" id="dbColAll" style="float:right;font-size:.6875rem;width:auto;padding:0 6px;text-transform:none;letter-spacing:0">hiện hết</button></h5><div id="dbColList"></div></div>
+        </div>
+        <button type="button" class="db-ib" id="dbDens" title="Giãn dòng / gọn dòng"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>Giãn dòng</button>
+        <button type="button" class="db-ib" id="dbReload" title="Tải lại từ Google Sheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5M3 21v-5h5"/></svg>Tải lại</button>
+        <button type="button" class="es-btn es-btn-primary" id="dbAdd" hidden>+ Thêm dòng <span class="db-key" style="color:inherit;border-color:currentColor;opacity:.7">N</span></button>
+      </div>
+
+      <!-- Bảng cố định: chỉ thead/tbody được điền dữ liệu -->
+      <div class="db-card">
+        <div class="db-wrap es-tablewrap" style="border:0;border-radius:0">
+          <table class="db-table" id="dbTable"><thead id="dbHead"></thead><tbody id="dbBody"></tbody></table>
+        </div>
+        <div class="db-foot-bar">
+          <span id="dbFootInfo">Đang tải…</span>
+          <span class="es-spacer"></span>
+          <span><span class="db-key">↑</span> <span class="db-key">↓</span> chọn · <span class="db-key">Enter</span> sửa · nhấp đúp = sửa</span>
+          <label>Dòng/trang <select id="dbPageSize"><option>50</option><option selected>100</option><option>200</option><option>500</option></select></label>
+          <span class="db-pg"><button type="button" id="dbPrev">‹ Trước</button><span id="dbPgNo">1 / 1</span><button type="button" id="dbNext">Sau ›</button></span>
+        </div>
       </div>
     </div>
   </main>

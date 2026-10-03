@@ -75,6 +75,7 @@
       });
       var last = m.lastActiveAt ? new Date(m.lastActiveAt).getTime() : 0;
       var row = { member: m, byDay: byDay, sum: sum, doing: doing.length, open: open.length, overdue: overdue.length, online: last && (nowMs - last) < 3 * 60 * 1000, dates: dates, lastActive: last };
+      row.use = usageOf(appsFor(m.id, dates));
       row.flags = flagsFor(row, dates.length === 1 && dates[0] === todayKey);
       row.ratio = sum.checked > 0 ? Math.min(1, sum.active / sum.checked) : null;
       return row;
@@ -94,6 +95,13 @@
     if (s.checked > 0 && s.away > 120 && s.away > s.active) f.push({ c: 'warn', t: 'Rời tab Hub nhiều: ' + fmtDur(s.away) });
     if (r.overdue > 0) f.push({ c: 'bad', t: r.overdue + ' việc quá hạn' });
     if (r.doing > 0 && s.updates === 0 && s.workDays > 0) f.push({ c: 'warn', t: 'Có ' + r.doing + ' việc đang làm nhưng chưa cập nhật tiến độ' });
+    var u = r.use;   // dữ liệu từ HICONIQUE Agent 2.2+
+    if (u && u.entries >= 40 && u.focus >= 30 && (u.perHour >= 90 || (u.entries >= 60 && u.quickPct >= 50))) f.push({ c: u.perHour >= 150 ? 'bad' : 'warn', t: 'Chuyển cửa sổ liên tục: ' + u.entries + ' lần (~' + u.perHour + ' lần/giờ, ' + Math.round(u.quickPct) + '% ở lại <10 giây)' });
+    if (u && u.vis >= 45 && u.focus >= 30 && u.vis >= u.focus * 0.4) f.push({ c: 'warn', t: 'Mở nhiều cửa sổ song song không chọn: ' + fmtDur(u.vis) + ' (vd chia đôi màn hình)' });
+    if (u && u.off.length) {
+      var offMin = u.off.reduce(function (s2, o) { return s2 + o.focus + o.vis; }, 0);
+      if (offMin >= 20) f.push({ c: offMin >= 90 ? 'bad' : 'warn', t: 'Cửa sổ ngoài công việc (theo từ khóa): ' + fmtDur(offMin) + ' — ' + u.off.slice(0, 2).map(function (o) { return o.t.slice(0, 32); }).join(', ') });
+    }
     if (!f.length && s.workDays > 0) f.push({ c: 'ok', t: 'Bình thường' });
     return f;
   }
@@ -263,10 +271,13 @@
       return;
     }
     var total = apps.reduce(function (s, a) { return s + a.min; }, 0);
+    var use = usageOf(apps);
     $('smAppBox').innerHTML = '<h4 style="margin:14px 0 8px;font-size:0.875rem;">Ứng dụng đang dùng — ' + label + ' (' + fmtDur(total) + ')</h4>' +
-      '<div class="sm-wrap"><table class="sm-table" style="min-width:0"><thead><tr><th>Ứng dụng</th><th class="num">Thời gian</th><th class="num">Tỉ trọng</th><th>Chi tiết theo cửa sổ / tab (thời gian từng cửa sổ)</th></tr></thead><tbody>' +
+      (use.entries ? '<p class="sm-foot" style="margin:0 0 8px;">Chuyển cửa sổ/ứng dụng: <b>' + use.entries + ' lần</b>' + (use.perHour ? ' (~' + use.perHour + ' lần/giờ)' : '') + ' · vào rồi bỏ đi trong &lt;10 giây: <b>' + use.quick + ' lần</b> (' + Math.round(use.quickPct) + '%)' + (use.vis >= 1 ? ' · hiển thị song song không chọn: <b>' + fmtDur(use.vis) + '</b>' : '') + '</p>' : '') +
+      (use.off.length ? '<p class="sm-foot" style="margin:0 0 8px;color:var(--sm-bad,#C75B5B);">Cửa sổ có từ khóa ngoài công việc: ' + use.off.map(function (o) { return esc(o.t) + ' — ' + fmtDur(o.focus) + (o.vis >= 1 ? ' (+' + fmtDur(o.vis) + ' hiển thị song song)' : ''); }).join(' · ') + '</p>' : '') +
+      '<div class="sm-wrap"><table class="sm-table" style="min-width:0"><thead><tr><th>Ứng dụng</th><th class="num">Đang dùng</th><th class="num">Tỉ trọng</th><th class="num" title="Cửa sổ hiện trên màn hình (vd chia đôi màn hình) nhưng không được chọn">Hiển thị song song</th><th>Chi tiết theo cửa sổ / tab</th></tr></thead><tbody>' +
       apps.slice(0, 30).map(function (a) {
-        return '<tr><td>' + esc(a.app) + '</td><td class="num">' + fmtDur(a.min) + '</td><td class="num">' + Math.round(a.min / total * 100) + '%</td><td class="sm-tcell">' + titleBreakdown(a) + '</td></tr>';
+        return '<tr><td>' + esc(a.app) + '</td><td class="num">' + fmtDur(a.min) + '</td><td class="num">' + Math.round(a.min / total * 100) + '%</td><td class="num">' + (a.vis >= 1 ? fmtDur(a.vis) : '—') + '</td><td class="sm-tcell">' + titleBreakdown(a) + visBreakdown(a) + '</td></tr>';
       }).join('') + '</tbody></table></div>';
   }
 
@@ -276,14 +287,41 @@
     var by = {};
     (TM.getAppUsage ? TM.getAppUsage() : []).forEach(function (u) {
       if (u.memberId !== memberId || !set[u.date]) return;
-      var a = by[u.app] || (by[u.app] = { app: u.app, min: 0, titles: [], _t: {} });
+      var a = by[u.app] || (by[u.app] = { app: u.app, min: 0, titles: [], _t: {}, vis: 0, entries: 0, quick: 0, vtitles: [], _v: {} });
       a.min += Number(u.minutes) || 0;
+      a.vis += Number(u.visMinutes) || 0; a.entries += Number(u.entries) || 0; a.quick += Number(u.quick) || 0;
+      parseTitles(u.visTitles).forEach(function (x) {
+        var e = a._v[x.t]; if (!e) { e = a._v[x.t] = { t: x.t, m: 0, known: false }; a.vtitles.push(e); }
+        if (x.m !== null) { e.m += x.m; e.known = true; }
+      });
       parseTitles(u.titles).forEach(function (x) {   // cùng tiêu đề trên nhiều máy/hàng → cộng dồn số phút
         var e = a._t[x.t]; if (!e) { e = a._t[x.t] = { t: x.t, m: 0, known: false }; a.titles.push(e); }
         if (x.m !== null) { e.m += x.m; e.known = true; }
       });
     });
-    return Object.keys(by).map(function (k) { var a = by[k]; a.titles.sort(function (p, q) { return q.m - p.m; }); return a; }).sort(function (x, y) { return y.min - x.min; });
+    return Object.keys(by).map(function (k) { var a = by[k]; a.titles.sort(function (p, q) { return q.m - p.m; }); a.vtitles.sort(function (p, q) { return q.m - p.m; }); return a; }).sort(function (x, y) { return y.min - x.min; });
+  }
+
+  // Thống kê dùng chung cho bảng chi tiết và cờ cảnh báo: số lần chuyển, tỉ lệ vào nhanh, cửa sổ ngoài công việc (theo từ khóa trong sheet TT-Danh mục)
+  var OFFWORK_DEFAULT = ['youtube', 'facebook', 'tiktok', 'netflix', 'poker', 'game', 'liên quân', 'steam', 'bóng đá', 'xem phim', 'phim bộ', 'shopee', 'lazada', 'instagram', 'twitch', 'zing mp3', 'truyện', 'xổ số'];
+  function offworkWords() { var c = TM.getCatalog ? TM.getCatalog('offworkKeywords', OFFWORK_DEFAULT) : OFFWORK_DEFAULT; return c.map(function (x) { return String(x).toLowerCase(); }); }
+  function usageOf(apps) {
+    var u = { entries: 0, quick: 0, quickPct: 0, vis: 0, focus: 0, perHour: 0, off: [] }, words = offworkWords(), offBy = {};
+    apps.forEach(function (a) {
+      u.entries += a.entries; u.quick += a.quick; u.vis += a.vis; u.focus += a.min;
+      function scan(list, key) {
+        list.forEach(function (x) {
+          var low = x.t.toLowerCase(), hit = words.filter(function (w) { return w && low.indexOf(w) !== -1; })[0];
+          if (!hit) return;
+          var o = offBy[x.t] || (offBy[x.t] = { t: x.t, focus: 0, vis: 0 }); o[key] += x.m;
+        });
+      }
+      scan(a.titles, 'focus'); scan(a.vtitles, 'vis');
+    });
+    u.quickPct = u.entries ? u.quick * 100 / u.entries : 0;
+    u.perHour = u.focus >= 30 ? Math.round(u.entries / (u.focus / 60)) : 0;
+    u.off = Object.keys(offBy).map(function (k) { return offBy[k]; }).filter(function (o) { return o.focus + o.vis >= 1; }).sort(function (x, y) { return (y.focus + y.vis) - (x.focus + x.vis); });
+    return u;
   }
 
   // Cột "Tiêu đề cửa sổ" của Sheet có dạng "Tiêu đề A (24p) | Tiêu đề B (7p)" — tách đúng cả khi tiêu đề có dấu " | " bên trong
@@ -293,6 +331,12 @@
     var rest = s.slice(last).trim();   // phần không có "(Np)" (bản Agent cũ / dữ liệu nhập tay)
     if (rest) rest.split(' | ').forEach(function (t) { t = t.trim(); if (t) out.push({ t: t, m: null }); });
     return out;
+  }
+  // Cửa sổ đang HIỂN THỊ trên màn hình nhưng không được chọn (chia đôi màn hình…) — hiện mờ, tách khỏi phần "đang dùng"
+  function visBreakdown(a) {
+    if (!a.vtitles.length && a.vis < 1) return '';
+    var rows = a.vtitles.map(function (x) { return '<div class="sm-tl sm-tl-vis"><span class="sm-tl-t" title="' + esc(x.t) + '">' + esc(x.t) + '</span><span class="sm-tl-m">' + (x.known ? fmtTitleDur(x.m) : '—') + '</span></div>'; }).join('');
+    return '<div class="sm-vis-h">Đang hiển thị nhưng không chọn</div>' + (rows || '<div class="sm-tl sm-tl-vis"><span class="sm-tl-t">(không rõ tiêu đề)</span><span class="sm-tl-m">' + fmtDur(a.vis) + '</span></div>');
   }
   function fmtTitleDur(m) { return m < 1 ? '<1 phút' : fmtDur(m); }
   // Từng cửa sổ/tab: tên + thanh tỉ lệ so với cả ứng dụng + số phút; phần còn lại (cửa sổ ít dùng, Agent chỉ gửi vài cửa sổ nhiều nhất) gộp thành 1 dòng
@@ -307,6 +351,8 @@
     if (rest >= 1) rows += '<div class="sm-tl sm-tl-rest"><span class="sm-tl-t">Các cửa sổ khác (dùng ít)</span><span class="sm-tl-m">' + fmtDur(rest) + '</span></div>';
     return rows;
   }
+
+  if (TM && TM.loadCatalog) TM.loadCatalog(function () { try { render(); } catch (e) { /* bỏ qua */ } });
 
   // ---- Thông tin bản phát hành HICONIQUE Agent (đọc /agent/latest.json — do build.py tạo mỗi lần phát hành) ----
   function fmtSize(b) { b = Number(b) || 0; return b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.round(b / 1024) + ' KB'; }

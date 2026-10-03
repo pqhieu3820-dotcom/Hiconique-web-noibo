@@ -1,5 +1,10 @@
 [
   {
+    "version": "2.2.0",
+    "date": "2026-10-03",
+    "notes": "Theo dõi chặt hơn: đo cửa sổ đang chọn mỗi 0,4s (thời gian và số lần chuyển cửa sổ chính xác, không còn bị lọt khi Alt-Tab nhanh), ghi thêm các cửa sổ ĐANG HIỂN THỊ trên màn hình nhưng không được chọn (chia đôi màn hình), đếm số lần vào/ở lại dưới 10 giây của từng ứng dụng; gửi tới 12 tiêu đề cửa sổ/ứng dụng."
+  },
+  {
     "version": "2.1.3",
     "date": "2026-09-30",
     "notes": "Web (Apps Script) tự áp quy tắc mỗi người 1 máy khi nhận cấu hình: ghi đè máy cũ (chuyển liên kết tài sản sang máy mới) hoặc giữ cả hai nếu chọn 'Tạo mới'."

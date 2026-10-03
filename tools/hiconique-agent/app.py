@@ -35,7 +35,7 @@ import zipfile
 from ctypes import wintypes
 from datetime import datetime, timezone
 
-VERSION = '2.1.3'
+VERSION = '2.2.0'
 
 COMPANY_NAME = 'CÔNG TY TNHH THIẾT KẾ VÀ XÂY DỰNG HICONIQUE'
 
@@ -108,13 +108,18 @@ ALLOWED_UPDATE_HOSTS = (SITE, GITHUB_RELEASES_PREFIX)
 DEFAULTS = {
     'apiUrl': 'https://script.google.com/macros/s/AKfycbzgg0dfNgDTFgcTGlNvF2IHLUusK6YuBk1pot9SrbYi5B9al-H2nmmMlKLz5CpDlLY/exec',
     'memberId': '',              # mã thành viên trên Hub của người dùng máy này (trình cài đặt điền sẵn)
-    'sampleSeconds': 15,         # tần suất kiểm tra cửa sổ đang mở
+    'sampleSeconds': 15,         # (cũ, không còn dùng cho theo dõi — xem pollSeconds/visibleSeconds)
+    'pollSeconds': 0.4,          # 2.2.0: kiểm tra cửa sổ đang chọn mỗi 0,4s → thời gian + số lần chuyển cửa sổ chính xác
+    'visibleSeconds': 3,         # 2.2.0: mỗi 3s liệt kê cửa sổ đang HIỂN THỊ (kể cả khi chia đôi màn hình, không được chọn)
+    'visibleMinPct': 8.0,        # cửa sổ phải hiện ≥ 8% diện tích màn hình mới tính là 'đang hiển thị'
+    'quickStaySeconds': 10,      # ở lại 1 ứng dụng ít hơn số giây này rồi chuyển đi = 'vào nhanh'
     'flushMinutes': 2,           # tần suất gửi lên Sheet (2026-09-30: 5 → 2 phút để trang Theo dõi hiệu suất gần thời gian thực)
     'idleSeconds': 120,          # không chuột/phím quá lâu này thì tính "không thao tác", không ghi ứng dụng
     'workHours': '07:30-18:00',  # ngoài khung giờ này không ghi gì
     'workDays': [0, 1, 2, 3, 4, 5],  # 0=Thứ 2 ... 6=Chủ nhật
     'sendTitles': True,          # false = chỉ gửi tên ứng dụng, không gửi tiêu đề cửa sổ
-    'topTitles': 5,              # số tiêu đề nhiều nhất giữ lại cho mỗi ứng dụng
+    'topTitles': 12,             # số tiêu đề nhiều nhất giữ lại cho mỗi ứng dụng (2.2.0: 5 → 12)
+    'topVisTitles': 6,           # số tiêu đề 'đang hiển thị nhưng không chọn' gửi lên cho mỗi ứng dụng
     'updateUrl': SITE + 'agent/latest.json',   # {"version","url","sha256"}; chỉ nhận file tải từ SITE (https)
     'updateCheckHours': 6,
     'reportHardware': True,      # gửi cấu hình phần cứng (CPU/RAM/ổ cứng...) lên trang Thiết bị; false = tắt
@@ -323,6 +328,127 @@ def foreground():
     return app, title
 
 
+# ===== 2026-10-03 (Agent 2.2.0): THEO DÕI CỬA SỔ CHÍNH XÁC HƠN =====
+# Trước đây: mỗi 15s chỉ nhìn cửa sổ ĐANG ĐƯỢC CHỌN (foreground) → bỏ sót (a) cửa sổ chia đôi màn hình nhưng không được click,
+# (b) chuyển cửa sổ nhanh (Alt-Tab) dưới 15s. Nay có 3 phần:
+#   1) Kiểm tra cửa sổ đang chọn mỗi ~0,4s: thời gian tính theo từng lần đổi cửa sổ/tab (chính xác), đếm số lần chuyển.
+#   2) Mỗi ~3s liệt kê các cửa sổ ĐANG HIỂN THỊ thật trên màn hình (không thu nhỏ, không bị cửa sổ khác che hết, chiếm ≥ visibleMinPct % màn hình)
+#      → cộng "phút hiển thị (không chọn)" cho từng ứng dụng/tiêu đề. Che bằng chia đôi màn hình vẫn lộ ra ở đây.
+#   3) Mỗi ứng dụng đếm "số lần chuyển vào" và "số lần ở lại < quickStaySeconds" → web cảnh báo kiểu chuyển cửa sổ liên tục.
+# Vẫn KHÔNG chụp màn hình/đọc nội dung — chỉ tên ứng dụng + tiêu đề cửa sổ như trước.
+dwmapi = ctypes.WinDLL('dwmapi')
+WNDENUMPROC = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+user32.EnumWindows.argtypes = [WNDENUMPROC, wintypes.LPARAM]
+user32.IsWindowVisible.argtypes = [wintypes.HWND]
+user32.IsIconic.argtypes = [wintypes.HWND]
+user32.GetWindowRect.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.RECT)]
+user32.GetWindowLongW.argtypes = [wintypes.HWND, ctypes.c_int]
+user32.GetWindowLongW.restype = wintypes.LONG
+user32.GetSystemMetrics.argtypes = [ctypes.c_int]
+dwmapi.DwmGetWindowAttribute.argtypes = [wintypes.HWND, wintypes.DWORD, ctypes.c_void_p, wintypes.DWORD]
+
+_PID_APP = {}   # pid -> (tên ứng dụng, thời điểm tra); tra tên tiến trình tốn kém nên nhớ 2 phút
+
+
+def app_of_pid(pid):
+    now = time.time()
+    hit = _PID_APP.get(pid)
+    if hit and now - hit[1] < 120:
+        return hit[0]
+    app = None
+    h = kernel32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+    if h:
+        size = wintypes.DWORD(1024)
+        path = ctypes.create_unicode_buffer(1024)
+        if kernel32.QueryFullProcessImageNameW(h, 0, path, ctypes.byref(size)):
+            app = os.path.basename(path.value)
+            if app.lower().endswith('.exe'):
+                app = app[:-4]
+        kernel32.CloseHandle(h)
+    if len(_PID_APP) > 400:
+        _PID_APP.clear()
+    _PID_APP[pid] = (app, now)
+    return app
+
+
+def window_info(hwnd):
+    """(tên ứng dụng, tiêu đề) của 1 cửa sổ."""
+    n = user32.GetWindowTextLengthW(hwnd)
+    buf = ctypes.create_unicode_buffer(n + 1)
+    user32.GetWindowTextW(hwnd, buf, n + 1)
+    pid = wintypes.DWORD()
+    user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+    return app_of_pid(pid.value), buf.value.strip()
+
+
+_IGNORE_CLASS_TITLES = ('program manager',)
+
+
+def visible_windows(grid_w=48, grid_h=27, min_pct=8.0):
+    """Các cửa sổ đang HIỂN THỊ thật trên màn hình (kể cả nhiều màn hình), từ trên xuống dưới theo thứ tự xếp chồng.
+    Cửa sổ chỉ tính khi: hiện, không thu nhỏ, không bị 'cloaked' (ứng dụng UWP ẩn / desktop ảo khác), có tiêu đề, không phải cửa sổ công cụ,
+    và phần NHÌN THẤY (sau khi trừ các cửa sổ nằm trên nó) chiếm ≥ min_pct % tổng màn hình. Dùng lưới ô thô nên rất nhẹ (vài ms).
+    Trả về list (hwnd, app, title)."""
+    vx, vy = user32.GetSystemMetrics(76), user32.GetSystemMetrics(77)   # SM_XVIRTUALSCREEN / SM_YVIRTUALSCREEN
+    vw, vh = user32.GetSystemMetrics(78), user32.GetSystemMetrics(79)   # SM_CXVIRTUALSCREEN / SM_CYVIRTUALSCREEN
+    if vw <= 0 or vh <= 0:
+        return []
+    cells = bytearray(grid_w * grid_h)
+    total = float(grid_w * grid_h)
+    out = []
+    cloaked = wintypes.DWORD(0)
+    rect = wintypes.RECT()
+
+    def cb(hwnd, _lp):
+        try:
+            if not user32.IsWindowVisible(hwnd) or user32.IsIconic(hwnd):
+                return True
+            cloaked.value = 0
+            if dwmapi.DwmGetWindowAttribute(hwnd, 14, ctypes.byref(cloaked), 4) == 0 and cloaked.value:   # DWMWA_CLOAKED
+                return True
+            ex = user32.GetWindowLongW(hwnd, -20) & 0xFFFFFFFF   # GWL_EXSTYLE
+            if (ex & 0x80 and not ex & 0x40000) or ex & 0x08000000:   # TOOLWINDOW (không phải APPWINDOW) / NOACTIVATE → bỏ
+                return True
+            if not user32.GetWindowRect(hwnd, ctypes.byref(rect)):
+                return True
+            x0, y0 = max(rect.left, vx), max(rect.top, vy)
+            x1, y1 = min(rect.right, vx + vw), min(rect.bottom, vy + vh)
+            if x1 <= x0 or y1 <= y0:
+                return True
+            n = user32.GetWindowTextLengthW(hwnd)
+            if n <= 0:
+                return True   # cửa sổ không tiêu đề (lớp phủ, khung ẩn) không tính và không che
+            cx0, cx1 = (x0 - vx) * grid_w // vw, min(grid_w - 1, ((x1 - vx) * grid_w - 1) // vw)
+            cy0, cy1 = (y0 - vy) * grid_h // vh, min(grid_h - 1, ((y1 - vy) * grid_h - 1) // vh)
+            claimed = 0
+            for cy in range(cy0, cy1 + 1):
+                base = cy * grid_w
+                for cx in range(cx0, cx1 + 1):
+                    if not cells[base + cx]:
+                        cells[base + cx] = 1
+                        claimed += 1
+            if claimed * 100.0 / total >= min_pct:
+                app, title = window_info(hwnd)
+                if app and title.lower() not in _IGNORE_CLASS_TITLES:
+                    out.append((hwnd, app, title))
+        except Exception:
+            pass
+        return True
+
+    user32.EnumWindows(WNDENUMPROC(cb), 0)
+    return out
+
+
+def foreground_win():
+    """(hwnd, tên ứng dụng, tiêu đề) của cửa sổ đang được chọn; hwnd=0 nếu không có."""
+    hwnd = user32.GetForegroundWindow()
+    if not hwnd:
+        return 0, None, None
+    app, title = window_info(hwnd)
+    return hwnd, app, title
+# ===== hết khối cửa sổ =====
+
+
 PRIVATE_RE = re.compile(r'inprivate|incognito|ẩn danh|private browsing|mật khẩu|password', re.I)
 SKIP_APPS = {'LockApp', 'LogonUI', 'ScreenClippingHost', 'HiconiqueAgent'}
 
@@ -423,13 +549,26 @@ def migrate_state(st):
             sec = float(v.get('sec', 0) or 0)
         except (TypeError, ValueError):
             sec = 0.0
-        clean[str(name)] = {'sec': sec, 'titles': {str(k): float(s) for k, s in titles.items() if isinstance(s, (int, float))}}
+        ent = {'sec': sec, 'titles': {str(k): float(s) for k, s in titles.items() if isinstance(s, (int, float))}}
+        try:   # 2.2.0: phần hiển thị song song + đếm lần chuyển (bản cũ không có → 0)
+            ent['vis'] = float(v.get('vis', 0) or 0)
+            ent['entries'] = int(v.get('entries', 0) or 0)
+            ent['quick'] = int(v.get('quick', 0) or 0)
+        except (TypeError, ValueError):
+            ent['vis'], ent['entries'], ent['quick'] = 0.0, 0, 0
+        vt = v.get('vtitles') if isinstance(v.get('vtitles'), dict) else {}
+        ent['vtitles'] = {str(k): float(x) for k, x in vt.items() if isinstance(x, (int, float))}
+        clean[name if isinstance(name, str) else str(name)] = ent
     try:
         idle = float(st.get('idleSec', 0) or 0)
     except (TypeError, ValueError):
         idle = 0.0
-    out = {k: v for k, v in st.items() if k not in ('apps', 'idleSec', 'schema')}     # giữ nguyên các trường lạ của bản khác
-    out.update({'schema': STATE_SCHEMA, 'apps': clean, 'idleSec': idle})
+    out = {k: v for k, v in st.items() if k not in ('apps', 'idleSec', 'schema', 'switches')}     # giữ nguyên các trường lạ của bản khác
+    try:
+        switches = int(st.get('switches', 0) or 0)
+    except (TypeError, ValueError):
+        switches = 0
+    out.update({'schema': STATE_SCHEMA, 'apps': clean, 'idleSec': idle, 'switches': switches})
     return out
 
 
@@ -464,14 +603,18 @@ def flush(cfg, day, st):
     device = full_hostname()
     rows = []
     for app, v in st['apps'].items():
-        if v['sec'] < 30:
+        if v['sec'] < 30 and v.get('vis', 0) < 60:
             continue
         top = sorted(v['titles'].items(), key=lambda kv: -kv[1])[:cfg['topTitles']]
+        vtop = sorted(v.get('vtitles', {}).items(), key=lambda kv: -kv[1])[:cfg['topVisTitles']]
         rows.append({
             'id': 'app_%s_%s_%s_%s' % (cfg['memberId'], day, slug(device.upper()[:15]), slug(app)),
             'memberId': cfg['memberId'], 'date': day, 'device': device, 'app': friendly_app(app), 'appRaw': app,
             'minutes': round(v['sec'] / 60, 1),
             'titles': ' | '.join('%s (%dp)' % (t, round(s / 60)) for t, s in top) if cfg['sendTitles'] else '',
+            'visMinutes': round(v.get('vis', 0) / 60, 1),    # 2.2.0: phút cửa sổ HIỂN THỊ trên màn hình nhưng không được chọn (vd chia đôi màn hình)
+            'visTitles': ' | '.join('%s (%dp)' % (t, round(s / 60)) for t, s in vtop) if cfg['sendTitles'] else '',
+            'entries': int(v.get('entries', 0)), 'quick': int(v.get('quick', 0)),   # số lần chuyển vào ứng dụng / số lần ở lại < quickStaySeconds
             'lastSeen': datetime.now().strftime('%Y-%m-%d %H:%M'),
         })
     if not rows:
@@ -1157,8 +1300,13 @@ class BackgroundWorker(QThread):
         last_flush = time.time()
         last_hw = time.time() - cfg['hardwareHours'] * 3600 + 90
         last_update = time.time() - 300  # kiểm tra cập nhật sau ~5 phút mở app, rồi theo chu kỳ
-        step = cfg['sampleSeconds']
+        poll = float(cfg.get('pollSeconds', 0.4)); vis_every = float(cfg.get('visibleSeconds', 3)); quick_s = float(cfg.get('quickStaySeconds', 10))
+        last_t = time.time(); last_vis = 0.0; last_save = time.time()
+        cur_hwnd = None; prev_app = None; app_since = 0.0   # cửa sổ/ứng dụng đang chọn ở lần kiểm tra trước
         while not self._stop:
+            t = time.time()
+            dt = min(max(t - last_t, 0.0), 2.0)   # thời gian thật từ lần kiểm tra trước (chặn máy ngủ/treo làm số phình)
+            last_t = t
             now = datetime.now()
             d = now.strftime('%Y-%m-%d')
             if d != self.shared.day:
@@ -1166,22 +1314,60 @@ class BackgroundWorker(QThread):
                 self.shared.day, self.shared.st = d, load_state(d)
                 cleanup_old_days()
                 self.dayChanged.emit(d)
+                cur_hwnd = None; prev_app = None
             if not self.shared.paused and in_work_time(cfg, now):
                 st = self.shared.st
-                if idle_seconds() >= cfg['idleSeconds']:
-                    st['idleSec'] = st.get('idleSec', 0) + step
-                else:
-                    app, title = foreground()
-                    if app and app not in SKIP_APPS:
-                        v = st['apps'].setdefault(app, {'sec': 0, 'titles': {}})
-                        v['sec'] += step
-                        t = clean_title(title, cfg['sendTitles'])
-                        if t:
-                            v['titles'][t] = v['titles'].get(t, 0) + step
-                            if len(v['titles']) > 30:
-                                for k in sorted(v['titles'], key=v['titles'].get)[:10]:
-                                    del v['titles'][k]
-                save_state(self.shared.day, st)
+                try:
+                    if idle_seconds() >= cfg['idleSeconds']:
+                        st['idleSec'] = st.get('idleSec', 0) + dt
+                        cur_hwnd = None; prev_app = None   # quay lại sau lúc nghỉ không tính là 'chuyển cửa sổ'
+                    else:
+                        hwnd, app, title = foreground_win()
+                        if app and app not in SKIP_APPS:
+                            v = st['apps'].setdefault(app, {'sec': 0, 'titles': {}})
+                            v['sec'] += dt
+                            tt = clean_title(title, cfg['sendTitles'])
+                            if tt:
+                                v['titles'][tt] = v['titles'].get(tt, 0) + dt
+                                if len(v['titles']) > 40:
+                                    for k in sorted(v['titles'], key=v['titles'].get)[:10]:
+                                        del v['titles'][k]
+                            if cur_hwnd is not None and hwnd != cur_hwnd:
+                                st['switches'] = st.get('switches', 0) + 1          # Alt-Tab/đổi cửa sổ
+                            if app != prev_app:
+                                v['entries'] = v.get('entries', 0) + 1               # vào ứng dụng mới
+                                if prev_app is not None and t - app_since < quick_s:
+                                    pv = st['apps'].get(prev_app)
+                                    if pv is not None:
+                                        pv['quick'] = pv.get('quick', 0) + 1         # ở ứng dụng trước < quickStaySeconds rồi bỏ đi
+                                prev_app = app; app_since = t
+                            cur_hwnd = hwnd
+                        else:
+                            cur_hwnd = None; prev_app = None
+                        # cửa sổ đang hiển thị nhưng KHÔNG được chọn (chia đôi màn hình, cửa sổ nhỏ cạnh bên…)
+                        if t - last_vis >= vis_every:
+                            vdt = min(t - last_vis, vis_every * 3) if last_vis else vis_every
+                            last_vis = t
+                            seen_apps = set()
+                            for vh, vapp, vtitle in visible_windows(min_pct=float(cfg.get('visibleMinPct', 8.0))):
+                                if vh == hwnd or vapp in SKIP_APPS:
+                                    continue
+                                vv = st['apps'].setdefault(vapp, {'sec': 0, 'titles': {}})
+                                if vapp not in seen_apps:
+                                    seen_apps.add(vapp)
+                                    vv['vis'] = vv.get('vis', 0) + vdt
+                                vt = clean_title(vtitle, cfg['sendTitles'])
+                                if vt:
+                                    vd = vv.setdefault('vtitles', {})
+                                    vd[vt] = vd.get(vt, 0) + vdt
+                                    if len(vd) > 30:
+                                        for k in sorted(vd, key=vd.get)[:10]:
+                                            del vd[k]
+                except Exception as e:
+                    log('Lỗi theo dõi cửa sổ:', e)
+                if t - last_save >= 15:
+                    last_save = t
+                    save_state(self.shared.day, st)
             if time.time() - last_flush >= cfg['flushMinutes'] * 60:
                 ok = flush(cfg, self.shared.day, self.shared.st)
                 self.shared.last_flush_at = datetime.now()
@@ -1194,10 +1380,11 @@ class BackgroundWorker(QThread):
             if time.time() - last_update >= cfg['updateCheckHours'] * 3600:
                 last_update = time.time()
                 check_update(cfg)
-            for _ in range(step):
-                if self._stop:
-                    break
-                time.sleep(1)
+            time.sleep(poll)
+        try:
+            save_state(self.shared.day, self.shared.st)   # lưu nốt khi dừng
+        except Exception:
+            pass
 
 
 # ==============================================================================

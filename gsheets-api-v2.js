@@ -401,6 +401,7 @@ const FIELD_MAP = {
   appUsage: [
     ['Mã', 'id'], ['Mã thành viên', 'memberId'], ['Ngày', 'date'], ['Thiết bị', 'device'],
     ['Ứng dụng', 'app'], ['Phút', 'minutes'], ['Tiêu đề cửa sổ', 'titles'], ['Lần cuối', 'lastSeen'],
+    ['Phút hiển thị song song', 'visMinutes'], ['Cửa sổ hiển thị song song', 'visTitles'], ['Số lần vào', 'entries'], ['Số lần vào nhanh', 'quick'],   // 2026-10-03 (Agent 2.2.0): cửa sổ hiện trên màn hình nhưng không được chọn + đếm chuyển cửa sổ
     ['Tên gốc (tiến trình)', 'appRaw']   // 2026-09-30: cột 'Ứng dụng' = tên quen thuộc (Cốc Cốc, Excel, Thư mục...), cột này giữ tên tiến trình gốc
   ],
   priceCatalog: [
@@ -1754,13 +1755,15 @@ var TT_CATALOG_DEFS_ = [
   { id: 'equipCategory', name: 'Nhóm thiết bị (chỉ xem)', edit: false, vals: null },
   { id: 'equipStatus', name: 'Tình trạng thiết bị', edit: true, vals: null },
   { id: 'equipUnit', name: 'Đơn vị tính thiết bị', edit: true, vals: null },
-  { id: 'noticeType', name: 'Loại thông báo (chỉ xem)', edit: false, vals: ['payroll — Lương thưởng', 'attendance — Chấm công', 'general — Chung'] }
+  { id: 'noticeType', name: 'Loại thông báo (chỉ xem)', edit: false, vals: ['payroll — Lương thưởng', 'attendance — Chấm công', 'general — Chung'] },
+  // 2026-10-03: từ khóa (không phân biệt hoa/thường) để trang Theo dõi hiệu suất đánh dấu cửa sổ NGOÀI CÔNG VIỆC (giải trí/game...). Chỉ là gợi ý để quản lý xem lại, không phải kết luận. Thêm/xoá thoải mái.
+  { id: 'offworkKeywords', name: 'Từ khóa ngoài công việc', edit: true, auto: true, vals: ['youtube', 'facebook', 'tiktok', 'netflix', 'poker', 'game', 'liên quân', 'steam', 'bóng đá', 'xem phim', 'phim bộ', 'shopee', 'lazada', 'instagram', 'twitch', 'zing mp3', 'truyện', 'xổ số'] }
 ];
 function ttCatalogKey_(h) { return normalizeName(String(h || '').replace(/\(.*?\)/g, '')); }
 function ttCatalogDefs_() {
   return TT_CATALOG_DEFS_.map(function (d) {
     const v = d.vals || (d.id === 'equipCategory' ? EQUIPMENT_CATEGORIES : d.id === 'equipStatus' ? EQUIPMENT_STATUSES : EQUIPMENT_UNITS);
-    return { id: d.id, name: d.name, edit: d.edit, vals: v.slice() };
+    return { id: d.id, name: d.name, edit: d.edit, auto: !!d.auto, vals: v.slice() };
   });
 }
 function ttCatalogCreate_(ss) {
@@ -1787,6 +1790,21 @@ function ttCatalogCreate_(ss) {
 }
 function ttCatalogRead_(ss) {
   const sh = findSheet(ss, TT_CATALOG_SHEET_) || ttCatalogCreate_(ss);
+  // Danh sách mới thêm sau khi sheet đã tạo (def có auto:true) → tự thêm cột với giá trị mặc định, đúng 1 lần
+  const heads0 = sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), 1)).getValues()[0], have = {};
+  heads0.forEach(function (h) { have[ttCatalogKey_(h)] = 1; });
+  const missing = ttCatalogDefs_().filter(function (d) { return d.auto && !have[ttCatalogKey_(d.name)]; });
+  if (missing.length) {
+    withScriptLock_(function () {
+      let col = sh.getLastColumn();
+      missing.forEach(function (d) {
+        col++;
+        sh.getRange(1, col).setValue(d.name).setFontWeight('bold').setBackground('#22272E').setFontColor('#FFFFFF');
+        sh.getRange(2, col, d.vals.length, 1).setValues(d.vals.map(function (x) { return [x]; }));
+        sh.setColumnWidth(col, 250);
+      });
+    });
+  }
   const last = sh.getLastRow(), lastCol = sh.getLastColumn();
   if (last < 1 || lastCol < 1) return [];
   const vals = sh.getRange(1, 1, last, lastCol).getValues(), byKey = {};
