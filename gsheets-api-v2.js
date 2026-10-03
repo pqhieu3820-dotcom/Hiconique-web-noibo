@@ -1683,13 +1683,24 @@ function handleRequestImpl_(e) {
         pdData.lastActiveAt = new Date().toISOString();
         result = addData(ss, SHEETS.pushDevices, pdData);
       }
+    } else if (action === 'getPushDevices') {
+      result = getPushDevices_(ss, params);
+    } else if (action === 'updatePushDevice') {
+      result = updatePushDevice_(ss, JSON.parse(params.data));
+    } else if (action === 'deletePushDevice') {
+      result = deletePushDevice_(ss, JSON.parse(params.data));
+    } else if (action === 'testPushDevice') {
+      result = testPushDevice_(ss, JSON.parse(params.data));
     } else if (action === 'unregisterPushDevice') {
       var updExisting = getAllData(ss, SHEETS.pushDevices).find(function (d) { return d.fcmToken === params.fcmToken; });
       result = updExisting ? updateData(ss, SHEETS.pushDevices, updExisting.id, { active: false }) : null;
     } else if (action === 'getNotices') {
       result = getAllData(ss, SHEETS.notices);
     } else if (action === 'addNotice') {
-      result = addData(ss, SHEETS.notices, JSON.parse(params.data));
+      var ntc_ = JSON.parse(params.data);
+      result = addData(ss, SHEETS.notices, ntc_);
+      // 2026-10-03: đăng bảng tin → đẩy thông báo tới MỌI thành viên còn làm (bảng tin là thông báo chung toàn công ty)
+      PENDING_PUSH_.push({ scope: 'all', title: 'Bảng tin: ' + (ntc_.title || ''), body: ntc_.message || '', type: 'notice' });
     } else if (action === 'updateNotice') {
       result = updateData(ss, SHEETS.notices, params.id, JSON.parse(params.data));
     } else if (action === 'deleteNotice') {
@@ -4262,31 +4273,43 @@ var PENDING_PUSH_ = [];
 var IN_REQUEST_ = false;
 function pushForNotificationRow_(ss, row) {
   if (!row || !row.scope) return;
-  PENDING_PUSH_.push({ scope: row.scope, title: row.title || 'Thông báo mới', body: row.message || '' });
+  if (row.recurring === true || row.recurring === 'TRUE') return;   // nhắc định kỳ chỉ hiện trong chuông, không đẩy
+  PENDING_PUSH_.push({ scope: row.scope, title: row.title || 'Thông báo mới', body: row.message || '', type: row.type || '' });
   if (!IN_REQUEST_) flushPendingPush_();   // chạy từ trigger/hàm nền (không qua handleRequest) → gửi luôn
 }
+// 2026-10-03: SỬA LỖI "lúc có lúc không": trước đây gửi kèm fcm_options.link = '/' (đường dẫn TƯƠNG ĐỐI) → FCM trả 400 INVALID_ARGUMENT
+// → code coi 400 là "token hỏng" và TẮT luôn thiết bị; chỉ khi người đó mở lại web (silentRefresh) thiết bị mới bật lại → push chỉ tới được
+// lần đầu sau mỗi lần mở web. Nay: (1) gửi DỮ LIỆU (data-only) — sw.js / push-notifications.js tự hiện, không bị trình duyệt hiện trùng 2 lần;
+// (2) chỉ tắt thiết bị khi FCM báo token KHÔNG CÒN ĐĂNG KÝ (404 / UNREGISTERED), lỗi khác chỉ ghi log; (3) gộp trùng token;
+// (4) chỉ gửi cho thiết bị của người CÒN trong NS-Thành viên (người đã nghỉ không nhận nữa); (5) scope 'all' (không định kỳ) → mọi thành viên.
 function flushPendingPush_() {
   if (!PENDING_PUSH_.length) return;
   const items = PENDING_PUSH_; PENDING_PUSH_ = [];
   try {
     const token = getFcmAccessToken_(); if (!token) return;
-    const scopes = {}; items.forEach(function (it) { scopes[it.scope] = true; });
-    const devices = getAllData(getSS_(), SHEETS.pushDevices).filter(function (d) { return scopes[d.memberId] && d.active !== false && d.active !== 'FALSE' && d.fcmToken; });
+    const ss = getSS_(), members = {};
+    getAllData(ss, SHEETS.members).forEach(function (m) { if (m.id) members[m.id] = m; });
+    const seen = {}, devices = getAllData(ss, SHEETS.pushDevices).filter(function (d) {
+      if (!d.fcmToken || d.active === false || d.active === 'FALSE' || !members[d.memberId] || seen[d.fcmToken]) return false;
+      seen[d.fcmToken] = 1; return true;
+    });
     if (!devices.length) return;
     const reqs = [], owners = [];
     items.forEach(function (it) {
       devices.forEach(function (dev) {
-        if (dev.memberId !== it.scope) return;
+        if (it.scope !== 'all' && dev.memberId !== it.scope) return;
         reqs.push({ url: 'https://fcm.googleapis.com/v1/projects/' + FCM_PROJECT_ID + '/messages:send', method: 'post', contentType: 'application/json', headers: { Authorization: 'Bearer ' + token },
-          payload: JSON.stringify({ message: { token: dev.fcmToken, notification: { title: it.title, body: it.body }, webpush: { notification: { icon: '/apple-touch-icon.png' }, fcm_options: { link: '/' } } } }), muteHttpExceptions: true });
+          payload: JSON.stringify({ message: { token: dev.fcmToken, data: { title: String(it.title).slice(0, 200), body: String(it.body).slice(0, 900), link: '/', type: String(it.type || '') },
+            webpush: { headers: { Urgency: 'high', TTL: '86400' } } } }), muteHttpExceptions: true });
         owners.push(dev);
       });
     });
     if (!reqs.length) return;
     UrlFetchApp.fetchAll(reqs).forEach(function (resp, i) {
-      const code = resp.getResponseCode();
-      if (code === 404 || code === 400) { try { updateData(getSS_(), SHEETS.pushDevices, owners[i].id, { active: false }); } catch (e) { /* bỏ qua */ } }
-      else if (code >= 400) Logger.log('flushPendingPush_: FCM loi ' + code + ' cho ' + owners[i].memberId);
+      const code = resp.getResponseCode(); if (code < 400) return;
+      const txt = resp.getContentText();
+      if (code === 404 || /UNREGISTERED|registration-token-not-registered/i.test(txt)) { try { updateData(getSS_(), SHEETS.pushDevices, owners[i].id, { active: false }); } catch (e) { /* bỏ qua */ } }
+      else Logger.log('flushPendingPush_: FCM loi ' + code + ' cho ' + owners[i].memberId + ' — ' + txt.slice(0, 300));
     });
   } catch (e) { Logger.log('flushPendingPush_ exception: ' + e); }
 }
@@ -5116,4 +5139,59 @@ function dgdmDeleteOldColumns() {
   }
   SHEET_MEMO_ = null; bumpReadCacheVersion_();
   L('XONG xoá cột cũ.');
+}
+
+// ===== 2026-10-03: QUẢN LÝ THIẾT BỊ NHẬN THÔNG BÁO (trang Thông báo — notices.html) =====
+// getPushDevices / updatePushDevice / deletePushDevice / testPushDevice. Mỗi người chỉ xem/sửa/xoá thiết bị CỦA MÌNH; Founder/CEO (admin) xem được tất cả.
+// KHÔNG trả token FCM đầy đủ về trình duyệt (chỉ 12 ký tự cuối để nhận ra "thiết bị này").
+// Lưu ý: như mọi API khác của app, quyền ở đây dựa vào actorId client gửi lên (không phải xác thực máy chủ thật) — xem GHI_CHU_DU_AN.md.
+function pushActor_(ss, actorId) {
+  const m = getAllData(ss, SHEETS.members).filter(function (x) { return x.id === actorId; })[0] || null;
+  return { member: m, admin: !!m && (m.roleLevel === 'admin' || m.level === 'founder' || m.level === 'ceo') };
+}
+function getPushDevices_(ss, params) {
+  const a = pushActor_(ss, params.actorId);
+  if (!a.member) return { error: 'Không xác định được người dùng' };
+  const names = {}; getAllData(ss, SHEETS.members).forEach(function (m) { names[m.id] = m.name; });
+  const list = getAllData(ss, SHEETS.pushDevices).filter(function (d) { return d.fcmToken && (a.admin || d.memberId === a.member.id); }).map(function (d) {
+    return { id: d.id, memberId: d.memberId, memberName: names[d.memberId] || '(đã nghỉ / không còn trong danh sách)', deviceLabel: d.deviceLabel || '', browserFamily: d.browserFamily || '',
+      active: !(d.active === false || d.active === 'FALSE'), createdAt: d.createdAt || '', lastActiveAt: d.lastActiveAt || '', tokenTail: String(d.fcmToken).slice(-12) };
+  });
+  return { admin: a.admin, devices: list };
+}
+function pushDeviceGuard_(ss, data) {
+  const a = pushActor_(ss, data.actorId);
+  if (!a.member) return { error: 'Không xác định được người dùng' };
+  const dev = getAllData(ss, SHEETS.pushDevices).filter(function (d) { return d.id === data.id; })[0];
+  if (!dev) return { error: 'Không tìm thấy thiết bị' };
+  if (!a.admin && dev.memberId !== a.member.id) return { error: 'Bạn không có quyền với thiết bị của người khác' };
+  return { dev: dev };
+}
+function updatePushDevice_(ss, data) {
+  return withScriptLock_(function () {
+    const g = pushDeviceGuard_(ss, data); if (g.error) return g;
+    const upd = {};
+    if (data.deviceLabel !== undefined) upd.deviceLabel = String(data.deviceLabel).slice(0, 80);
+    if (data.active !== undefined) upd.active = !!data.active;
+    return updateData(ss, SHEETS.pushDevices, g.dev.id, upd);
+  });
+}
+function deletePushDevice_(ss, data) {
+  return withScriptLock_(function () {
+    const g = pushDeviceGuard_(ss, data); if (g.error) return g;
+    return deleteData(ss, SHEETS.pushDevices, g.dev.id);
+  });
+}
+// Gửi 1 thông báo THỬ tới đúng 1 thiết bị, trả nguyên mã phản hồi FCM để biết thiết bị đó còn nhận được không.
+function testPushDevice_(ss, data) {
+  const g = pushDeviceGuard_(ss, data); if (g.error) return g;
+  const token = getFcmAccessToken_(); if (!token) return { error: 'Máy chủ chưa lấy được quyền gửi thông báo (OAuth firebase.messaging)' };
+  const resp = UrlFetchApp.fetch('https://fcm.googleapis.com/v1/projects/' + FCM_PROJECT_ID + '/messages:send', { method: 'post', contentType: 'application/json', headers: { Authorization: 'Bearer ' + token },
+    payload: JSON.stringify({ message: { token: g.dev.fcmToken, data: { title: 'Thông báo thử — HICONIQUE', body: 'Thiết bị "' + (g.dev.deviceLabel || '') + '" nhận được thông báo. ' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'HH:mm dd/MM'), link: '/pages/notices.html', type: 'test' },
+      webpush: { headers: { Urgency: 'high', TTL: '600' } } } }), muteHttpExceptions: true });
+  const code = resp.getResponseCode(), txt = resp.getContentText();
+  if (code === 404 || /UNREGISTERED/i.test(txt)) { updateData(ss, SHEETS.pushDevices, g.dev.id, { active: false }); return { ok: false, code: code, error: 'Thiết bị này đã huỷ đăng ký (token hết hạn) — mở web trên thiết bị đó và bấm "Bật thông báo" lại.' }; }
+  if (code >= 400) return { ok: false, code: code, error: txt.slice(0, 300) };
+  if (!(g.dev.active === true || g.dev.active === 'TRUE')) updateData(ss, SHEETS.pushDevices, g.dev.id, { active: true });
+  return { ok: true, code: code };
 }

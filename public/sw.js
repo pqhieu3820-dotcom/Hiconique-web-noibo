@@ -44,13 +44,16 @@ firebase.initializeApp({
 // Định nghĩa onBackgroundMessage() ở đây thay hẳn cách Firebase tự hiện
 // notification mặc định, để ép đúng icon/badge thương hiệu HICONIQUE.
 var messaging = firebase.messaging();
+// 2026-10-03: máy chủ gửi DỮ LIỆU (data-only: title/body/link) — chỉ ở đây hiện popup, tránh trình duyệt tự hiện thêm 1 cái trùng.
 messaging.onBackgroundMessage(function (payload) {
-  var n = payload.notification || {};
-  var link = (payload.fcmOptions && payload.fcmOptions.link) || (payload.data && payload.data.link) || '/';
-  self.registration.showNotification(n.title || 'HICONIQUE', {
-    body: n.body || '',
+  var d = payload.data || {}, n = payload.notification || {};
+  var link = d.link || (payload.fcmOptions && payload.fcmOptions.link) || '/';
+  return self.registration.showNotification(d.title || n.title || 'HICONIQUE', {
+    body: d.body || n.body || '',
     icon: '/apple-touch-icon.png',
     badge: '/icon-192.png',
+    tag: 'hq-' + Date.now(),
+    renotify: true,
     data: { link: link }
   });
 });
@@ -68,7 +71,7 @@ self.addEventListener('notificationclick', function (event) {
   );
 });
 
-const CACHE_VERSION = 'hiconique-shell-v211';
+const CACHE_VERSION = 'hiconique-shell-v212';
 
 const PRECACHE_URLS = [
   '/',
@@ -134,6 +137,7 @@ const PRECACHE_URLS = [
   '/js/offline.js',
   '/js/portal.js',
   '/js/push-notifications.js',
+  '/js/notice-devices.js',
   '/js/projects.js',
   '/js/task-data.js',
   '/js/spc-page.js',

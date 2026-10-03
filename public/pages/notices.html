@@ -79,6 +79,20 @@
         <p style="color:var(--color-text-faint);">Đang tải thông báo…</p>
       </section>
 
+      <!-- 2026-10-03: bảng thiết bị nhận thông báo đẩy (máy tính + điện thoại) — js/notice-devices.js -->
+      <section id="ndSection" class="nd-card" style="margin-top:var(--space-xl);">
+        <div class="nd-head">
+          <div>
+            <h2 class="pf-section-title" style="margin:0;">Thiết bị nhận thông báo</h2>
+            <p class="nd-lede">Thông báo việc mới, duyệt/từ chối, bảng tin… hiện ngay trên máy tính và điện thoại kể cả khi không mở web. Mỗi tài khoản nên đăng ký đủ <b>2 thiết bị</b>.</p>
+          </div>
+          <div class="nd-tools">
+            <button type="button" class="btn-secondary" id="ndReload">Tải lại</button>
+            <button type="button" class="btn-primary" id="ndAddThis">+ Đăng ký thiết bị này</button>
+          </div>
+        </div>
+        <div id="ndBody"><p class="nd-empty">Đang tải danh sách thiết bị…</p></div>
+      </section>
       <!-- 2026-09-18: chuyển "Nhắc định kỳ" (payroll reminder, v.v.) từ panel
            chuông thông báo (trước đây gọn nhưng lẫn với thông báo cá nhân,
            lại chỉ hiện khi admin mở chuông) sang hẳn trang Thông báo — quản
@@ -125,6 +139,35 @@
   <style>
     .notice-form { display: flex; flex-direction: column; gap: 10px; max-width: 480px; margin-top: 14px; padding: 16px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 8px; }
     .notice-form input, .notice-form textarea, .notice-form select { padding: 8px 10px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 4px; color: var(--color-text); font-family: 'Inter', sans-serif; font-size: 0.875rem; }
+    /* 2026-10-03: bảng thiết bị nhận thông báo */
+    .nd-card { padding: 20px 22px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 16px; }
+    .nd-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+    .nd-lede { margin: 6px 0 0; font-size: .8125rem; color: var(--color-text-muted); max-width: 720px; line-height: 1.55; }
+    .nd-tools { display: flex; gap: 8px; flex-wrap: wrap; }
+    .nd-tools .btn-primary, .nd-tools .btn-secondary { height: 38px; display: inline-flex; align-items: center; }
+    .nd-status { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; font-size: .8125rem; }
+    .nd-ok { color: #4F8F5A; font-weight: 600; } .nd-warn { color: #B07A2A; font-weight: 600; }
+    .nd-chip { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--color-border); font-size: .6875rem; font-weight: 600; color: var(--color-text-muted); white-space: nowrap; }
+    .nd-chip.ok { border-color: rgba(79,143,90,.45); color: #4F8F5A; background: rgba(79,143,90,.08); }
+    .nd-chip.bad { border-color: rgba(197,85,85,.45); color: #C55555; background: rgba(197,85,85,.08); }
+    .nd-tablewrap { overflow-x: auto; border: 1px solid var(--color-border); border-radius: 12px; }
+    .nd-table { width: 100%; border-collapse: collapse; min-width: 760px; font-size: .8125rem; }
+    .nd-table th { text-align: left; font-size: .6875rem; text-transform: uppercase; letter-spacing: .05em; color: var(--color-text-muted); padding: 10px 14px; border-bottom: 1px solid var(--color-border); white-space: nowrap; background: var(--color-bg); }
+    .nd-table td { padding: 12px 14px; border-bottom: 1px solid var(--color-border); vertical-align: middle; }
+    .nd-table tr:last-child td { border-bottom: none; }
+    .nd-table tr.off td { opacity: .6; }
+    .nd-name { min-width: 190px; font-weight: 600; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .nd-sub { font-size: .6875rem; color: var(--color-text-faint); margin-top: 2px; }
+    .nd-time { white-space: nowrap; }
+    .nd-act { white-space: nowrap; text-align: right; } .nd-act-h { text-align: right; }
+    .nd-act button { height: 30px; padding: 0 10px; margin-left: 6px; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text); font-size: .75rem; font-weight: 600; cursor: pointer; }
+    .nd-act button:hover { border-color: var(--color-bronze); color: var(--color-bronze); }
+    .nd-act button.danger:hover { border-color: var(--color-destructive, #C55555); color: var(--color-destructive, #C55555); }
+    .nd-empty { color: var(--color-text-faint); font-size: .8125rem; padding: 6px 2px; }
+    .nd-h3 { margin: 22px 0 8px; font-size: .9375rem; } .nd-h3 small { font-weight: 500; color: var(--color-text-faint); font-size: .75rem; }
+    .nd-summary { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .nd-input { width: 100%; height: 40px; margin: 12px 0 4px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-bg); color: var(--color-text); font-size: .875rem; }
+    @media (max-width: 700px) { .nd-card { padding: 16px; } .nd-tools { width: 100%; } .nd-tools button { flex: 1; justify-content: center; } }
     .notice-card-actions { margin-top: 8px; }
     .notice-card-actions button { background: none; border: none; color: var(--color-text-faint); font-size: 0.75rem; cursor: pointer; padding: 0; }
     .notice-card-actions button:hover { color: var(--color-destructive); }
@@ -440,6 +483,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js" defer></script>
   <script src="/js/push-notifications.js" defer></script>
+  <script src="/js/notice-devices.js" defer></script>
   <script src="/js/portal.js" defer></script>
 </body>
 </html>

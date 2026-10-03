@@ -52,12 +52,12 @@
         // phải tự showNotification() giống hệt bên sw.js (onBackgroundMessage)
         // để 2 trường hợp nhìn giống nhau tuyệt đối.
         messagingInstance.onMessage(function (payload) {
-          var n = payload.notification || {};
-          var link = (payload.fcmOptions && payload.fcmOptions.link) || (payload.data && payload.data.link) || '/';
+          var d = payload.data || {}, n = payload.notification || {};   // 2026-10-03: máy chủ gửi data-only
+          var link = d.link || (payload.fcmOptions && payload.fcmOptions.link) || '/';
           if (Notification.permission === 'granted' && navigator.serviceWorker && navigator.serviceWorker.ready) {
             navigator.serviceWorker.ready.then(function (reg) {
-              reg.showNotification(n.title || 'HICONIQUE', {
-                body: n.body || '', icon: '/apple-touch-icon.png', badge: '/icon-192.png', data: { link: link }
+              reg.showNotification(d.title || n.title || 'HICONIQUE', {
+                body: d.body || n.body || '', icon: '/apple-touch-icon.png', badge: '/icon-192.png', tag: 'hq-' + Date.now(), renotify: true, data: { link: link }
               });
             });
           }
@@ -199,23 +199,116 @@
     });
   }
 
+  // ---------- 2026-10-03: danh sách thiết bị (API getPushDevices…) + nhắc đăng ký đủ 2 thiết bị ----------
+  var REQUIRED_DEVICES = 2;
+  function localToken() { try { return localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { return ''; } }
+  function isIos() { return /iPhone|iPad|iPod/.test(navigator.userAgent); }
+  function isStandalone() { return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true; }
+  function api(action, data, extra) {
+    var url = apiUrl(); if (!url) return Promise.reject(new Error('Chưa cấu hình API'));
+    var q = url + '?action=' + action + (data ? '&data=' + encodeURIComponent(JSON.stringify(data)) : '') + (extra || '') + '&_=' + Date.now();
+    return fetch(q, { redirect: 'follow' }).then(function (r) { return r.json(); });
+  }
+  function listDevices(user) {
+    if (!user) return Promise.resolve({ devices: [] });
+    return api('getPushDevices', null, '&actorId=' + encodeURIComponent(user.id)).then(function (res) {
+      var tail = localToken().slice(-12);
+      (res.devices || []).forEach(function (d) { d.isThis = !!tail && d.tokenTail === tail; });
+      return res;
+    });
+  }
+  function updateDevice(user, id, fields) { var d = { actorId: user.id, id: id }; for (var k in fields) d[k] = fields[k]; return api('updatePushDevice', d); }
+  function deleteDevice(user, id) { return api('deletePushDevice', { actorId: user.id, id: id }); }
+  function testDevice(user, id) { return api('testPushDevice', { actorId: user.id, id: id }); }
+  function myActiveCount(res, user) { return (res.devices || []).filter(function (d) { return d.memberId === user.id && d.active; }).length; }
+
+  // Bật thông báo + đợi máy chủ ghi xong (khác enable() cũ: trả Promise, dùng cho bảng thiết bị / hộp nhắc)
+  function enableAndWait(user) {
+    return new Promise(function (resolve) {
+      if (!isSupported() || !user) return resolve({ ok: false, reason: isIos() && !isStandalone() ? 'ios' : 'unsupported' });
+      Notification.requestPermission().then(function (perm) {
+        if (perm !== 'granted') return resolve({ ok: false, reason: perm === 'denied' ? 'denied' : 'default' });
+        var messaging = ensureFirebaseApp(); if (!messaging) return resolve({ ok: false, reason: 'unsupported' });
+        navigator.serviceWorker.ready.then(function (reg) {
+          return messaging.getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+        }).then(function (token) {
+          if (!token) return resolve({ ok: false, reason: 'token' });
+          try { localStorage.setItem(TOKEN_KEY, token); } catch (e) {}
+          var dev = detectDevice();
+          api('registerPushDevice', { fcmToken: token, memberId: user.id, deviceLabel: dev.label, browserFamily: dev.browserFamily }).then(function () { resolve({ ok: true }); }, function () { resolve({ ok: true }); });
+        }).catch(function () { resolve({ ok: false, reason: 'token' }); });
+      });
+    });
+  }
+  function reasonText(r) {
+    return r === 'denied' ? 'Trình duyệt đang CHẶN thông báo của trang này. Bấm biểu tượng ổ khoá cạnh địa chỉ web → Thông báo → Cho phép, rồi tải lại trang.'
+      : r === 'ios' ? 'Trên iPhone/iPad: mở web bằng Safari → nút Chia sẻ → “Thêm vào Màn hình chính”, mở app HICONIQUE từ màn hình chính rồi bật thông báo (Apple chỉ cho phép thông báo trong app đã thêm vào màn hình chính).'
+      : r === 'default' ? 'Bạn chưa bấm “Cho phép” ở hộp hỏi của trình duyệt.'
+      : 'Trình duyệt này không hỗ trợ thông báo đẩy — hãy dùng Chrome/Edge (máy tính, Android) hoặc Safari đã “Thêm vào Màn hình chính” (iPhone).';
+  }
+
+  // Nhắc MỖI NGÀY 1 lần (lần mở web đầu tiên trong ngày) cho tới khi tài khoản có đủ 2 thiết bị đang nhận thông báo.
+  // "Để sau" chỉ ẩn tới hết hôm nay — KHÔNG có lựa chọn tắt hẳn (theo yêu cầu 03/10/2026).
+  function showDevicePrompt(user, count, thisRegistered) {
+    if (document.getElementById('pushDevicePrompt')) return;
+    var status = getStatus(), canHere = !thisRegistered && status !== 'denied' && isSupported();
+    var ov = document.createElement('div'); ov.id = 'pushDevicePrompt';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:10050;background:rgba(10,12,15,.55);display:flex;align-items:center;justify-content:center;padding:16px;';
+    var hint = thisRegistered ? 'Thiết bị này đã nhận thông báo. Hãy mở HICONIQUE trên <b>thiết bị còn lại</b> (điện thoại hoặc máy tính) và bấm “Bật thông báo”.'
+      : (!isSupported() || status === 'denied') ? reasonText(!isSupported() ? (isIos() && !isStandalone() ? 'ios' : 'unsupported') : 'denied')
+      : 'Bấm “Bật thông báo trên thiết bị này”, sau đó làm tương tự trên thiết bị còn lại.';
+    ov.innerHTML = '<div style="width:100%;max-width:440px;background:var(--color-surface,#1a1d21);color:var(--color-text,#eee);border:1px solid var(--color-border,#333);border-radius:16px;padding:22px 22px 18px;box-shadow:0 24px 60px rgba(0,0,0,.4);font-family:Inter,sans-serif;">' +
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;"><span style="width:34px;height:34px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;background:rgba(176,141,87,.16);color:var(--color-bronze,#B08D57);font-size:18px;">🔔</span>' +
+      '<div style="font-weight:700;font-size:1rem;">Đăng ký nhận thông báo (' + count + '/' + REQUIRED_DEVICES + ' thiết bị)</div></div>' +
+      '<div style="font-size:.875rem;line-height:1.55;color:var(--color-text-muted,#aaa);margin-bottom:6px;">Mỗi tài khoản cần nhận thông báo trên <b>2 thiết bị</b> (máy tính + điện thoại) để không bỏ lỡ việc mới, duyệt/từ chối, bảng tin…</div>' +
+      '<div id="pdpHint" style="font-size:.8125rem;line-height:1.55;margin:10px 0 16px;padding:10px 12px;border-radius:10px;background:var(--color-surface-2,#222);">' + hint + '</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+        '<button type="button" id="pdpLater" style="flex:1;min-width:120px;height:40px;border-radius:10px;border:1px solid var(--color-border,#333);background:transparent;color:inherit;font-weight:600;cursor:pointer;">Để sau</button>' +
+        '<a href="/pages/notices.html#devices" style="flex:1;min-width:120px;height:40px;border-radius:10px;border:1px solid var(--color-border,#333);display:inline-flex;align-items:center;justify-content:center;color:inherit;text-decoration:none;font-weight:600;font-size:.875rem;">Quản lý thiết bị</a>' +
+        (canHere ? '<button type="button" id="pdpNow" style="flex:1 1 100%;height:42px;border-radius:10px;border:none;background:var(--color-bronze,#B08D57);color:#0B0D10;font-weight:700;cursor:pointer;">Bật thông báo trên thiết bị này</button>' : '') +
+      '</div><div style="font-size:.6875rem;color:var(--color-text-faint,#777);margin-top:10px;">Thông báo này sẽ nhắc lại mỗi ngày cho tới khi đủ 2 thiết bị.</div></div>';
+    document.body.appendChild(ov);
+    var close = function () { ov.remove(); };
+    document.getElementById('pdpLater').addEventListener('click', close);
+    var now = document.getElementById('pdpNow');
+    if (now) now.addEventListener('click', function () {
+      now.disabled = true; now.textContent = 'Đang bật…';
+      enableAndWait(user).then(function (r) {
+        if (r.ok) { now.textContent = 'Đã bật trên thiết bị này ✓'; setTimeout(close, 1500); }
+        else { now.disabled = false; now.textContent = 'Thử lại'; document.getElementById('pdpHint').textContent = reasonText(r.reason); }
+      });
+    });
+  }
+
   function initAutoPrompt(user) {
-    if (!isSupported() || !user) return;
-    var status = getStatus();
-    if (status === 'granted') { silentRefresh(user); return; }
-    if (status === 'denied') return; // đã từ chối hẳn ở cấp trình duyệt, không hỏi lại được nữa
-    var alreadyPrompted = false;
-    try { alreadyPrompted = !!localStorage.getItem(PROMPTED_KEY); } catch (e) {}
-    if (alreadyPrompted) return;
-    // Chờ 1 chút để không chặn ngay lúc trang vừa load xong.
-    setTimeout(function () { showEnableBanner(user); }, 2500);
+    if (!user) return;
+    if (isSupported() && getStatus() === 'granted') silentRefresh(user);
+    var key = 'hiconique_push_nag_' + user.id, today = new Date().toISOString().slice(0, 10);
+    try { if (localStorage.getItem(key) === today) return; } catch (e) {}
+    setTimeout(function () {
+      listDevices(user).then(function (res) {
+        if (!res || res.error) return;
+        var cnt = myActiveCount(res, user);
+        if (cnt >= REQUIRED_DEVICES) return;
+        try { localStorage.setItem(key, today); } catch (e) {}   // đã nhắc hôm nay → mai nhắc tiếp (không có nút tắt hẳn)
+        var tail = localToken().slice(-12), thisReg = (res.devices || []).some(function (d) { return d.memberId === user.id && d.active && tail && d.tokenTail === tail; });
+        showDevicePrompt(user, cnt, thisReg && getStatus() === 'granted');
+      }).catch(function () {});
+    }, 2500);
   }
 
   window.PushNotify = {
     isSupported: isSupported,
     getStatus: getStatus,
     enable: enable,
+    enableAndWait: enableAndWait,
     disable: disable,
-    initAutoPrompt: initAutoPrompt
+    initAutoPrompt: initAutoPrompt,
+    listDevices: listDevices,
+    updateDevice: updateDevice,
+    deleteDevice: deleteDevice,
+    testDevice: testDevice,
+    reasonText: reasonText,
+    REQUIRED_DEVICES: REQUIRED_DEVICES
   };
 })();
