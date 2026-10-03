@@ -1530,6 +1530,7 @@ function genericColl_(ss, action, params) {
   if (action === 'dgdmSyncConventionV2') return dgdmSyncConventionV2_(ss, JSON.parse(params.data));
   if (action === 'getSheetLayout') return getSheetLayout_(ss);
   if (action === 'dgdmImportTypical') return dgdmImportTypical_(ss, JSON.parse(params.data));
+  if (action === 'dgdmDeleteTemplateSheets') return dgdmDeleteTemplateSheets_(ss, JSON.parse(params.data));
   if (action === 'applySheetLayout') return applySheetLayout_(ss, JSON.parse(params.data));
   if (action === 'seedDgdm') return seedDgdm_(ss, JSON.parse(params.data));
   if (action === 'applyDgdmCodes') return applyDgdmCodes_(ss, JSON.parse(params.data));
@@ -5416,5 +5417,21 @@ function dgdmImportTypical_(ss, data) {
     try { dgdmLog_(ss, data.actor || '', 'CHUYỂN GIÁ ĐIỂN HÌNH', dst.getName(), '', '', 'Từ DGDM-Dữ liệu tính: ' + hit + ' giá điển hình (phần thô + trọn gói)'); } catch (e) { }
     SHEET_MEMO_ = null;
     return { ok: true, filled: hit, rows: n };
+  });
+}
+
+// ===== 2026-10-03: XOÁ 11 sheet DGDM- mẫu/thừa (đã chuyển hết nội dung vào web + giá điển hình sang DGDM-Phần thô) — action dgdmDeleteTemplateSheets, chỉ Founder/CEO, CHỈ xoá đúng danh sách cố định, sao lưu cả file trước
+var DGDM_TEMPLATE_SHEETS_ = ['DGDM-Mục lục', 'DGDM-Tính nhanh', 'DGDM-Dữ liệu tính', 'DGDM-Hướng dẫn', 'DGDM-Định mức khối lượng sơ bộ', 'DGDM-Nhóm so sánh nhà thầu', 'DGDM-Mẫu mốc thanh toán', 'DGDM-Mẫu tiến độ', 'DGDM-Mẫu nghiệm thu', 'DGDM-Mẫu hồ sơ công trình', 'DGDM-Phát sinh'];
+function dgdmDeleteTemplateSheets_(ss, data) {
+  const a = pushActor_(ss, data.actorId);
+  if (!a.admin) return { ok: false, error: 'Chỉ Founder/CEO' };
+  const bname = 'SAO LƯU trước khi xoá sheet DGDM mẫu — ' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd-MM HH:mm');
+  try { ss.copy(bname); } catch (e) { return { ok: false, error: 'Không sao lưu được — dừng, chưa xoá gì: ' + e }; }
+  return withScriptLock_(function () {
+    const done = [];
+    DGDM_TEMPLATE_SHEETS_.forEach(function (n) { const s = ss.getSheets().filter(function (x) { return dgNorm_(x.getName()) === dgNorm_(n); })[0]; if (s) { ss.deleteSheet(s); done.push(n); } });
+    try { dgdmLog_(ss, data.actor || '', 'XOÁ SHEET', '(11 sheet mẫu)', '', '', 'Sao lưu: ' + bname + ' | Đã xoá: ' + done.join(', ')); } catch (e) { }
+    SHEET_MEMO_ = null;
+    return { ok: true, backup: bname, deleted: done };
   });
 }
