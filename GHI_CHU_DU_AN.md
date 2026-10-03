@@ -70,6 +70,7 @@
 - Loop giữ chuột (class .hv-on bằng JS thay :hover): mỗi vòng tốc độ gốc, nghỉ 1s giữa vòng, rê ra thì chạy nốt vòng về tư thế nghỉ; keyframes đầu=cuối để không giật. Thẻ logo + loop CHỈ cho chuột (mouseUser theo pointerType; điện thoại/tablet tắt) — sw v254.
 - Mọi hiệu ứng rê chuột (logo, menu tài khoản, kính lúp, ⟳, mặt trời, chuông) LẶP đến khi rê ra (sw v248).
 - Thanh công cụ: rê chuột nhẹ cho ⟳ (xoay), mặt trời/trăng (sunCore/sunRays/moonSway), chuông (bellSway) — sw v247.
+- Fix tìm kiếm kiểu 8 (rèm): bỏ clip-path inset(-40px) làm kính nhoè loe ra 40px quanh ô (sw v255).
 - Kính lúp tìm kiếm: rê chuột nghiêng soi + loé mặt kính (magLook/magGlint; sw v246).
 - Avatar "QH": nảy/gợn sóng khi bấm, vòng sáng thở khi menu mở; `.user-menu-panel` bung/co từ avatar (`openUserMenu/closeUserMenu`, class um-in/um-out, ESC đóng).
 - Logo rê chuột: random 1/10 hiệu ứng (`data-bh` đặt ở mouseenter, keyframes bh*). sw v242.
