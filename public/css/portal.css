@@ -597,7 +597,15 @@ html.theme-fade, html.theme-fade *, html.theme-fade *::before, html.theme-fade *
 @keyframes umBars { 0% { transform: scaleY(1); } 30% { transform: scaleY(.4); } 65% { transform: scaleY(1.25); } 100% { transform: scaleY(1); } }
 @keyframes umExit { 0% { transform: none; } 45% { transform: translateX(5px); } 100% { transform: none; } }
 @keyframes umDoor { 0% { transform: none; } 45% { transform: translateX(-2px); } 100% { transform: none; } }
-@media (prefers-reduced-motion: reduce) { .user-menu-meta svg, .user-menu-link svg, .user-menu-link svg *, .user-menu-link::after { animation: none !important; } .avatar, .avatar.avatar-pop, .avatar::after, .user-menu-panel.um-in, .user-menu-panel.um-out, .user-menu-panel.um-in > *, .brand-tip, .bt-row { animation: none !important; transition: none !important; } }
+/* 2026-10-04: kính lúp — rê chuột: kính "soi" nghiêng + phóng nhẹ, mặt kính loé sáng; bấm thì nhấn xuống (trước khi thanh tìm kiếm sổ xuống) */
+[data-search-toggle] svg { overflow: visible; transform-origin: 40% 40%; transition: color .25s ease; }
+[data-search-toggle] svg circle { transform-box: fill-box; transform-origin: center; }
+[data-search-toggle]:hover svg { animation: magLook .9s ease-in-out; }
+[data-search-toggle]:hover svg circle { animation: magGlint .9s ease-in-out; }
+[data-search-toggle]:active svg { animation: none; transform: scale(.88) rotate(-8deg); transition: transform .12s ease; }
+@keyframes magLook { 0% { transform: none; } 25% { transform: translate(-2px, -2px) rotate(-14deg) scale(1.15); } 55% { transform: translate(2px, 1px) rotate(10deg) scale(1.15); } 80% { transform: rotate(-4deg) scale(1.08); } 100% { transform: none; } }
+@keyframes magGlint { 0%, 100% { filter: none; } 40% { filter: drop-shadow(0 0 4px rgba(255, 215, 150, .95)); } }
+@media (prefers-reduced-motion: reduce) { [data-search-toggle] svg, [data-search-toggle] svg circle { animation: none !important; } .user-menu-meta svg, .user-menu-link svg, .user-menu-link svg *, .user-menu-link::after { animation: none !important; } .avatar, .avatar.avatar-pop, .avatar::after, .user-menu-panel.um-in, .user-menu-panel.um-out, .user-menu-panel.um-in > *, .brand-tip, .bt-row { animation: none !important; transition: none !important; } }
 
 /* ===== CHUẨN HÌNH DẠNG AVATAR TOÀN HỆ THỐNG (chốt cứng 2026-09-11) =====
    Trước đây avatar đại diện người/dự án mỗi nơi 1 kiểu khác nhau — có chỗ
