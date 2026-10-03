@@ -664,7 +664,7 @@ main { flex: 1; }
 .search-panel {
   position: relative; isolation: isolate; width: min(720px, 92vw);
   border: 0; border-radius: 26px;
-  background: linear-gradient(140deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 48%, rgba(255, 255, 255, 0.05) 100%), rgba(19, 22, 27, 0.97);
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 48%, rgba(255, 255, 255, 0.05) 100%), rgba(19, 22, 27, 0.85);
   -webkit-backdrop-filter: blur(30px) saturate(170%); backdrop-filter: blur(30px) saturate(170%);
   box-shadow: 0 1px 1px rgba(255, 255, 255, 0.45) inset, 0 -1px 1px rgba(255, 255, 255, 0.10) inset, 0 30px 80px -14px rgba(0, 0, 0, 0.6), 0 8px 22px rgba(0, 0, 0, 0.28);
   animation: sGlassIn .5s cubic-bezier(.2, .9, .25, 1.12) both;
@@ -723,7 +723,7 @@ main { flex: 1; }
 /* nền sáng */
 html[data-theme="light"] .search-overlay { background: radial-gradient(900px 480px at 50% 6%, rgba(176, 141, 87, 0.20), transparent 62%), rgba(235, 232, 226, 0.55); }
 html[data-theme="light"] .search-panel {
-  background: linear-gradient(140deg, rgba(255, 255, 255, 1) 0%, rgba(252, 250, 246, 0.98) 50%, rgba(255, 255, 255, 1) 100%);
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.90) 0%, rgba(252, 250, 246, 0.82) 50%, rgba(255, 255, 255, 0.88) 100%);
   box-shadow: 0 1px 1px rgba(255, 255, 255, 0.9) inset, 0 30px 70px -16px rgba(60, 50, 30, 0.35), 0 6px 18px rgba(60, 50, 30, 0.12), 0 0 0 1px rgba(60, 50, 30, 0.06);
 }
 html[data-theme="light"] .search-panel::before { background: linear-gradient(135deg, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0.4) 40%, rgba(255, 255, 255, 0.2) 62%, rgba(255, 255, 255, 0.9)); }
@@ -731,7 +731,22 @@ html[data-theme="light"] .search-box kbd { background: rgba(60, 50, 30, 0.06); b
 html[data-theme="light"] .search-results { border-top-color: rgba(60, 50, 30, 0.10); }
 html[data-theme="light"] .search-chip { background: rgba(255, 255, 255, 0.6); border-color: rgba(60, 50, 30, 0.14); }
 html[data-theme="light"] .search-result-item:hover { background: rgba(60, 50, 30, 0.05); }
-@media (prefers-reduced-motion: reduce) { .search-panel, .search-panel::after, .ph-line.in, .ph-line.out { animation: none; } .ph-line.in { opacity: 1; } }
+/* nút xoá (×) của ô tìm kiếm: vẽ lại nét mảnh màu đồng thay cho dấu × xanh mặc định của trình duyệt */
+.search-box input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; margin-left: 6px; cursor: pointer; opacity: .75; transition: opacity .15s ease, transform .2s ease;
+  background: center / 14px 14px no-repeat url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23B08D57' stroke-width='2.2' stroke-linecap='round'><path d='M6 6l12 12M18 6L6 18'/></svg>"); }
+.search-box input::-webkit-search-cancel-button:hover { opacity: 1; transform: rotate(90deg) scale(1.1); }
+/* hiệu ứng THOÁT: kính loé sáng đồng rồi mờ nhoè, bay nhẹ lên và co lại; nền sáng dần trả về, độ mờ nền tan dần */
+.search-overlay.closing { pointer-events: none; animation: sOverlayOut .5s ease forwards; }
+.search-overlay.closing .search-panel { animation: sGlassOut .5s cubic-bezier(.45, 0, .85, .35) forwards; }
+.search-overlay.closing .search-results { animation: sResOut .25s ease forwards; }
+@keyframes sOverlayOut { from { opacity: 1; -webkit-backdrop-filter: blur(20px) saturate(135%); backdrop-filter: blur(20px) saturate(135%); } to { opacity: 0; -webkit-backdrop-filter: blur(0) saturate(100%); backdrop-filter: blur(0) saturate(100%); } }
+@keyframes sGlassOut {
+  0% { opacity: 1; transform: none; filter: none; }
+  28% { opacity: 1; transform: scale(1.015); filter: brightness(1.15); box-shadow: 0 0 0 1px rgba(214, 170, 100, 0.55), 0 0 70px 14px rgba(214, 170, 100, 0.38), 0 30px 80px -14px rgba(0, 0, 0, 0.5); }
+  100% { opacity: 0; transform: translateY(-26px) scale(.9); filter: blur(12px) brightness(1.3); box-shadow: 0 0 0 1px rgba(214, 170, 100, 0), 0 0 90px 30px rgba(214, 170, 100, 0); }
+}
+@keyframes sResOut { to { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) { .search-panel, .search-panel::after, .ph-line.in, .ph-line.out, .search-overlay.closing, .search-overlay.closing .search-panel, .search-overlay.closing .search-results { animation: none; } .ph-line.in { opacity: 1; } }
 
 @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
 

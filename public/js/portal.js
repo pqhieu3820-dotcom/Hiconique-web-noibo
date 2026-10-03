@@ -505,6 +505,8 @@
 
   function openSearch() {
     if (!overlay) return;
+    if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
+    overlay.classList.remove('closing');
     overlay.hidden = false;
     searchFilter = '';
     if (input) { input.value = ''; input.placeholder = ''; }
@@ -514,10 +516,14 @@
     // nạp nền các nguồn chưa có trong máy (tài sản, khách hàng), xong thì vẽ lại nếu người dùng đã gõ
     withSearchModule(function () { startPh(); window.HiconiqueSearch.warm(function () { if (input && input.value.trim()) drawSearchResults(input.value.trim(), true); }); });
   }
+  var closeTimer = null;
   function closeSearch() {
-    if (!overlay) return;
-    overlay.hidden = true;
+    if (!overlay || overlay.hidden || overlay.classList.contains('closing')) return;
     stopPh();
+    var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) { overlay.hidden = true; return; }
+    overlay.classList.add('closing');   // chạy hiệu ứng thoát (css/portal.css: sGlassOut) rồi mới ẩn hẳn
+    closeTimer = setTimeout(function () { overlay.hidden = true; overlay.classList.remove('closing'); closeTimer = null; }, 500);
   }
 
   toggle.forEach(function (btn) { btn.addEventListener('click', openSearch); });
