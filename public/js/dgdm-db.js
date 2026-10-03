@@ -68,7 +68,7 @@
   function setProvFor(sheet) { st.prov = guessProv(sheet); st.all = PROV[sheet] === '*'; }
   function loadSheets() {
     return jget(API + '?action=getDgdmStatus&_=' + Date.now()).then(function (s) {
-      st.sheets = (s.sheets || []).filter(function (x) { return /^DGDM-/i.test(x.name) && norm(x.name) !== norm('DGDM-Cài đặt'); });
+      st.sheets = (s.sheets || []).filter(function (x) { return /^DGDM-/i.test(x.name) && norm(x.name) !== norm('DGDM-Cài đặt') && norm(x.name) !== norm('DGDM-Quy đổi ĐVT cũ'); });   // 2026-10-04: bỏ tab Quy đổi ĐVT cũ
       if (!st.sheet) { var first = st.sheets.filter(function (x) { return x.name === 'DGDM-Mã công việc công tác'; })[0] || st.sheets[0]; st.sheet = first ? first.name : ''; }
       renderTabs();
     });
@@ -83,7 +83,7 @@
       b.querySelector('em').textContent = (x.rows || 0).toLocaleString('vi-VN');
     });
     var extra = $('dbTabsExtra'), rest = st.sheets.filter(function (x) { return !known[x.name]; });
-    extra.innerHTML = rest.length ? '<span class="db-tab-sep"></span><span class="db-tab-g">Khác</span>' + rest.map(function (x) { return '<button type="button" class="db-tab' + (x.name === st.sheet ? ' on' : '') + '" data-s="' + esc(x.name) + '">' + esc(x.name.replace(/^DGDM-/, '')) + '<em>' + (x.rows || 0).toLocaleString('vi-VN') + '</em></button>'; }).join('') : '';
+    extra.innerHTML = rest.length ? '<div class="db-tgrp"><span class="db-tab-g">Khác</span><div class="db-tgl">' + rest.map(function (x) { return '<button type="button" class="db-tab' + (x.name === st.sheet ? ' on' : '') + '" data-s="' + esc(x.name) + '">' + esc(x.name.replace(/^DGDM-/, '')) + '<em>' + (x.rows || 0).toLocaleString('vi-VN') + '</em></button>'; }).join('') + '</div></div>' : '';
   }
 
   // ---------- bảng dữ liệu ----------
