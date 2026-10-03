@@ -4457,6 +4457,27 @@ var TaskManager = (function() {
 // Export globally so other pages can use TaskManager.*
 window.TaskManager = TaskManager;
 
+// 2026-10-03: chuẩn hoá bảng getPriceDb (DGDM-) cho MỌI trang dùng đơn giá: cột "Mã" = MÃ MỚI (Mã công việc / Mã tài nguyên),
+// "Mã cũ" = mã app cũ (W01, A01…), "Mã gốc" = giá trị thật của cột "Mã" trên Sheet (gửi ngược lên máy chủ khi so sánh tỉnh / sửa giá).
+// Chạy được ở cả 2 trạng thái Sheet: trước khi đổi tên cột (Mã = cũ, có "Mã công việc") và sau khi đổi (Mã = mới, có "Mã cũ").
+window.dgdmNormTables = function (tables) {
+  var t = tables || {};
+  ['ct', 'vt'].forEach(function (k) {
+    var tb = t[k]; if (!tb || !tb.headers || tb._norm) return;
+    var h = tb.headers.slice(), mi = h.indexOf('Mã'), ni = h.indexOf(k === 'ct' ? 'Mã công việc' : 'Mã tài nguyên'), oi = h.indexOf('Mã cũ');
+    var rows = (tb.rows || []).map(function (r) {
+      var x = r.slice(), raw = mi >= 0 ? x[mi] : '';
+      if (ni >= 0) { var nw = String(x[ni] == null ? '' : x[ni]).trim(); if (mi >= 0 && nw) x[mi] = nw; if (oi === -1) x[ni] = raw; }
+      x.push(raw); return x;
+    });
+    if (ni >= 0 && oi === -1) h[ni] = 'Mã cũ';
+    h.push('Mã gốc');
+    t[k] = { headers: h, rows: rows, _norm: 1 };
+  });
+  return t;
+};
+
+
 // Export for use in other scripts
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = TaskManager;

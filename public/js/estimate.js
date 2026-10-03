@@ -53,11 +53,12 @@
   function idxOf(h, names) { for (var i = 0; i < names.length; i++) { var k = h.indexOf(names[i]); if (k !== -1) return k; } return -1; }
   function parseDg(res) {
     var out = { ct: [], vt: [], nc: [] }, T = (res && res.tables) || {};
-    if (T.ct) { var h = T.ct.headers, ci = { code: idxOf(h, ['Mã']), grp: idxOf(h, ['Nhóm']), name: idxOf(h, ['Công tác']), spec: idxOf(h, ['Phạm vi/spec']), unit: idxOf(h, ['ĐVT']), vl0: idxOf(h, ['VL thấp']), vl1: idxOf(h, ['VL cao']), nc0: idxOf(h, ['NC thấp']), nc1: idxOf(h, ['NC cao']), d0: idxOf(h, ['DGHT thấp']), d1: idxOf(h, ['DGHT cao']) };
+    if (window.dgdmNormTables) T = window.dgdmNormTables(T);   // 2026-10-03: Mã = mã mới, giữ Mã cũ để tra dự toán đã lưu
+    if (T.ct) { var h = T.ct.headers, ci = { code: idxOf(h, ['Mã']), old: idxOf(h, ['Mã cũ']), grp: idxOf(h, ['Nhóm']), name: idxOf(h, ['Công tác']), spec: idxOf(h, ['Phạm vi/spec']), unit: idxOf(h, ['ĐVT']), vl0: idxOf(h, ['VL thấp']), vl1: idxOf(h, ['VL cao']), nc0: idxOf(h, ['NC thấp']), nc1: idxOf(h, ['NC cao']), d0: idxOf(h, ['DGHT thấp']), d1: idxOf(h, ['DGHT cao']) };
       T.ct.rows.forEach(function (r) { var vl0 = n0(r[ci.vl0]), vl1 = n0(r[ci.vl1]), nc0 = n0(r[ci.nc0]), nc1 = n0(r[ci.nc1]); if (!vl0 && !vl1 && !nc0 && !nc1) { nc0 = n0(r[ci.d0]); nc1 = n0(r[ci.d1]); }
-        out.ct.push({ src: 'ct', code: String(r[ci.code]), name: String(r[ci.name] || ''), spec: String(r[ci.spec] || ''), unit: String(r[ci.unit] || ''), group: String(r[ci.grp] || ''), lo: { vl: vl0, nc: nc0 }, hi: { vl: vl1 || vl0, nc: nc1 || nc0 } }); }); }
-    if (T.vt) { var hv = T.vt.headers, vi = { code: idxOf(hv, ['Mã']), grp: idxOf(hv, ['Nhóm']), name: idxOf(hv, ['Vật tư/thiết bị']), spec: idxOf(hv, ['Spec kỹ thuật tối thiểu']), unit: idxOf(hv, ['ĐVT']), a: idxOf(hv, ['Giá thấp']), b: idxOf(hv, ['Giá cao']) };
-      T.vt.rows.forEach(function (r) { out.vt.push({ src: 'vt', code: String(r[vi.code]), name: String(r[vi.name] || ''), spec: String(r[vi.spec] || ''), unit: String(r[vi.unit] || ''), group: String(r[vi.grp] || ''), lo: { vl: n0(r[vi.a]), nc: 0 }, hi: { vl: n0(r[vi.b]) || n0(r[vi.a]), nc: 0 } }); }); }
+        out.ct.push({ src: 'ct', code: String(r[ci.code]), old: ci.old >= 0 ? String(r[ci.old] || '') : '', name: String(r[ci.name] || ''), spec: String(r[ci.spec] || ''), unit: String(r[ci.unit] || ''), group: String(r[ci.grp] || ''), lo: { vl: vl0, nc: nc0 }, hi: { vl: vl1 || vl0, nc: nc1 || nc0 } }); }); }
+    if (T.vt) { var hv = T.vt.headers, vi = { code: idxOf(hv, ['Mã']), old: idxOf(hv, ['Mã cũ']), grp: idxOf(hv, ['Nhóm']), name: idxOf(hv, ['Vật tư/thiết bị']), spec: idxOf(hv, ['Spec kỹ thuật tối thiểu']), unit: idxOf(hv, ['ĐVT']), a: idxOf(hv, ['Giá thấp']), b: idxOf(hv, ['Giá cao']) };
+      T.vt.rows.forEach(function (r) { out.vt.push({ src: 'vt', code: String(r[vi.code]), old: vi.old >= 0 ? String(r[vi.old] || '') : '', name: String(r[vi.name] || ''), spec: String(r[vi.spec] || ''), unit: String(r[vi.unit] || ''), group: String(r[vi.grp] || ''), lo: { vl: n0(r[vi.a]), nc: 0 }, hi: { vl: n0(r[vi.b]) || n0(r[vi.a]), nc: 0 } }); }); }
     if (T.nc) { var hn = T.nc.headers, ni = { code: idxOf(hn, ['Mã']), type: idxOf(hn, ['Loại nhà']), spec: idxOf(hn, ['Quy mô/spec giả định']), unit: idxOf(hn, ['ĐVT']), a: idxOf(hn, ['Giá thấp']), b: idxOf(hn, ['Giá cao']) };
       T.nc.rows.forEach(function (r) { out.nc.push({ src: 'nc', code: String(r[ni.code]), name: 'Nhân công khoán — ' + String(r[ni.type] || ''), spec: String(r[ni.spec] || ''), unit: String(r[ni.unit] || ''), group: 'Nhân công khoán', lo: { vl: 0, nc: n0(r[ni.a]) }, hi: { vl: 0, nc: n0(r[ni.b]) || n0(r[ni.a]) } }); }); }
     return out;
@@ -65,7 +66,7 @@
   function dgLoad(prov) {
     if (!prov) return Promise.resolve({ ct: [], vt: [], nc: [] });
     if (dgMem[prov]) return Promise.resolve(dgMem[prov]);
-    var key = 'hq_dtqt_dg_' + prov;
+    var key = 'hq_dtqt_dg2_' + prov;   // v2: có mã mới + mã cũ
     try { var c = JSON.parse(localStorage.getItem(key) || 'null'); if (c && Date.now() - c.t < 6 * 3600 * 1000) { dgMem[prov] = c.d; return Promise.resolve(c.d); } } catch (e) { }
     if (!api()) return Promise.resolve({ ct: [], vt: [], nc: [] });
     return jget(api() + '?action=getPriceDb&province=' + encodeURIComponent(prov)).then(function (res) {
@@ -74,7 +75,7 @@
       return d;
     }).catch(function () { return { ct: [], vt: [], nc: [] }; });
   }
-  function dgFind(prov, src, code) { var d = dgMem[prov]; if (!d || !d[src]) return null; for (var i = 0; i < d[src].length; i++) if (d[src][i].code === code) return d[src][i]; return null; }
+  function dgFind(prov, src, code) { var d = dgMem[prov]; if (!d || !d[src]) return null; for (var i = 0; i < d[src].length; i++) if (d[src][i].code === code) return d[src][i]; for (var j = 0; j < d[src].length; j++) if (d[src][j].old && d[src][j].old === code) return d[src][j]; return null; }   // tra cả mã cũ (dự toán đã lưu trước 03/10/2026)
   function dgTier(e, tier) { var t = tier === 'low' ? 0 : tier === 'high' ? 1 : 0.5, r = function (a, b) { var v = a + (b - a) * t; return t === 0.5 ? (Math.round(v / 1000) * 1000 || Math.round(v)) : Math.round(v); }; return { vl: r(e.lo.vl, e.hi.vl), nc: r(e.lo.nc, e.hi.nc), may: 0 }; }
 
   // ---------- thư viện DTQT & đơn giá tỉnh ----------

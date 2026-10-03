@@ -4,7 +4,7 @@
 (function (global) {
   'use strict';
 
-  var TTL = 6 * 3600 * 1000, KEY = 'hq_prov_prices_v2_';
+  var TTL = 6 * 3600 * 1000, KEY = 'hq_prov_prices_v3_';
   var mem = {}, loading = {}, provinceList = null;
 
   function api() { return typeof GSHEETS_CONFIG !== 'undefined' && GSHEETS_CONFIG.API_URL ? GSHEETS_CONFIG.API_URL : ''; }
@@ -77,7 +77,7 @@
     if (!api()) return Promise.resolve([]);
     // 2026-10-01: ưu tiên cơ sở dữ liệu gộp DG-* (getPriceDb); chưa có/rỗng → dùng sheet gốc DGXD-<tỉnh> như cũ
     loading[name] = fetch(api() + '?action=getPriceDb&province=' + encodeURIComponent(name), { redirect: 'follow' }).then(function (r) { return r.json(); }).then(function (d) {
-      var items = d && d.tables ? fromDb(d.tables, name) : [];
+      var items = d && d.tables ? fromDb(window.dgdmNormTables ? window.dgdmNormTables(d.tables) : d.tables, name) : [];
       if (items.length) return items;
       return fetch(api() + '?action=getProvincePricing&province=' + encodeURIComponent(name), { redirect: 'follow' }).then(function (r) { return r.json(); }).then(function (d2) { return d2 && d2.rows ? parseRows(d2.rows, name) : []; });
     }).catch(function () {

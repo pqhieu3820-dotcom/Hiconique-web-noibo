@@ -40,22 +40,22 @@ var PricingProv = (function () {
       out.push(Object.assign({}, base, { variant: 'tho', type: 'Phần thô', name: nm + ' — phần thô', low: num(r[h('Phần thô thấp')]), high: num(r[h('Phần thô cao')]) }));
       out.push(Object.assign({}, base, { variant: 'tg', type: 'Trọn gói', name: nm + ' — trọn gói hoàn thiện', low: num(r[h('Trọn gói thấp')]), high: num(r[h('Trọn gói cao')]) })); }); }
     if (t.vt) { h = H(t.vt); (t.vt.rows || []).forEach(function (r) { if (!val(r, h('Vật tư/thiết bị'))) return; var low = num(r[h('Giá thấp')]), high = num(r[h('Giá cao')]);
-      out.push({ kind: 'vt', type: 'Vật tư', code: val(r, h('Mã')), name: val(r, h('Vật tư/thiết bị')), spec: val(r, h('Spec kỹ thuật tối thiểu')), unit: val(r, h('ĐVT')), low: low, high: high || low, grp: val(r, h('Nhóm')), sub: val(r, h('Loại')), ncc: val(r, h('NCC/brand giao tại tỉnh')), src: val(r, h('Nguồn')) }); }); }
+      out.push({ kind: 'vt', type: 'Vật tư', code: val(r, h('Mã')), old: val(r, h('Mã cũ')), srv: val(r, h('Mã gốc')), name: val(r, h('Vật tư/thiết bị')), spec: val(r, h('Spec kỹ thuật tối thiểu')), unit: val(r, h('ĐVT')), low: low, high: high || low, grp: val(r, h('Nhóm')), sub: val(r, h('Loại')), ncc: val(r, h('NCC/brand giao tại tỉnh')), src: val(r, h('Nguồn')) }); }); }
     if (t.ct) { h = H(t.ct); (t.ct.rows || []).forEach(function (r) { if (!val(r, h('Công tác'))) return; var vl = num(r[h('VL thấp')]), vh = num(r[h('VL cao')]), nl = num(r[h('NC thấp')]), nh = num(r[h('NC cao')]), dl = num(r[h('DGHT thấp')]), dh = num(r[h('DGHT cao')]);
       var calcL = vl + nl, calcH = vh + nh, bad = (calcL || dl) && (Math.abs(calcL - dl) > 1000 || Math.abs(calcH - dh) > 1000);
-      out.push({ kind: 'ct', type: 'Công tác', code: val(r, h('Mã')), name: val(r, h('Công tác')), spec: val(r, h('Phạm vi/spec')), unit: val(r, h('ĐVT')), low: dl || calcL, high: dh || calcH || dl, grp: val(r, h('Nhóm')), ncc: val(r, h('NCC/đơn vị chào giá')), note: val(r, h('Ghi chú loại trừ')), vlL: vl, vlH: vh, ncL: nl, ncH: nh, bad: !!bad, calcL: calcL, calcH: calcH }); }); }
-    out.forEach(function (e) { e.province = province; e.mid = mid(e.low, e.high); e.h = norm([e.code, e.name, e.spec, e.grp, e.sub, e.ncc, e.type].join(' ')); });
+      out.push({ kind: 'ct', type: 'Công tác', code: val(r, h('Mã')), old: val(r, h('Mã cũ')), srv: val(r, h('Mã gốc')), name: val(r, h('Công tác')), spec: val(r, h('Phạm vi/spec')), unit: val(r, h('ĐVT')), low: dl || calcL, high: dh || calcH || dl, grp: val(r, h('Nhóm')), ncc: val(r, h('NCC/đơn vị chào giá')), note: val(r, h('Ghi chú loại trừ')), vlL: vl, vlH: vh, ncL: nl, ncH: nh, bad: !!bad, calcL: calcL, calcH: calcH }); }); }
+    out.forEach(function (e) { if (!e.srv) e.srv = e.code; e.province = province; e.mid = mid(e.low, e.high); e.h = norm([e.code, e.old || '', e.name, e.spec, e.grp, e.sub, e.ncc, e.type].join(' ')); });
     return out;
   }
 
   function load(name) {
     if (data[name]) return Promise.resolve(data[name]);
-    try { var c = JSON.parse(localStorage.getItem(CACHE_KEY + name) || 'null'); if (c && Date.now() - c.t < TTL && c.tables) { data[name] = parse(c.tables, name); return Promise.resolve(data[name]); } } catch (e) { /* bỏ qua */ }
+    try { var c = JSON.parse(localStorage.getItem(CACHE_KEY + name) || 'null'); if (c && Date.now() - c.t < TTL && c.tables) { data[name] = parse((window.dgdmNormTables ? window.dgdmNormTables(c.tables) : c.tables), name); return Promise.resolve(data[name]); } } catch (e) { /* bỏ qua */ }
     if (loading[name]) return loading[name];
     loading[name] = jget(api() + '?action=getPriceDb&province=' + encodeURIComponent(name)).then(function (d) {
       if (d.error || !d.tables || !(d.tables.vt && d.tables.vt.rows.length)) throw new Error(d.error || 'Chưa có dữ liệu DG-* cho tỉnh này');
       try { localStorage.setItem(CACHE_KEY + name, JSON.stringify({ t: Date.now(), tables: d.tables })); } catch (e) { /* đầy bộ nhớ → bỏ qua */ }
-      data[name] = parse(d.tables, name); delete loading[name]; return data[name];
+      data[name] = parse((window.dgdmNormTables ? window.dgdmNormTables(d.tables) : d.tables), name); delete loading[name]; return data[name];
     }).catch(function (e) { delete loading[name]; throw e; });
     return loading[name];
   }
@@ -154,7 +154,7 @@ var PricingProv = (function () {
     g('peLow').addEventListener('input', warn); g('peHigh').addEventListener('input', warn);
     g('peHist').addEventListener('click', function () {
       var b = g('peHistBody'); b.innerHTML = '<div class="pr-empty" style="padding:10px">Đang tải lịch sử…</div>';
-      jget(api() + '?action=getPriceHistory&province=' + encodeURIComponent(st.province) + '&code=' + encodeURIComponent(e.code)).then(function (l) {
+      jget(api() + '?action=getPriceHistory&province=' + encodeURIComponent(st.province) + '&code=' + encodeURIComponent(e.srv || e.code)).then(function (l) {
         l = (Array.isArray(l) ? l : []).filter(function (x) { return !e.variant || !x.variant || x.variant === e.variant; }).slice(0, 12);
         b.innerHTML = l.length ? '<table class="pp-tbl" style="min-width:0;margin-top:6px"><thead><tr><th>Tháng</th><th class="n">Thấp cũ → mới</th><th class="n">Cao cũ → mới</th><th>Nguồn</th></tr></thead><tbody>' + l.map(function (x) { return '<tr><td>' + esc(String(x.month).slice(0, 7)) + '</td><td class="n">' + fmt(x.oldLow) + ' → ' + fmt(x.newLow) + '</td><td class="n">' + fmt(x.oldHigh) + ' → ' + fmt(x.newHigh) + '</td><td>' + esc(x.source || '') + (x.updatedBy ? '<span class="sub">' + esc(x.updatedBy) + '</span>' : '') + '</td></tr>'; }).join('') + '</tbody></table>' : '<div class="pr-empty" style="padding:10px">Chưa có lần cập nhật nào được ghi lại.</div>';
       }).catch(function (err) { b.textContent = 'Không tải được: ' + (err && err.message || err); });
@@ -164,7 +164,7 @@ var PricingProv = (function () {
       if (!l || !h || l > h) { alert('Nhập giá thấp và giá cao hợp lệ (giá thấp ≤ giá cao).'); return; }
       if (!g('peSrc').value) { alert('Chọn nguồn của giá mới (hoặc "Khác" và ghi chú).'); return; }
       var btn = g('peSave'); btn.disabled = true; btn.textContent = 'Đang lưu…';
-      var payload = { kind: e.kind, province: st.province, code: e.code, variant: e.variant || '', low: l, high: h, month: g('peMonth').value || monthNow(), source: g('peSrc').value, note: g('peNote').value.trim(), by: who() };
+      var payload = { kind: e.kind, province: st.province, code: e.srv || e.code, variant: e.variant || '', low: l, high: h, month: g('peMonth').value || monthNow(), source: g('peSrc').value, note: g('peNote').value.trim(), by: who() };
       jget(api() + '?action=updatePriceDb&data=' + encodeURIComponent(JSON.stringify(payload)), 2).then(function (res) {
         if (res.error) throw new Error(res.error);
         e.low = l; e.high = h; e.mid = mid(l, h); if (e.kind === 'ct') e.bad = !!((e.calcL || l) && (Math.abs(e.calcL - l) > 1000 || Math.abs(e.calcH - h) > 1000));
@@ -182,7 +182,7 @@ var PricingProv = (function () {
     ov.innerHTML = '<div class="pp-box"><h4><span>' + esc(e.name) + '<span class="sub" style="font-weight:400;font-size:.75rem;color:var(--pr-muted);display:block;margin-top:3px;">Mã ' + esc(e.code) + ' · ' + esc(e.unit) + ' · so sánh giữa các tỉnh/thành</span></span><button class="x" aria-label="Đóng">&times;</button></h4><div id="ppCmpBody" class="pr-empty">Đang tải bảng giá các tỉnh… (vài giây)</div></div>';
     document.body.appendChild(ov);
     ov.addEventListener('mousedown', function (ev) { if (ev.target === ov) ov.remove(); }); ov.querySelector('.x').addEventListener('click', function () { ov.remove(); });
-    jget(api() + '?action=getPriceDbCompare&kind=' + e.kind + '&code=' + encodeURIComponent(e.code)).then(function (d) {
+    jget(api() + '?action=getPriceDbCompare&kind=' + e.kind + '&code=' + encodeURIComponent(e.srv || e.code)).then(function (d) {
       if (d.error || !d.rows || !d.rows.length) throw new Error(d.error || 'Không có dữ liệu');
       var h = d.headers, ix = function (n) { return h.indexOf(n); }, list = d.rows.map(function (r) {
         var low, high;
