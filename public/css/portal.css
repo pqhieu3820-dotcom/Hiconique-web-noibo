@@ -633,6 +633,11 @@ html.theme-fade, html.theme-fade *, html.theme-fade *::before, html.theme-fade *
 .theme-toggle:hover .icon-sun path { animation-direction: alternate !important; }
 .avatar:not(.is-open):hover { animation: avatarHover 1.2s ease-in-out infinite; }
 @keyframes avatarHover { 0%, 100% { transform: scale(1.08) rotate(-4deg); } 50% { transform: scale(1.12) rotate(4deg); } }
+/* giữ chuột: lần chạy đầu đúng nhịp gốc; từ vòng lặp thứ 2 (JS thêm .hv-slow sau nhịp đầu) chạy chậm lại ~2.2s */
+.header-reload-btn.hv-slow:not(.spinning):hover svg, .brand.hv-slow[data-bh]:not([data-bh="1"]):not([data-bh="5"]):not(.brand-go):hover .brand-mark, .brand.hv-slow[data-bh="1"]:not(.brand-go):hover .brand-mark::after,
+.user-menu-meta div.hv-slow:hover svg, .user-menu-link.hv-slow:hover svg, .user-menu-link.hv-slow:hover svg *, .user-menu-link.hv-slow:hover::after,
+[data-search-toggle].hv-slow:hover svg, [data-search-toggle].hv-slow:hover svg circle, .theme-toggle.hv-slow:hover .icon-sun circle, .theme-toggle.hv-slow:hover .icon-sun path, .theme-toggle.hv-slow:hover .icon-moon path,
+.icon-btn-bell.hv-slow:not(.bell-ring):hover svg, .icon-btn-bell.hv-slow:not(.bell-ring):hover .badge-dot, .avatar.hv-slow:not(.is-open):hover { animation-duration: 2.2s !important; }
 /* logo kiểu xoay chậm: 3 giây mỗi vòng (các hiệu ứng khác giữ nhịp gốc) */
 .brand[data-bh="5"]:not(.brand-go):hover .brand-mark { animation-duration: 3s !important; }
 @media (prefers-reduced-motion: reduce) { .header-reload-btn svg, .theme-toggle svg *, .icon-btn-bell svg, .icon-btn-bell .badge-dot { animation: none !important; transition: none !important; } [data-search-toggle] svg, [data-search-toggle] svg circle { animation: none !important; } .user-menu-meta svg, .user-menu-link svg, .user-menu-link svg *, .user-menu-link::after { animation: none !important; } .avatar, .avatar.avatar-pop, .avatar::after, .user-menu-panel.um-in, .user-menu-panel.um-out, .user-menu-panel.um-in > *, .brand-tip, .bt-row { animation: none !important; transition: none !important; } }

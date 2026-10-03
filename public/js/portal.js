@@ -1693,6 +1693,21 @@
   }
   initBrandInfo();
 
+  // 2026-10-04: giữ chuột trên nút → nhịp đầu đúng tốc độ gốc, các vòng lặp sau chạy chậm hơn (class .hv-slow, xoá khi rê ra)
+  (function () {
+    var HOST = '.brand, .user-menu-meta div, .user-menu-link, [data-search-toggle], .header-reload-btn, .theme-toggle, .icon-btn-bell, .avatar';
+    function mark(e) {
+      var el = e.target && e.target.closest ? e.target.closest(HOST) : null;
+      if (el && !el.classList.contains('hv-slow') && el.matches(':hover')) el.classList.add('hv-slow');
+    }
+    document.addEventListener('animationiteration', mark, true);
+    document.addEventListener('animationend', mark, true);
+    document.addEventListener('mouseout', function (e) {
+      var el = e.target && e.target.closest ? e.target.closest(HOST) : null;
+      if (el && !el.contains(e.relatedTarget)) el.classList.remove('hv-slow');
+    }, true);
+  })();
+
   function initMobileNav() {
     var headerInner = document.querySelector('.site-header .header-inner');
     var nav = document.querySelector('.site-header .primary-nav');
