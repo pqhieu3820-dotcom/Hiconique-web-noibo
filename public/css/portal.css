@@ -681,7 +681,7 @@ main { flex: 1; }
   background:
     radial-gradient(900px 480px at 50% 6%, rgba(176, 141, 87, 0.18), transparent 62%),
     radial-gradient(700px 420px at 12% 90%, rgba(90, 120, 190, 0.12), transparent 60%),
-    rgba(8, 10, 14, 0.84);
+    rgba(8, 10, 14, 0.40);
   -webkit-backdrop-filter: blur(20px) saturate(135%); backdrop-filter: blur(20px) saturate(135%);
 }
 .search-panel {
@@ -766,7 +766,7 @@ main { flex: 1; }
 @keyframes sLiquid { 0% { transform: translate(-4%, -2%) rotate(0deg) scale(1); } 50% { transform: translate(5%, 3%) rotate(8deg) scale(1.08); } 100% { transform: translate(-2%, 5%) rotate(-6deg) scale(1.02); } }
 @keyframes sSpin { to { transform: rotate(360deg); } }
 /* nền sáng */
-html[data-theme="light"] .search-overlay { background: radial-gradient(900px 480px at 50% 6%, rgba(176, 141, 87, 0.28), transparent 62%), rgba(60, 50, 32, 0.66); }
+html[data-theme="light"] .search-overlay { background: radial-gradient(900px 480px at 50% 6%, rgba(176, 141, 87, 0.28), transparent 62%), rgba(60, 50, 32, 0.20); }
 html[data-theme="light"] .search-panel {
   background: linear-gradient(140deg, rgba(255, 255, 255, 0.96) 0%, rgba(252, 250, 246, 0.90) 50%, rgba(255, 255, 255, 0.94) 100%);
   box-shadow: 0 1px 1px rgba(255, 255, 255, 0.95) inset, 0 34px 80px -14px rgba(40, 30, 10, 0.55), 0 8px 22px rgba(40, 30, 10, 0.22), 0 0 0 1px rgba(120, 95, 50, 0.28);
