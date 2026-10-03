@@ -56,8 +56,8 @@ const SHEETS = {
   // 2026-09-27: nhóm KH- (Khách hàng / CRM) cho crm.html + sheet NS-Hoạt động (thời gian hoạt động trên Hub
   // của từng người theo ngày — chỉ đo trong chính Hub, có thông báo cho nhân viên) cho staff-monitor.html.
   customers: 'KH-Khách hàng',
-  equipment: 'TB-Thiết bị',
-  pcReports: 'TB-Máy đã báo',
+  equipment: 'TT-Thiết bị',   // 2026-10-03: TB- gộp về TT- (findSheet vẫn nhận tên cũ qua SHEET_ALIAS_)
+  pcReports: 'TT-Máy đã báo',
   customerLogs: 'KH-Chăm sóc',
   staffActivity: 'NS-Hoạt động',
   appUsage: 'NS-Ứng dụng',
@@ -1103,6 +1103,7 @@ function handleRequest(e) {
   try { res = action === 'batchOps' ? handleBatchOps_(params) : handleRequestImpl_(e); } finally { IN_REQUEST_ = false; }
   try { flushPendingPush_(); } catch (err) { /* push lỗi không được làm hỏng phản hồi ghi */ }   // gửi push SAU khi đã nhả khoá
   if (action && action !== 'ping' && action !== 'resolveMapLink') bumpReadCacheVersion_();   // có ghi → mọi cache đọc cũ mất hiệu lực
+  if (action && action !== 'ping' && action !== 'resolveMapLink') autoSortSheetsIfNeeded_();   // 2026-10-03: sheet mới/đổi tên tự về đúng nhóm tiền tố
   // 2026-10-01: đo thời gian xử lý phía máy chủ, gắn vào phản hồi ghi (_ms) để client ghi log/hiển thị nghẽn ở khâu nào
   try {
     const total = Date.now() - t0;
@@ -1527,6 +1528,8 @@ function genericColl_(ss, action, params) {
   if (action === 'dgdmWrite') return dgdmWrite_(ss, JSON.parse(params.data));
   if (action === 'dgdmApplyFormV2') return dgdmApplyFormV2_(ss, JSON.parse(params.data));
   if (action === 'dgdmSyncConventionV2') return dgdmSyncConventionV2_(ss, JSON.parse(params.data));
+  if (action === 'getSheetLayout') return getSheetLayout_(ss);
+  if (action === 'applySheetLayout') return applySheetLayout_(ss, JSON.parse(params.data));
   if (action === 'seedDgdm') return seedDgdm_(ss, JSON.parse(params.data));
   if (action === 'applyDgdmCodes') return applyDgdmCodes_(ss, JSON.parse(params.data));
   for (let i = 0; i < GEN_COLL_.length; i++) {
@@ -2045,7 +2048,7 @@ function findSheet(ss, sheetName) {
       if (!(k in SHEET_MEMO_)) SHEET_MEMO_[k] = sheets[i];
     }
   }
-  return SHEET_MEMO_[target] || (typeof DGDM_ALIAS_ !== 'undefined' && DGDM_ALIAS_[target] ? SHEET_MEMO_[normalizeName(DGDM_ALIAS_[target])] : null) || null;   // 2026-10-02: tên cũ ⇄ tên mới (DG- ⇄ DGDM-)
+  return SHEET_MEMO_[target] || (typeof DGDM_ALIAS_ !== 'undefined' && DGDM_ALIAS_[target] ? SHEET_MEMO_[normalizeName(DGDM_ALIAS_[target])] : null) || (typeof SHEET_ALIAS_ !== 'undefined' && SHEET_ALIAS_[target] ? SHEET_MEMO_[normalizeName(SHEET_ALIAS_[target])] : null) || null;   // 2026-10-02: tên cũ ⇄ tên mới (DG- ⇄ DGDM-)
 }
 // Only creates when the tab genuinely does not exist (matched via findSheet,
 // so a Unicode/whitespace variant is reused, never duplicated). Used by the
@@ -5077,23 +5080,7 @@ function scanDriveDocs_(folderId, resumeJson, token) {
 
 
 /** 2026-10-01: sắp xếp lại tab Google Sheet theo NHÓM TIỀN TỐ (DA, NS, TC, TLCC, TT, TTCS, KH, TB, BIM) theo thứ tự khai báo trong SHEETS. Chạy tay 1 lần trong editor; chỉ đổi vị trí tab, không sửa dữ liệu. Sheet lạ (không có trong SHEETS) xếp cuối. */
-function sortSheetsByPrefix() {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const known = Object.keys(SHEETS).map(function (k) { return SHEETS[k]; });
-  const pre = function (n) { const i = n.indexOf('-'); return i > 0 ? n.slice(0, i) : ''; };
-  const order = [];
-  known.forEach(function (n) { const p = pre(n); if (p && order.indexOf(p) === -1) order.push(p); });
-  // 2026-10-02: các tab đơn giá cũ (DG-, DGXD-) xếp NGAY SAU nhóm DGDM- (cùng khu đơn giá) cho tới khi được đổi tên / xoá
-  ['DG', 'DGXD'].forEach(function (p, k) { if (order.indexOf(p) === -1) { const i = order.indexOf('DGDM'); if (i === -1) order.push(p); else order.splice(i + 1 + k, 0, p); } });
-  const rank = function (n) { const i = order.indexOf(pre(n)); return i === -1 ? order.length : i; };
-  const idx = function (n) { const i = known.indexOf(n); return i === -1 ? 9999 : i; };
-  const all = ss.getSheets();
-  Logger.log('TRƯỚC: ' + all.map(function (s) { return s.getName(); }).join(' | '));
-  const list = all.map(function (s, i) { return { s: s, n: s.getName(), i: i }; }).filter(function (o) { return !o.s.isSheetHidden(); })
-    .sort(function (a, b) { return rank(a.n) - rank(b.n) || idx(a.n) - idx(b.n) || a.i - b.i; });
-  list.forEach(function (o, pos) { ss.setActiveSheet(o.s); ss.moveActiveSheet(pos + 1); });
-  Logger.log('SAU: ' + ss.getSheets().map(function (s) { return s.getName(); }).join(' | '));
-}
+// (2026-10-03) sortSheetsByPrefix() đã chuyển xuống khối "THỨ TỰ SHEET CHUẨN" cuối file.
 
 // 2026-10-03: đổi CHỮ ở ô tiêu đề — "Mã" (mã app cũ W01/A01…) → "Mã cũ"; "Mã công việc" / "Mã tài nguyên" (mã mới) → "Mã". Không đụng dữ liệu, không xoá cột. Web đọc được cả trước lẫn sau khi đổi (window.dgdmNormTables).
 function dgdmSwapCodeHeaders() {
@@ -5319,4 +5306,90 @@ function dgdmSyncConventionV2_(ss, data) {
     SHEET_MEMO_ = null;
     return out;
   });
+}
+
+// ===== 2026-10-03: THỨ TỰ SHEET CHUẨN + TỰ ĐỘNG SẮP XẾP (quy tắc cố định của người dùng) =====
+// Nhóm tiền tố theo thứ tự: NS- → DA- → TLCC- → TC- → KH- → TT- → DTQT- → QLCL- → BIM- → TTCS- → DGDM- → (DGXD- cũ) → sheet lạ.
+// (KH- khách hàng/CRM không có trong danh sách người dùng đưa → đặt ngay sau TC- vì gắn với bán hàng/công nợ.) TB- đã gộp về TT- (03/10/2026).
+// Trong mỗi nhóm: sheet CHÍNH/hay dùng lên trước theo SHEET_PRIORITY_, sheet khác của nhóm xếp sau theo tên.
+// Tự chạy sau MỖI lệnh ghi (handleRequest) nhưng chỉ di chuyển khi thứ tự đang lệch → sheet mới tạo tự về đúng chỗ. Chạy tay: sortSheetsByPrefix().
+var SHEET_PREFIX_ORDER_ = ['NS', 'DA', 'TLCC', 'TC', 'KH', 'TT', 'DTQT', 'QLCL', 'BIM', 'TTCS', 'DGDM', 'DGXD'];
+var SHEET_PRIORITY_ = {
+  NS: ['Thành viên', 'Hoạt động', 'Ứng dụng', 'Thành viên cũ'],
+  DA: ['Dự án', 'Công việc', 'Tiến độ', 'Đề xuất', 'Phát sinh', 'Nghiệm thu', 'Dòng tiền', 'Hồ sơ công trình', 'So sánh nhà thầu'],
+  TLCC: ['Chấm công', 'Phiếu lương', 'Giờ làm việc', 'Địa điểm chấm công', 'Cơ cấu lương', 'Hoa hồng dự án', 'Mức hoa hồng'],
+  TC: ['Tài chính công ty', 'Đơn hàng', 'Công nợ khách hàng', 'Chỉ số cân đối kế toán', 'Bảng giá dịch vụ', 'Danh mục TC', 'Đơn vị tính', 'Quyền truy cập'],
+  KH: ['Khách hàng', 'Chăm sóc'],
+  TT: ['Thông báo', 'Bảng tin', 'Tài liệu', 'Quy chuẩn kỹ thuật', 'Thiết bị', 'Máy đã báo', 'Thiết bị đăng ký thông báo'],
+  DTQT: ['Dự toán', 'Mã công việc', 'Đơn giá tỉnh', 'Thanh quyết toán'],
+  QLCL: ['Danh mục công việc', 'Hồ sơ nghiệm thu'],
+  BIM: ['Sản phẩm', 'Vật liệu', 'Nhà cung cấp', 'BOQ', 'Issue'],
+  TTCS: ['Phương án', 'Danh mục đèn', 'Tiêu chuẩn TCVN', 'Hệ số tính toán'],
+  DGDM: ['Mã công việc công tác', 'Vật tư thiết bị', 'Nhân công khoán', 'Phần thô và trọn gói', 'Tỉnh thành', 'Giai đoạn hạng mục', 'Đơn vị tính', 'Nhóm tài nguyên', 'Nguồn',
+    'Lịch sử giá', 'Nhật ký thay đổi', 'Quy đổi ĐVT cũ', 'Định mức khối lượng sơ bộ', 'Nhóm so sánh nhà thầu', 'Mẫu mốc thanh toán', 'Mẫu tiến độ', 'Mẫu nghiệm thu', 'Mẫu hồ sơ công trình',
+    'Mục lục', 'Tính nhanh', 'Phát sinh', 'Dữ liệu tính', 'Hướng dẫn', 'Cài đặt']
+};
+// đổi tên tiền tố (cũ → mới); findSheet tự nhận cả tên cũ lẫn mới
+var SHEET_RENAMES_ = [['TB-Thiết bị', 'TT-Thiết bị'], ['TB-Máy đã báo', 'TT-Máy đã báo']];
+var SHEET_ALIAS_ = (function () { var m = {}; SHEET_RENAMES_.forEach(function (p) { m[normalizeName(p[0])] = p[1]; m[normalizeName(p[1])] = p[0]; }); return m; })();
+function sheetSortKey_(name) {
+  const i = name.indexOf('-'), pre = i > 0 ? name.slice(0, i) : '', rest = i > 0 ? name.slice(i + 1) : name;
+  let g = SHEET_PREFIX_ORDER_.indexOf(pre); if (g === -1) g = SHEET_PREFIX_ORDER_.length;
+  const pr = SHEET_PRIORITY_[pre] || [], p = pr.map(normalizeName).indexOf(normalizeName(rest));
+  return { g: g, p: p === -1 ? 999 : p, n: normalizeName(rest) };
+}
+function desiredSheetOrder_(names) {
+  return names.slice().sort(function (a, b) { const x = sheetSortKey_(a), y = sheetSortKey_(b); return x.g - y.g || x.p - y.p || (x.n < y.n ? -1 : x.n > y.n ? 1 : 0); });
+}
+// Đổi tên tiền tố cũ (TB- → TT-) nếu còn; trả số sheet đã đổi
+function applySheetRenames_(ss) {
+  let n = 0;
+  SHEET_RENAMES_.forEach(function (p) {
+    const old = ss.getSheets().filter(function (s) { return normalizeName(s.getName()) === normalizeName(p[0]); })[0];
+    const neu = ss.getSheets().some(function (s) { return normalizeName(s.getName()) === normalizeName(p[1]); });
+    if (old && !neu) { old.setName(p[1]); n++; }
+  });
+  if (n) SHEET_MEMO_ = null;
+  return n;
+}
+// Sắp lại nếu đang lệch thứ tự chuẩn (sheet ẩn giữ nguyên vị trí cuối). Trả số sheet đã di chuyển.
+function autoSortSheets_(ss, maxMoves) {
+  ss = ss || SpreadsheetApp.openById(SPREADSHEET_ID); maxMoves = maxMoves || 1e9;
+  const vis = ss.getSheets().filter(function (s) { return !s.isSheetHidden(); }), cur = vis.map(function (s) { return s.getName(); });
+  const want = desiredSheetOrder_(cur);
+  if (want.join('\u0001') === cur.join('\u0001')) return 0;
+  const byName = {}; vis.forEach(function (s) { byName[s.getName()] = s; });
+  let moved = 0;
+  for (let pos = 0; pos < want.length && moved < maxMoves; pos++) {
+    const names = ss.getSheets().map(function (s) { return s.getName(); });   // đọc lại vị trí THẬT sau mỗi lần dời
+    if (names[pos] === want[pos]) continue;
+    ss.setActiveSheet(byName[want[pos]]); ss.moveActiveSheet(pos + 1); moved++;
+  }
+  return moved;
+}
+// Gọi sau mỗi lệnh ghi: rẻ (chỉ đọc tên sheet), chỉ di chuyển khi lệch. Mỗi lần tối đa 8 sheet + không chạy chồng (cờ CacheService) để lệnh của người dùng không bị chậm;
+// lần sắp xếp lớn (nhiều sheet lệch) chạy bằng applySheetLayout / sortSheetsByPrefix.
+function autoSortSheetsIfNeeded_() {
+  let cache = null;
+  try { cache = CacheService.getScriptCache(); if (cache.get('sheetSortBusy')) return; cache.put('sheetSortBusy', '1', 120); } catch (e) { cache = null; }
+  try { const ss = getSS_(); applySheetRenames_(ss); autoSortSheets_(ss, 8); } catch (e) { Logger.log('autoSortSheetsIfNeeded_: ' + e); }
+  try { if (cache) cache.remove('sheetSortBusy'); } catch (e) { /* bỏ qua */ }
+}
+// Xem trước thứ tự (đọc) + chạy (ghi) qua web: action getSheetLayout / applySheetLayout (chỉ Founder/CEO)
+function getSheetLayout_(ss) {
+  const all = ss.getSheets().map(function (s) { return { name: s.getName(), hidden: s.isSheetHidden() }; });
+  const want = desiredSheetOrder_(all.filter(function (x) { return !x.hidden; }).map(function (x) { return x.name; }));
+  return { current: all, desired: want, renames: SHEET_RENAMES_, prefixOrder: SHEET_PREFIX_ORDER_ };
+}
+function applySheetLayout_(ss, data) {
+  const a = pushActor_(ss, data.actorId);
+  if (!a.admin) return { ok: false, error: 'Chỉ Founder/CEO' };
+  try { CacheService.getScriptCache().put('sheetSortBusy', '1', 600); } catch (e) { /* bỏ qua */ }   // chặn tự-sắp-xếp chạy chồng trong lúc sắp lớn
+  return withScriptLock_(function () { const r = applySheetRenames_(ss), m = autoSortSheets_(ss); try { CacheService.getScriptCache().remove('sheetSortBusy'); } catch (e) { /* bỏ qua */ } return { ok: true, renamed: r, moved: m, order: ss.getSheets().map(function (s) { return s.getName(); }) }; });
+}
+function sortSheetsByPrefix() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  Logger.log('TRƯỚC: ' + ss.getSheets().map(function (s) { return s.getName(); }).join(' | '));
+  Logger.log('Đổi tên: ' + applySheetRenames_(ss) + ' · di chuyển: ' + autoSortSheets_(ss));
+  Logger.log('SAU: ' + ss.getSheets().map(function (s) { return s.getName(); }).join(' | '));
 }
