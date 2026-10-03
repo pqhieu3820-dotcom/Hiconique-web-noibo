@@ -76,6 +76,10 @@
 - Logo rê chuột: random 1/10 hiệu ứng (`data-bh` đặt ở mouseenter, keyframes bh*). sw v242.
 - Logo HICONIQUE: bỏ dấu "i"; rê chuột vào chữ HICONIQUE (`initBrandInfo`) hiện thẻ giải thích đi theo chuột, rê sang hình logo thì ẩn (sw v243); bấm logo random 1/10 hiệu ứng (`data-bg`, keyframes brandGo + bg*); Ctrl/Cmd/Shift+bấm mở tab mới ngay, không chờ. sw v241.
 
+## 2026-10-04 — Đơn giá định mức tải nhanh + khung cột cố định
+- `dgdm-db.js`: khung cột cố định (FRAME trong code cho 3 sheet danh mục + `dgdm_hdr` nhớ lại tên cột sau mỗi lần tải) → đầu bảng và dòng khung hiện ngay khi chờ Google Sheet. Bỏ chuỗi tải nối đuôi (danh sách sheet → dòng → dòng lần 2 để biết tỉnh): nay mở sẵn sheet mặc định, tải dòng và danh sách tab SONG SONG, đoán tỉnh (nhớ lần chọn trước `dgdm_prov`, mặc định Hải Phòng nếu sheet có cột Tỉnh/Thành) nên chỉ còn 1 lượt tải. Cột mới trên Sheet vẫn cập nhật khi dữ liệu về.
+- Bỏ chữ "v2" ở ghi chú Quy ước mã (form chuẩn). sw v256.
+
 # Ghi chú dự án — đọc trước khi làm việc
 
 File này tồn tại để không phải hỏi lại các thông tin dưới đây mỗi khi đổi máy hoặc mở đoạn

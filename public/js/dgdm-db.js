@@ -20,6 +20,15 @@
   };
   var lsGet = function (k, d) { try { var v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
   var lsSet = function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* bỏ qua */ } };
+  // 2026-10-04: KHUNG CỘT CỐ ĐỊNH — tên cột của từng sheet có sẵn trong code (FRAME) và được nhớ lại sau mỗi lần tải (HDR cache) nên đầu bảng + khung dòng hiện NGAY,
+  // trang không còn xoá khung rồi chờ Google Sheet; dữ liệu tải về sau chỉ điền vào. Cột mới/đổi tên trên Sheet vẫn được cập nhật khi dữ liệu về.
+  var FRAME = {
+    'DGDM-Giai đoạn hạng mục': ['Mã GĐ', 'Tên giai đoạn', 'Mã hạng mục', 'Tên hạng mục', 'Phạm vi công việc', 'Nhóm chi phí dự toán', 'Đưa vào phần mềm dự toán?', 'Mã cũ tương ứng'],
+    'DGDM-Đơn vị tính': ['ĐVT chuẩn', 'ĐVT cũ trên app', 'Số dòng (lúc đối chiếu)', 'Chuyển thành', 'Ghi chú điều kiện đo'],
+    'DGDM-Nhóm tài nguyên': ['Loại', 'Nhóm', 'Tên nhóm', 'Ví dụ']
+  };
+  var HDR = lsGet('dgdm_hdr', {}), PROV = lsGet('dgdm_prov', {});
+  function frameOf(sheet) { return HDR[sheet] || FRAME[sheet] || null; }
   var st = { sheets: [], sheet: '', prov: '', q: '', offset: 0, data: null, loading: false, page: lsGet('dgdm_page', 100), comfy: lsGet('dgdm_comfy', false), hidden: lsGet('dgdm_hidden', {}), sel: -1 };
 
   function user() { return (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null; }
@@ -50,6 +59,11 @@
   }
 
   // ---------- thanh tab (khung cố định trong HTML; chỉ gắn số dòng + ẩn tab chưa có sheet) ----------
+  // đoán tỉnh ngay từ đầu (đã chọn lần trước, hoặc Hải Phòng nếu sheet có cột Tỉnh/Thành) để KHÔNG phải tải thêm 1 vòng chỉ để biết danh sách tỉnh
+  function guessProv(sheet) {
+    if (PROV[sheet]) return PROV[sheet];
+    var h = frameOf(sheet); return h && h.indexOf('Tỉnh/Thành') !== -1 ? 'Hải Phòng' : '';
+  }
   function loadSheets() {
     return jget(API + '?action=getDgdmStatus&_=' + Date.now()).then(function (s) {
       st.sheets = (s.sheets || []).filter(function (x) { return /^DGDM-/i.test(x.name) && norm(x.name) !== norm('DGDM-Cài đặt'); });
@@ -72,9 +86,16 @@
 
   // ---------- bảng dữ liệu ----------
   function skeleton() {
-    var tr = '', i, j;
-    for (i = 0; i < 9; i++) { tr += '<tr class="db-skel">'; for (j = 0; j < 6; j++) tr += '<td><i style="width:' + (30 + ((i * 7 + j * 13) % 60)) + '%"></i></td>'; tr += '</tr>'; }
-    $('dbHead').innerHTML = ''; $('dbBody').innerHTML = tr; $('dbFootInfo').textContent = 'Đang tải ' + st.sheet.replace(/^DGDM-/, '') + '…';
+    var h = frameOf(st.sheet), tr = '', i, j, cols = [], pi, hid = st.hidden[st.sheet] || [];
+    if (h) {
+      pi = h.indexOf('Tỉnh/Thành');
+      cols = h.map(function (x, k) { return { h: x, i: k, k: kindOf(x) }; }).filter(function (c) { return c.h !== '' && (c.i !== pi || !st.prov) && hid.indexOf(c.h) === -1; });
+      var pin = cols.filter(function (c) { return c.k === 'code'; })[0];
+      $('dbHead').innerHTML = '<tr><th class="db-rn">#</th>' + cols.map(function (c) { return '<th class="' + (c.k === 'price' || c.k === 'num' ? 'num' : '') + (pin && c.i === pin.i ? ' db-pin' : '') + '">' + esc(c.h) + '</th>'; }).join('') + '<th class="db-act-h"></th></tr>';
+    } else $('dbHead').innerHTML = '';
+    var n = cols.length || 6;
+    for (i = 0; i < 9; i++) { tr += '<tr class="db-skel"><td class="db-rn"></td>'; for (j = 0; j < n; j++) tr += '<td><i style="width:' + (30 + ((i * 7 + j * 13) % 60)) + '%"></i></td>'; tr += '</tr>'; }
+    $('dbTitle').textContent = st.sheet.replace(/^DGDM-/, ''); $('dbBody').innerHTML = tr; $('dbFootInfo').textContent = 'Đang tải ' + st.sheet.replace(/^DGDM-/, '') + '…';
   }
   function loadRows() {
     if (!st.sheet) return Promise.resolve();
@@ -84,6 +105,8 @@
       st.loading = false;
       if (d.error) { $('dbBody').innerHTML = '<tr><td class="es-empty" style="padding:30px">' + esc(d.error) + '</td></tr>'; return; }
       st.data = d; st.sel = -1;
+      if (d.headers && d.headers.length) { HDR[st.sheet] = d.headers; lsSet('dgdm_hdr', HDR); }
+      if (d.provinces && d.provinces.length && st.prov && d.provinces.indexOf(st.prov) === -1) st.prov = '';   // tỉnh nhớ lại không còn trong sheet
       if (d.provinces && d.provinces.length && !st.prov && st.sheet !== LOG) { st.prov = d.provinces.indexOf('Hải Phòng') !== -1 ? 'Hải Phòng' : d.provinces[0]; return loadRows(); }
       render();
     }).catch(function () { st.loading = false; $('dbBody').innerHTML = '<tr><td class="es-empty" style="padding:30px">Không tải được dữ liệu (kiểm tra kết nối) — bấm Tải lại.</td></tr>'; });
@@ -133,7 +156,7 @@
   function bind() {
     var t, q = $('dbQ');
     q.addEventListener('input', function () { clearTimeout(t); var v = q.value; t = setTimeout(function () { st.q = v.trim(); st.offset = 0; loadRows().then(function () { var e = $('dbQ'); if (e) { e.focus(); e.setSelectionRange(e.value.length, e.value.length); } }); }, 450); });
-    $('dbProv').addEventListener('change', function () { st.prov = this.value; st.offset = 0; loadRows(); });
+    $('dbProv').addEventListener('change', function () { st.prov = this.value; PROV[st.sheet] = st.prov; lsSet('dgdm_prov', PROV); st.offset = 0; loadRows(); });
     $('dbReload').addEventListener('click', function () { loadRows(); loadSheets(); });
     $('dbAdd').addEventListener('click', function () { openForm(null); });
     $('dbPrev').addEventListener('click', function () { st.offset = Math.max(0, st.offset - st.page); loadRows(); });
@@ -150,7 +173,7 @@
     $('dbColAll').addEventListener('click', function () { st.hidden[st.sheet] = []; lsSet('dgdm_hidden', st.hidden); render(); });
     $('dbTabsWrap').addEventListener('click', function (e) {
       var b = e.target.closest('[data-s]'); if (!b) return;
-      st.sheet = b.dataset.s; st.prov = ''; st.q = ''; st.offset = 0; renderTabs(); loadRows();
+      st.sheet = b.dataset.s; st.prov = guessProv(st.sheet); st.q = ''; st.offset = 0; renderTabs(); loadRows();
     });
     $('dbBody').addEventListener('click', function (e) {
       var tr = e.target.closest('tr[data-i]'); if (!tr) return;
@@ -172,7 +195,7 @@
     });
   }
 
-  // ---------- 2026-10-03: QUY ƯỚC MÃ v2 (bản chốt) — tự gợi ý + kiểm tra khi thêm/sửa ----------
+  // ---------- 2026-10-03: QUY ƯỚC MÃ (form chuẩn) — tự gợi ý + kiểm tra khi thêm/sửa ----------
   // Lớp 1 Mã công việc [GĐ]-[HM]-[STT 3 số] (900–999 dành cho phát sinh/VO) · Lớp 2 Mã tài nguyên [Loại]-[Nhóm 2 ký tự]-[STT] (VL/M 4 số, NC 2 số)
   // Đơn giá sơ bộ theo m²: SB-[TH|TG|NC]-[loại nhà] · Loại đơn giá: CT chi tiết · TG trọn gói · NCK nhân công khoán · SB sơ bộ theo m²
   var CONV = {
@@ -204,7 +227,7 @@
   function wireConv(ov, isAdd) {
     var c = CONV[st.data.sheet]; if (!c) return;
     var f = function (h) { return ov.querySelector('[data-h="' + h + '"]'); }, ma = f('Mã'), note = document.createElement('div');
-    note.className = 'db-conv'; note.innerHTML = '<b>Quy ước mã v2:</b> ' + esc(c.hint) + (c.key ? ' — nhập <b>' + esc(c.key) + '</b> để tự gợi ý mã kế tiếp.' : '');
+    note.className = 'db-conv'; note.innerHTML = '<b>Quy ước mã:</b> ' + esc(c.hint) + (c.key ? ' — nhập <b>' + esc(c.key) + '</b> để tự gợi ý mã kế tiếp.' : '');
     ov.querySelector('.db-form').before(note);
     if (isAdd && c.loai && f('Loại đơn giá') && !f('Loại đơn giá').value) f('Loại đơn giá').value = c.loai;
     if (!c.key || !f(c.key)) return;
@@ -328,7 +351,10 @@
     if (!API) { $('dbBody').innerHTML = '<tr><td class="es-empty" style="padding:30px">Chưa cấu hình API.</td></tr>'; return; }
     bind();
     try { var qp = new URLSearchParams(location.search); if (qp.get('sheet')) st.sheet = qp.get('sheet'); if (qp.get('q')) st.q = qp.get('q'); } catch (e) { /* bỏ qua */ }   // mở từ kết quả tìm kiếm chung
-    loadSheets().then(loadRows).catch(function (e) { if (window.console) console.error('DGDM:', e); $('dbBody').innerHTML = '<tr><td class="es-empty" style="padding:30px">Không tải được danh sách sheet (kiểm tra kết nối).</td></tr>'; });
+    if (!st.sheet) st.sheet = 'DGDM-Mã công việc công tác';   // mở sẵn sheet mặc định — không chờ danh sách sheet
+    st.prov = guessProv(st.sheet);
+    loadRows();   // tải dòng và danh sách tab SONG SONG (trước đây nối đuôi nhau: danh sách sheet → dòng → dòng lần 2 có tỉnh)
+    loadSheets().catch(function (e) { if (window.console) console.error('DGDM:', e); });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
