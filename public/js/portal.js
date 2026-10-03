@@ -281,6 +281,9 @@
   })();
 
   var overlay = document.querySelector('[data-search-overlay]');
+  // Ô tìm kiếm PHẢI nằm thẳng dưới <body>: ở trang chủ nó từng nằm trong thanh đầu trang (có backdrop-filter → "position: fixed" chỉ phủ đúng chiều cao thanh đó,
+  // nền không che hết màn hình). Chuyển ra ngoài cho mọi trang giống nhau.
+  if (overlay && overlay.parentNode !== document.body) document.body.appendChild(overlay);
   if (!overlay) {
     overlay = document.createElement('div');
     overlay.className = 'search-overlay';
@@ -517,6 +520,8 @@
     if (!overlay) return;
     if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
     overlay.classList.remove('closing');
+    var nIn = 1 + Math.floor(Math.random() * 5);   // 1 trong 5 kiểu hiệu ứng vào
+    overlay.style.setProperty('--ain', nIn === 1 ? 'sGlassIn' : 'sIn' + nIn);
     Array.prototype.forEach.call(document.querySelectorAll('.notif-panel'), function (n) { n.hidden = true; });   // đóng bảng thông báo nếu đang mở
     overlay.hidden = false;
     searchFilter = '';
@@ -533,6 +538,8 @@
     stopPh();
     var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduce) { overlay.hidden = true; return; }
+    var nOut = 1 + Math.floor(Math.random() * 5);   // 1 trong 5 kiểu hiệu ứng thoát (độc lập với kiểu lúc vào)
+    overlay.style.setProperty('--aout', nOut === 1 ? 'sGlassOut' : 'sOut' + nOut);
     overlay.classList.add('closing');   // chạy hiệu ứng thoát (css/portal.css: sGlassOut) rồi mới ẩn hẳn
     closeTimer = setTimeout(function () { overlay.hidden = true; overlay.classList.remove('closing'); closeTimer = null; }, 800);
   }

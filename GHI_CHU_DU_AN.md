@@ -57,6 +57,8 @@
 
 - 2026-10-04 (sw v230): nút ESC trong ô tìm kiếm là NÚT ĐÓNG (rê chuột → ESC xoay thành ×, bấm = đóng; `.k-btn` trong portal.js `setupField`); ô tìm kiếm z-index 600 (trên bảng thông báo 500) và tự đóng bảng thông báo khi mở; nền sáng tăng tương phản. **Bảng thông báo (chuông)**: chuông rung + chấm báo toé sáng, bảng bung ra từ chính chiếc chuông (mờ→nét, nảy), từng dòng trượt vào lần lượt, đóng thì co ngược về chuông (`openPanel/closePanel` trong `initNotifications`, css `notifIn/notifOut/bellRing`, tôn trọng reduced-motion).
 
+- 2026-10-04 (sw v232): **Ô tìm kiếm — sửa lỗi nền không phủ hết ở trang chủ**: index.html đặt `.search-overlay` BÊN TRONG `<header>` (header có backdrop-filter → `position: fixed` chỉ phủ chiều cao header). portal.js nay chuyển overlay ra thẳng `<body>` lúc khởi tạo → mọi trang giống nhau. **5 kiểu hiệu ứng vào/thoát NGẪU NHIÊN** (chọn riêng cho lúc mở và lúc đóng qua biến CSS `--ain`/`--aout`): 1 chấm sáng→đường kẻ→mở kính, 2 lật 3D từ mép trên, 3 rơi đàn hồi bẹp-nảy, 4 tan sương (nhoè→nét), 5 xoay-zoom nghiêng nảy (css `sGlassIn/sIn2..5`, `sGlassOut/sOut2..5`).
+
 # Ghi chú dự án — đọc trước khi làm việc
 
 File này tồn tại để không phải hỏi lại các thông tin dưới đây mỗi khi đổi máy hoặc mở đoạn
