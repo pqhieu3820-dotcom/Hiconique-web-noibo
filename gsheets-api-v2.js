@@ -5069,3 +5069,20 @@ function sortSheetsByPrefix() {
   list.forEach(function (o, pos) { ss.setActiveSheet(o.s); ss.moveActiveSheet(pos + 1); });
   Logger.log('SAU: ' + ss.getSheets().map(function (s) { return s.getName(); }).join(' | '));
 }
+
+// 2026-10-03: đổi CHỮ ở ô tiêu đề — "Mã" (mã app cũ W01/A01…) → "Mã cũ"; "Mã công việc" / "Mã tài nguyên" (mã mới) → "Mã". Không đụng dữ liệu, không xoá cột. Web đọc được cả trước lẫn sau khi đổi (window.dgdmNormTables).
+function dgdmSwapCodeHeaders() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  [['DGDM-Mã công việc công tác', 'Mã công việc'], ['DGDM-Vật tư thiết bị', 'Mã tài nguyên']].forEach(function (p) {
+    const sh = ss.getSheets().filter(function (x) { return dgNorm_(x.getName()) === dgNorm_(p[0]); })[0];
+    if (!sh) { Logger.log('THIEU ' + p[0]); return; }
+    const hs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(dgNorm_), mi = hs.indexOf(dgNorm_('Mã')), ni = hs.indexOf(dgNorm_(p[1]));
+    if (ni === -1) { Logger.log(p[0] + ': đã đổi rồi (không còn cột ' + p[1] + ')'); return; }
+    if (mi === -1 || hs.indexOf(dgNorm_('Mã cũ')) !== -1) { Logger.log('DUNG: ' + p[0] + ' cấu trúc cột không như dự kiến'); return; }
+    sh.getRange(1, mi + 1).setValue('Mã cũ');
+    sh.getRange(1, ni + 1).setValue('Mã');
+    Logger.log(p[0] + ': cột ' + (mi + 1) + ' → "Mã cũ", cột ' + (ni + 1) + ' → "Mã"');
+  });
+  SHEET_MEMO_ = null; bumpReadCacheVersion_();
+  Logger.log('XONG đổi tiêu đề cột mã.');
+}
