@@ -152,7 +152,7 @@
       messaging.getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: reg }).then(function (token) {
         if (token) {
           try { localStorage.setItem(TOKEN_KEY, token); } catch (e) {}
-          registerTokenWithBackend(token, user);
+          registerTokenWithBackend(token, user);   // mỗi lần mở web khi ĐANG ĐĂNG NHẬP: làm mới "hoạt động gần nhất" (máy chủ chỉ gửi cho thiết bị còn mới)
         }
       }).catch(function () {});
     });
@@ -200,7 +200,8 @@
   }
 
   // ---------- 2026-10-03: danh sách thiết bị (API getPushDevices…) + nhắc đăng ký đủ 2 thiết bị ----------
-  var REQUIRED_DEVICES = 2;
+  var REQUIRED_DEVICES = 2;   // nên có ít nhất 2 thiết bị (nhắc hằng ngày)
+  var MAX_DEVICES = 5;        // 2026-10-04: tối đa 5 thiết bị / người (máy chủ cũng chặn)
   function localToken() { try { return localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { return ''; } }
   function isIos() { return /iPhone|iPad|iPod/.test(navigator.userAgent); }
   function isStandalone() { return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true; }
@@ -235,13 +236,14 @@
           if (!token) return resolve({ ok: false, reason: 'token' });
           try { localStorage.setItem(TOKEN_KEY, token); } catch (e) {}
           var dev = detectDevice();
-          api('registerPushDevice', { fcmToken: token, memberId: user.id, deviceLabel: dev.label, browserFamily: dev.browserFamily }).then(function () { resolve({ ok: true }); }, function () { resolve({ ok: true }); });
+          api('registerPushDevice', { fcmToken: token, memberId: user.id, deviceLabel: dev.label, browserFamily: dev.browserFamily }).then(function (res) { if (res && res.error === 'DEVICE_LIMIT') { try { localStorage.removeItem(TOKEN_KEY); } catch (e) {} resolve({ ok: false, reason: 'limit' }); } else resolve({ ok: true }); }, function () { resolve({ ok: true }); });
         }).catch(function () { resolve({ ok: false, reason: 'token' }); });
       });
     });
   }
   function reasonText(r) {
-    return r === 'denied' ? 'Trình duyệt đang CHẶN thông báo của trang này. Bấm biểu tượng ổ khoá cạnh địa chỉ web → Thông báo → Cho phép, rồi tải lại trang.'
+    return r === 'limit' ? 'Tài khoản đã đủ ' + MAX_DEVICES + ' thiết bị nhận thông báo. Vào “Quản lý thiết bị” xoá bớt 1 thiết bị cũ rồi đăng ký lại thiết bị này.'
+      : r === 'denied' ? 'Trình duyệt đang CHẶN thông báo của trang này. Bấm biểu tượng ổ khoá cạnh địa chỉ web → Thông báo → Cho phép, rồi tải lại trang.'
       : r === 'ios' ? 'Trên iPhone/iPad: mở web bằng Safari → nút Chia sẻ → “Thêm vào Màn hình chính”, mở app HICONIQUE từ màn hình chính rồi bật thông báo (Apple chỉ cho phép thông báo trong app đã thêm vào màn hình chính).'
       : r === 'default' ? 'Bạn chưa bấm “Cho phép” ở hộp hỏi của trình duyệt.'
       : 'Trình duyệt này không hỗ trợ thông báo đẩy — hãy dùng Chrome/Edge (máy tính, Android) hoặc Safari đã “Thêm vào Màn hình chính” (iPhone).';
@@ -260,7 +262,7 @@
     ov.innerHTML = '<div style="width:100%;max-width:440px;background:var(--color-surface,#1a1d21);color:var(--color-text,#eee);border:1px solid var(--color-border,#333);border-radius:16px;padding:22px 22px 18px;box-shadow:0 24px 60px rgba(0,0,0,.4);font-family:Inter,sans-serif;">' +
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;"><span style="width:38px;height:38px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(145deg,rgba(176,141,87,.22),rgba(176,141,87,.08));box-shadow:inset 0 0 0 1px rgba(176,141,87,.28);color:var(--color-bronze,#B08D57);flex:0 0 auto;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9a6 6 0 0 1 12 0c0 6.5 2.5 8 2.5 8h-17S6 15.5 6 9z"/><path d="M10.2 20.5a2 2 0 0 0 3.6 0"/><path d="M12 3V2" /></svg></span>' +
       '<div style="font-weight:700;font-size:1rem;">Đăng ký nhận thông báo (' + count + '/' + REQUIRED_DEVICES + ' thiết bị)</div></div>' +
-      '<div style="font-size:.875rem;line-height:1.55;color:var(--color-text-muted,#aaa);margin-bottom:6px;">Mỗi tài khoản cần nhận thông báo trên <b>2 thiết bị</b> (máy tính + điện thoại) để không bỏ lỡ việc mới, duyệt/từ chối, bảng tin…</div>' +
+      '<div style="font-size:.875rem;line-height:1.55;color:var(--color-text-muted,#aaa);margin-bottom:6px;">Nên nhận thông báo trên ít nhất <b>2 thiết bị</b> (máy tính + điện thoại), tối đa <b>' + MAX_DEVICES + '</b>, để không bỏ lỡ việc mới, duyệt/từ chối, bảng tin… Chỉ thiết bị <b>đang đăng nhập</b> mới nhận; đăng xuất hoặc lâu không đăng nhập sẽ tự ngừng nhận.</div>' +
       '<div id="pdpHint" style="font-size:.8125rem;line-height:1.55;margin:10px 0 16px;padding:10px 12px;border-radius:10px;background:var(--color-surface-2,#222);">' + hint + '</div>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
         '<button type="button" id="pdpLater" style="flex:1;min-width:120px;height:40px;border-radius:10px;border:1px solid var(--color-border,#333);background:transparent;color:inherit;font-weight:600;cursor:pointer;">Để sau</button>' +
@@ -348,6 +350,7 @@
     deleteDevice: deleteDevice,
     testDevice: testDevice,
     reasonText: reasonText,
-    REQUIRED_DEVICES: REQUIRED_DEVICES
+    REQUIRED_DEVICES: REQUIRED_DEVICES,
+    MAX_DEVICES: MAX_DEVICES
   };
 })();

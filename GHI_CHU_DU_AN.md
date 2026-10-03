@@ -93,6 +93,11 @@
 - Thêm: "Thêm & nhập tiếp" (giữ tỉnh/hạng mục/nhóm), nhân bản tự tạo mã mới, nút "Xuất CSV" (theo bộ lọc, mọi trang), tiêu đề phụ hiện cả tổng toàn bảng, tooltip tab.
 - Còn lại (phía máy chủ): `getDgdmRows_` đọc cả sheet mỗi lần (7.446–14.688 dòng) ~ vài giây — muốn nhanh hơn nữa cần lưu đệm phía Apps Script.
 
+## 2026-10-04 — Thông báo đẩy: tối đa 5 thiết bị, chỉ máy ĐANG ĐĂNG NHẬP (Apps Script v157, sw v265)
+- Máy chủ (`gsheets-api-v2.js`): `PUSH_MAX_DEVICES_=5` (registerPushDevice trả `DEVICE_LIMIT` khi đủ 5 thiết bị đang nhận), `PUSH_STALE_DAYS_=7` + `pushFresh_(d)`: chỉ gửi push cho thiết bị có `lastActiveAt` ≤ 7 ngày; `getPushDevices_` coi thiết bị quá cũ là "không nhận" (`stale`). `lastActiveAt` được làm mới mỗi lần mở web khi ĐANG đăng nhập (`silentRefresh`).
+- Web: đăng xuất (`auth.js logout`) gọi `unregisterPushDevice` cho token máy này (keepalive, trước khi xoá phiên); hộp đăng ký chỉ hiện khi có tài khoản đăng nhập; nhắc vẫn là nên ≥2 thiết bị, tối đa 5 (`PushNotify.MAX_DEVICES`); khi đủ 5 báo vào "Quản lý thiết bị" xoá bớt. Đổi số ngày: sửa `PUSH_STALE_DAYS_`.
+- Lưu ý: nội dung thông báo vẫn hiện trên màn hình khoá của máy còn trong hạn 7 ngày; muốn kín hơn có thể đổi nội dung push thành "Bạn có thông báo mới".
+
 # Ghi chú dự án — đọc trước khi làm việc
 
 File này tồn tại để không phải hỏi lại các thông tin dưới đây mỗi khi đổi máy hoặc mở đoạn

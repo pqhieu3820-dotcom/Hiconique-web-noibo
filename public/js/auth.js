@@ -212,6 +212,11 @@ const Auth = (function() {
 
   // Logout
   function logout() {
+    // 2026-10-04: đăng xuất → thiết bị này ngừng nhận thông báo đẩy ngay (gọi TRƯỚC khi xoá phiên để có vé gửi kèm); đăng nhập lại trên máy này sẽ tự đăng ký lại
+    try {
+      var ft = localStorage.getItem('hiconique_fcm_token'), pu = (typeof GSHEETS_CONFIG !== 'undefined' && GSHEETS_CONFIG.API_URL) || '';
+      if (ft && pu) fetch(pu + '?action=unregisterPushDevice&fcmToken=' + encodeURIComponent(ft), { redirect: 'follow', keepalive: true }).catch(function () {});
+    } catch (e) { /* bỏ qua */ }
     localStorage.removeItem(SESSION_KEY);
     currentUser = null;
     return true;

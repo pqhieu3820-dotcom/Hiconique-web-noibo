@@ -43,7 +43,7 @@
   function statusLine(u, mine) {
     var need = PushNotify.REQUIRED_DEVICES || 2, cnt = mine.filter(function (d) { return d.active; }).length, here = mine.some(function (d) { return d.isThis && d.active; });
     var perm = PushNotify.getStatus();
-    var msg = cnt >= need ? '<span class="nd-ok">Đủ ' + cnt + '/' + need + ' thiết bị đang nhận thông báo.</span>' : '<span class="nd-warn">Bạn mới có ' + cnt + '/' + need + ' thiết bị nhận thông báo — hãy đăng ký thêm trên ' + (here ? 'thiết bị còn lại (điện thoại hoặc máy tính)' : 'thiết bị này') + '.</span>';
+    var mx = PushNotify.MAX_DEVICES || 5, msg = cnt >= mx ? '<span class="nd-warn">Đã đủ ' + mx + '/' + mx + ' thiết bị — muốn thêm thiết bị mới hãy xoá bớt 1 thiết bị cũ.</span>' : cnt >= need ? '<span class="nd-ok">Đang có ' + cnt + ' thiết bị nhận thông báo (tối đa ' + mx + ').</span>' : '<span class="nd-warn">Bạn mới có ' + cnt + '/' + need + ' thiết bị nhận thông báo — hãy đăng ký thêm trên ' + (here ? 'thiết bị còn lại (điện thoại hoặc máy tính)' : 'thiết bị này') + '.</span>';
     var here2 = here ? '<span class="nd-chip ok">Thiết bị này: đang nhận</span>' : perm === 'denied' ? '<span class="nd-chip bad">Thiết bị này: trình duyệt đang chặn</span>' : '<span class="nd-chip">Thiết bị này: chưa đăng ký</span>';
     return '<div class="nd-status">' + msg + here2 + '</div>';
   }

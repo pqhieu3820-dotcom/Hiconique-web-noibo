@@ -2010,8 +2010,13 @@ function handleRequestImpl_(e) {
       // giữ nguyên cùng 1 token qua nhiều lần đăng nhập trên cùng máy đó,
       // trừ khi tự xoá dữ liệu trình duyệt).
       var pdData = JSON.parse(params.data);
-      var pdExisting = getAllData(ss, SHEETS.pushDevices).find(function (d) { return d.fcmToken === pdData.fcmToken; });
-      if (pdExisting) {
+      // 2026-10-04: tối đa PUSH_MAX_DEVICES_ (5) thiết bị đang nhận / người — thiết bị quá cũ (không đăng nhập mở web > PUSH_STALE_DAYS_ ngày) không tính
+      var pdAll = getAllData(ss, SHEETS.pushDevices);
+      var pdExisting = pdAll.find(function (d) { return d.fcmToken === pdData.fcmToken; });
+      var pdMine = pdAll.filter(function (d) { return d.memberId === pdData.memberId && d.fcmToken !== pdData.fcmToken && d.active !== false && d.active !== 'FALSE' && pushFresh_(d); });
+      if (pdMine.length >= PUSH_MAX_DEVICES_) {
+        result = { ok: false, error: 'DEVICE_LIMIT', limit: PUSH_MAX_DEVICES_ };
+      } else if (pdExisting) {
         result = updateData(ss, SHEETS.pushDevices, pdExisting.id, {
           memberId: pdData.memberId, deviceLabel: pdData.deviceLabel, browserFamily: pdData.browserFamily,
           active: true, lastActiveAt: new Date().toISOString()
@@ -4563,13 +4568,17 @@ function getFcmAccessToken_() {
 // Token hết hạn/bị thu hồi (404/400 từ FCM) → tự tắt active để lần sau không
 // gửi nhầm nữa (không xoá dòng — giữ lịch sử, người dùng đăng nhập lại trên
 // máy đó sẽ tự đăng ký token mới đè lên qua registerPushDevice upsert).
+// 2026-10-04: mỗi người tối đa 5 thiết bị nhận thông báo; chỉ gửi cho thiết bị còn "mới" = web đã được mở khi ĐANG ĐĂNG NHẬP trong vòng PUSH_STALE_DAYS_ ngày
+// (mỗi lần mở web đăng nhập sẽ làm mới lastActiveAt; đăng xuất thì web gọi unregisterPushDevice). Máy bỏ đăng nhập lâu ngày tự ngừng nhận → không lộ nội dung thông báo.
+var PUSH_MAX_DEVICES_ = 5, PUSH_STALE_DAYS_ = 7;
+function pushFresh_(d) { var t = Date.parse(d.lastActiveAt || d.createdAt || ''); return !t || (Date.now() - t) <= PUSH_STALE_DAYS_ * 864e5; }
 function sendPushToMember_(ss, memberId, title, body, extra) {
   try {
     var token = getFcmAccessToken_();
     if (!token) return;
 
     var devices = getAllData(ss, SHEETS.pushDevices).filter(function (d) {
-      return d.memberId === memberId && d.active !== false && d.active !== 'FALSE';
+      return d.memberId === memberId && d.active !== false && d.active !== 'FALSE' && pushFresh_(d);
     });
     if (!devices.length) return;
 
@@ -4628,7 +4637,7 @@ function flushPendingPush_() {
     const ss = getSS_(), members = {};
     getAllData(ss, SHEETS.members).forEach(function (m) { if (m.id) members[m.id] = m; });
     const seen = {}, devices = getAllData(ss, SHEETS.pushDevices).filter(function (d) {
-      if (!d.fcmToken || d.active === false || d.active === 'FALSE' || !members[d.memberId] || seen[d.fcmToken]) return false;
+      if (!d.fcmToken || d.active === false || d.active === 'FALSE' || !pushFresh_(d) || !members[d.memberId] || seen[d.fcmToken]) return false;
       seen[d.fcmToken] = 1; return true;
     });
     if (!devices.length) return;
@@ -5477,7 +5486,7 @@ function getPushDevices_(ss, params) {
   const names = {}; getAllData(ss, SHEETS.members).forEach(function (m) { names[m.id] = m.name; });
   const list = getAllData(ss, SHEETS.pushDevices).filter(function (d) { return d.fcmToken && (a.admin || d.memberId === a.member.id); }).map(function (d) {
     return { id: d.id, memberId: d.memberId, memberName: names[d.memberId] || '(đã nghỉ / không còn trong danh sách)', deviceLabel: d.deviceLabel || '', browserFamily: d.browserFamily || '',
-      active: !(d.active === false || d.active === 'FALSE'), createdAt: d.createdAt || '', lastActiveAt: d.lastActiveAt || '', tokenTail: String(d.fcmToken).slice(-12) };
+      active: !(d.active === false || d.active === 'FALSE') && pushFresh_(d), stale: !pushFresh_(d), createdAt: d.createdAt || '', lastActiveAt: d.lastActiveAt || '', tokenTail: String(d.fcmToken).slice(-12) };
   });
   return { admin: a.admin, devices: list };
 }
