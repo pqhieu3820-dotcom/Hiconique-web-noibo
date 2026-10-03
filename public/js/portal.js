@@ -1611,14 +1611,31 @@
       menu.style.right = Math.max(12, window.innerWidth - r.right) + 'px';
     }
 
+    // 2026-10-04: menu tài khoản — avatar "nảy" + gợn sóng, bảng bung ra từ chính avatar (mờ nhoè → nét, nảy nhẹ), từng dòng lần lượt trượt vào; đóng thì co ngược về avatar
+    var umTimer = null, umSettle = null;
+    function openUserMenu() {
+      clearTimeout(umTimer); clearTimeout(umSettle);
+      menu.classList.remove('um-out', 'settled');
+      render(); position(); menu.hidden = false;
+      var br = avatarBtn.getBoundingClientRect(), pr = menu.getBoundingClientRect();
+      menu.style.transformOrigin = Math.round(br.left + br.width / 2 - pr.left) + 'px -10px';
+      menu.classList.remove('um-in'); void menu.offsetWidth; menu.classList.add('um-in');
+      avatarBtn.classList.add('is-open'); avatarBtn.classList.remove('avatar-pop'); void avatarBtn.offsetWidth; avatarBtn.classList.add('avatar-pop');
+      umSettle = setTimeout(function () { menu.classList.add('settled'); }, 1000);
+    }
+    function closeUserMenu() {
+      if (menu.hidden || menu.classList.contains('um-out')) return;
+      clearTimeout(umSettle); menu.classList.remove('um-in'); menu.classList.add('um-out'); avatarBtn.classList.remove('is-open');
+      umTimer = setTimeout(function () { menu.hidden = true; menu.classList.remove('um-out', 'settled'); }, 300);
+    }
     avatarBtn.addEventListener('click', function (e) {
       e.preventDefault();
       e.stopPropagation();
-      if (menu.hidden) { render(); position(); menu.hidden = false; }
-      else { menu.hidden = true; }
+      if (menu.hidden || menu.classList.contains('um-out')) openUserMenu(); else closeUserMenu();
     });
     menu.addEventListener('click', function (e) { e.stopPropagation(); });
-    document.addEventListener('click', function () { menu.hidden = true; });
+    document.addEventListener('click', function () { closeUserMenu(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeUserMenu(); });
   }
 
   // ----- Mobile nav (hamburger) -----
@@ -1636,6 +1653,7 @@
         var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
         if (reduce) return;
         e.preventDefault();
+        a.setAttribute('data-bg', String(1 + Math.floor(Math.random() * 10)));   // 10 kiểu hiệu ứng logo, ngẫu nhiên mỗi lần bấm
         a.classList.add('brand-go');
         var onHome = location.pathname === '/' || /\/index\.html$/.test(location.pathname);
         setTimeout(function () {
@@ -1646,6 +1664,25 @@
     });
   }
   initBrandLinks();
+
+  // 2026-10-04: dấu "i" nhỏ cạnh logo — rê chuột (hoặc bấm trên điện thoại) hiện thẻ giải thích chức năng của logo
+  function initBrandInfo() {
+    Array.prototype.forEach.call(document.querySelectorAll('.site-header .brand'), function (a) {
+      if (a.__brandInfo || !a.parentNode) return; a.__brandInfo = true;
+      var wrap = document.createElement('span'); wrap.className = 'brand-info';
+      wrap.innerHTML = '<button type="button" class="brand-info-btn" aria-label="Chức năng của logo" aria-describedby="brandTip"><span>i</span></button>' +
+        '<span class="brand-tip" id="brandTip" role="tooltip">' +
+          '<b class="bt-title">Về trang chủ</b>' +
+          '<span class="bt-row"><kbd>Bấm</kbd><span>Về trang chủ (logo chạy ngẫu nhiên 1 trong 10 hiệu ứng rồi chuyển trang; đang ở trang chủ thì cuộn mượt lên đầu).</span></span>' +
+          '<span class="bt-row"><kbd>Ctrl / ⌘ + bấm</kbd><span>Mở trang chủ ở <b>tab mới</b> — mở ngay, không chờ hiệu ứng.</span></span>' +
+        '</span>';
+      a.parentNode.insertBefore(wrap, a.nextSibling);
+      var btn = wrap.querySelector('.brand-info-btn');
+      btn.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); wrap.classList.toggle('show'); });   // điện thoại: bấm để xem
+      document.addEventListener('click', function () { wrap.classList.remove('show'); });
+    });
+  }
+  initBrandInfo();
 
   function initMobileNav() {
     var headerInner = document.querySelector('.site-header .header-inner');

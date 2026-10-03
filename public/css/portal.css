@@ -524,7 +524,44 @@ html.theme-fade, html.theme-fade *, html.theme-fade *::before, html.theme-fade *
   border: 1px solid var(--color-bronze);
   transition: transform var(--dur-base) var(--ease);
 }
-.avatar:hover { transform: scale(1.06); }
+.avatar { position: relative; transition: transform .45s cubic-bezier(.2, 1.3, .4, 1), box-shadow .35s ease; }
+.avatar:hover { transform: scale(1.08) rotate(-4deg); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-bronze) 22%, transparent), 0 6px 18px rgba(176, 141, 87, .35); }
+.avatar:active { transform: scale(.94); }
+/* 2026-10-04: avatar — nảy + gợn sóng khi bấm, vòng sáng thở nhẹ khi menu đang mở */
+.avatar::after { content: ""; position: absolute; inset: -1px; border-radius: inherit; border: 1.5px solid var(--color-bronze); opacity: 0; pointer-events: none; }
+.avatar.avatar-pop { animation: avatarPop .6s cubic-bezier(.2, 1.4, .4, 1); }
+.avatar.avatar-pop::after { animation: avatarRing .7s ease-out; }
+.avatar.is-open { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-bronze) 26%, transparent), 0 6px 20px rgba(176, 141, 87, .4); }
+.avatar.is-open::after { animation: avatarBreath 2.4s ease-in-out infinite; }
+@keyframes avatarPop { 0% { transform: scale(1); } 30% { transform: scale(.86) rotate(-6deg); } 62% { transform: scale(1.14) rotate(4deg); } 100% { transform: none; } }
+@keyframes avatarRing { 0% { opacity: .85; transform: scale(1); } 100% { opacity: 0; transform: scale(1.7); } }
+@keyframes avatarBreath { 0%, 100% { opacity: 0; transform: scale(1); } 50% { opacity: .55; transform: scale(1.28); } }
+/* menu tài khoản: bung ra từ avatar */
+.user-menu-panel { overflow-x: hidden; transform-origin: top right; }
+.user-menu-panel.um-in { animation: notifIn .55s cubic-bezier(.2, .9, .25, 1.15) both; }
+.user-menu-panel.um-out { animation: notifOut .3s cubic-bezier(.5, 0, .9, .4) both; pointer-events: none; }
+.user-menu-panel.um-in:not(.settled) > * { animation: notifRow .5s cubic-bezier(.2, .8, .2, 1) both; }
+.user-menu-panel.um-in:not(.settled) > :nth-child(1) { animation-delay: .1s; } .user-menu-panel.um-in:not(.settled) > :nth-child(2) { animation-delay: .17s; }
+.user-menu-panel.um-in:not(.settled) > :nth-child(3) { animation-delay: .24s; } .user-menu-panel.um-in:not(.settled) > :nth-child(4) { animation-delay: .31s; } .user-menu-panel.um-in:not(.settled) > :nth-child(n+5) { animation-delay: .38s; }
+.user-menu-panel.um-in:not(.settled) .user-menu-avatar { animation: avatarPop .7s .15s cubic-bezier(.2, 1.4, .4, 1) both; }
+/* dấu "i" cạnh logo + thẻ giải thích */
+.brand-info { position: relative; display: inline-flex; align-items: center; flex-shrink: 0; margin-left: -6px; align-self: center; }
+.brand-info-btn { width: 17px; height: 17px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--color-bronze) 55%, transparent); background: transparent; color: var(--color-bronze); display: grid; place-items: center; padding: 0; cursor: help; opacity: .65;
+  font: italic 600 .6875rem/1 var(--font-serif, Georgia, serif); transition: opacity .25s ease, transform .35s cubic-bezier(.2, 1.4, .4, 1), background .25s ease, box-shadow .3s ease; }
+.brand-info-btn span { transform: translateY(-.5px); }
+.brand-info:hover .brand-info-btn, .brand-info.show .brand-info-btn, .brand-info-btn:focus-visible { opacity: 1; transform: scale(1.18) rotate(-8deg); background: color-mix(in srgb, var(--color-bronze) 16%, transparent); box-shadow: 0 0 12px rgba(214, 170, 100, .45); outline: none; }
+.brand-tip { position: absolute; left: -8px; top: calc(100% + 12px); z-index: 700; width: 262px; padding: 12px 14px 13px; display: flex; flex-direction: column; gap: 8px; text-align: left;
+  border-radius: 14px; background: linear-gradient(145deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, 0)), var(--color-surface); border: 1px solid color-mix(in srgb, var(--color-bronze) 38%, var(--color-border));
+  box-shadow: 0 16px 40px -10px rgba(0, 0, 0, .45), 0 0 0 1px rgba(255, 255, 255, .04) inset; color: var(--color-text);
+  opacity: 0; visibility: hidden; transform: translateY(-8px) scale(.92); transform-origin: 14px -8px; filter: blur(5px); pointer-events: none; transition: opacity .25s ease, transform .4s cubic-bezier(.2, 1.3, .4, 1), filter .3s ease, visibility 0s linear .4s; }
+.brand-tip::before { content: ""; position: absolute; top: -6px; left: 14px; width: 11px; height: 11px; transform: rotate(45deg); background: var(--color-surface); border-left: 1px solid color-mix(in srgb, var(--color-bronze) 38%, var(--color-border)); border-top: 1px solid color-mix(in srgb, var(--color-bronze) 38%, var(--color-border)); }
+.brand-info:hover .brand-tip, .brand-info.show .brand-tip, .brand-info-btn:focus-visible + .brand-tip { opacity: 1; visibility: visible; transform: none; filter: none; transition-delay: .05s, .05s, .05s, 0s; }
+.bt-title { font: 600 .875rem var(--font-serif, Georgia, serif); color: var(--color-bronze); letter-spacing: .01em; }
+.bt-row { display: flex; flex-direction: column; gap: 3px; font-size: .75rem; line-height: 1.45; color: var(--color-text-muted); }
+.bt-row b { color: var(--color-text); font-weight: 600; }
+.bt-row kbd { align-self: flex-start; font: 600 .625rem var(--font-mono, monospace); padding: 2px 7px; border-radius: 6px; background: color-mix(in srgb, var(--color-bronze) 14%, transparent); color: var(--color-bronze); border: 0; box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-bronze) 30%, transparent); }
+.brand-info:hover .bt-row, .brand-info.show .bt-row { animation: notifRow .45s cubic-bezier(.2, .8, .2, 1) both; } .brand-info:hover .bt-row:nth-of-type(2), .brand-info.show .bt-row:nth-of-type(2) { animation-delay: .1s; }
+@media (prefers-reduced-motion: reduce) { .avatar, .avatar.avatar-pop, .avatar::after, .user-menu-panel.um-in, .user-menu-panel.um-out, .user-menu-panel.um-in > *, .brand-tip, .bt-row { animation: none !important; transition: none !important; } }
 
 /* ===== CHUẨN HÌNH DẠNG AVATAR TOÀN HỆ THỐNG (chốt cứng 2026-09-11) =====
    Trước đây avatar đại diện người/dự án mỗi nơi 1 kiểu khác nhau — có chỗ
@@ -1806,6 +1843,27 @@ html[data-theme="light"] .search-result-item:hover { background: rgba(60, 50, 30
 .brand.brand-go .brand-mark::before { content: ""; position: absolute; inset: -1px; border: 2px solid var(--color-bronze); pointer-events: none; animation: brandRing .62s ease-out both; }
 @keyframes brandGo { 0% { transform: none; } 35% { transform: rotate(200deg) scale(1.22); box-shadow: 0 0 28px 4px rgba(214, 170, 100, .6); } 70% { transform: rotate(360deg) scale(.92); } 100% { transform: rotate(360deg) scale(1); box-shadow: 0 0 0 rgba(214, 170, 100, 0); } }
 @keyframes brandRing { 0% { opacity: .9; transform: scale(1); } 100% { opacity: 0; transform: scale(2.2); } }
+/* 9 hiệu ứng logo thêm (2..10; số 1 là xoay vòng ở trên) — chọn ngẫu nhiên qua data-bg */
+.brand.brand-go[data-bg]:not([data-bg="1"]) .brand-mark::before { animation: none; opacity: 0; }
+.brand.brand-go[data-bg="2"] .brand-mark { animation: bgFlip .62s cubic-bezier(.3, .8, .3, 1) both; }
+.brand.brand-go[data-bg="3"] .brand-mark { animation: bgJelly .62s ease-out both; }
+.brand.brand-go[data-bg="4"] .brand-mark { animation: bgJump .62s cubic-bezier(.3, .6, .4, 1) both; }
+.brand.brand-go[data-bg="5"] .brand-mark { animation: bgWobble .62s ease-in-out both; }
+.brand.brand-go[data-bg="6"] .brand-mark { animation: bgBlink .62s ease-in-out both; }
+.brand.brand-go[data-bg="7"] .brand-mark { animation: bgFlipX .62s cubic-bezier(.3, .8, .3, 1) both; }
+.brand.brand-go[data-bg="8"] .brand-mark { animation: bgSwing .62s ease-in-out both; transform-origin: 50% 0; }
+.brand.brand-go[data-bg="9"] .brand-mark { animation: bgBurst .62s cubic-bezier(.3, 1.2, .4, 1) both; }
+.brand.brand-go[data-bg="10"] .brand-mark { animation: bgSlide .62s cubic-bezier(.5, 0, .3, 1) both; }
+.brand.brand-go[data-bg="6"] .brand-mark::before, .brand.brand-go[data-bg="9"] .brand-mark::before { content: ""; position: absolute; inset: -1px; border: 2px solid var(--color-bronze); pointer-events: none; animation: brandRing .62s ease-out both; }
+@keyframes bgFlip { 0% { transform: perspective(300px) rotateY(0); } 50% { transform: perspective(300px) rotateY(270deg) scale(1.2); box-shadow: 0 0 24px rgba(214, 170, 100, .6); } 100% { transform: perspective(300px) rotateY(540deg); } }
+@keyframes bgFlipX { 0% { transform: perspective(300px) rotateX(0); } 50% { transform: perspective(300px) rotateX(-180deg) scale(1.15); } 100% { transform: perspective(300px) rotateX(-360deg); } }
+@keyframes bgJelly { 0% { transform: none; } 20% { transform: scale(1.35, .65); } 40% { transform: scale(.75, 1.3); } 60% { transform: scale(1.15, .88); } 80% { transform: scale(.95, 1.05); } 100% { transform: none; } }
+@keyframes bgJump { 0% { transform: none; } 25% { transform: translateY(-12px) scale(.92, 1.1); } 50% { transform: translateY(0) scale(1.18, .8); } 70% { transform: translateY(-5px); } 100% { transform: none; } }
+@keyframes bgWobble { 0%, 100% { transform: none; } 15% { transform: rotate(-16deg); } 30% { transform: rotate(13deg); } 45% { transform: rotate(-9deg); } 60% { transform: rotate(6deg); } 80% { transform: scale(1.18); } }
+@keyframes bgBlink { 0%, 100% { box-shadow: 0 0 0 rgba(214, 170, 100, 0); } 20%, 60% { box-shadow: 0 0 26px 6px rgba(255, 215, 150, .85); filter: brightness(1.5); } 40%, 80% { box-shadow: 0 0 4px rgba(214, 170, 100, .2); filter: none; } }
+@keyframes bgSwing { 0% { transform: rotate(0); } 25% { transform: rotate(35deg); } 50% { transform: rotate(-28deg); } 75% { transform: rotate(14deg); } 100% { transform: rotate(0); } }
+@keyframes bgBurst { 0% { transform: none; } 35% { transform: scale(.05) rotate(120deg); opacity: .4; } 70% { transform: scale(1.4) rotate(0); opacity: 1; box-shadow: 0 0 30px 6px rgba(214, 170, 100, .6); } 100% { transform: none; } }
+@keyframes bgSlide { 0% { transform: none; opacity: 1; } 45% { transform: translateX(46px) skewX(-18deg); opacity: 0; } 46% { transform: translateX(-46px) skewX(18deg); opacity: 0; } 100% { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .brand .brand-mark, .brand.brand-go .brand-mark, .brand.brand-go .brand-mark::before, .menu-toggle svg path, .menu-toggle.tap::after { animation: none !important; transition: none !important; } .primary-nav, .primary-nav .nav-link { transition: none !important; } }
 
 /* ---------- Brand logo (inline SVG) ---------- */

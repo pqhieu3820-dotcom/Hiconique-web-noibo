@@ -65,6 +65,10 @@
 
 - 2026-10-04 (sw v240): bỏ vầng tròn chung của ô tìm kiếm; mỗi kiểu vào/thoát có HIỆU ỨNG NỀN riêng chọn theo `data-fi`/`data-fo` trên `.search-overlay` (css `fx1..fx10`, dùng `::before/::after` của overlay; thoát = chạy ngược): 1 tia sáng ngang, 2 màn sáng quét xuống, 3 chớp chạm đất, 4 sương trôi, 5 tia nắng xoay, 6 xoáy ánh sáng, 7 vệt tốc độ ngang, 8 trụ sáng mở từ giữa, 9 vạch quét + viền neon chớp, 10 bong bóng nổi. Số kiểu khớp với kiểu chuyển động của ô kính cùng số.
 
+## 2026-10-04 — Avatar + logo
+- Avatar "QH": nảy/gợn sóng khi bấm, vòng sáng thở khi menu mở; `.user-menu-panel` bung/co từ avatar (`openUserMenu/closeUserMenu`, class um-in/um-out, ESC đóng).
+- Logo HICONIQUE: dấu "i" (`initBrandInfo`, `.brand-info`) rê chuột/bấm hiện thẻ giải thích; bấm logo random 1/10 hiệu ứng (`data-bg`, keyframes brandGo + bg*); Ctrl/Cmd/Shift+bấm mở tab mới ngay, không chờ. sw v241.
+
 # Ghi chú dự án — đọc trước khi làm việc
 
 File này tồn tại để không phải hỏi lại các thông tin dưới đây mỗi khi đổi máy hoặc mở đoạn
