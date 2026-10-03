@@ -31,6 +31,7 @@
   - Chặn ghi: updateMember không tự đổi cấp bậc/lương/trạng thái (chỉ admin; đổi cấp bậc người khác chỉ Founder); deleteMember + lệnh bảo trì dgdm*/applySheetLayout/seed* chỉ admin; cấp/thu quyền tài chính chỉ Founder; xoá cứng giao dịch + BsSnapshot cần quyền tài chính (add/update giao dịch KHÔNG chặn — luồng Đơn hàng cần). `actorId` lấy từ vé. Đăng nhập sai 8 lần → khoá 15 phút/email.
   - Quản trị: `?action=secAdmin&op=status|enforce&value=0/1|hashAll|rotate` (cần vé admin; `rotate` = đổi khoá, mọi người đăng nhập lại). `?action=secSelfTest` tự kiểm vé/băm (không đụng Sheet). `?action=whoami`.
   - Bản triển khai cũ thứ 2 (URL `AKfycbzi9GjIGmBH…`, đang chạy v60 không bảo vệ) đã được nâng lên v153.
+  - Khung kính đồng bộ (offline.js) báo cả ĐỌC: lệnh đọc trong 25s đầu khi mở trang hoặc ≤3s sau khi người dùng bấm/gõ, chạy >0,6s → "Đang đọc dữ liệu…", các lần đọc nối tiếp gộp liền (không nháy), xong → "Đã tải xong" 1,5s. Làm mới nền sau đó không hiện. Bộ bọc fetch nhận action cả trong thân POST; login/ping/whoami bỏ qua.
   - `public/_headers`: nosniff, X-Frame-Options SAMEORIGIN, Referrer-Policy, HSTS, noindex.
 - **NGƯỜI DÙNG PHẢI TỰ LÀM (Claude không có quyền)**: (1) Google Sheet database chính + Sheet "Database đơn giá 34 tỉnh" + folder cài Agent đang chia sẻ **"Bất kỳ ai có đường liên kết — Người chỉnh sửa"** → đổi sang **Bị hạn chế** (Sheet) / **Người xem** (folder Agent); (2) chuyển repo GitHub sang **Private**; (3) mọi người đổi mật khẩu (mật khẩu cũ từng lộ qua API).
 

@@ -430,9 +430,9 @@ var Offline = (function () {
   ['click', 'keydown', 'input', 'change', 'submit', 'touchstart', 'pointerdown'].forEach(function (ev) { document.addEventListener(ev, function () { lastInputAt = Date.now(); }, true); });
   function recentInput() { return Date.now() - lastInputAt < 20000; }
   var direct = 0, directAt = [];   // directAt: mốc bắt đầu từng lệnh ghi trực tiếp; lệnh treo >40s thôi không tính (tránh khung 'Đang lưu' hiện mãi)
-  // 2026-10-03: thêm khung ĐỌC — lệnh đọc do người dùng vừa bấm (quét Drive, tải bảng đơn giá, tra cứu…) chạy >0,6s cũng hiện kính "Đang đọc…",
+  // 2026-10-03: thêm khung ĐỌC — lệnh đọc lúc mở trang hoặc do người dùng vừa bấm (quét Drive, tải bảng đơn giá, tra cứu…) chạy >0,6s cũng hiện kính "Đang đọc…",
   // xong hiện "Đã tải xong" 1,5s. Áp dụng mọi trang (trước chỉ nút ⟳ Làm mới mới hiện khi đọc). Nhận cả lệnh gửi POST (action nằm trong thân).
-  var readAt = [], readDoneUntil = 0;
+  var readAt = [], readDoneUntil = 0, readShownAt = 0, readFirstAt = 0;
   var WRITE_ACT = /^(save|add|update|delete|remove|set|upsert|create|register|unregister|approve|reject|mark|reset|import|clear|toggle|grant|revoke|resync|change|dgdm|apply|seed|batch|test)/i,
     READ_ACT = /^(get|ping|scan|resolve|whoami)/i, SKIP_ACT = /^(login|ping|whoami|secSelfTest)$/;
   function actionOf_(url, init) {
@@ -455,11 +455,13 @@ var Offline = (function () {
       var act = actionOf_(url, init), bg = (init && init.keepalive);
       if (SKIP_ACT.test(act) || bg) return orig.apply(this, arguments);
       var isRead = READ_ACT.test(act), isWrite = !isRead && (WRITE_ACT.test(act) || (init && /^POST$/i.test(init.method || '')));
-      // ĐỌC: chỉ khi người dùng vừa bấm/gõ (≤1,5s) — làm mới tự động chạy nền không hiện khung
+      // ĐỌC: hiện khi (a) người dùng vừa bấm/gõ (≤3s — gồm tra cứu có debounce) hoặc (b) đang MỞ TRANG (25s đầu: tải dữ liệu riêng của trang,
+      // vd DGDM 14.000 dòng). Làm mới tự động chạy nền sau đó không hiện khung.
       if (isRead) {
-        if (Date.now() - lastInputAt > 1500 || manual) return orig.apply(this, arguments);
+        var loading = (window.performance && performance.now ? performance.now() : 99999) < 25000;
+        if ((Date.now() - lastInputAt > 3000 && !loading) || manual) return orig.apply(this, arguments);
         var r0 = Date.now(); readAt.push(r0); setTimeout(render, 650);
-        var doneR = function () { var i = readAt.indexOf(r0); if (i !== -1) readAt.splice(i, 1); if (Date.now() - r0 > 600 && !readAt.length) readDoneUntil = Date.now() + 1500; render(); };
+        var doneR = function () { var i = readAt.indexOf(r0); if (i !== -1) readAt.splice(i, 1); if ((Date.now() - r0 > 600 || Date.now() - readShownAt < 1500) && !readAt.length) readDoneUntil = Date.now() + 2100; render(); };
         return orig.apply(this, arguments).then(function (res) { doneR(); return res; }, function (err) { doneR(); throw err; });
       }
       // GHI trực tiếp (không qua hàng đợi): nhịp nền (đang online lastActiveAt, gửi keepalive) không phải thao tác của người dùng → không hiện khung
@@ -569,8 +571,11 @@ var Offline = (function () {
     var now = Date.now(), q = readQueue_().filter(function (o) { return (o.tries || 0) > 0 || (now < userWriteUntil && now - (o.ts || 0) < 120000); });   // lệnh tồn cũ chưa từng gửi (chờ mạng/khóa tab) không làm khung hiện mãi
     var liveDirect = directAt.filter(function (s) { return now - s < 40000; }).length, n = q.length + liveDirect, M = window.HiconiqueMetrics || {};
     var w = M.writeMs || [], aw = w.length ? w.reduce(function (a, b) { return a + b; }, 0) / w.length : 0;
-    var liveReads = readAt.filter(function (s) { return now - s > 600 && now - s < 90000; });
-    if (!failed && n === 0 && last.event !== 'retry' && (liveReads.length || now < readDoneUntil)) { drawRead_(liveReads); return; }
+    // khung đọc đang hiện (≤1,5s trước) thì tính luôn lệnh đọc mới (không chờ 0,6s) và giữ "đang đọc" thêm 0,6s sau lệnh cuối → các lần đọc nối tiếp không nháy tắt/bật
+    var showing = now - readShownAt < 1500, liveReads = readAt.filter(function (s) { return (showing || now - s > 600) && now - s < 90000; });
+    if (!liveReads.length && readDoneUntil && now < readDoneUntil - 1500) liveReads = [readFirstAt || now];
+    if (!failed && n === 0 && last.event !== 'retry' && (liveReads.length || now < readDoneUntil)) { if (liveReads.length) { readShownAt = now; if (!readFirstAt) readFirstAt = Math.min.apply(null, liveReads); } else readFirstAt = 0; drawRead_(liveReads.length ? [readFirstAt] : []); return; }
+    readFirstAt = 0;
     var inQuiet = now < quietUntil && now > doneUntil && !failed && last.event !== 'retry';
     if (!failed && (n === 0 || inQuiet) && now > doneUntil) { if (el) { el.hidden = true; el.style.display = 'none'; } return; }
     if (!ensure()) return;
