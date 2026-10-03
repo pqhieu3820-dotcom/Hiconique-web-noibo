@@ -67,6 +67,7 @@
 
 ## 2026-10-04 — Avatar + logo
 - Menu avatar: mỗi dòng/icon có hiệu ứng rê chuột riêng (umMail, umPin, umCal, umHead, umBars, umExit...; sw v245).
+- Thanh công cụ: rê chuột nhẹ cho ⟳ (xoay), mặt trời/trăng (sunCore/sunRays/moonSway), chuông (bellSway) — sw v247.
 - Kính lúp tìm kiếm: rê chuột nghiêng soi + loé mặt kính (magLook/magGlint; sw v246).
 - Avatar "QH": nảy/gợn sóng khi bấm, vòng sáng thở khi menu mở; `.user-menu-panel` bung/co từ avatar (`openUserMenu/closeUserMenu`, class um-in/um-out, ESC đóng).
 - Logo rê chuột: random 1/10 hiệu ứng (`data-bh` đặt ở mouseenter, keyframes bh*). sw v242.
