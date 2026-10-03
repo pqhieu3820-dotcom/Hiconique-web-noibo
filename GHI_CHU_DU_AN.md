@@ -45,7 +45,7 @@
   - **Dropdown cũ trên sheet (cột Danh mục của TT-Tài liệu, kiểu "Dropdown" của Bảng) KHÔNG xoá được bằng code** — người dùng tự đổi kiểu cột thành văn bản thường (hoặc để nguyên, ghi vẫn được, chỉ hiện tam giác đỏ). Dropdown của TT-Thiết bị (applyEquipmentDropdowns) và TT-Thông báo (VALUE_MAP) giữ nguyên chưa đụng.
 - **Trang Tài liệu (wiki.html)**: mỗi danh mục hiện tối đa **8 tài liệu**, nhiều hơn → khung có thanh trượt (`fitColumns` đo chiều cao 8 dòng thật). Đổi vị trí bằng **KÉO-THẢ** trong cùng danh mục (hiện đường kẻ mảnh định vị chỗ chèn, tự cuộn khi kéo sát mép khung; đã bỏ nút ▲▼) + **"Sắp xếp nhanh"** (theo mã hiệu / tên / mới cập nhật / cũ nhất; nút tổng cho tất cả danh mục có hộp xác nhận, nút ⇅ ở tiêu đề từng danh mục). Thứ tự lưu ở cột mới **`Thứ tự`** (`order`) của TT-Tài liệu; tài liệu chưa có Thứ tự (mới thêm) lên đầu, sau đó theo Thứ tự tăng dần. Tiêu đề danh mục có số lượng; kéo sang danh mục khác = đổi danh mục (có xác nhận), dùng `data-cat`. Thanh cuộn của khung dùng kiểu xám chung (tokens.css), KHÔNG tự đặt màu riêng. Hộp "Đăng ký nhận thông báo" (push-notifications.js) dùng icon chuông SVG nét mảnh thay emoji 🔔.
 
-- 2026-10-03 (sw v221): thẻ **"Cập nhật gần đây"** ở trang chủ có chiều cao cố định (340px, `.notice-info .notice-list` trong portal.css), dòng nhật ký nhiều thì cuộn trong khung — cứ thêm dòng mới ở đầu danh sách như cũ.
+- 2026-10-03 (sw v222): thẻ **"Cập nhật gần đây"** ở trang chủ có chiều cao cố định (190px, `.notice-info .notice-list` trong portal.css), dòng nhật ký nhiều thì cuộn trong khung — cứ thêm dòng mới ở đầu danh sách như cũ.
 
 # Ghi chú dự án — đọc trước khi làm việc
 
