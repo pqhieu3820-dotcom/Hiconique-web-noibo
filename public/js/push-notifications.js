@@ -273,18 +273,39 @@
     document.getElementById('pdpLater').addEventListener('click', close);
     // 2026-10-04: nút "Yêu cầu cấp phép lại" — hỏi lại quyền thông báo; nếu trình duyệt đã CHẶN (không hỏi lại được) thì hướng dẫn mở khoá
     // và TỰ phát hiện khi người dùng vừa bật lại quyền (không cần tải lại trang) để đăng ký thiết bị luôn.
-    var ask = document.getElementById('pdpAsk'), hintEl = document.getElementById('pdpHint'), watching = false;
-    var onOk = function () { if (ask) { ask.textContent = 'Đã bật trên thiết bị này ✓'; ask.disabled = true; } hintEl.textContent = 'Thiết bị này đã nhận thông báo.'; setTimeout(close, 1500); };
+    var ask = document.getElementById('pdpAsk'), hintEl = document.getElementById('pdpHint'), watching = false, copyBtn = null;
+    var onOk = function () { if (ask) { ask.textContent = 'Đã bật trên thiết bị này ✓'; ask.disabled = true; } hintEl.textContent = 'Thiết bị này đã nhận thông báo.'; if (copyBtn) copyBtn.remove(); setTimeout(close, 1500); };
+    // Trình duyệt KHÔNG cho trang web ép hiện lại hộp "Cho phép" sau khi đã chặn (quy định bảo mật của Chrome/Edge/Firefox/Safari).
+    // Cách duy nhất: người dùng bật quyền trong cài đặt trình duyệt — nên ta (1) hỏi ngay nếu còn hỏi được, (2) nếu đã chặn thì hướng dẫn đúng theo trình duyệt
+    // + nút sao chép địa chỉ trang cài đặt, (3) tự nhận khi quyền vừa được bật (onchange / quay lại tab / mỗi 2 giây) rồi đăng ký thiết bị luôn.
+    var fam = detectDevice().browserFamily, os = /iPhone|iPad|iPod/.test(navigator.userAgent) ? 'ios' : /Android/.test(navigator.userAgent) ? 'android' : 'pc';
+    var settingsUrl = fam === 'Edge' ? 'edge://settings/content/notifications' : fam === 'Chrome' ? 'chrome://settings/content/notifications' : fam === 'Opera' ? 'opera://settings/content/notifications' : fam === 'Firefox' ? 'about:preferences#privacy' : '';
+    var steps = function () {
+      if (os === 'ios') return 'Trình duyệt đang CHẶN nên web không hỏi lại được. iPhone/iPad: Cài đặt → Thông báo → HICONIQUE (app đã thêm vào Màn hình chính) → bật “Cho phép thông báo”.';
+      if (os === 'android') return 'Trình duyệt đang CHẶN nên web không hỏi lại được. Android: bấm ổ khoá/ⓘ cạnh địa chỉ web → Quyền/Cài đặt trang → Thông báo → Cho phép (hoặc Cài đặt máy → Ứng dụng → trình duyệt/HICONIQUE → Thông báo → bật).';
+      return 'Trình duyệt đang CHẶN nên web không hỏi lại được. Bấm ổ khoá (hoặc ⓘ) cạnh địa chỉ web → Thông báo → đổi thành “Cho phép”' + (settingsUrl ? ', hoặc dán ' + settingsUrl + ' vào thanh địa chỉ, tìm trang này và chọn Cho phép' : '') + '. Làm xong trang tự nhận, không cần tải lại.';
+    };
+    var startWatch = function () {
+      if (watching) return; watching = true;
+      var check = function () { if (typeof Notification !== 'undefined' && Notification.permission === 'granted') { clearInterval(iv); tryAsk(); } };
+      var iv = setInterval(function () { if (!document.getElementById('pushDevicePrompt')) return clearInterval(iv); check(); }, 2000);
+      window.addEventListener('focus', check); document.addEventListener('visibilitychange', function () { if (!document.hidden) check(); });
+      if (navigator.permissions && navigator.permissions.query) navigator.permissions.query({ name: 'notifications' }).then(function (ps) { ps.onchange = check; }).catch(function () {});
+    };
     var tryAsk = function () {
       if (ask) { ask.disabled = true; ask.textContent = 'Đang yêu cầu…'; }
       enableAndWait(user).then(function (r) {
         if (r.ok) return onOk();
         if (ask) { ask.disabled = false; ask.textContent = r.reason === 'denied' ? 'Tôi đã cho phép — thử lại' : 'Yêu cầu cấp phép lại'; }
-        hintEl.textContent = r.reason === 'denied' ? 'Trình duyệt đang CHẶN nên không hỏi lại được. Bấm biểu tượng ổ khoá (hoặc ⓘ) cạnh địa chỉ web → Thông báo → Cho phép. Làm xong trang tự nhận, không cần tải lại. Trên điện thoại: Cài đặt trình duyệt/ứng dụng → Thông báo → bật cho HICONIQUE.' : reasonText(r.reason);
-        if (r.reason === 'denied' && !watching && navigator.permissions && navigator.permissions.query) {
-          watching = true;
-          navigator.permissions.query({ name: 'notifications' }).then(function (ps) { ps.onchange = function () { if (ps.state === 'granted') tryAsk(); }; }).catch(function () {});
-        }
+        if (r.reason === 'denied') {
+          hintEl.textContent = steps(); startWatch();
+          if (settingsUrl && !copyBtn && ask) {
+            copyBtn = document.createElement('button'); copyBtn.type = 'button'; copyBtn.textContent = 'Sao chép địa chỉ trang cài đặt';
+            copyBtn.style.cssText = 'flex:1 1 100%;height:36px;border-radius:10px;border:1px dashed var(--color-border,#333);background:transparent;color:inherit;font-weight:600;font-size:.8125rem;cursor:pointer;';
+            copyBtn.addEventListener('click', function () { var done = function () { copyBtn.textContent = 'Đã sao chép — dán vào thanh địa chỉ ✓'; }; try { navigator.clipboard.writeText(settingsUrl).then(done, function () { copyBtn.textContent = settingsUrl; }); } catch (e) { copyBtn.textContent = settingsUrl; } });
+            ask.after(copyBtn);
+          }
+        } else hintEl.textContent = reasonText(r.reason);
       });
     };
     if (ask) ask.addEventListener('click', tryAsk);
