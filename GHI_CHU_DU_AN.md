@@ -33,6 +33,7 @@
   - Bản triển khai cũ thứ 2 (URL `AKfycbzi9GjIGmBH…`, đang chạy v60 không bảo vệ) đã được nâng lên v153.
   - Khung kính đồng bộ (offline.js) báo cả ĐỌC: lệnh đọc trong 25s đầu khi mở trang hoặc ≤3s sau khi người dùng bấm/gõ, chạy >0,6s → "Đang đọc dữ liệu…", các lần đọc nối tiếp gộp liền (không nháy), xong → "Đã tải xong" 1,5s. Làm mới nền sau đó không hiện. Bộ bọc fetch nhận action cả trong thân POST; login/ping/whoami bỏ qua.
   - `public/_headers`: nosniff, X-Frame-Options SAMEORIGIN, Referrer-Policy, HSTS, noindex.
+- **2026-10-03 người dùng ĐÃ khoá**: Sheet database chính + folder cài Agent → "Bị hạn chế" (đã kiểm tra: API vẫn đọc/ghi bình thường vì Apps Script chạy bằng tài khoản chủ). Folder Agent hạn chế → nhân viên khác muốn tải Agent phải được thêm email (Người xem). Sheet "Database đơn giá 34 tỉnh" người dùng chốt để nguyên.
 - **NGƯỜI DÙNG PHẢI TỰ LÀM (Claude không có quyền)**: (1) Google Sheet database chính + Sheet "Database đơn giá 34 tỉnh" + folder cài Agent đang chia sẻ **"Bất kỳ ai có đường liên kết — Người chỉnh sửa"** → đổi sang **Bị hạn chế** (Sheet) / **Người xem** (folder Agent); (2) chuyển repo GitHub sang **Private**; (3) mọi người đổi mật khẩu (mật khẩu cũ từng lộ qua API).
 
 # Ghi chú dự án — đọc trước khi làm việc
