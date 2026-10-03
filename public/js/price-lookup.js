@@ -60,7 +60,7 @@
     if (t.tho) { f = H(t.tho); (t.tho.rows || []).forEach(function (r) { var nm = val(r, f('Loại nhà')); if (!nm) return;
       var base = { spec: val(r, f('Quy mô/spec giả định')), unit: val(r, f('ĐVT')), code: val(r, f('Mã')), province: province };
       var a = Object.assign({}, base, { name: nm + ' — phần thô', low: n(r, f('Phần thô thấp')), high: n(r, f('Phần thô cao')), kind: 'Phần thô' });
-      var b = Object.assign({}, base, { name: nm + ' — trọn gói hoàn thiện', low: n(r, f('Trọn gói thấp')), high: n(r, f('Trọn gói cao')), kind: 'Trọn gói' });
+      var b = Object.assign({}, base, { code: val(r, f('Mã trọn gói')) || base.code, name: nm + ' — trọn gói hoàn thiện', low: n(r, f('Trọn gói thấp')), high: n(r, f('Trọn gói cao')), kind: 'Trọn gói' });
       [a, b].forEach(function (x) { if (x.low || x.high) out.push(x); }); }); }
     if (t.vt) { f = H(t.vt); (t.vt.rows || []).forEach(function (r) { var low = n(r, f('Giá thấp')), high = n(r, f('Giá cao')); if (!val(r, f('Vật tư/thiết bị')) || (!low && !high)) return;
       out.push({ name: val(r, f('Vật tư/thiết bị')), spec: val(r, f('Spec kỹ thuật tối thiểu')), unit: val(r, f('ĐVT')), code: val(r, f('Mã')), province: province, low: low || high, high: high || low, kind: 'Vật tư', grp: val(r, f('Loại')) }); }); }

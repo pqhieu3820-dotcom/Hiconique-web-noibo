@@ -1526,6 +1526,7 @@ function genericColl_(ss, action, params) {
   if (action === 'getDgdmRows') return getDgdmRows_(ss, params);
   if (action === 'dgdmWrite') return dgdmWrite_(ss, JSON.parse(params.data));
   if (action === 'dgdmApplyFormV2') return dgdmApplyFormV2_(ss, JSON.parse(params.data));
+  if (action === 'dgdmSyncConventionV2') return dgdmSyncConventionV2_(ss, JSON.parse(params.data));
   if (action === 'seedDgdm') return seedDgdm_(ss, JSON.parse(params.data));
   if (action === 'applyDgdmCodes') return applyDgdmCodes_(ss, JSON.parse(params.data));
   for (let i = 0; i < GEN_COLL_.length; i++) {
@@ -5250,6 +5251,71 @@ function dgdmApplyFormV2_(ss, data) {
       sh.getRange(2, cM, n, 1).setValues(nv); out.log.push(p[0] + ': Mã đổi ' + ch + '/' + n + ' dòng' + (miss ? ' (không xác định ' + miss + ')' : ''));
     });
     try { dgdmLog_(ss, data.actor || '', 'CHUYỂN FORM MỚI', '(nhiều sheet)', '', '', out.log.join(' | ')); } catch (e) { /* bỏ qua */ }
+    SHEET_MEMO_ = null;
+    return out;
+  });
+}
+
+// ===== 2026-10-03: ĐỒNG BỘ THEO "QUY ƯỚC MÃ CÔNG VIỆC – ĐƠN GIÁ HICONIQUE (BẢN CHỐT v2)" (action dgdmSyncConventionV2, chỉ Founder/CEO) =====
+// Lớp 1 Mã công việc [GĐ]-[HM]-[STT 3 số] · Lớp 2 Mã tài nguyên [Loại]-[Nhóm 2 ký tự]-[STT] (VL/M 4 số, NC 2 số) · Đơn giá sơ bộ theo m²: SB-[TH|TG|NC]-[loại nhà]
+// Loại đơn giá (cột riêng): CT chi tiết · TG trọn gói · NCK nhân công khoán · SB sơ bộ theo m².
+// - Nhân công khoán: Mã = SB-NC-<loại nhà>; Loại đơn giá = SB.
+// - Phần thô & trọn gói: Mã = SB-TH-<loại nhà> (giá phần thô); cột mới "Mã trọn gói" = SB-TG-<loại nhà> (giá trọn gói); Loại đơn giá = SB.
+// - Công tác: Loại đơn giá = CT; kiểm tra mã đúng dạng + khớp Hạng mục (chỉ báo cáo, không tự đổi).
+// - Vật tư: kiểm tra mã tài nguyên đúng dạng (chỉ báo cáo). Bỏ nhóm NC-KH (đặt tạm hôm trước, không có trong quy ước).
+var DGDM_HOUSE_CODE_ = { 'nhà cấp 4': 'C4', 'nhà hiện đại': 'HD', 'biệt thự hiện đại': 'BT', 'nhà tân cổ điển': 'TCD', 'điện nước khoán toàn nhà': 'MEP' };
+function dgdmSyncConventionV2_(ss, data) {
+  const a = pushActor_(ss, data.actorId);
+  if (!a.admin) return { ok: false, error: 'Chỉ Founder/CEO được chạy đồng bộ hàng loạt' };
+  return withScriptLock_(function () {
+    const fd = function (n) { return ss.getSheets().filter(function (x) { return dgNorm_(x.getName()) === dgNorm_(n); })[0]; };
+    const col = function (sh, name) { return sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(dgNorm_).indexOf(dgNorm_(name)) + 1; };
+    const ensure = function (sh, name) { let c = col(sh, name); if (c) return c; c = sh.getLastColumn() + 1; if (sh.getMaxColumns() < c) sh.insertColumnAfter(c - 1); sh.getRange(1, c).setValue(name); return c; };
+    const fill = function (sh, c, n, val) { sh.getRange(2, c, n, 1).setValues(Array.apply(null, Array(n)).map(function () { return [val]; })); };
+    const houseOf = function (type, old) { return DGDM_HOUSE_CODE_[dgNorm_(type)] || (String(old).match(/-(C4|HD|BT|TCD|MEP)$/) || [])[1] || ''; };
+    const out = { ok: true, log: [] };
+    // Nhân công khoán
+    let sh = fd('DGDM-Nhân công khoán');
+    if (sh) {
+      const n = sh.getLastRow() - 1, cM = col(sh, 'Mã'), cT = col(sh, 'Loại nhà');
+      const ms = sh.getRange(2, cM, n, 1).getValues(), ts = sh.getRange(2, cT, n, 1).getValues(); let miss = 0;
+      sh.getRange(2, cM, n, 1).setValues(ms.map(function (r, i) { const h = houseOf(ts[i][0], r[0]); if (!h) { miss++; return [r[0]]; } return ['SB-NC-' + h]; }));
+      fill(sh, ensure(sh, 'Loại đơn giá'), n, 'SB');
+      out.log.push('Nhân công khoán: Mã = SB-NC-<loại nhà> (' + (n - miss) + '/' + n + ' dòng), Loại đơn giá = SB');
+    }
+    // Phần thô & trọn gói
+    sh = fd('DGDM-Phần thô và trọn gói');
+    if (sh) {
+      const n = sh.getLastRow() - 1, cM = col(sh, 'Mã'), cT = col(sh, 'Loại nhà');
+      const ms = sh.getRange(2, cM, n, 1).getValues(), ts = sh.getRange(2, cT, n, 1).getValues(), tg = []; let miss = 0;
+      sh.getRange(2, cM, n, 1).setValues(ms.map(function (r, i) { const h = houseOf(ts[i][0], r[0]); if (!h) { miss++; tg.push(['']); return [r[0]]; } tg.push(['SB-TG-' + h]); return ['SB-TH-' + h]; }));
+      sh.getRange(2, ensure(sh, 'Mã trọn gói'), n, 1).setValues(tg);
+      fill(sh, ensure(sh, 'Loại đơn giá'), n, 'SB');
+      out.log.push('Phần thô & trọn gói: Mã = SB-TH-<loại nhà>, "Mã trọn gói" = SB-TG-<loại nhà> (' + (n - miss) + '/' + n + ' dòng), Loại đơn giá = SB');
+    }
+    // Công tác
+    sh = fd('DGDM-Mã công việc công tác');
+    if (sh) {
+      const n = sh.getLastRow() - 1, cM = col(sh, 'Mã'), cH = col(sh, 'Hạng mục');
+      fill(sh, ensure(sh, 'Loại đơn giá'), n, 'CT');
+      const ms = sh.getRange(2, cM, n, 1).getValues(), hs = cH ? sh.getRange(2, cH, n, 1).getValues() : []; let bad = 0, mism = 0, vo = 0;
+      ms.forEach(function (r, i) { const m = String(r[0]).trim(), mt = m.match(/^([A-Z]+(?:-[A-Z]+){1,2})-(\d{3})$/); if (!mt) { bad++; return; } if (+mt[2] >= 900) vo++; if (cH && String(hs[i][0]).trim() && String(hs[i][0]).trim() !== mt[1]) mism++; });
+      out.log.push('Công tác: Loại đơn giá = CT; mã sai dạng ' + bad + ', lệch Hạng mục ' + mism + ', dải 900–999 (VO) ' + vo + ' / ' + n + ' dòng');
+    }
+    // Vật tư
+    sh = fd('DGDM-Vật tư thiết bị');
+    if (sh) {
+      const n = sh.getLastRow() - 1, cM = col(sh, 'Mã'); let bad = 0;
+      sh.getRange(2, cM, n, 1).getValues().forEach(function (r) { const m = String(r[0]).trim(); if (!/^(VL|M)-[A-Z]{2}-\d{4}$|^NC-[A-Z]{2}-\d{2}$/.test(m)) bad++; });
+      out.log.push('Vật tư: mã tài nguyên sai dạng ' + bad + ' / ' + n + ' dòng');
+    }
+    // Bỏ nhóm NC-KH
+    sh = fd('DGDM-Nhóm tài nguyên');
+    if (sh) {
+      const cMn = col(sh, 'Mã nhóm'), v = sh.getRange(2, cMn, Math.max(sh.getLastRow() - 1, 1), 1).getValues();
+      for (let i = v.length - 1; i >= 0; i--) if (String(v[i][0]).trim() === 'NC-KH') { sh.deleteRow(i + 2); out.log.push('Bỏ nhóm NC-KH khỏi DGDM-Nhóm tài nguyên'); }
+    }
+    try { dgdmLog_(ss, data.actor || '', 'ĐỒNG BỘ QUY ƯỚC v2', '(nhiều sheet)', '', '', out.log.join(' | ')); } catch (e) { /* bỏ qua */ }
     SHEET_MEMO_ = null;
     return out;
   });

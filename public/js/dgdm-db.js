@@ -104,6 +104,69 @@
     });
   }
 
+
+  // ---------- 2026-10-03: QUY ƯỚC MÃ v2 (bản chốt) — tự gợi ý + kiểm tra khi thêm/sửa ----------
+  // Lớp 1 Mã công việc [GĐ]-[HM]-[STT 3 số] (900–999 dành cho phát sinh/VO) · Lớp 2 Mã tài nguyên [Loại]-[Nhóm 2 ký tự]-[STT] (VL/M 4 số, NC 2 số)
+  // Đơn giá sơ bộ theo m²: SB-[TH|TG|NC]-[loại nhà] · Loại đơn giá: CT chi tiết · TG trọn gói · NCK nhân công khoán · SB sơ bộ theo m²
+  var CONV = {
+    'DGDM-Mã công việc công tác': { re: /^[A-Z]+(-[A-Z]+){1,2}-\d{3}$/, hint: '[Giai đoạn]-[Hạng mục]-[STT 3 số], VD TH-BT-001 (900–999 cho phát sinh/VO)', key: 'Hạng mục', digits: 3, loai: 'CT' },
+    'DGDM-Vật tư thiết bị': { re: /^(VL|M)-[A-Z]{2}-\d{4}$|^NC-[A-Z]{2}-\d{2}$/, hint: '[Loại]-[Nhóm 2 ký tự]-[STT]: VL-BT-0001, M-DK-0001 (4 số), NC-KS-01 (2 số)', key: 'Nhóm tài nguyên' },
+    'DGDM-Nhân công khoán': { re: /^SB-NC-[A-Z0-9]+$/, hint: 'SB-NC-[loại nhà], VD SB-NC-C4', loai: 'SB' },
+    'DGDM-Phần thô và trọn gói': { re: /^SB-TH-[A-Z0-9]+$/, hint: 'SB-TH-[loại nhà] (Mã trọn gói: SB-TG-[loại nhà]), VD SB-TH-C4 / SB-TG-C4', loai: 'SB' }
+  };
+  var CAT = { hm: null, gr: null };
+  function loadCats() {
+    if (CAT.hm) return Promise.resolve(CAT);
+    var get = function (s) { return jget(API + '?action=getDgdmRows&sheet=' + encodeURIComponent(s) + '&limit=500').then(function (d) { return d; }); };
+    return Promise.all([get('DGDM-Giai đoạn hạng mục'), get('DGDM-Nhóm tài nguyên')]).then(function (r) {
+      var a = r[0], b = r[1], ix = function (d, n) { return (d.headers || []).indexOf(n); };
+      CAT.hm = {}; (a.rows || []).forEach(function (x) { var k = String(x.v[ix(a, 'Mã hạng mục')] || '').trim(); if (k) CAT.hm[k] = { gd: String(x.v[ix(a, 'Mã GĐ')] || ''), name: String(x.v[ix(a, 'Tên giai đoạn')] || '') + ' – ' + String(x.v[ix(a, 'Tên hạng mục')] || '') }; });
+      CAT.gr = {}; (b.rows || []).forEach(function (x) { var k = String(x.v[ix(b, 'Mã nhóm')] || '').trim(); if (k) CAT.gr[k] = { loai: String(x.v[ix(b, 'Loại')] || ''), name: String(x.v[ix(b, 'Tên nhóm')] || '') }; });
+      return CAT;
+    });
+  }
+  // Số thứ tự kế tiếp cho 1 tiền tố (VD "TH-BT-" → TH-BT-009), tra trên tỉnh đang chọn; bỏ dải 900–999 của mã công việc
+  function nextCode(prefix, digits) {
+    var url = API + '?action=getDgdmRows&sheet=' + encodeURIComponent(st.data.sheet) + '&province=' + encodeURIComponent(st.prov) + '&q=' + encodeURIComponent(prefix) + '&limit=500';
+    return jget(url).then(function (d) {
+      var mi = (d.headers || []).indexOf('Mã'), max = 0;
+      (d.rows || []).forEach(function (x) { var m = String(x.v[mi] || ''); if (m.indexOf(prefix) !== 0) return; var n = parseInt(m.slice(prefix.length), 10); if (n && n < (digits === 3 ? 900 : 1e9) && n > max) max = n; });
+      return prefix + String(max + 1).padStart(digits, '0');
+    });
+  }
+  function wireConv(ov, isAdd) {
+    var c = CONV[st.data.sheet]; if (!c) return;
+    var f = function (h) { return ov.querySelector('[data-h="' + h + '"]'); }, ma = f('Mã'), note = document.createElement('div');
+    note.className = 'db-conv'; note.innerHTML = '<b>Quy ước mã v2:</b> ' + esc(c.hint) + (c.key ? ' — nhập <b>' + esc(c.key) + '</b> để tự gợi ý mã kế tiếp.' : '');
+    ov.querySelector('.db-form').before(note);
+    if (isAdd && c.loai && f('Loại đơn giá') && !f('Loại đơn giá').value) f('Loại đơn giá').value = c.loai;
+    if (!c.key || !f(c.key)) return;
+    loadCats().then(function (cat) {
+      var key = f(c.key), dl = document.createElement('datalist'), src = c.key === 'Hạng mục' ? cat.hm : cat.gr;
+      dl.id = 'dbDl' + Date.now(); dl.innerHTML = Object.keys(src).map(function (k) { return '<option value="' + esc(k) + '">' + esc(src[k].name) + '</option>'; }).join('');
+      ov.appendChild(dl); key.setAttribute('list', dl.id); key.setAttribute('autocomplete', 'off');
+      var apply = function () {
+        var k = key.value.trim().toUpperCase(); key.value = k; var it = src[k]; if (!it) return;
+        if (f('Nhóm')) f('Nhóm').value = it.name;
+        if (c.key === 'Hạng mục' && f('Giai đoạn')) f('Giai đoạn').value = it.gd;
+        if (!isAdd || (ma.value && ma.dataset.auto !== '1')) return;
+        var digits = c.digits || (it.loai === 'NC' || /^NC-/.test(k) ? 2 : 4);
+        ma.placeholder = 'Đang tìm số kế tiếp…';
+        nextCode(k + '-', digits).then(function (code) { if (!ma.value || ma.dataset.auto === '1') { ma.value = code; ma.dataset.auto = '1'; } ma.placeholder = ''; }, function () { ma.placeholder = ''; });
+      };
+      key.addEventListener('change', apply); key.addEventListener('blur', apply);
+      ma.addEventListener('input', function () { ma.dataset.auto = ''; });
+    }).catch(function () {});
+  }
+  function convError(vals) {
+    var c = CONV[st.data.sheet]; if (!c) return '';
+    if ('Mã' in vals && !c.re.test(String(vals['Mã']).trim())) return 'Mã "' + vals['Mã'] + '" chưa đúng quy ước: ' + c.hint;
+    if (st.data.sheet === 'DGDM-Mã công việc công tác' && vals['Mã'] && vals['Hạng mục'] && String(vals['Mã']).indexOf(String(vals['Hạng mục']).trim() + '-') !== 0) return 'Mã công việc phải bắt đầu bằng Hạng mục "' + vals['Hạng mục'] + '-"';
+    if (st.data.sheet === 'DGDM-Vật tư thiết bị' && vals['Mã'] && vals['Nhóm tài nguyên'] && String(vals['Mã']).indexOf(String(vals['Nhóm tài nguyên']).trim() + '-') !== 0) return 'Mã tài nguyên phải bắt đầu bằng Nhóm tài nguyên "' + vals['Nhóm tài nguyên'] + '-"';
+    if (st.data.sheet === 'DGDM-Phần thô và trọn gói' && vals['Mã trọn gói'] && !/^SB-TG-[A-Z0-9]+$/.test(String(vals['Mã trọn gói']).trim())) return 'Mã trọn gói phải dạng SB-TG-[loại nhà]';
+    return '';
+  }
+
   // ---------- form thêm / sửa ----------
   function keyExpect(row) {   // các cột dùng để máy chủ kiểm tra dòng chưa bị người khác đổi
     var h = st.data.headers, ex = {};
@@ -131,11 +194,13 @@
     ov.querySelector('.es-x').onclick = close; ov.querySelector('[data-x]').onclick = close;
     ov.addEventListener('mousedown', function (e) { if (e.target === ov) close(); });
     var first = ov.querySelector('.db-form input:not([disabled]), .db-form textarea:not([disabled])'); if (first) first.focus();
+    wireConv(ov, isAdd);
     $('dbSave').onclick = function () {
       var vals = {}, changed = {};
       ov.querySelectorAll('[data-h]').forEach(function (el) { if (el.disabled) return; var k = el.dataset.h; vals[k] = el.value.trim(); });
       h.forEach(function (x, i) { if (!x || !(x in vals)) return; var old = isAdd ? '' : String(row.v[i] == null ? '' : row.v[i]); if (vals[x] !== old) changed[x] = vals[x]; });
       var all = $('dbAll') && $('dbAll').checked, btn = this, u = user(), actor = u ? (u.name || u.id) : '';
+      var cerr = convError(isAdd ? vals : changed); if (cerr) { toast(cerr, true); return; }
       if (!isAdd && !Object.keys(changed).length) { close(); return; }
       btn.disabled = true; btn.textContent = 'Đang lưu…';
       var done = function (r) {
