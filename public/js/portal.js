@@ -432,7 +432,9 @@
     });
     html += loadingRow + '<p class="search-hint">↑ ↓ để chọn · Enter để mở · Esc để đóng · phím tắt: / hoặc Ctrl+K</p>';
     var prevHref = keepSel ? (resultsBox.querySelector('.search-result-item.active') || {}).href : null;
+    var wasEmpty = !resultsBox.children.length;   // lần hiện kết quả đầu tiên: các dòng lần lượt trượt lên
     resultsBox.innerHTML = html;
+    if (wasEmpty && !keepSel) { resultsBox.classList.add('first'); setTimeout(function () { resultsBox.classList.remove('first'); }, 800); }
     var sel = prevHref ? Array.prototype.filter.call(resultsBox.querySelectorAll('.search-result-item'), function (n) { return n.href === prevHref; })[0] : null;
     var first = sel || resultsBox.querySelector('.search-result-item');
     if (first) first.classList.add('active');
@@ -523,7 +525,7 @@
     var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduce) { overlay.hidden = true; return; }
     overlay.classList.add('closing');   // chạy hiệu ứng thoát (css/portal.css: sGlassOut) rồi mới ẩn hẳn
-    closeTimer = setTimeout(function () { overlay.hidden = true; overlay.classList.remove('closing'); closeTimer = null; }, 500);
+    closeTimer = setTimeout(function () { overlay.hidden = true; overlay.classList.remove('closing'); closeTimer = null; }, 800);
   }
 
   toggle.forEach(function (btn) { btn.addEventListener('click', openSearch); });
