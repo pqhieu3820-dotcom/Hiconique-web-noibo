@@ -5086,3 +5086,34 @@ function dgdmSwapCodeHeaders() {
   SHEET_MEMO_ = null; bumpReadCacheVersion_();
   Logger.log('XONG đổi tiêu đề cột mã.');
 }
+
+// 2026-10-03: XOÁ CÁC CỘT CŨ KHÔNG DÙNG (theo yêu cầu người dùng) — sao lưu cả file trước.
+// Công tác + Vật tư: "Mã cũ", "ĐVT cũ". Nhân công khoán + Phần thô: "ĐVT cũ". Đơn vị tính: 5 cột cũ (bảng ánh xạ cũ — đã chép sang "DGDM-Quy đổi ĐVT cũ"), rồi bỏ chữ "(mới)" ở tiêu đề cột mới.
+// Chỉ xoá cột khớp ĐÚNG tên tiêu đề; xoá từ phải sang trái. Chạy lại được (cột đã xoá thì bỏ qua).
+function dgdmDeleteOldColumns() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID), L = function (m) { Logger.log(m); };
+  const fd = function (n) { return ss.getSheets().filter(function (x) { return dgNorm_(x.getName()) === dgNorm_(n); })[0]; };
+  const bname = 'SAO LƯU trước khi xoá cột cũ DGDM — ' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd-MM HH:mm');
+  try { ss.copy(bname); L('Đã sao lưu: ' + bname); } catch (e) { L('DUNG: không sao lưu được — ' + e); return; }
+  const uSh = fd('DGDM-Đơn vị tính');
+  if (uSh) {
+    const hs = uSh.getRange(1, 1, 1, uSh.getLastColumn()).getValues()[0].map(dgNorm_);
+    if (hs.indexOf(dgNorm_('ĐVT chuẩn (mới)')) === -1 && hs.indexOf(dgNorm_('ĐVT cũ trên app')) !== -1) { L('DUNG: DGDM-Đơn vị tính chưa có cột (mới) — không xoá'); return; }
+  }
+  const plan = [['DGDM-Mã công việc công tác', ['Mã cũ', 'ĐVT cũ']], ['DGDM-Vật tư thiết bị', ['Mã cũ', 'ĐVT cũ']], ['DGDM-Nhân công khoán', ['ĐVT cũ']], ['DGDM-Phần thô và trọn gói', ['ĐVT cũ']],
+    ['DGDM-Đơn vị tính', ['ĐVT chuẩn', 'ĐVT cũ trên app', 'Số dòng (lúc đối chiếu)', 'Chuyển thành', 'Ghi chú điều kiện đo']]];
+  plan.forEach(function (p) {
+    const sh = fd(p[0]); if (!sh) { L('THIEU ' + p[0]); return; }
+    const hs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(dgNorm_);
+    const cols = p[1].map(function (h) { return hs.indexOf(dgNorm_(h)) + 1; }).filter(function (c) { return c > 0; }).sort(function (a, b) { return b - a; });
+    cols.forEach(function (c) { sh.deleteColumn(c); });
+    L(p[0] + ': xoá ' + cols.length + ' cột (' + p[1].filter(function (h) { return hs.indexOf(dgNorm_(h)) !== -1; }).join(', ') + ')');
+  });
+  if (uSh) {
+    const hs = uSh.getRange(1, 1, 1, uSh.getLastColumn()).getValues()[0];
+    hs.forEach(function (h, i) { const s = String(h); if (/ \(mới\)$/.test(s)) uSh.getRange(1, i + 1).setValue(s.replace(/ \(mới\)$/, '')); });
+    L('DGDM-Đơn vị tính: bỏ chữ "(mới)" ở tiêu đề');
+  }
+  SHEET_MEMO_ = null; bumpReadCacheVersion_();
+  L('XONG xoá cột cũ.');
+}
