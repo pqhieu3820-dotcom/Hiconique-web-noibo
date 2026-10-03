@@ -1529,6 +1529,7 @@ function genericColl_(ss, action, params) {
   if (action === 'dgdmApplyFormV2') return dgdmApplyFormV2_(ss, JSON.parse(params.data));
   if (action === 'dgdmSyncConventionV2') return dgdmSyncConventionV2_(ss, JSON.parse(params.data));
   if (action === 'getSheetLayout') return getSheetLayout_(ss);
+  if (action === 'dgdmImportTypical') return dgdmImportTypical_(ss, JSON.parse(params.data));
   if (action === 'applySheetLayout') return applySheetLayout_(ss, JSON.parse(params.data));
   if (action === 'seedDgdm') return seedDgdm_(ss, JSON.parse(params.data));
   if (action === 'applyDgdmCodes') return applyDgdmCodes_(ss, JSON.parse(params.data));
@@ -5392,4 +5393,28 @@ function sortSheetsByPrefix() {
   Logger.log('TRƯỚC: ' + ss.getSheets().map(function (s) { return s.getName(); }).join(' | '));
   Logger.log('Đổi tên: ' + applySheetRenames_(ss) + ' · di chuyển: ' + autoSortSheets_(ss));
   Logger.log('SAU: ' + ss.getSheets().map(function (s) { return s.getName(); }).join(' | '));
+}
+
+// ===== 2026-10-03: chuyển GIÁ ĐIỂN HÌNH phần thô / trọn gói từ sheet cũ "DGDM-Dữ liệu tính" (không phải trung bình thấp–cao) sang 2 cột mới của DGDM-Phần thô và trọn gói (action dgdmImportTypical, chỉ Founder/CEO)
+function dgdmImportTypical_(ss, data) {
+  const a = pushActor_(ss, data.actorId);
+  if (!a.admin) return { ok: false, error: 'Chỉ Founder/CEO' };
+  return withScriptLock_(function () {
+    const fd = function (n) { return ss.getSheets().filter(function (x) { return dgNorm_(x.getName()) === dgNorm_(n); })[0]; };
+    const src = fd('DGDM-Dữ liệu tính'), dst = fd('DGDM-Phần thô và trọn gói');
+    if (!src || !dst) return { ok: false, error: 'Thiếu sheet' };
+    const sv = src.getDataRange().getValues(), map = {};
+    sv.forEach(function (r) { if ((r[2] === 'Phần thô' || r[2] === 'Trọn gói') && r[3] === 'Điển hình' && typeof r[4] === 'number') map[String(r[0]).trim() + '|' + String(r[1]).trim() + '|' + r[2]] = r[4]; });
+    const col = function (n) { return dst.getRange(1, 1, 1, dst.getLastColumn()).getValues()[0].map(dgNorm_).indexOf(dgNorm_(n)) + 1; };
+    const ensure = function (n) { let c = col(n); if (c) return c; c = dst.getLastColumn() + 1; if (dst.getMaxColumns() < c) dst.insertColumnAfter(c - 1); dst.getRange(1, c).setValue(n); return c; };
+    const n = dst.getLastRow() - 1, pv = dst.getRange(2, col('Tỉnh/Thành'), n, 1).getValues(), ln = dst.getRange(2, col('Loại nhà'), n, 1).getValues();
+    let hit = 0;
+    [['Phần thô', 'Phần thô điển hình'], ['Trọn gói', 'Trọn gói điển hình']].forEach(function (p) {
+      const c = ensure(p[1]), out = pv.map(function (r, i) { const v = map[String(r[0]).trim() + '|' + String(ln[i][0]).trim() + '|' + p[0]]; if (v != null) hit++; return [v != null ? v : '']; });
+      dst.getRange(2, c, n, 1).setValues(out);
+    });
+    try { dgdmLog_(ss, data.actor || '', 'CHUYỂN GIÁ ĐIỂN HÌNH', dst.getName(), '', '', 'Từ DGDM-Dữ liệu tính: ' + hit + ' giá điển hình (phần thô + trọn gói)'); } catch (e) { }
+    SHEET_MEMO_ = null;
+    return { ok: true, filled: hit, rows: n };
+  });
 }

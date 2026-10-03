@@ -37,14 +37,14 @@ var PricingProv = (function () {
       out.push({ kind: 'nc', type: 'Nhân công khoán', code: val(r, h('Mã')), name: val(r, h('Loại nhà')), spec: val(r, h('Quy mô/spec giả định')), unit: val(r, h('ĐVT')), low: low, high: high || low, grp: '', ncc: val(r, h('NCC/đơn vị chào giá')), src: val(r, h('Nguồn')), typical: num(r[h('Mức điển hình')]) }); }); }
     if (t.tho) { h = H(t.tho); (t.tho.rows || []).forEach(function (r) { var nm = val(r, h('Loại nhà')); if (!nm) return;
       var base = { kind: 'tho', code: val(r, h('Mã')), spec: val(r, h('Quy mô/spec giả định')), unit: val(r, h('ĐVT')), grp: '', ncc: val(r, h('NCC/đơn vị chào giá')), src: val(r, h('Nguồn')) };
-      out.push(Object.assign({}, base, { variant: 'tho', type: 'Phần thô', name: nm + ' — phần thô', low: num(r[h('Phần thô thấp')]), high: num(r[h('Phần thô cao')]) }));
-      out.push(Object.assign({}, base, { variant: 'tg', type: 'Trọn gói', code: val(r, h('Mã trọn gói')) || base.code, srv: base.code, name: nm + ' — trọn gói hoàn thiện', low: num(r[h('Trọn gói thấp')]), high: num(r[h('Trọn gói cao')]) })); }); }
+      out.push(Object.assign({}, base, { variant: 'tho', type: 'Phần thô', name: nm + ' — phần thô', low: num(r[h('Phần thô thấp')]), high: num(r[h('Phần thô cao')]), typ: num(r[h('Phần thô điển hình')]) }));
+      out.push(Object.assign({}, base, { variant: 'tg', type: 'Trọn gói', code: val(r, h('Mã trọn gói')) || base.code, srv: base.code, name: nm + ' — trọn gói hoàn thiện', low: num(r[h('Trọn gói thấp')]), high: num(r[h('Trọn gói cao')]), typ: num(r[h('Trọn gói điển hình')]) })); }); }
     if (t.vt) { h = H(t.vt); (t.vt.rows || []).forEach(function (r) { if (!val(r, h('Vật tư/thiết bị'))) return; var low = num(r[h('Giá thấp')]), high = num(r[h('Giá cao')]);
       out.push({ kind: 'vt', type: 'Vật tư', code: val(r, h('Mã')), old: val(r, h('Mã cũ')), srv: val(r, h('Mã gốc')), name: val(r, h('Vật tư/thiết bị')), spec: val(r, h('Spec kỹ thuật tối thiểu')), unit: val(r, h('ĐVT')), low: low, high: high || low, grp: val(r, h('Nhóm')), sub: val(r, h('Loại')), ncc: val(r, h('NCC/brand giao tại tỉnh')), src: val(r, h('Nguồn')) }); }); }
     if (t.ct) { h = H(t.ct); (t.ct.rows || []).forEach(function (r) { if (!val(r, h('Công tác'))) return; var vl = num(r[h('VL thấp')]), vh = num(r[h('VL cao')]), nl = num(r[h('NC thấp')]), nh = num(r[h('NC cao')]), dl = num(r[h('DGHT thấp')]), dh = num(r[h('DGHT cao')]);
       var calcL = vl + nl, calcH = vh + nh, bad = (calcL || dl) && (Math.abs(calcL - dl) > 1000 || Math.abs(calcH - dh) > 1000);
       out.push({ kind: 'ct', type: 'Công tác', code: val(r, h('Mã')), old: val(r, h('Mã cũ')), srv: val(r, h('Mã gốc')), name: val(r, h('Công tác')), spec: val(r, h('Phạm vi/spec')), unit: val(r, h('ĐVT')), low: dl || calcL, high: dh || calcH || dl, grp: val(r, h('Nhóm')), ncc: val(r, h('NCC/đơn vị chào giá')), note: val(r, h('Ghi chú loại trừ')), vlL: vl, vlH: vh, ncL: nl, ncH: nh, bad: !!bad, calcL: calcL, calcH: calcH }); }); }
-    out.forEach(function (e) { if (!e.srv) e.srv = e.code; e.province = province; e.mid = mid(e.low, e.high); e.h = norm([e.code, e.old || '', e.name, e.spec, e.grp, e.sub, e.ncc, e.type].join(' ')); });
+    out.forEach(function (e) { if (!e.srv) e.srv = e.code; e.province = province; e.mid = e.typ || mid(e.low, e.high); /* 2026-10-03: phần thô/trọn gói có giá điển hình thật */ e.h = norm([e.code, e.old || '', e.name, e.spec, e.grp, e.sub, e.ncc, e.type].join(' ')); });
     return out;
   }
 
