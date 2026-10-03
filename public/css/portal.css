@@ -633,6 +633,12 @@ html.theme-fade, html.theme-fade *, html.theme-fade *::before, html.theme-fade *
 .theme-toggle:hover .icon-sun path { animation-direction: alternate !important; }
 .avatar:not(.is-open):hover { animation: avatarHover 1.2s ease-in-out infinite; }
 @keyframes avatarHover { 0%, 100% { transform: scale(1.08) rotate(-4deg); } 50% { transform: scale(1.12) rotate(4deg); } }
+/* vòng lặp khi giữ chuột: chạy chậm lại (~2.2s mỗi nhịp) cho dịu mắt */
+.header-reload-btn:not(.spinning):hover svg, .brand[data-bh]:not([data-bh="1"]):not(.brand-go):hover .brand-mark, .brand[data-bh="1"]:not(.brand-go):hover .brand-mark::after,
+.user-menu-meta div:hover svg, .user-menu-link:hover svg, .user-menu-link:hover svg *, .user-menu-link:hover::after,
+[data-search-toggle]:hover svg, [data-search-toggle]:hover svg circle, .theme-toggle:hover .icon-sun circle, .theme-toggle:hover .icon-sun path, .theme-toggle:hover .icon-moon path,
+.icon-btn-bell:not(.bell-ring):hover svg, .icon-btn-bell:not(.bell-ring):hover .badge-dot, .avatar:not(.is-open):hover { animation-duration: 2.2s !important; }
+.brand[data-bh="5"]:not(.brand-go):hover .brand-mark { animation-duration: 3s !important; }
 @media (prefers-reduced-motion: reduce) { .header-reload-btn svg, .theme-toggle svg *, .icon-btn-bell svg, .icon-btn-bell .badge-dot { animation: none !important; transition: none !important; } [data-search-toggle] svg, [data-search-toggle] svg circle { animation: none !important; } .user-menu-meta svg, .user-menu-link svg, .user-menu-link svg *, .user-menu-link::after { animation: none !important; } .avatar, .avatar.avatar-pop, .avatar::after, .user-menu-panel.um-in, .user-menu-panel.um-out, .user-menu-panel.um-in > *, .brand-tip, .bt-row { animation: none !important; transition: none !important; } }
 
 /* ===== CHUẨN HÌNH DẠNG AVATAR TOÀN HỆ THỐNG (chốt cứng 2026-09-11) =====
