@@ -61,6 +61,8 @@
 
 - 2026-10-04 (sw v237): ô tìm kiếm nền sáng mờ 14px (`--sblur`, nền tối 20px; nền che tối 20% / sáng 8%). **Đổi sáng/tối chậm và mượt**: nền loang thành vòng tròn từ tâm nút bấm 1,3s (View Transitions API, `portal.js` theme toggle; máy không hỗ trợ → mờ chuyển màu 0,8s `.theme-fade`), icon mặt trời/trăng xoay 180° trong 0,8–0,9s; reduced-motion = đổi tức thì.
 
+- 2026-10-04 (sw v239): **Hiệu ứng ngẫu nhiên**: ô tìm kiếm có 10 kiểu vào/thoát (`sGlassIn/sIn2..10`, `sGlassOut/sOut2..10`; 6 xoáy, 7 lướt ngang nghiêng, 8 rèm mở/khép từ giữa, 9 neon chớp, 10 bong bóng thạch); đổi sáng/tối có 5 kiểu ngẫu nhiên (loang tròn từ nút, quét chéo, rèm rơi, mở từ đường giữa, tan mờ phóng nhẹ — portal.js theme toggle, View Transitions). **Nút menu điện thoại**: 3 gạch biến hình thành × + gợn sóng, menu xổ xuống có rèm mở và các mục trượt vào lần lượt (css `.menu-toggle`, `.primary-nav` ≤1024px dùng visibility/clip-path thay display). **Logo HICONIQUE**: rê chuột nghiêng + quét sáng, bấm xoay một vòng nảy kèm vòng sáng rồi mới về trang chủ (`initBrandLinks`; đang ở trang chủ thì cuộn mượt lên đầu).
+
 # Ghi chú dự án — đọc trước khi làm việc
 
 File này tồn tại để không phải hỏi lại các thông tin dưới đây mỗi khi đổi máy hoặc mở đoạn

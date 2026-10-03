@@ -58,13 +58,18 @@
       var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
       if (reduce) { setTheme(next); return; }
       if (document.startViewTransition) {
-        // loang chậm từ tâm nút bấm ra hết màn hình (1,3 giây, đường cong mềm)
-        var r = toggle.getBoundingClientRect(), x = Math.round(r.left + r.width / 2), y = Math.round(r.top + r.height / 2);
-        var end = Math.ceil(Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y)));
+        // 5 kiểu chuyển nền, chọn NGẪU NHIÊN mỗi lần bấm (đều chậm, mượt): 1 loang tròn từ nút · 2 quét chéo từ trái · 3 rèm rơi từ trên · 4 mở từ đường giữa · 5 tan mờ phóng nhẹ
+        var r = toggle.getBoundingClientRect(), x = Math.round(r.left + r.width / 2), y = Math.round(r.top + r.height / 2), W = window.innerWidth, H = window.innerHeight;
+        var end = Math.ceil(Math.hypot(Math.max(x, W - x), Math.max(y, H - y))), kind = 1 + Math.floor(Math.random() * 5);
         var vt = document.startViewTransition(function () { setTheme(next); });
         vt.ready.then(function () {
-          html.animate({ clipPath: ['circle(0px at ' + x + 'px ' + y + 'px)', 'circle(' + end + 'px at ' + x + 'px ' + y + 'px)'] },
-            { duration: 1300, easing: 'cubic-bezier(.45, .05, .25, 1)', pseudoElement: '::view-transition-new(root)' });
+          var NEW = '::view-transition-new(root)', OLD = '::view-transition-old(root)', ease = 'cubic-bezier(.45, .05, .25, 1)';
+          function an(kf, opt, pe) { html.animate(kf, Object.assign({ easing: ease, fill: 'both', pseudoElement: pe || NEW }, opt)); }
+          if (kind === 1) an({ clipPath: ['circle(0px at ' + x + 'px ' + y + 'px)', 'circle(' + end + 'px at ' + x + 'px ' + y + 'px)'] }, { duration: 1300 });
+          else if (kind === 2) an({ clipPath: ['polygon(0 0, 0 0, -30% 100%, -30% 100%)', 'polygon(0 0, 135% 0, 100% 100%, -35% 100%)'] }, { duration: 1400 });
+          else if (kind === 3) an({ clipPath: ['inset(0 0 100% 0)', 'inset(0 0 0 0)'] }, { duration: 1300 });
+          else if (kind === 4) an({ clipPath: ['inset(50% 0 50% 0)', 'inset(0 0 0 0)'] }, { duration: 1300 });
+          else { an({ opacity: [0, 1], filter: ['blur(18px) brightness(1.15)', 'blur(0) brightness(1)'], transform: ['scale(1.04)', 'scale(1)'] }, { duration: 1300 }); an({ opacity: [1, 0], filter: ['blur(0)', 'blur(10px)'], transform: ['scale(1)', 'scale(.98)'] }, { duration: 1300 }, OLD); }
         }).catch(function () { /* bỏ qua */ });
       } else {
         html.classList.add('theme-fade'); setTheme(next);
@@ -534,7 +539,7 @@
     if (!overlay) return;
     if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
     overlay.classList.remove('closing');
-    var nIn = 1 + Math.floor(Math.random() * 5);   // 1 trong 5 kiểu hiệu ứng vào
+    var nIn = 1 + Math.floor(Math.random() * 10);   // 1 trong 5 kiểu hiệu ứng vào
     overlay.style.setProperty('--ain', nIn === 1 ? 'sGlassIn' : 'sIn' + nIn);
     Array.prototype.forEach.call(document.querySelectorAll('.notif-panel'), function (n) { n.hidden = true; });   // đóng bảng thông báo nếu đang mở
     overlay.hidden = false;
@@ -552,7 +557,7 @@
     stopPh();
     var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduce) { overlay.hidden = true; return; }
-    var nOut = 1 + Math.floor(Math.random() * 5);   // 1 trong 5 kiểu hiệu ứng thoát (độc lập với kiểu lúc vào)
+    var nOut = 1 + Math.floor(Math.random() * 10);   // 1 trong 5 kiểu hiệu ứng thoát (độc lập với kiểu lúc vào)
     overlay.style.setProperty('--aout', nOut === 1 ? 'sGlassOut' : 'sOut' + nOut);
     overlay.classList.add('closing');   // chạy hiệu ứng thoát (css/portal.css: sGlassOut) rồi mới ẩn hẳn
     closeTimer = setTimeout(function () { overlay.hidden = true; overlay.classList.remove('closing'); closeTimer = null; }, 800);
@@ -1619,6 +1624,27 @@
   // (.primary-nav) already exist in each page's markup; this just adds the
   // toggle button and the open/close behavior for narrow viewports, once,
   // shared across the whole site instead of per-page.
+  // 2026-10-04: bấm logo HICONIQUE về trang chủ — logo xoay một vòng, bật nảy kèm vòng sáng, rồi mới chuyển trang (hoặc cuộn mượt lên đầu nếu đang ở trang chủ)
+  function initBrandLinks() {
+    Array.prototype.forEach.call(document.querySelectorAll('.site-header .brand'), function (a) {
+      if (a.__brandAnim) return; a.__brandAnim = true;
+      a.addEventListener('click', function (e) {
+        if (e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+        if (a.classList.contains('brand-go')) { e.preventDefault(); return; }
+        var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reduce) return;
+        e.preventDefault();
+        a.classList.add('brand-go');
+        var onHome = location.pathname === '/' || /\/index\.html$/.test(location.pathname);
+        setTimeout(function () {
+          if (onHome) { window.scrollTo({ top: 0, behavior: 'smooth' }); a.classList.remove('brand-go'); }
+          else window.location.href = a.getAttribute('href') || '/';
+        }, 620);
+      });
+    });
+  }
+  initBrandLinks();
+
   function initMobileNav() {
     var headerInner = document.querySelector('.site-header .header-inner');
     var nav = document.querySelector('.site-header .primary-nav');
@@ -1630,9 +1656,9 @@
     toggle.className = 'menu-toggle';
     toggle.setAttribute('aria-label', 'Mở menu');
     toggle.setAttribute('aria-expanded', 'false');
+    // 2026-10-04: 3 thanh gạch tự biến hình thành dấu × (xoay + trượt), thanh giữa mờ đi — thay cho 2 icon đổi chỗ tức thì
     toggle.innerHTML =
-      '<svg class="icon-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>' +
-      '<svg class="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+      '<svg class="icon-burger" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path class="b-top" d="M4 6.5h16"/><path class="b-mid" d="M4 12h16"/><path class="b-bot" d="M4 17.5h16"/></svg>';
     headerInner.insertBefore(toggle, headerInner.firstChild);
 
     function closeNav() {
@@ -1647,6 +1673,7 @@
       nav.classList.toggle('nav-open', opening);
       toggle.classList.toggle('is-open', opening);
       toggle.setAttribute('aria-expanded', opening ? 'true' : 'false');
+      toggle.classList.remove('tap'); void toggle.offsetWidth; toggle.classList.add('tap');   // gợn sóng khi bấm
     }
 
     toggle.addEventListener('click', toggleNav);
