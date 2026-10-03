@@ -6,7 +6,7 @@
 // công tác thêm "Hạng mục" + "Giai đoạn" (suy từ mã công việc mới), vật tư thêm "Nhóm tài nguyên" (suy từ mã tài nguyên). 4) Viết lại 3 sheet danh mục thành danh mục sống: số dòng đang dùng tính từ dữ liệu thật.
 // Chạy lại được nhiều lần (cột "ĐVT cũ" đã có thì không đổi lại). Không xoá dòng nào, không đụng cột giá.
 function dgdmConvertData() {
-  const T = function (rg) { try { rg.setNumberFormat('@'); } catch (e) { /* cột trong Bảng (Table) đã định kiểu: giữ định dạng sẵn có */ } return rg; };
+  const T = function (rg) { return rg; };   // KHÔNG đặt định dạng: các sheet là Bảng (Table) đã định kiểu cột; lệnh định dạng bị gom lại và báo lỗi ở lệnh đọc kế tiếp nên try/catch không bắt được
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID), L = function (m) { Logger.log(m); };
   const fd = function (n) { return ss.getSheets().filter(function (x) { return dgNorm_(x.getName()) === dgNorm_(n); })[0]; };
   const bname = 'SAO LƯU trước khi chuyển đổi dữ liệu DGDM — ' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd-MM HH:mm');
@@ -23,7 +23,7 @@ function dgdmConvertData() {
     const rows = [['ĐVT cũ', 'ĐVT chuẩn mới', 'Số dòng lúc đối chiếu', 'Ghi chú điều kiện đo']];
     uv.slice(1).forEach(function (r) { if (String(r[1]).trim()) rows.push([r[1], r[3], r[2], r[4]]); });
     T(qSh.getRange(1, 1, rows.length, 4).setValues(rows)); qSh.getRange(1, 1, 1, 4).setFontWeight('bold'); qSh.setFrozenRows(1);
-    qSh.getRange(2, 3, rows.length - 1, 1).setNumberFormat('0');
+    qSh.getRange(2, 3, rows.length - 1, 1);
     L('Tạo DGDM-Quy đổi ĐVT cũ (' + (rows.length - 1) + ' dòng)');
   }
   const unitMap = {}; qSh.getDataRange().getValues().slice(1).forEach(function (r) { const o = String(r[0]).trim(); if (o) unitMap[o] = String(r[1]).trim() || o; });
