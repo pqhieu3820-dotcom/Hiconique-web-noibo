@@ -67,7 +67,7 @@
 
 ## 2026-10-04 — Avatar + logo
 - Menu avatar: mỗi dòng/icon có hiệu ứng rê chuột riêng (umMail, umPin, umCal, umHead, umBars, umExit...; sw v245).
-- Loop: nhịp đầu gốc, vòng sau chậm 2.2s (.hv-slow bằng JS animationiteration; sw v251).
+- Loop giữ chuột: mỗi vòng đúng tốc độ gốc, nghỉ 1s giữa hai vòng (JS animationiteration + pause/play; sw v252).
 - Mọi hiệu ứng rê chuột (logo, menu tài khoản, kính lúp, ⟳, mặt trời, chuông) LẶP đến khi rê ra (sw v248).
 - Thanh công cụ: rê chuột nhẹ cho ⟳ (xoay), mặt trời/trăng (sunCore/sunRays/moonSway), chuông (bellSway) — sw v247.
 - Kính lúp tìm kiếm: rê chuột nghiêng soi + loé mặt kính (magLook/magGlint; sw v246).

@@ -1693,18 +1693,21 @@
   }
   initBrandInfo();
 
-  // 2026-10-04: giữ chuột trên nút → nhịp đầu đúng tốc độ gốc, các vòng lặp sau chạy chậm hơn (class .hv-slow, xoá khi rê ra)
+  // 2026-10-04: giữ chuột trên nút → mỗi vòng lặp vẫn chạy đúng tốc độ gốc, nhưng giữa hai vòng nghỉ ~1s (dừng ở tư thế nghỉ rồi chạy tiếp)
   (function () {
     var HOST = '.brand, .user-menu-meta div, .user-menu-link, [data-search-toggle], .header-reload-btn, .theme-toggle, .icon-btn-bell, .avatar';
-    function mark(e) {
+    var GAP = 1000;
+    document.addEventListener('animationiteration', function (e) {
       var el = e.target && e.target.closest ? e.target.closest(HOST) : null;
-      if (el && !el.classList.contains('hv-slow') && el.matches(':hover')) el.classList.add('hv-slow');
-    }
-    document.addEventListener('animationiteration', mark, true);
-    document.addEventListener('animationend', mark, true);
+      if (!el || el.__hvGap || !el.matches(':hover') || !el.getAnimations) return;
+      var loops = el.getAnimations({ subtree: true }).filter(function (a) { var t = a.effect && a.effect.getTiming(); return t && t.iterations === Infinity && a.playState === 'running'; });
+      if (!loops.length) return;
+      loops.forEach(function (a) { a.pause(); });
+      el.__hvGap = setTimeout(function () { el.__hvGap = 0; loops.forEach(function (a) { try { a.play(); } catch (x) {} }); }, GAP);
+    }, true);
     document.addEventListener('mouseout', function (e) {
       var el = e.target && e.target.closest ? e.target.closest(HOST) : null;
-      if (el && !el.contains(e.relatedTarget)) el.classList.remove('hv-slow');
+      if (el && !el.contains(e.relatedTarget) && el.__hvGap) { clearTimeout(el.__hvGap); el.__hvGap = 0; }
     }, true);
   })();
 
