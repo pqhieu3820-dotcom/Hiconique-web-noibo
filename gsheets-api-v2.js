@@ -1463,7 +1463,7 @@ function dgdmConvertData() {
   const unitCount = {}, hmCodes = {}, grCodes = {};
   [['DGDM-Mã công việc công tác', 'ct'], ['DGDM-Vật tư thiết bị', 'vt'], ['DGDM-Nhân công khoán', 'nc'], ['DGDM-Phần thô và trọn gói', 'tho']].forEach(function (p) {
     const sh = fd(p[0]); if (!sh) { L('THIEU ' + p[0]); return; }
-    const addCol = function (h) { const hs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(dgNorm_), i = hs.indexOf(dgNorm_(h)); if (i !== -1) return i + 1; const lc = sh.getLastColumn(); if (sh.getMaxColumns() < lc + 1) sh.insertColumnAfter(lc); sh.getRange(1, lc).copyTo(sh.getRange(1, lc + 1), SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false); sh.getRange(1, lc + 1).setValue(h); return lc + 1; };
+    const addCol = function (h) { const hs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(dgNorm_), i = hs.indexOf(dgNorm_(h)); if (i !== -1) return i + 1; const lc = sh.getLastColumn(); if (sh.getMaxColumns() < lc + 1) sh.insertColumnAfter(lc); sh.getRange(1, lc + 1).setValue(h); return lc + 1; };
     const hs0 = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(dgNorm_), uC = hs0.indexOf(dgNorm_('ĐVT')) + 1;
     if (!uC) { L('KHONG CO cot DVT o ' + p[0]); return; }
     const oC = addCol('ĐVT cũ'), n = sh.getLastRow() - 1; if (n < 1) return;
@@ -1493,24 +1493,24 @@ function dgdmConvertData() {
     }
   });
   // --- 3. danh mục sống
-  if (oldLayout) {
-    const rows = [['ĐVT chuẩn', 'Ghi chú điều kiện đo', 'Số dòng đang dùng']];
+  if (oldLayout && uv[0].map(dgNorm_).indexOf(dgNorm_('Số dòng đang dùng')) === -1) {
+    const rows = [['ĐVT chuẩn (mới)', 'Ghi chú điều kiện đo (mới)', 'Số dòng đang dùng']];
     std.forEach(function (s) { rows.push([s[0], stdNotes[s[0]] || '', unitCount[s[0]] || 0]); });
-    uSh.clearContents(); T(uSh.getRange(1, 1, rows.length, 3)).setValues(rows); uSh.getRange(2, 3, rows.length - 1, 1).setNumberFormat('0'); uSh.getRange(1, 1, 1, 3).setFontWeight('bold');
+    const c0 = uSh.getLastColumn() + 1; uSh.getRange(1, c0, rows.length, 3).setValues(rows);   // ghi sang CỘT MỚI bên phải, không xoá nội dung cũ (người dùng tự xoá cột cũ sau)
     const extra = Object.keys(unitCount).filter(function (u) { return std.every(function (s) { return s[0] !== u; }); });
     L('DGDM-Đơn vị tính: viết lại ' + std.length + ' ĐVT chuẩn' + (extra.length ? ' — CÒN ĐVT ngoài danh sách: ' + extra.join(', ') : ' (không còn ĐVT ngoài danh sách)'));
   }
   const gh = gSh.getRange(1, 1, 1, gSh.getLastColumn()).getValues()[0].map(dgNorm_);
   if (gh.indexOf(dgNorm_('Mã nhóm')) === -1) {
     const gv = gSh.getDataRange().getValues().slice(1), c1 = gSh.getLastColumn() + 1;
-    gSh.getRange(1, c1, 1, 2).setValues([['Mã nhóm', 'Số mã đang dùng']]).setFontWeight('bold');
+    gSh.getRange(1, c1, 1, 2).setValues([['Mã nhóm', 'Số mã đang dùng']]);
     T(gSh.getRange(2, c1, gv.length, 2)).setValues(gv.map(function (r) { const k = String(r[0]).trim() + '-' + String(r[1]).trim(); return [k, grCodes[k] ? Object.keys(grCodes[k]).length : 0]; }));
     L('DGDM-Nhóm tài nguyên: thêm Mã nhóm + Số mã đang dùng');
   }
   const sh2 = sSh.getRange(1, 1, 1, sSh.getLastColumn()).getValues()[0].map(dgNorm_);
   if (sh2.indexOf(dgNorm_('Số mã công việc')) === -1) {
     const sv = sSh.getDataRange().getValues().slice(1), c1 = sSh.getLastColumn() + 1;
-    sSh.getRange(1, c1, 1, 1).setValues([['Số mã công việc']]).setFontWeight('bold');
+    sSh.getRange(1, c1, 1, 1).setValues([['Số mã công việc']]);
     sSh.getRange(2, c1, sv.length, 1).setValues(sv.map(function (r) { const k = String(r[2]).trim(); return [hmCodes[k] ? Object.keys(hmCodes[k]).length : 0]; }));
     L('DGDM-Giai đoạn hạng mục: thêm Số mã công việc');
   }
