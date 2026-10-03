@@ -71,7 +71,7 @@ self.addEventListener('notificationclick', function (event) {
   );
 });
 
-const CACHE_VERSION = 'hiconique-shell-v212';
+const CACHE_VERSION = 'hiconique-shell-v213';
 
 const PRECACHE_URLS = [
   '/',
@@ -138,6 +138,7 @@ const PRECACHE_URLS = [
   '/js/portal.js',
   '/js/push-notifications.js',
   '/js/notice-devices.js',
+  '/js/dgdm-db.js',
   '/js/projects.js',
   '/js/task-data.js',
   '/js/spc-page.js',

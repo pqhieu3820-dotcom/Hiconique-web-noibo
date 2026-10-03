@@ -18,6 +18,44 @@
   <script src="/js/task-data.js"></script>
   <script src="/js/auth.js"></script>
   <link rel="stylesheet" href="/css/work-pages.css">
+  <style>
+    /* 2026-10-03: trang kiểm soát CSDL DGDM (js/dgdm-db.js) */
+    .db-container { max-width: min(1760px, calc(100vw - 48px)); width: 100%; }
+    .db-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 22px; align-items: start; margin-top: 8px; }
+    .db-nav { position: sticky; top: 16px; background: var(--es-surface); border: 1px solid var(--es-border); border-radius: 14px; padding: 10px; max-height: calc(100vh - 40px); overflow: auto; }
+    .db-nav-g { font-size: .625rem; text-transform: uppercase; letter-spacing: .07em; color: var(--es-muted); font-weight: 700; padding: 12px 10px 6px; }
+    .db-nav-g:first-child { padding-top: 4px; }
+    .db-nav-i { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 8px 10px; border: none; border-radius: 9px; background: transparent; color: var(--es-text); font: 500 .8125rem Inter, sans-serif; text-align: left; cursor: pointer; }
+    .db-nav-i em { font-style: normal; font: 600 .6875rem 'JetBrains Mono', monospace; color: var(--es-muted); }
+    .db-nav-i:hover { background: var(--es-bg); }
+    .db-nav-i.on { background: color-mix(in srgb, var(--es-bronze) 16%, transparent); color: var(--es-bronze); font-weight: 600; }
+    .db-main { min-width: 0; }
+    .db-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .db-title { display: flex; flex-direction: column; margin-right: auto; min-width: 200px; }
+    .db-title b { font-size: 1.0625rem; } .db-title span { font-size: .75rem; color: var(--es-muted); margin-top: 2px; }
+    .db-wrap { max-height: calc(100vh - 230px); overflow: auto; }
+    .db-table { min-width: 100%; font-size: .8125rem; }
+    .db-table th { white-space: nowrap; padding: 10px 12px !important; z-index: 1; }
+    .db-table td { padding: 8px 12px !important; white-space: nowrap; max-width: 420px; overflow: hidden; text-overflow: ellipsis; }
+    .db-table td.num, .db-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .db-table td.mono { font-family: 'JetBrains Mono', monospace; font-size: .75rem; }
+    .db-rn { color: var(--es-muted); font: .6875rem 'JetBrains Mono', monospace; width: 46px; }
+    .db-table tbody tr:hover td { background: color-mix(in srgb, var(--es-bronze) 6%, transparent); }
+    .db-act-h, .db-act { position: sticky; right: 0; background: var(--es-surface); text-align: right; }
+    .db-act button { height: 28px; padding: 0 10px; margin-left: 6px; border-radius: 7px; border: 1px solid var(--es-border); background: transparent; color: var(--es-text); font: 600 .75rem Inter, sans-serif; cursor: pointer; }
+    .db-act button:hover { border-color: var(--es-bronze); color: var(--es-bronze); }
+    .db-act button.danger:hover { border-color: var(--es-bad); color: var(--es-bad); }
+    .db-pager { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 12px; font: 600 .8125rem 'JetBrains Mono', monospace; color: var(--es-muted); }
+    .db-form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 14px; max-height: 62vh; overflow: auto; padding: 2px; }
+    .db-f { display: block; } .db-f.wide { grid-column: span 3; } .db-f i { text-transform: none; font-style: normal; color: var(--es-muted); }
+    .db-f input.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .db-ta { height: 64px; padding: 8px 10px; resize: vertical; line-height: 1.45; }
+    .db-chk { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: .8125rem; cursor: pointer; }
+    .db-chk input { width: 16px; height: 16px; accent-color: var(--es-bronze); }
+    .db-foot { display: flex; align-items: center; gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--es-border); }
+    @media (max-width: 1000px) { .db-layout { grid-template-columns: 1fr; } .db-nav { position: static; max-height: none; display: flex; flex-wrap: wrap; gap: 4px; } .db-nav-g { width: 100%; padding: 6px 4px 2px; } .db-nav-i { width: auto; } .db-form { grid-template-columns: 1fr 1fr; } .db-f.wide { grid-column: span 2; } }
+    @media (max-width: 600px) { .db-form { grid-template-columns: 1fr; } .db-f.wide { grid-column: auto; } }
+  </style>
 </head>
 <body>
   <header class="site-header">
@@ -47,14 +85,14 @@
   </header>
 
   <main class="subpage">
-    <div class="subpage-inner es-container">
+    <div class="subpage-inner es-container db-container">
       <p class="eyebrow">— Cơ sở dữ liệu đơn giá · định mức · mã hóa</p>
       <h1 class="subpage-title">Đơn giá <span class="subpage-title-italic">– định mức</span></h1>
-      <p class="subpage-lede">Nơi kiểm soát toàn bộ mã công việc, mã vật liệu, đơn vị tính, giai đoạn – hạng mục và nhóm tài nguyên của HICONIQUE theo Form mã công việc v2: rà soát gợi ý mã mới, duyệt, rồi ghi vào Google Sheet (nhóm DGDM-). Không xóa hay sửa dữ liệu giá — chỉ đổi tên tab và thêm cột mã.</p>
-      <div class="es-seg" id="dgTabs">
-        <button data-t="ov" class="on">Tổng quan &amp; chuyển đổi</button><button data-t="ct">Mã công việc</button><button data-t="vt">Mã vật liệu</button><button data-t="un">Đơn vị tính</button><button data-t="st">Giai đoạn – hạng mục</button><button data-t="gr">Nhóm tài nguyên</button><button data-t="pv">Tỉnh/thành</button>
+      <p class="subpage-lede">Kiểm soát toàn bộ cơ sở dữ liệu đơn giá – định mức của HICONIQUE (nhóm sheet DGDM-): mã công việc, vật tư, nhân công, phần thô &amp; trọn gói theo 34 tỉnh, cùng các danh mục chuẩn. Xem, tìm, thêm, sửa, xoá trực tiếp — mọi thay đổi được ghi vào Nhật ký thay đổi.</p>
+      <div class="db-layout">
+        <nav class="db-nav" id="dbNav"><div class="es-empty" style="padding:12px">Đang tải…</div></nav>
+        <section class="db-main" id="dbBody"><div class="es-empty" style="padding:30px">Đang tải…</div></section>
       </div>
-      <section id="dgOv"></section><section id="dgCt" hidden></section><section id="dgVt" hidden></section><section id="dgUn" hidden></section><section id="dgSt" hidden></section><section id="dgGr" hidden></section><section id="dgPv" hidden></section>
     </div>
   </main>
 
@@ -62,8 +100,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js" defer></script>
   <script src="/js/push-notifications.js" defer></script>
   <script src="/js/portal.js" defer></script>
-  <script src="/js/dgdm-data.js" defer></script>
-  <script src="/js/dgdm-map.js" defer></script>
-  <script src="/js/dgdm.js" defer></script>
+  <script src="/js/dgdm-db.js" defer></script>
 </body>
 </html>
