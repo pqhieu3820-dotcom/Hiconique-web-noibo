@@ -71,7 +71,7 @@ self.addEventListener('notificationclick', function (event) {
   );
 });
 
-const CACHE_VERSION = 'hiconique-shell-v225';
+const CACHE_VERSION = 'hiconique-shell-v226';
 
 const PRECACHE_URLS = [
   '/',
