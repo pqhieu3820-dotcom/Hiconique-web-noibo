@@ -59,6 +59,8 @@
 
 - 2026-10-04 (sw v232): **Ô tìm kiếm — sửa lỗi nền không phủ hết ở trang chủ**: index.html đặt `.search-overlay` BÊN TRONG `<header>` (header có backdrop-filter → `position: fixed` chỉ phủ chiều cao header). portal.js nay chuyển overlay ra thẳng `<body>` lúc khởi tạo → mọi trang giống nhau. **5 kiểu hiệu ứng vào/thoát NGẪU NHIÊN** (chọn riêng cho lúc mở và lúc đóng qua biến CSS `--ain`/`--aout`): 1 chấm sáng→đường kẻ→mở kính, 2 lật 3D từ mép trên, 3 rơi đàn hồi bẹp-nảy, 4 tan sương (nhoè→nét), 5 xoay-zoom nghiêng nảy (css `sGlassIn/sIn2..5`, `sGlassOut/sOut2..5`).
 
+- 2026-10-04 (sw v237): ô tìm kiếm nền sáng mờ 14px (`--sblur`, nền tối 20px; nền che tối 20% / sáng 8%). **Đổi sáng/tối chậm và mượt**: nền loang thành vòng tròn từ tâm nút bấm 1,3s (View Transitions API, `portal.js` theme toggle; máy không hỗ trợ → mờ chuyển màu 0,8s `.theme-fade`), icon mặt trời/trăng xoay 180° trong 0,8–0,9s; reduced-motion = đổi tức thì.
+
 # Ghi chú dự án — đọc trước khi làm việc
 
 File này tồn tại để không phải hỏi lại các thông tin dưới đây mỗi khi đổi máy hoặc mở đoạn

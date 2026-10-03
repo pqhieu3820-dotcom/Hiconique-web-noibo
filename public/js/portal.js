@@ -54,8 +54,22 @@
   // Add click handlers for all theme toggles
   themeToggle.forEach(function(toggle) {
     toggle.addEventListener('click', function () {
-      var current = html.getAttribute('data-theme');
-      setTheme(current === 'dark' ? 'light' : 'dark');
+      var current = html.getAttribute('data-theme'), next = current === 'dark' ? 'light' : 'dark';
+      var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduce) { setTheme(next); return; }
+      if (document.startViewTransition) {
+        // loang chậm từ tâm nút bấm ra hết màn hình (1,3 giây, đường cong mềm)
+        var r = toggle.getBoundingClientRect(), x = Math.round(r.left + r.width / 2), y = Math.round(r.top + r.height / 2);
+        var end = Math.ceil(Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y)));
+        var vt = document.startViewTransition(function () { setTheme(next); });
+        vt.ready.then(function () {
+          html.animate({ clipPath: ['circle(0px at ' + x + 'px ' + y + 'px)', 'circle(' + end + 'px at ' + x + 'px ' + y + 'px)'] },
+            { duration: 1300, easing: 'cubic-bezier(.45, .05, .25, 1)', pseudoElement: '::view-transition-new(root)' });
+        }).catch(function () { /* bỏ qua */ });
+      } else {
+        html.classList.add('theme-fade'); setTheme(next);
+        setTimeout(function () { html.classList.remove('theme-fade'); }, 900);
+      }
     });
   });
 

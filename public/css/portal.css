@@ -144,6 +144,12 @@ main { flex: 1; }
   gap: var(--space-md);
 }
 
+/* 2026-10-04: đổi sáng/tối — nền chuyển bằng vòng tròn loang chậm từ nút bấm (View Transitions API) thay vì đổi tức thì; máy không hỗ trợ thì mờ chuyển màu 0,8s */
+::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+::view-transition-old(root) { z-index: 1; } ::view-transition-new(root) { z-index: 2; }
+html.theme-fade, html.theme-fade *, html.theme-fade *::before, html.theme-fade *::after { transition: background-color .8s ease, color .8s ease, border-color .8s ease, box-shadow .8s ease, fill .8s ease, stroke .8s ease !important; }
+.theme-toggle.spin-once svg { filter: drop-shadow(0 0 6px currentColor); }
+
 /* Icon-only theme toggle (sitewide) */
 .theme-toggle {
   position: relative;
@@ -163,11 +169,11 @@ main { flex: 1; }
   position: absolute;
   width: 20px;
   height: 20px;
-  transition: opacity var(--dur-base) var(--ease), transform var(--dur-base) var(--ease);
+  transition: opacity .8s cubic-bezier(.4, 0, .2, 1), transform .9s cubic-bezier(.34, 1.25, .5, 1);   /* 2026-10-04: chậm và mượt hơn (trước ~0,2s) */
 }
 .theme-toggle .icon-sun { color: var(--color-warning); opacity: 1; transform: scale(1) rotate(0deg); }
-.theme-toggle .icon-moon { color: var(--color-blue); opacity: 0; transform: scale(0.4) rotate(-90deg); }
-[data-theme="light"] .theme-toggle .icon-sun { opacity: 0; transform: scale(0.4) rotate(90deg); }
+.theme-toggle .icon-moon { color: var(--color-blue); opacity: 0; transform: scale(0.4) rotate(-180deg); }
+[data-theme="light"] .theme-toggle .icon-sun { opacity: 0; transform: scale(0.4) rotate(180deg); }
 [data-theme="light"] .theme-toggle .icon-moon { opacity: 1; transform: scale(1) rotate(0deg); }
 
 /* Header - uses transparency with backdrop for both themes */
@@ -766,7 +772,7 @@ main { flex: 1; }
 @keyframes sLiquid { 0% { transform: translate(-4%, -2%) rotate(0deg) scale(1); } 50% { transform: translate(5%, 3%) rotate(8deg) scale(1.08); } 100% { transform: translate(-2%, 5%) rotate(-6deg) scale(1.02); } }
 @keyframes sSpin { to { transform: rotate(360deg); } }
 /* nền sáng */
-html[data-theme="light"] .search-overlay { --sblur: 16px; /* nền sáng mờ nhẹ hơn nền tối 20% cho đỡ lóa */ background: radial-gradient(900px 480px at 50% 6%, rgba(176, 141, 87, 0.28), transparent 62%), rgba(60, 50, 32, 0.08); }
+html[data-theme="light"] .search-overlay { --sblur: 14px; /* nền sáng mờ nhẹ hơn nền tối cho đỡ lóa (20px → 16px → 14px) */ background: radial-gradient(900px 480px at 50% 6%, rgba(176, 141, 87, 0.28), transparent 62%), rgba(60, 50, 32, 0.08); }
 html[data-theme="light"] .search-panel {
   background: linear-gradient(140deg, rgba(255, 255, 255, 0.96) 0%, rgba(252, 250, 246, 0.90) 50%, rgba(255, 255, 255, 0.94) 100%);
   box-shadow: 0 1px 1px rgba(255, 255, 255, 0.95) inset, 0 34px 80px -14px rgba(40, 30, 10, 0.55), 0 8px 22px rgba(40, 30, 10, 0.22), 0 0 0 1px rgba(120, 95, 50, 0.28);
