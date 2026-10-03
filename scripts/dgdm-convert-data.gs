@@ -6,6 +6,7 @@
 // công tác thêm "Hạng mục" + "Giai đoạn" (suy từ mã công việc mới), vật tư thêm "Nhóm tài nguyên" (suy từ mã tài nguyên). 4) Viết lại 3 sheet danh mục thành danh mục sống: số dòng đang dùng tính từ dữ liệu thật.
 // Chạy lại được nhiều lần (cột "ĐVT cũ" đã có thì không đổi lại). Không xoá dòng nào, không đụng cột giá.
 function dgdmConvertData() {
+  const T = function (rg) { try { rg.setNumberFormat('@'); } catch (e) { /* cột trong Bảng (Table) đã định kiểu: giữ định dạng sẵn có */ } return rg; };
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID), L = function (m) { Logger.log(m); };
   const fd = function (n) { return ss.getSheets().filter(function (x) { return dgNorm_(x.getName()) === dgNorm_(n); })[0]; };
   const bname = 'SAO LƯU trước khi chuyển đổi dữ liệu DGDM — ' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd-MM HH:mm');
@@ -21,7 +22,7 @@ function dgdmConvertData() {
     qSh = ss.insertSheet('DGDM-Quy đổi ĐVT cũ', idx);
     const rows = [['ĐVT cũ', 'ĐVT chuẩn mới', 'Số dòng lúc đối chiếu', 'Ghi chú điều kiện đo']];
     uv.slice(1).forEach(function (r) { if (String(r[1]).trim()) rows.push([r[1], r[3], r[2], r[4]]); });
-    qSh.getRange(1, 1, rows.length, 4).setValues(rows).setNumberFormat('@'); qSh.getRange(1, 1, 1, 4).setFontWeight('bold'); qSh.setFrozenRows(1);
+    T(qSh.getRange(1, 1, rows.length, 4).setValues(rows)); qSh.getRange(1, 1, 1, 4).setFontWeight('bold'); qSh.setFrozenRows(1);
     qSh.getRange(2, 3, rows.length - 1, 1).setNumberFormat('0');
     L('Tạo DGDM-Quy đổi ĐVT cũ (' + (rows.length - 1) + ' dòng)');
   }
@@ -46,7 +47,7 @@ function dgdmConvertData() {
       const nu = unitMap[c] || c; outO.push([c]); outU.push([nu]); if (nu !== c) changed++;
       unitCount[nu] = (unitCount[nu] || 0) + 1;
     }
-    sh.getRange(2, oC, n, 1).setNumberFormat('@').setValues(outO); sh.getRange(2, uC, n, 1).setNumberFormat('@').setValues(outU);
+    T(sh.getRange(2, oC, n, 1)).setValues(outO); T(sh.getRange(2, uC, n, 1)).setValues(outU);
     L(p[0] + ': ĐVT chuẩn hoá ' + changed + ' dòng đổi giá trị / ' + n + ' dòng (đã có sẵn ĐVT cũ: ' + filled + ')');
     if (p[1] === 'ct' || p[1] === 'vt') {
       const hs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(dgNorm_), cc = hs.indexOf(dgNorm_(p[1] === 'ct' ? 'Mã công việc' : 'Mã tài nguyên')) + 1;
@@ -54,12 +55,12 @@ function dgdmConvertData() {
       if (p[1] === 'ct') {
         const hC = addCol('Hạng mục'), gC = addCol('Giai đoạn'), oh = [], og = [];
         codes.forEach(function (r) { const c = String(r[0]).trim(), hm = c.replace(/-\d{3,4}$/, ''); oh.push([c ? hm : '']); og.push([c ? (hm2gd[hm] || '') : '']); if (c) { hmCodes[hm] = hmCodes[hm] || {}; hmCodes[hm][c] = 1; } });
-        sh.getRange(2, hC, n, 1).setNumberFormat('@').setValues(oh); sh.getRange(2, gC, n, 1).setNumberFormat('@').setValues(og);
+        T(sh.getRange(2, hC, n, 1)).setValues(oh); T(sh.getRange(2, gC, n, 1)).setValues(og);
         L('Công tác: điền Hạng mục + Giai đoạn cho ' + oh.filter(function (x) { return x[0]; }).length + ' dòng');
       } else {
         const rC = addCol('Nhóm tài nguyên'), og = [];
         codes.forEach(function (r) { const c = String(r[0]).trim(), g = c.replace(/-\d{3,5}$/, ''); og.push([g]); if (c) { grCodes[g] = grCodes[g] || {}; grCodes[g][c] = 1; } });
-        sh.getRange(2, rC, n, 1).setNumberFormat('@').setValues(og);
+        T(sh.getRange(2, rC, n, 1)).setValues(og);
         L('Vật tư: điền Nhóm tài nguyên cho ' + og.filter(function (x) { return x[0]; }).length + ' dòng');
       }
     }
@@ -68,7 +69,7 @@ function dgdmConvertData() {
   if (oldLayout) {
     const rows = [['ĐVT chuẩn', 'Ghi chú điều kiện đo', 'Số dòng đang dùng']];
     std.forEach(function (s) { rows.push([s[0], stdNotes[s[0]] || '', unitCount[s[0]] || 0]); });
-    uSh.clearContents(); uSh.getRange(1, 1, rows.length, 3).setNumberFormat('@').setValues(rows); uSh.getRange(2, 3, rows.length - 1, 1).setNumberFormat('0'); uSh.getRange(1, 1, 1, 3).setFontWeight('bold');
+    uSh.clearContents(); T(uSh.getRange(1, 1, rows.length, 3)).setValues(rows); uSh.getRange(2, 3, rows.length - 1, 1).setNumberFormat('0'); uSh.getRange(1, 1, 1, 3).setFontWeight('bold');
     const extra = Object.keys(unitCount).filter(function (u) { return std.every(function (s) { return s[0] !== u; }); });
     L('DGDM-Đơn vị tính: viết lại ' + std.length + ' ĐVT chuẩn' + (extra.length ? ' — CÒN ĐVT ngoài danh sách: ' + extra.join(', ') : ' (không còn ĐVT ngoài danh sách)'));
   }
@@ -76,7 +77,7 @@ function dgdmConvertData() {
   if (gh.indexOf(dgNorm_('Mã nhóm')) === -1) {
     const gv = gSh.getDataRange().getValues().slice(1), c1 = gSh.getLastColumn() + 1;
     gSh.getRange(1, c1, 1, 2).setValues([['Mã nhóm', 'Số mã đang dùng']]).setFontWeight('bold');
-    gSh.getRange(2, c1, gv.length, 2).setNumberFormat('@').setValues(gv.map(function (r) { const k = String(r[0]).trim() + '-' + String(r[1]).trim(); return [k, grCodes[k] ? Object.keys(grCodes[k]).length : 0]; }));
+    T(gSh.getRange(2, c1, gv.length, 2)).setValues(gv.map(function (r) { const k = String(r[0]).trim() + '-' + String(r[1]).trim(); return [k, grCodes[k] ? Object.keys(grCodes[k]).length : 0]; }));
     L('DGDM-Nhóm tài nguyên: thêm Mã nhóm + Số mã đang dùng');
   }
   const sh2 = sSh.getRange(1, 1, 1, sSh.getLastColumn()).getValues()[0].map(dgNorm_);
