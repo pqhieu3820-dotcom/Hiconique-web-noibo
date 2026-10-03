@@ -406,11 +406,11 @@ var TaskManager = (function() {
 
   // Default members
   var DEFAULT_MEMBERS = [
-    { id: 'CEO', name: 'Phạm Quang Hiếu', role: 'CEO', roleLevel: 'admin', email: 'pqhieu3820@gmail.com', password: '123456', dob: '1990-01-15', cccd: '012345678901', hometown: 'Hà Nội', bankAccount: '1234567890', color: '#B08D57', avatar: 'HQ', createdAt: '2026-01-01' },
-    { id: 'MGR1', name: 'Nguyễn Hiếu', role: 'Quản lý thiết kế', roleLevel: 'manager', email: 'hieu@hiconique.vn', password: '123456', dob: '1992-05-20', cccd: '012345678902', hometown: 'TP.HCM', bankAccount: '1234567891', color: '#8E7CC3', avatar: 'NH', createdAt: '2026-01-01' },
-    { id: 'MGR2', name: 'Trần Mạnh', role: 'Quản lý thi công', roleLevel: 'manager', email: 'manh@hiconique.vn', password: '123456', dob: '1988-08-10', cccd: '012345678903', hometown: 'Hà Nội', bankAccount: '1234567892', color: '#4F6F52', avatar: 'TM', createdAt: '2026-01-01' },
-    { id: 'MEM1', name: 'Giản Phương', role: 'Thiết kế đồ họa', roleLevel: 'member', email: 'phuong@hiconique.vn', password: '123456', dob: '1995-03-25', cccd: '012345678904', hometown: 'Đà Nẵng', bankAccount: '1234567893', color: '#3B6B8C', avatar: 'GP', createdAt: '2026-01-01' },
-    { id: 'MEM2', name: 'Lê Thành', role: 'Kỹ sư nội thất', roleLevel: 'member', email: 'thanh@hiconique.vn', password: '123456', dob: '1993-11-08', cccd: '012345678905', hometown: 'Hải Phòng', bankAccount: '1234567894', color: '#B8725A', avatar: 'LT', createdAt: '2026-01-01' }
+    { id: 'CEO', name: 'Phạm Quang Hiếu', role: 'CEO', roleLevel: 'admin', email: 'pqhieu3820@gmail.com', dob: '1990-01-15', hometown: 'Hà Nội', color: '#B08D57', avatar: 'HQ', createdAt: '2026-01-01' },
+    { id: 'MGR1', name: 'Nguyễn Hiếu', role: 'Quản lý thiết kế', roleLevel: 'manager', email: 'hieu@hiconique.vn', dob: '1992-05-20', hometown: 'TP.HCM', color: '#8E7CC3', avatar: 'NH', createdAt: '2026-01-01' },
+    { id: 'MGR2', name: 'Trần Mạnh', role: 'Quản lý thi công', roleLevel: 'manager', email: 'manh@hiconique.vn', dob: '1988-08-10', hometown: 'Hà Nội', color: '#4F6F52', avatar: 'TM', createdAt: '2026-01-01' },
+    { id: 'MEM1', name: 'Giản Phương', role: 'Thiết kế đồ họa', roleLevel: 'member', email: 'phuong@hiconique.vn', dob: '1995-03-25', hometown: 'Đà Nẵng', color: '#3B6B8C', avatar: 'GP', createdAt: '2026-01-01' },
+    { id: 'MEM2', name: 'Lê Thành', role: 'Kỹ sư nội thất', roleLevel: 'member', email: 'thanh@hiconique.vn', dob: '1993-11-08', hometown: 'Hải Phòng', color: '#B8725A', avatar: 'LT', createdAt: '2026-01-01' }
   ];
 
   // Phân tầng Cấp bậc (Level) CỐ ĐỊNH (2026-09-16, theo yêu cầu người dùng) —
@@ -1756,7 +1756,7 @@ var TaskManager = (function() {
   // - theme: nhớ giao diện sáng/tối THEO TÀI KHOẢN (không chỉ theo trình
   //   duyệt/máy) — đăng nhập lại ở máy khác vẫn ra đúng theme đã chọn lần
   //   cuối, xem initTheme()/setTheme() trong portal.js.
-  var MEMBER_SELF_EDIT_FIELDS = ['dob', 'gender', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount', 'password', 'device1', 'device2', 'lastActiveAt', 'theme', 'department', 'departmentCode', 'division', 'divisionCode', 'color', 'avatar'];
+  var MEMBER_SELF_EDIT_FIELDS = ['dob', 'gender', 'cccd', 'phone', 'hometown', 'bank', 'bankAccount', 'device1', 'device2', 'lastActiveAt', 'theme', 'department', 'departmentCode', 'division', 'divisionCode', 'color', 'avatar'];
   function updateMember(id, updates, user) {
     if (!user) return null;
     var isSelf = user.id === id;

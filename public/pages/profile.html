@@ -509,13 +509,13 @@
       var next = document.getElementById('pfNewPassword').value;
       var confirm = document.getElementById('pfConfirmPassword').value;
 
-      if (String(user.password) !== current) {
-        errorEl.textContent = 'Mật khẩu hiện tại không đúng.';
+      if (!current) {
+        errorEl.textContent = 'Vui lòng nhập mật khẩu hiện tại.';
         errorEl.classList.add('show');
         return;
       }
-      if (next.length < 4) {
-        errorEl.textContent = 'Mật khẩu mới phải có ít nhất 4 ký tự.';
+      if (next.length < 6) {
+        errorEl.textContent = 'Mật khẩu mới phải có ít nhất 6 ký tự.';
         errorEl.classList.add('show');
         return;
       }
@@ -525,11 +525,30 @@
         return;
       }
 
-      TaskManager.updateMember(session.id, { password: next }, session);
-      render();
-      document.getElementById('pfPasswordForm').reset();
-      msgEl.classList.add('show');
-      setTimeout(function () { msgEl.classList.remove('show'); }, 3000);
+      // 2026-10-03 BẢO MẬT: đổi mật khẩu trên máy chủ (action changePassword, POST) — máy chủ tự kiểm mật khẩu hiện tại và lưu bản đã băm;
+      // web không còn giữ mật khẩu của ai để tự so như trước.
+      var btn = e.target.querySelector('button[type="submit"]'), label = btn ? btn.innerHTML : '';
+      if (btn) { btn.disabled = true; btn.textContent = 'Đang lưu...'; }
+      var form = new URLSearchParams();
+      form.set('action', 'changePassword'); form.set('currentPassword', current); form.set('newPassword', next);
+      fetch(GSHEETS_CONFIG.API_URL, { method: 'POST', body: form, redirect: 'follow' })
+        .then(function (r) { return r.json(); })
+        .then(function (res) {
+          if (btn) { btn.disabled = false; btn.innerHTML = label; }
+          if (!res || !res.success) {
+            errorEl.textContent = (res && res.error) || 'Không đổi được mật khẩu.';
+            errorEl.classList.add('show');
+            return;
+          }
+          document.getElementById('pfPasswordForm').reset();
+          msgEl.classList.add('show');
+          setTimeout(function () { msgEl.classList.remove('show'); }, 3000);
+        })
+        .catch(function () {
+          if (btn) { btn.disabled = false; btn.innerHTML = label; }
+          errorEl.textContent = 'Không kết nối được máy chủ — thử lại sau.';
+          errorEl.classList.add('show');
+        });
     });
 
     function boot() {

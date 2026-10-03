@@ -1,0 +1,9 @@
+# 2026-10-03 BẢO MẬT — header an toàn cho mọi trang (Cloudflare Workers static assets đọc file này)
+# nosniff: chặn trình duyệt đoán sai kiểu file; SAMEORIGIN: không cho trang ngoài nhúng web vào iframe (chống clickjacking);
+# Referrer-Policy: không gửi đường dẫn đầy đủ ra trang ngoài; HSTS: luôn dùng HTTPS.
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin
+  Strict-Transport-Security: max-age=31536000
+  X-Robots-Tag: noindex, nofollow

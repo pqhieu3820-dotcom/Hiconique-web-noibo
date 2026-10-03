@@ -944,8 +944,224 @@ function enToViValue(sheetName, enKey, val) {
   return hit ? hit[0] : val;
 }
 
-function doGet(e) { return handleRequest(e); }
-function doPost(e) { return handleRequest(e); }
+function doGet(e) { return secureEntry_(e); }
+function doPost(e) { return secureEntry_(e); }
+
+// ===================== BẢO MẬT API (2026-10-03) =====================
+// Trước đây: API mở hoàn toàn — ai có link /exec cũng đọc/ghi/xoá được mọi sheet; getMembers trả cả mật khẩu/CCCD/STK/lương; đăng nhập
+// so mật khẩu NGAY TRÊN TRÌNH DUYỆT. Nay mọi lệnh đi qua secureEntry_ (= doGet/doPost):
+//  1) Đăng nhập trên máy chủ (action login, POST) → "vé" token ký HMAC-SHA256 bằng khoá bí mật AUTH_SECRET (Script Properties, KHÔNG nằm trong code/
+//     GitHub), hết hạn 01:00 sáng kế tiếp (giờ VN) — trùng mốc web tự đăng xuất hằng ngày. Web tự gắn ?tk=<vé> vào mọi lệnh (gsheets-config.js).
+//  2) Script Property AUTH_ENFORCE='1' (tự bật ở lần đăng nhập thành công đầu tiên) → lệnh không có vé hợp lệ bị từ chối {error:'AUTH_REQUIRED'}, trừ SEC_PUBLIC_ (đăng nhập, đăng ký
+//     tài khoản chờ duyệt, và các lệnh của HICONIQUE Agent — Agent cài trên máy không đăng nhập được, chỉ được thấy dữ liệu tối thiểu).
+//  3) Mật khẩu băm SHA-256 + salt riêng từng người + pepper bí mật PW_PEPPER ("h1$salt$hex"). Mật khẩu chữ thường cũ vẫn đăng nhập được và
+//     tự chuyển sang băm ở lần đăng nhập đúng đầu tiên; secHashAllPasswords_() băm hết ngay (action secAdmin op=hashAll, chỉ cấp admin).
+//  4) Không bao giờ trả cột mật khẩu. CCCD/STK/ngân hàng/lương/%lương/ngày sinh/quê chỉ trả cho chính chủ hoặc cấp admin; chưa đăng nhập
+//     chỉ nhận id+tên. Sổ tài chính / chỉ số cân đối chỉ trả cho admin hoặc người được cấp quyền tài chính; phiếu lương chỉ thấy của mình.
+//  5) Chống tự nâng quyền (updateMember: không tự đổi cấp bậc/lương/trạng thái), chống dò mật khẩu (8 lần sai → khoá 15 phút/email).
+var SEC_PUBLIC_ = { ping: 1, login: 1, addMember: 1, getMembers: 1, getPcReports: 1, upsertPcReport: 1, upsertAppUsage: 1 };
+var SEC_PRIVATE_MEMBER_FIELDS_ = ['cccd', 'bank', 'bankAccount', 'baseSalary', 'salaryPercent', 'dob', 'hometown'];
+var SEC_FINANCE_READS_ = { getFinanceEntries: 1, getBsSnapshots: 1 };
+// HIỆU NĂNG: Script Properties đọc 1 lần/lần thực thi (getProperties gộp), HMAC ~1ms; dữ liệu đọc vẫn dùng chung cache 15s như cũ,
+// chỉ lọc lại các loại nhạy cảm (SEC_FILTERED_) → không làm chậm đọc/ghi.
+var SEC_PROPS_MEMO_ = null;
+function secProps_() { return PropertiesService.getScriptProperties(); }
+function secProp_(name) { if (!SEC_PROPS_MEMO_) SEC_PROPS_MEMO_ = secProps_().getProperties(); return SEC_PROPS_MEMO_[name]; }
+function secSecret_(name) {
+  let s = secProp_(name);
+  if (!s) { s = Utilities.getUuid() + Utilities.getUuid() + Utilities.getUuid(); secProps_().setProperty(name, s); SEC_PROPS_MEMO_[name] = s; }
+  return s;
+}
+function secEnforce_() { return secProp_('AUTH_ENFORCE') === '1'; }
+function secHex_(bytes) { return bytes.map(function (b) { return ('0' + (b & 0xff).toString(16)).slice(-2); }).join(''); }
+function secSign_(s) { return Utilities.base64EncodeWebSafe(Utilities.computeHmacSha256Signature(s, secSecret_('AUTH_SECRET'))).replace(/=+$/, ''); }
+function secMakeToken_(m) {
+  const now = new Date(), tz = 'Asia/Ho_Chi_Minh';
+  let exp = new Date(Utilities.formatDate(now, tz, 'yyyy-MM-dd') + 'T01:00:00+07:00').getTime();
+  if (+Utilities.formatDate(now, tz, 'H') >= 1) exp += 24 * 3600 * 1000;
+  const body = Utilities.base64EncodeWebSafe(JSON.stringify({ u: m.id, l: m.roleLevel || '', v: m.level || '', e: exp })).replace(/=+$/, '');
+  return body + '.' + secSign_(body);
+}
+function secVerifyToken_(tk) {
+  if (!tk || typeof tk !== 'string') return null;
+  const parts = tk.split('.'); if (parts.length !== 2 || !parts[0] || secSign_(parts[0]) !== parts[1]) return null;
+  try {
+    const b = parts[0] + '==='.slice((parts[0].length + 3) % 4);
+    const p = JSON.parse(Utilities.newBlob(Utilities.base64DecodeWebSafe(b)).getDataAsString());
+    if (!p.u || !p.e || p.e < Date.now()) return null;
+    return { uid: p.u, roleLevel: p.l, level: p.v, admin: p.l === 'admin' || p.v === 'founder' || p.v === 'ceo' };
+  } catch (e) { return null; }
+}
+function secHashPw_(pw, salt) {
+  salt = salt || Utilities.getUuid().replace(/-/g, '').slice(0, 16);
+  return 'h1$' + salt + '$' + secHex_(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, salt + ':' + String(pw) + ':' + secSecret_('PW_PEPPER'), Utilities.Charset.UTF_8));
+}
+function secIsHashed_(v) { return /^h1\$[0-9a-f]{16}\$[0-9a-f]{64}$/.test(String(v || '')); }
+function secCheckPw_(stored, pw) {
+  stored = String(stored == null ? '' : stored);
+  if (secIsHashed_(stored)) return secHashPw_(pw, stored.split('$')[1]) === stored;
+  return stored !== '' && stored === String(pw);   // mật khẩu cũ chưa băm
+}
+function secLogin_(p) {
+  const email = String(p.email || '').trim().toLowerCase(), pw = String(p.password || '');
+  if (!email || !pw) return { success: false, error: 'Vui lòng nhập email và mật khẩu' };
+  const cache = CacheService.getScriptCache(), ck = 'loginfail_' + md5Hex_(email), fails = +(cache.get(ck) || 0);
+  if (fails >= 8) return { success: false, error: 'Nhập sai quá nhiều lần — vui lòng thử lại sau 15 phút.' };
+  const ss = getSS_(), m = getAllData(ss, SHEETS.members).filter(function (x) { return String(x.email || '').trim().toLowerCase() === email; })[0];
+  if (!m) { cache.put(ck, String(fails + 1), 900); return { success: false, error: 'Tài khoản chưa tồn tại. Vui lòng đăng ký trước.' }; }
+  if (!secCheckPw_(m.password, pw)) { cache.put(ck, String(fails + 1), 900); return { success: false, error: 'Mật khẩu không đúng' }; }
+  if (m.status === 'pending') return { success: false, error: 'Tài khoản đang chờ quản lý hoặc CEO phê duyệt. Vui lòng quay lại sau.' };
+  if (m.status === 'rejected') return { success: false, error: 'Đăng ký của bạn đã bị từ chối. Vui lòng liên hệ quản lý.' };
+  if (m.status === 'inactive') return { success: false, error: 'Tài khoản đã ngưng công tác, không thể đăng nhập.' };
+  cache.remove(ck);
+  if (!secIsHashed_(m.password)) { try { updateData(ss, SHEETS.members, m.id, { password: secHashPw_(pw) }); bumpReadCacheVersion_(); } catch (e) { Logger.log('secLogin_ hash: ' + e); } }
+  const u = {}; Object.keys(m).forEach(function (k) { if (k !== 'password') u[k] = m[k]; });
+  const token = secMakeToken_(m);
+  // Lần ĐẦU có người đăng nhập thành công qua máy chủ (= luồng mới đã chạy thật) → tự BẬT bắt buộc vé. Muốn tắt: secAdmin op=enforce value=0 (lưu '0', không tự bật lại).
+  if (secProp_('AUTH_ENFORCE') == null) { try { secProps_().setProperty('AUTH_ENFORCE', '1'); SEC_PROPS_MEMO_ = null; } catch (e) { } }
+  return { success: true, token: token, user: u };
+}
+function secChangePassword_(p, auth) {
+  if (!auth) return { success: false, error: 'Phiên đăng nhập đã hết hạn — vui lòng đăng nhập lại.' };
+  const next = String(p.newPassword || '');
+  if (next.length < 6) return { success: false, error: 'Mật khẩu mới phải có ít nhất 6 ký tự.' };
+  const ss = getSS_(), m = getAllData(ss, SHEETS.members).filter(function (x) { return x.id === auth.uid; })[0];
+  if (!m) return { success: false, error: 'Không tìm thấy tài khoản' };
+  if (!secCheckPw_(m.password, p.currentPassword)) return { success: false, error: 'Mật khẩu hiện tại không đúng.' };
+  updateData(ss, SHEETS.members, m.id, { password: secHashPw_(next) });
+  bumpReadCacheVersion_();
+  return { success: true };
+}
+function secStripMember_(m, auth) {
+  if (!m || typeof m !== 'object') return m;
+  if (!auth) return { id: m.id, name: m.name, visible: m.visible, status: m.status, avatar: m.avatar, color: m.color };
+  const o = {}; Object.keys(m).forEach(function (k) { if (k !== 'password') o[k] = m[k]; });
+  if (!(auth.admin || auth.uid === o.id)) SEC_PRIVATE_MEMBER_FIELDS_.forEach(function (k) { delete o[k]; });
+  return o;
+}
+var SEC_FIN_MEMO_ = {}, secBundleTypes_ = '';
+function secFinanceAllowed_(auth) {
+  if (!auth) return false; if (auth.admin) return true;
+  if (SEC_FIN_MEMO_[auth.uid] === undefined) {
+    try {
+      const c = CacheService.getScriptCache(), ck = 'finacc_' + readCacheVersion_() + '_' + auth.uid, hit = c.get(ck);
+      if (hit) SEC_FIN_MEMO_[auth.uid] = hit === '1';
+      else { SEC_FIN_MEMO_[auth.uid] = getAllData(getSS_(), SHEETS.financeAccess).some(function (a) { return a.memberId === auth.uid; }); c.put(ck, SEC_FIN_MEMO_[auth.uid] ? '1' : '0', 300); }
+    } catch (e) { SEC_FIN_MEMO_[auth.uid] = false; }
+  }
+  return SEC_FIN_MEMO_[auth.uid];
+}
+// Lọc dữ liệu trả về theo quyền — chạy SAU cache đọc (cache dùng chung cho mọi người vẫn an toàn vì lọc lại ở mỗi lần trả)
+function secFilterResult_(action, data, auth) {
+  if (!Array.isArray(data)) return data;
+  if (action === 'getMembers' || action === 'getArchivedMembers') return data.map(function (m) { return secStripMember_(m, auth); });
+  if (action === 'getPcReports' && !auth) return data.map(function (r) { return { id: r.id, memberId: r.memberId, hostname: r.hostname, reportedAt: r.reportedAt }; });
+  if (action === 'getPayslips' && auth && !secFinanceAllowed_(auth)) return data.filter(function (r) { return r.memberId === auth.uid; });
+  if (SEC_FINANCE_READS_[action] && auth && !secFinanceAllowed_(auth)) return [];
+  return data;
+}
+var SEC_FILTERED_ = { getMembers: 1, getArchivedMembers: 1, getPcReports: 1, getPayslips: 1, getFinanceEntries: 1, getBsSnapshots: 1, getBundle: 1, addMember: 1, updateMember: 1 };
+function secSanitizeResponse_(action, res, auth) {
+  if (!SEC_FILTERED_[action] || !res || !res.getContent) return res;
+  if (action === 'getBundle' && !String(secBundleTypes_ || '').split(',').some(function (t) { return SEC_FILTERED_[t.trim()]; })) return res;
+  let obj; try { obj = JSON.parse(res.getContent()); } catch (e) { return res; }
+  if (action === 'getBundle') Object.keys(obj).forEach(function (k) { if (k !== '_h') obj[k] = secFilterResult_(k, obj[k], auth); });
+  else if (action === 'addMember' || action === 'updateMember') { if (obj && typeof obj === 'object') { delete obj.password; if (obj.data && typeof obj.data === 'object') delete obj.data.password; } }
+  else obj = secFilterResult_(action, obj, auth);
+  return jsonOut_(JSON.stringify(obj));
+}
+// Kiểm quyền + băm mật khẩu trước khi ghi thành viên. d = object dữ liệu (sửa tại chỗ). Trả chuỗi lỗi nếu chặn.
+function secGuardMember_(action, id, d, auth) {
+  if (!d || typeof d !== 'object') return null;
+  if (d.password && !secIsHashed_(d.password)) d.password = secHashPw_(d.password);
+  if (action === 'addMember') {
+    const em = String(d.email || '').trim().toLowerCase();
+    if (em && getAllData(getSS_(), SHEETS.members).some(function (x) { return String(x.email || '').trim().toLowerCase() === em; })) return 'Email này đã được đăng ký.';
+    if (!(auth && auth.admin)) { d.status = 'pending'; d.level = 'member'; delete d.roleLevel; delete d.baseSalary; delete d.salaryPercent; }
+    return null;
+  }
+  if (!auth) return secEnforce_() ? 'AUTH_REQUIRED' : null;   // giai đoạn chuyển tiếp: web cũ chưa có vé vẫn ghi được
+  const self = id === auth.uid;
+  if (!self && !auth.admin && auth.roleLevel !== 'manager') return 'Không có quyền sửa thông tin thành viên khác';
+  if (!auth.admin) {
+    ['level', 'roleLevel', 'baseSalary', 'salaryPercent', 'rejectedAt'].forEach(function (k) { delete d[k]; });
+    delete d.status; delete d.inactiveAt;   // duyệt/từ chối/ngưng công tác: chỉ cấp admin (khớp canManageMembers ở web)
+    if (!self) delete d.password;
+  }
+  if (auth.admin && !self && d.level !== undefined && auth.level !== 'founder') delete d.level;   // đổi cấp bậc người khác: chỉ Founder (khớp web)
+  return null;
+}
+// Lệnh ghi nhạy cảm: kiểm theo cấp (chỉ áp khi có vé — chưa có vé thì AUTH_ENFORCE đã chặn ở secureEntry_)
+var SEC_ADMIN_ACTIONS_ = /^(deleteMember|applyDgdmCodes|applySheetLayout|getSheetLayout|seedDgdm|seedScheduleItems|dgdm(?!Write$)[A-Z]\w*)$/;
+// Không chặn add/updateFinanceEntry: luồng Đơn hàng (đánh dấu đã thanh toán, quyết toán tạm ứng) của người không có quyền tài chính vẫn tự ghi sổ — chặn sẽ nghẽn việc.
+var SEC_FINANCE_WRITES_ = /^((add|update|delete)BsSnapshot|deleteFinanceEntry)$/;
+function secWriteGate_(action, auth) {
+  if (!auth) return null;
+  if (/^(add|delete)FinanceAccess$/.test(action) && auth.level !== 'founder') return 'Chỉ Founder được cấp/thu hồi quyền tài chính';
+  if (SEC_ADMIN_ACTIONS_.test(action) && !auth.admin) return 'Chỉ cấp Founder/CEO/Giám đốc được chạy lệnh này';
+  if (SEC_FINANCE_WRITES_.test(action) && !secFinanceAllowed_(auth)) return 'Không có quyền thao tác Sổ tài chính';
+  return null;
+}
+function secNoteUnauth_(action) {
+  try {
+    const c = CacheService.getScriptCache(), k = 'unauth_' + Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyyMMdd');
+    c.put(k, String(+(c.get(k) || 0) + 1), 86400);
+    const ka = k + '_a'; let list = []; try { list = JSON.parse(c.get(ka) || '[]'); } catch (e) { }
+    if (list.indexOf(action) < 0 && list.length < 60) { list.push(String(action).slice(0, 40)); c.put(ka, JSON.stringify(list), 86400); }
+  } catch (e) { }
+}
+function secAdmin_(p, auth) {
+  if (!auth || !auth.admin) return { ok: false, error: 'Chỉ cấp Founder/CEO/Giám đốc' };
+  const pr = secProps_(), c = CacheService.getScriptCache(), day = 'unauth_' + Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyyMMdd');
+  if (p.op === 'hashAll') return { ok: true, hashed: secHashAllPasswords_() };
+  if (p.op === 'enforce') { pr.setProperty('AUTH_ENFORCE', p.value === '1' ? '1' : '0'); SEC_PROPS_MEMO_ = null; return { ok: true, enforce: secEnforce_() }; }
+  if (p.op === 'rotate') { pr.deleteProperty('AUTH_SECRET'); SEC_PROPS_MEMO_ = null; secSecret_('AUTH_SECRET'); return { ok: true, note: 'Đã đổi khoá — mọi người phải đăng nhập lại' }; }
+  let acts = []; try { acts = JSON.parse(c.get(day + '_a') || '[]'); } catch (e) { }
+  return { ok: true, enforce: secEnforce_(), unauthToday: +(c.get(day) || 0), unauthActions: acts };
+}
+function secHashAllPasswords_() {
+  const ss = getSS_(); let n = 0;
+  getAllData(ss, SHEETS.members).forEach(function (m) { if (m.password && !secIsHashed_(m.password)) { updateData(ss, SHEETS.members, m.id, { password: secHashPw_(m.password) }); n++; } });
+  bumpReadCacheVersion_();
+  return n;
+}
+function secureEntry_(e) {
+  const p = (e && e.parameter) || {}, action = String(p.action || '');
+  const auth = secVerifyToken_(p.tk);
+  delete p.tk;   // vé không lọt vào khoá cache đọc / dữ liệu ghi
+  secBundleTypes_ = p.types || '';
+  try {
+    if (action === 'login') return jsonOut_(JSON.stringify(secLogin_(p)));
+    if (action === 'changePassword') return jsonOut_(JSON.stringify(secChangePassword_(p, auth)));
+    if (action === 'whoami') return jsonOut_(JSON.stringify({ auth: !!auth, uid: auth ? auth.uid : null, enforce: secEnforce_() }));
+    if (action === 'secAdmin') return jsonOut_(JSON.stringify(secAdmin_(p, auth)));
+    if (action === 'secSelfTest') {   // tự kiểm cơ chế vé + băm (thành viên giả, không đọc/ghi Sheet)
+      const t = secMakeToken_({ id: '__test__', roleLevel: 'member', level: 'member' }), v = secVerifyToken_(t), h = secHashPw_('abc');
+      return jsonOut_(JSON.stringify({ tokenOk: !!v && v.uid === '__test__' && !v.admin, tamperRejected: !secVerifyToken_(t.slice(0, -2) + 'xx'), hashOk: secCheckPw_(h, 'abc') && !secCheckPw_(h, 'abd') && secIsHashed_(h), expiresInH: v ? Math.round((JSON.parse(Utilities.newBlob(Utilities.base64DecodeWebSafe(t.split('.')[0] + '==='.slice((t.split('.')[0].length + 3) % 4))).getDataAsString()).e - Date.now()) / 36e5 * 10) / 10 : null }));
+    }
+  } catch (err) { return jsonOut_(JSON.stringify({ success: false, error: String((err && err.message) || err) })); }
+  if (!auth && !SEC_PUBLIC_[action]) { secNoteUnauth_(action); if (secEnforce_()) return jsonOut_(JSON.stringify({ error: 'AUTH_REQUIRED' })); }
+  const gate = secWriteGate_(action, auth); if (gate) return jsonOut_(JSON.stringify({ error: gate }));
+  if (auth && p.actorId !== undefined) p.actorId = auth.uid;   // "người thao tác" lấy từ vé, không tin tham số client gửi
+  if (action === 'addMember' || action === 'updateMember') {
+    let d; try { d = JSON.parse(p.data || '{}'); } catch (err) { return jsonOut_(JSON.stringify({ error: 'Dữ liệu không hợp lệ' })); }
+    const why = secGuardMember_(action, p.id, d, auth); if (why) return jsonOut_(JSON.stringify({ error: why }));
+    p.data = JSON.stringify(d);
+  } else if (action === 'batchOps') {
+    let ops; try { ops = JSON.parse(p.data || '[]'); } catch (err) { ops = null; }
+    if (Array.isArray(ops)) {
+      ops.forEach(function (op) {
+        if (!op) return;
+        if (secWriteGate_(op.action, auth)) { op.action = 'blocked'; return; }
+        if (op.action !== 'addMember' && op.action !== 'updateMember') return;
+        let d = op.data; if (typeof d === 'string') { try { d = JSON.parse(d); } catch (err) { d = {}; } }
+        if (secGuardMember_(op.action, op.id, d, auth)) op.action = 'blocked'; else op.data = d;
+      });
+      p.data = JSON.stringify(ops);
+    }
+  }
+  return secSanitizeResponse_(action, handleRequest(e), auth);
+}
 
 // ===================== Hiệu năng (2026-09-29) =====================
 // Điều tra: mỗi lần làm mới, mỗi trang web bắn 16 lệnh GET song song mỗi 5s (~192 lệnh/phút/tab); mỗi lệnh lại mở cả bảng tính

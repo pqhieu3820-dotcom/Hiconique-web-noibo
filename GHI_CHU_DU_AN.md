@@ -1,6 +1,7 @@
 ## ⭐ QUAN TRỌNG — QUY TẮC GIAO DIỆN (người dùng chốt 2026-10-02): TỰ CHỦ ĐỘNG CĂN CHỈNH, KHÔNG ĐỂ NGƯỜI DÙNG PHẢI NHẮC
 
-- Mọi nút, ô nhập, hàng, bảng, hộp thoại làm mới/sửa phải **cân đối, thẳng hàng, cùng chiều cao/độ rộng hợp lý**; không để chữ bị cắt/bị bẻ dòng xấu, không để nút lệch kích thước, không để 1 phần tử trông khác các phần tử cùng loại (font, màu, cỡ chữ phải đồng bộ với phần còn lại của web). Làm xong tự rà bằng mắt (preview) trước khi báo.
+- Mọi nút, ô nhập, hàng, bảng, hộp thoại làm mới/sửa phải **cân đối, thẳng hàng, cùng chiều cao/độ rộng hợp lý**; không để chữ bị cắt/bị bẻ dòng xấu, không để nút lệch kích thước, không để 1 phần tử trông khác các phần tử cùng loại (font, màu, cỡ chữ phải đồng bộ với phần còn lại của web). Làm xong tự rà bằng mắt (preview) trước khi báo.
+
 - **Bảng/danh sách phải đủ rộng, không để chữ chồng lên nhau hay bẻ dòng xấu (người dùng chốt 2026-10-02, từ trang Đơn hàng & hóa đơn)**: khi làm/sửa bảng nào, nới khung (max-width ~1480px), đặt min-width cho cột chữ dài (tên, trạng thái, số tiền kèm chú thích), cho cột mã/số không xuống dòng; rà lại bằng mắt trước khi báo xong. Phần tử dùng thuộc tính `hidden` mà có CSS `display:grid/flex` thì phải thêm `[hidden]{display:none!important}`.
 - **Nút Thùng rác (trash.js) chỉ là icon vuông 32px** có chú thích khi rê chuột + chấm số nhỏ ở góc khi có mục (người dùng chốt 2026-10-02 vì nút chữ to, trông nặng nề). Bảng "Đơn hàng chờ ghi sổ" (finance.html) đã đặt độ rộng cột, nút Duyệt/Từ chối xếp dọc, không còn bị cắt.
 - **Nút Sửa (2026-10-02, sw v199)**: Sổ tài chính › Giao dịch có nút **Sửa** giữa Phiếu chi/thu và Xoá (`openEntryEdit`, đổi loại/danh mục/số tiền/ngày/số phiếu có kiểm tra trùng/TK quỹ/TK đối ứng… — không tự đổi đơn hàng/công nợ liên quan). Đơn hàng chờ ghi sổ có nút **Sửa** để kế toán sửa khách/NCC, hạng mục, giảm giá, VAT, chứng từ rồi Lưu hoặc Lưu & duyệt (`openOrderEdit`, `TaskManager.updateFinanceOrder` chỉ cho đơn đang chờ). Trang Đơn hàng: nút Sửa cho mọi đơn chưa huỷ; đơn đã ghi sổ chỉ sửa phần mô tả (giữ nguyên trạng thái, phiếu thu/chi, công nợ); đơn đang chờ duyệt sửa xong quay về Nháp để gửi lại.
@@ -18,6 +19,20 @@
 - GitHub Releases (`agent-v<ver>`) + `public/agent/latest.json` **vẫn giữ** chỉ để Agent TỰ CẬP NHẬT (cần link tải trực tiếp có kiểm SHA-256; Drive file lớn bị chặn bằng trang quét virus nên không dùng được cho bước này).
 - ⚠ Quyền chia sẻ hiện là "Bất kỳ ai có đường liên kết = **Người chỉnh sửa**" → ai có link cũng xoá/thay được file cài. Nên đổi thành **Người xem** (chỉ chủ + pqhieu3820 chỉnh sửa) — tránh bị tráo file cài độc hại.
 - Trong folder hiện có: `HiconiqueAgentSetup-v2.0.6.exe` (69,6MB). Bản 2.0.7 (bảo mật) được đưa lên bằng cách dự phòng qua ổ J: (ghi ở trên).
+
+## ⭐ QUAN TRỌNG — BẢO MẬT API & DỮ LIỆU (2026-10-03, Apps Script v153)
+
+- **Trước đây**: API `/exec` mở hoàn toàn — ai có link (link nằm trong repo GitHub CÔNG KHAI) đọc/ghi/xoá được mọi sheet; `getMembers` trả mật khẩu chữ thường + CCCD + STK + lương; đăng nhập so mật khẩu ngay trên trình duyệt.
+- **Nay** (`secureEntry_` = doGet/doPost, khối "BẢO MẬT API" trong `gsheets-api-v2.js`):
+  - Đăng nhập trên máy chủ: action `login` (POST) → trả `token` ký HMAC-SHA256 (khoá `AUTH_SECRET` trong Script Properties — KHÔNG có trong code), hết hạn 01:00 sáng kế tiếp. Web lưu vào phiên (`hiconique_auth_session.token`); `gsheets-config.js` bọc `window.fetch` tự gắn `&tk=` vào MỌI lệnh gọi API_URL. Phiên cũ không có token → buộc đăng nhập lại.
+  - `AUTH_ENFORCE='1'` (Script Property, **tự bật ở lần đăng nhập thành công đầu tiên**): lệnh không có vé → `{error:'AUTH_REQUIRED'}` (web tự đăng xuất / trang con chưa đăng nhập tự về trang chủ). Ngoại lệ `SEC_PUBLIC_`: login, ping, addMember (đăng ký → luôn "chờ duyệt"), và 4 lệnh của HICONIQUE Agent (getMembers chỉ trả id/tên, getPcReports chỉ trả id/máy, upsertPcReport, upsertAppUsage).
+  - Mật khẩu băm `h1$salt$sha256(salt:pw:PW_PEPPER)`; mật khẩu cũ chữ thường tự băm ở lần đăng nhập đúng đầu tiên (hoặc `secAdmin op=hashAll`). Đổi mật khẩu: action `changePassword` (profile.html). `password` đã bỏ khỏi `MEMBER_SELF_EDIT_FIELDS`.
+  - Lọc theo quyền SAU cache (cache 15s dùng chung vẫn giữ → không chậm): không bao giờ trả mật khẩu; CCCD/STK/ngân hàng/lương/%lương/ngày sinh/quê chỉ chính chủ hoặc cấp admin; Sổ tài chính + chỉ số cân đối chỉ admin/người được cấp quyền tài chính; phiếu lương chỉ của mình (trừ admin/quyền tài chính).
+  - Chặn ghi: updateMember không tự đổi cấp bậc/lương/trạng thái (chỉ admin; đổi cấp bậc người khác chỉ Founder); deleteMember + lệnh bảo trì dgdm*/applySheetLayout/seed* chỉ admin; cấp/thu quyền tài chính chỉ Founder; xoá cứng giao dịch + BsSnapshot cần quyền tài chính (add/update giao dịch KHÔNG chặn — luồng Đơn hàng cần). `actorId` lấy từ vé. Đăng nhập sai 8 lần → khoá 15 phút/email.
+  - Quản trị: `?action=secAdmin&op=status|enforce&value=0/1|hashAll|rotate` (cần vé admin; `rotate` = đổi khoá, mọi người đăng nhập lại). `?action=secSelfTest` tự kiểm vé/băm (không đụng Sheet). `?action=whoami`.
+  - Bản triển khai cũ thứ 2 (URL `AKfycbzi9GjIGmBH…`, đang chạy v60 không bảo vệ) đã được nâng lên v153.
+  - `public/_headers`: nosniff, X-Frame-Options SAMEORIGIN, Referrer-Policy, HSTS, noindex.
+- **NGƯỜI DÙNG PHẢI TỰ LÀM (Claude không có quyền)**: (1) Google Sheet database chính + Sheet "Database đơn giá 34 tỉnh" + folder cài Agent đang chia sẻ **"Bất kỳ ai có đường liên kết — Người chỉnh sửa"** → đổi sang **Bị hạn chế** (Sheet) / **Người xem** (folder Agent); (2) chuyển repo GitHub sang **Private**; (3) mọi người đổi mật khẩu (mật khẩu cũ từng lộ qua API).
 
 # Ghi chú dự án — đọc trước khi làm việc
 

@@ -430,16 +430,40 @@ var Offline = (function () {
   ['click', 'keydown', 'input', 'change', 'submit', 'touchstart', 'pointerdown'].forEach(function (ev) { document.addEventListener(ev, function () { lastInputAt = Date.now(); }, true); });
   function recentInput() { return Date.now() - lastInputAt < 20000; }
   var direct = 0, directAt = [];   // directAt: mốc bắt đầu từng lệnh ghi trực tiếp; lệnh treo >40s thôi không tính (tránh khung 'Đang lưu' hiện mãi)
+  // 2026-10-03: thêm khung ĐỌC — lệnh đọc do người dùng vừa bấm (quét Drive, tải bảng đơn giá, tra cứu…) chạy >0,6s cũng hiện kính "Đang đọc…",
+  // xong hiện "Đã tải xong" 1,5s. Áp dụng mọi trang (trước chỉ nút ⟳ Làm mới mới hiện khi đọc). Nhận cả lệnh gửi POST (action nằm trong thân).
+  var readAt = [], readDoneUntil = 0;
+  var WRITE_ACT = /^(save|add|update|delete|remove|set|upsert|create|register|unregister|approve|reject|mark|reset|import|clear|toggle|grant|revoke|resync|change|dgdm|apply|seed|batch|test)/i,
+    READ_ACT = /^(get|ping|scan|resolve|whoami)/i, SKIP_ACT = /^(login|ping|whoami|secSelfTest)$/;
+  function actionOf_(url, init) {
+    var m = /[?&]action=([^&#]+)/.exec(url); if (m) { try { return decodeURIComponent(m[1]); } catch (e) { return m[1]; } }
+    var b = init && init.body;
+    try {
+      if (b && typeof b.get === 'function') return String(b.get('action') || '');
+      if (typeof b === 'string') { var m2 = /(?:^|&)action=([^&]+)/.exec(b); if (m2) return decodeURIComponent(m2[1]); }
+    } catch (e) { /* bỏ qua */ }
+    return '';
+  }
   (function wrapFetch() {
     if (typeof window.fetch !== 'function' || window.__hqFetchWrapped) return;
     window.__hqFetchWrapped = true;
-    var orig = window.fetch, WRITE = /[?&]action=(save|add|update|delete|remove|set|upsert|create|register|approve|reject|mark|reset|import|clear|toggle|grant|revoke|resync)/i, READ = /[?&]action=(get|ping|scan)/i;
+    var orig = window.fetch;
     window.fetch = function (input, init) {
       var url = typeof input === 'string' ? input : (input && input.url) || '';
       var api = (typeof GSHEETS_CONFIG !== 'undefined' && GSHEETS_CONFIG) ? GSHEETS_CONFIG.API_URL : '';   // const toàn cục (không nằm trên window)
-      var isWrite = api && url.indexOf(api) === 0 && !READ.test(url) && (WRITE.test(url) || (init && /^POST$/i.test(init.method || '')));
-      // nhịp nền (đang online lastActiveAt, gửi keepalive) không phải thao tác của người dùng → không hiện khung
-      if (!isWrite || readQueue_().length || (init && init.keepalive) || !recentInput()) return orig.apply(this, arguments);
+      if (!api || url.indexOf(api) !== 0) return orig.apply(this, arguments);
+      var act = actionOf_(url, init), bg = (init && init.keepalive);
+      if (SKIP_ACT.test(act) || bg) return orig.apply(this, arguments);
+      var isRead = READ_ACT.test(act), isWrite = !isRead && (WRITE_ACT.test(act) || (init && /^POST$/i.test(init.method || '')));
+      // ĐỌC: chỉ khi người dùng vừa bấm/gõ (≤1,5s) — làm mới tự động chạy nền không hiện khung
+      if (isRead) {
+        if (Date.now() - lastInputAt > 1500 || manual) return orig.apply(this, arguments);
+        var r0 = Date.now(); readAt.push(r0); setTimeout(render, 650);
+        var doneR = function () { var i = readAt.indexOf(r0); if (i !== -1) readAt.splice(i, 1); if (Date.now() - r0 > 600 && !readAt.length) readDoneUntil = Date.now() + 1500; render(); };
+        return orig.apply(this, arguments).then(function (res) { doneR(); return res; }, function (err) { doneR(); throw err; });
+      }
+      // GHI trực tiếp (không qua hàng đợi): nhịp nền (đang online lastActiveAt, gửi keepalive) không phải thao tác của người dùng → không hiện khung
+      if (!isWrite || readQueue_().length || !recentInput()) return orig.apply(this, arguments);
       var t0 = Date.now(); direct++; directAt.push(t0); failed = false; render();
       function finish(ok) {
         direct = Math.max(0, direct - 1); var di = directAt.indexOf(t0); if (di !== -1) directAt.splice(di, 1);
@@ -450,6 +474,17 @@ var Offline = (function () {
       return orig.apply(this, arguments).then(function (res) { finish(true); return res; }, function (err) { finish(false); throw err; });
     };
   })();
+  function drawRead_(live) {
+    if (!ensure()) return;
+    var kind = live.length ? 'busy' : 'ok', now = Date.now();
+    var l1 = live.length ? 'Đang đọc dữ liệu từ Google Sheet…' : 'Đã tải xong dữ liệu';
+    var l2 = live.length ? 'đã chờ ' + sec(now - Math.min.apply(null, live)) + (live.length > 1 ? ' · ' + live.length + ' yêu cầu' : '') + ' · đang chờ Google phản hồi…' : 'Dữ liệu trên màn hình khớp Google Sheet';
+    el.hidden = false; el.style.display = ''; el.setAttribute('data-st', kind);
+    var key = 'r|' + kind + '|' + l1;
+    if (el._key === key && el.querySelector('.l2')) { el.querySelector('.l2').textContent = l2; return; }
+    el._key = key;
+    el.innerHTML = ICONS_M[kind] + '<div class="tx"><div class="l1 ' + (kind === 'busy' ? '' : kind) + '">' + l1 + '</div><div class="l2">' + l2 + '</div></div>';
+  }
   function sec(ms) { return (ms / 1000).toFixed(1).replace('.', ',') + 's'; }
   function dur(ms) { var s = Math.max(0, Math.round(ms / 1000)); return s >= 60 ? Math.floor(s / 60) + 'p' + (s % 60 < 10 ? '0' : '') + (s % 60) + 's' : s + 's'; }
   function ensure() {
@@ -534,6 +569,8 @@ var Offline = (function () {
     var now = Date.now(), q = readQueue_().filter(function (o) { return (o.tries || 0) > 0 || (now < userWriteUntil && now - (o.ts || 0) < 120000); });   // lệnh tồn cũ chưa từng gửi (chờ mạng/khóa tab) không làm khung hiện mãi
     var liveDirect = directAt.filter(function (s) { return now - s < 40000; }).length, n = q.length + liveDirect, M = window.HiconiqueMetrics || {};
     var w = M.writeMs || [], aw = w.length ? w.reduce(function (a, b) { return a + b; }, 0) / w.length : 0;
+    var liveReads = readAt.filter(function (s) { return now - s > 600 && now - s < 90000; });
+    if (!failed && n === 0 && last.event !== 'retry' && (liveReads.length || now < readDoneUntil)) { drawRead_(liveReads); return; }
     var inQuiet = now < quietUntil && now > doneUntil && !failed && last.event !== 'retry';
     if (!failed && (n === 0 || inQuiet) && now > doneUntil) { if (el) { el.hidden = true; el.style.display = 'none'; } return; }
     if (!ensure()) return;

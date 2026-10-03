@@ -116,6 +116,12 @@ const Auth = (function() {
       var raw = localStorage.getItem(SESSION_KEY);
       if (!raw) return null;
       var session = JSON.parse(raw);
+      // 2026-10-03: phiên phải có "vé" do máy chủ cấp khi đăng nhập (xem loginWithPassword) — phiên cũ (đăng nhập kiểu so mật khẩu
+      // trên trình duyệt trước bản bảo mật) không có vé → buộc đăng nhập lại 1 lần.
+      if (!session.token) {
+        localStorage.removeItem(SESSION_KEY);
+        return null;
+      }
       // Check expiry
       if (session.expiresAt && session.expiresAt < Date.now()) {
         localStorage.removeItem(SESSION_KEY);
@@ -152,7 +158,8 @@ const Auth = (function() {
   watchDailyReset();
 
   // Save session
-  function saveSession(user) {
+  function saveSession(user, token) {
+    var prev = currentUser || getSession();
     var session = {
       id: user.id,
       name: user.name,
@@ -164,6 +171,7 @@ const Auth = (function() {
       avatar: user.avatar,
       hometown: user.hometown,
       createdAt: user.createdAt,
+      token: token || (prev && prev.token) || '',
       loggedInAt: Date.now(),
       expiresAt: Date.now() + SESSION_DURATION
     };
@@ -198,22 +206,8 @@ const Auth = (function() {
       return;
     }
 
-    // Find member by email from TaskManager
-    var members = TaskManager.getMembers();
-    var member = members.find(function(m) {
-      return m.email && m.email.toLowerCase() === email.toLowerCase();
-    });
-
-    if (!member) {
-      if (callback) callback({
-        success: false,
-        error: 'Email chưa được đăng ký. Vui lòng liên hệ Admin để được cấp tài khoản.'
-      });
-      return;
-    }
-
-    var session = saveSession(member);
-    if (callback) callback({ success: true, user: session });
+    // 2026-10-03: bỏ đăng nhập chỉ bằng email (không mật khẩu) — mọi đăng nhập phải qua máy chủ (loginWithPassword).
+    if (callback) callback({ success: false, error: 'Vui lòng đăng nhập bằng email và mật khẩu.' });
   }
 
   // Logout
@@ -379,8 +373,13 @@ const Auth = (function() {
       var email = emailInput.value.trim();
       var password = passwordInput.value;
       errorEl.style.display = 'none';
+      var submitBtn = form.querySelector('button[type="submit"]');
+      if (submitBtn && submitBtn.disabled) return;
+      var submitLabel = submitBtn ? submitBtn.innerHTML : '';
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.style.opacity = '0.7'; submitBtn.textContent = 'Đang đăng nhập...'; }
 
       loginWithPassword(email, password, function(result) {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity = ''; submitBtn.innerHTML = submitLabel; }
         if (result.success) {
           try { localStorage.removeItem('skip_auto_login'); } catch(e) {}
           document.getElementById('authLoginModal').remove();
@@ -738,17 +737,7 @@ const Auth = (function() {
     if (callback) callback({ success: true, member: newMember });
   }
 
-  // Login with password
-  // 2026-09-19: TaskManager.getMembers() đọc THẲNG localStorage (đồng bộ,
-  // không tự fetch mạng) — 1 thiết bị chưa từng mở app SAU LÚC được duyệt
-  // (VD lần trước mở app khi tài khoản còn "pending", rồi CEO duyệt xong ở
-  // chỗ khác) sẽ mãi thấy đúng bản snapshot CŨ đó và luôn báo sai "đang chờ
-  // phê duyệt" dù Sheet đã duyệt từ lâu — y hệt lớp bug cache-cũ đã gặp ở
-  // trang Chấm công (renderCalendar/renderDeviceTable). Chỉ khi cache cũ
-  // đang CHẶN đăng nhập (pending/rejected/không tìm thấy tài khoản) mới bắt
-  // buộc lấy dữ liệu MỚI NHẤT từ Sheet rồi kiểm tra lại 1 lần nữa trước khi
-  // thật sự từ chối — không làm chậm luồng đăng nhập bình thường (tài khoản
-  // đã active sẵn trong cache thì đăng nhập ngay, không cần chờ mạng).
+  // Login with password — kiểm tra trên máy chủ (trạng thái chờ duyệt/từ chối/ngưng công tác cũng do máy chủ đọc thẳng Sheet nên luôn mới nhất)
   function loginWithPassword(email, password, callback) {
     if (!email) {
       if (callback) callback({ success: false, error: 'Vui lòng nhập email' });
@@ -759,53 +748,43 @@ const Auth = (function() {
       if (callback) callback({ success: false, error: 'Vui lòng nhập email hợp lệ' });
       return;
     }
+    if (!password) {
+      if (callback) callback({ success: false, error: 'Vui lòng nhập mật khẩu' });
+      return;
+    }
 
-    function findMember() {
-      var members = TaskManager.getMembers();
-      return members.find(function(m) {
-        return m.email && m.email.toLowerCase() === email.toLowerCase();
+    // 2026-10-03 BẢO MẬT: kiểm tra mật khẩu TRÊN MÁY CHỦ (action login, gửi POST — mật khẩu không nằm trên URL). Trước đây web tải cả
+    // danh sách thành viên KÈM MẬT KHẨU về trình duyệt rồi tự so → ai mở DevTools cũng đọc được mật khẩu/CCCD/STK của mọi người.
+    // Máy chủ trả "vé" (token) — lưu vào phiên, gsheets-config.js tự gắn vào mọi lệnh gọi API.
+    var api = (typeof GSHEETS_CONFIG !== 'undefined' && GSHEETS_CONFIG.API_URL) || '';
+    if (!api) { if (callback) callback({ success: false, error: 'Chưa cấu hình kết nối máy chủ' }); return; }
+    var form = new URLSearchParams();
+    form.set('action', 'login'); form.set('email', email.trim()); form.set('password', password);
+    var ctl = new AbortController(), timer = setTimeout(function () { ctl.abort(); }, 45000);
+    fetch(api, { method: 'POST', body: form, redirect: 'follow', signal: ctl.signal })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        clearTimeout(timer);
+        if (!res || !res.success || !res.token || !res.user) {
+          if (callback) callback({ success: false, error: (res && res.error) || 'Đăng nhập không thành công' });
+          return;
+        }
+        // Cập nhật bản ghi của chính mình (đủ trường cá nhân) vào cache thành viên để trang Hồ sơ/Chấm công dùng ngay
+        try {
+          var key = 'hiconique_members', list = JSON.parse(localStorage.getItem(key) || '[]');
+          if (Array.isArray(list)) {
+            var idx = list.findIndex(function (m) { return m && m.id === res.user.id; });
+            if (idx >= 0) list[idx] = Object.assign({}, list[idx], res.user); else list.push(res.user);
+            localStorage.setItem(key, JSON.stringify(list));
+          }
+        } catch (e) { /* bỏ qua */ }
+        var session = saveSession(res.user, res.token);
+        if (callback) callback({ success: true, user: session });
+      })
+      .catch(function () {
+        clearTimeout(timer);
+        if (callback) callback({ success: false, error: 'Không kết nối được máy chủ — kiểm tra mạng rồi thử lại.' });
       });
-    }
-
-    function finish(member, alreadyRefreshed) {
-      if (!member) {
-        if (!alreadyRefreshed && typeof TaskManager.refreshFromGSheets === 'function') {
-          TaskManager.refreshFromGSheets(function () { finish(findMember(), true); });
-          return;
-        }
-        if (callback) callback({ success: false, error: 'Tài khoản chưa tồn tại. Vui lòng đăng ký trước.' });
-        return;
-      }
-
-      // Check password - convert both to string for comparison
-      if (member.password && String(member.password) !== String(password)) {
-        if (callback) callback({ success: false, error: 'Mật khẩu không đúng' });
-        return;
-      }
-
-      // Chặn đăng nhập nếu tài khoản chưa được duyệt / đã bị từ chối / đã ngưng
-      // công tác. Tài khoản không có trường status (dữ liệu cũ) coi là đang
-      // hoạt động. Cả 3 trạng thái chặn dưới đây đều có thể là CACHE CŨ (xem
-      // ghi chú trên hàm) — thử lấy dữ liệu mới đúng 1 lần trước khi từ chối
-      // thật sự, để tài khoản vừa được duyệt ở chỗ khác đăng nhập được ngay
-      // trên MỌI thiết bị, không phải đợi cache tự hết hạn hoặc F5 nhiều lần.
-      if (member.status === 'pending' || member.status === 'rejected' || member.status === 'inactive') {
-        if (!alreadyRefreshed && typeof TaskManager.refreshFromGSheets === 'function') {
-          TaskManager.refreshFromGSheets(function () { finish(findMember(), true); });
-          return;
-        }
-        var msg = member.status === 'pending' ? 'Tài khoản đang chờ quản lý hoặc CEO phê duyệt. Vui lòng quay lại sau.'
-          : member.status === 'rejected' ? 'Đăng ký của bạn đã bị từ chối. Vui lòng liên hệ quản lý.'
-          : 'Tài khoản đã ngưng công tác, không thể đăng nhập.';
-        if (callback) callback({ success: false, error: msg });
-        return;
-      }
-
-      var session = saveSession(member);
-      if (callback) callback({ success: true, user: session });
-    }
-
-    finish(findMember(), false);
   }
 
   // Logout function
