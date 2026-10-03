@@ -1141,6 +1141,8 @@ main { flex: 1; }
 .notice-info { border-left: 2px solid var(--color-border-strong); }
 
 .notice-list { display: flex; flex-direction: column; gap: var(--space-sm); }
+/* 2026-10-03: thẻ "Cập nhật gần đây" dài dần theo thời gian → cố định chiều cao, nội dung dài thì cuộn trong khung (thanh cuộn xám chung của web) */
+.notice-info .notice-list { max-height: 340px; overflow-y: auto; overscroll-behavior: contain; padding-right: 6px; }
 .notice-list li {
   font-size: var(--text-sm);
   color: var(--color-text-muted);
