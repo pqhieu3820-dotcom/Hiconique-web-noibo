@@ -264,9 +264,9 @@
     }
     var total = apps.reduce(function (s, a) { return s + a.min; }, 0);
     $('smAppBox').innerHTML = '<h4 style="margin:14px 0 8px;font-size:0.875rem;">Ứng dụng đang dùng — ' + label + ' (' + fmtDur(total) + ')</h4>' +
-      '<div class="sm-wrap"><table class="sm-table" style="min-width:0"><thead><tr><th>Ứng dụng</th><th class="num">Thời gian</th><th class="num">Tỉ trọng</th><th>Cửa sổ nhiều nhất</th></tr></thead><tbody>' +
-      apps.slice(0, 20).map(function (a) {
-        return '<tr><td>' + esc(a.app) + '</td><td class="num">' + fmtDur(a.min) + '</td><td class="num">' + Math.round(a.min / total * 100) + '%</td><td class="sm-muted" style="font-size:0.75rem;max-width:380px;">' + esc(a.titles.slice(0, 3).join(' · ')) + '</td></tr>';
+      '<div class="sm-wrap"><table class="sm-table" style="min-width:0"><thead><tr><th>Ứng dụng</th><th class="num">Thời gian</th><th class="num">Tỉ trọng</th><th>Chi tiết theo cửa sổ / tab (thời gian từng cửa sổ)</th></tr></thead><tbody>' +
+      apps.slice(0, 30).map(function (a) {
+        return '<tr><td>' + esc(a.app) + '</td><td class="num">' + fmtDur(a.min) + '</td><td class="num">' + Math.round(a.min / total * 100) + '%</td><td class="sm-tcell">' + titleBreakdown(a) + '</td></tr>';
       }).join('') + '</tbody></table></div>';
   }
 
@@ -276,11 +276,36 @@
     var by = {};
     (TM.getAppUsage ? TM.getAppUsage() : []).forEach(function (u) {
       if (u.memberId !== memberId || !set[u.date]) return;
-      var a = by[u.app] || (by[u.app] = { app: u.app, min: 0, titles: [] });
+      var a = by[u.app] || (by[u.app] = { app: u.app, min: 0, titles: [], _t: {} });
       a.min += Number(u.minutes) || 0;
-      String(u.titles || '').split(' | ').forEach(function (t) { t = t.replace(/\s*\(\d+p\)$/, '').trim(); if (t && a.titles.indexOf(t) === -1) a.titles.push(t); });
+      parseTitles(u.titles).forEach(function (x) {   // cùng tiêu đề trên nhiều máy/hàng → cộng dồn số phút
+        var e = a._t[x.t]; if (!e) { e = a._t[x.t] = { t: x.t, m: 0, known: false }; a.titles.push(e); }
+        if (x.m !== null) { e.m += x.m; e.known = true; }
+      });
     });
-    return Object.keys(by).map(function (k) { return by[k]; }).sort(function (x, y) { return y.min - x.min; });
+    return Object.keys(by).map(function (k) { var a = by[k]; a.titles.sort(function (p, q) { return q.m - p.m; }); return a; }).sort(function (x, y) { return y.min - x.min; });
+  }
+
+  // Cột "Tiêu đề cửa sổ" của Sheet có dạng "Tiêu đề A (24p) | Tiêu đề B (7p)" — tách đúng cả khi tiêu đề có dấu " | " bên trong
+  function parseTitles(str) {
+    var out = [], s = String(str || ''), re = /(.*?)\s*\((\d+)p\)(?:\s*\|\s*|$)/g, m, last = 0;
+    while ((m = re.exec(s)) !== null) { if (m[0] === '') { re.lastIndex++; continue; } var t = m[1].trim(); if (t) out.push({ t: t, m: Number(m[2]) }); last = re.lastIndex; }
+    var rest = s.slice(last).trim();   // phần không có "(Np)" (bản Agent cũ / dữ liệu nhập tay)
+    if (rest) rest.split(' | ').forEach(function (t) { t = t.trim(); if (t) out.push({ t: t, m: null }); });
+    return out;
+  }
+  function fmtTitleDur(m) { return m < 1 ? '<1 phút' : fmtDur(m); }
+  // Từng cửa sổ/tab: tên + thanh tỉ lệ so với cả ứng dụng + số phút; phần còn lại (cửa sổ ít dùng, Agent chỉ gửi vài cửa sổ nhiều nhất) gộp thành 1 dòng
+  function titleBreakdown(a) {
+    if (!a.titles.length) return '<span class="sm-muted" style="font-size:0.75rem;">Không có dữ liệu cửa sổ (Agent đang tắt gửi tiêu đề hoặc bản Agent cũ)</span>';
+    var sum = 0, rows = a.titles.map(function (x) {
+      sum += x.m;
+      var pct = a.min > 0 ? Math.min(100, Math.round(x.m / a.min * 100)) : 0;
+      return '<div class="sm-tl"><span class="sm-tl-bar" style="width:' + pct + '%"></span><span class="sm-tl-t" title="' + esc(x.t) + '">' + esc(x.t) + '</span><span class="sm-tl-m">' + (x.known ? fmtTitleDur(x.m) : '—') + '</span></div>';
+    }).join('');
+    var rest = Math.round(a.min - sum);
+    if (rest >= 1) rows += '<div class="sm-tl sm-tl-rest"><span class="sm-tl-t">Các cửa sổ khác (dùng ít)</span><span class="sm-tl-m">' + fmtDur(rest) + '</span></div>';
+    return rows;
   }
 
   // ---- Thông tin bản phát hành HICONIQUE Agent (đọc /agent/latest.json — do build.py tạo mỗi lần phát hành) ----

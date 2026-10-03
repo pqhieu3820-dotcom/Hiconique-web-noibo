@@ -47,6 +47,8 @@
 
 - 2026-10-03 (sw v222): thẻ **"Cập nhật gần đây"** ở trang chủ có chiều cao cố định (190px, `.notice-info .notice-list` trong portal.css), dòng nhật ký nhiều thì cuộn trong khung — cứ thêm dòng mới ở đầu danh sách như cũ.
 
+- 2026-10-03 (sw v223): trang **Theo dõi hiệu suất** — bảng "Ứng dụng đang dùng" mỗi ứng dụng liệt kê TỪNG cửa sổ/tab kèm số phút + thanh tỉ lệ (staff-monitor.js `parseTitles`/`titleBreakdown`; trước chỉ hiện tên 3 cửa sổ, bỏ mất số phút). Dữ liệu vẫn từ cột `Tiêu đề cửa sổ` dạng "Tiêu đề (Np) | …"; Agent hiện chỉ gửi tối đa 5 cửa sổ/ứng dụng (`topTitles`), phần còn lại hiện thành dòng "Các cửa sổ khác". Agent lấy mẫu CỬA SỔ ĐANG ĐƯỢC CHỌN (foreground) mỗi 15s — chưa thấy cửa sổ chia đôi màn hình không được chọn.
+
 # Ghi chú dự án — đọc trước khi làm việc
 
 File này tồn tại để không phải hỏi lại các thông tin dưới đây mỗi khi đổi máy hoặc mở đoạn

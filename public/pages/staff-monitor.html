@@ -88,6 +88,13 @@
     .sm-flag.bad { color: var(--sm-bad); border-color: color-mix(in srgb, var(--sm-bad) 50%, transparent); }
     .sm-flag.ok { color: var(--sm-ok); border-color: color-mix(in srgb, var(--sm-ok) 50%, transparent); }
     .sm-muted { color: var(--sm-muted); }
+    /* chi tiết từng cửa sổ/tab của 1 ứng dụng (2026-10-03): tên + thanh tỉ lệ + thời gian */
+    .sm-tcell { min-width: 300px; max-width: 520px; padding: 6px 12px !important; }
+    .sm-tl { position: relative; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 4px 8px; margin: 2px 0; border-radius: 6px; font-size: 0.75rem; overflow: hidden; }
+    .sm-tl-bar { position: absolute; left: 0; top: 0; bottom: 0; background: color-mix(in srgb, var(--color-bronze, #B08D57) 16%, transparent); border-radius: 6px; pointer-events: none; }
+    .sm-tl-t { position: relative; min-width: 0; overflow-wrap: anywhere; line-height: 1.35; color: var(--sm-text, inherit); }
+    .sm-tl-m { position: relative; flex: 0 0 auto; font-family: 'JetBrains Mono', monospace; font-size: 0.6875rem; color: var(--sm-muted); }
+    .sm-tl-rest .sm-tl-t { color: var(--sm-muted); font-style: italic; }
     .sm-empty { padding: 30px; text-align: center; color: var(--sm-muted); font-size: 0.8125rem; }
     .sm-overlay { position: fixed; inset: 0; z-index: 9000; background: rgba(0,0,0,0.55); display: none; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; }
     .sm-overlay.active { display: flex; }
