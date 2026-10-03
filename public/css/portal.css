@@ -238,6 +238,27 @@ main { flex: 1; }
   box-shadow: var(--shadow-lg);
 }
 
+/* 2026-10-04: hiệu ứng mở/đóng bảng thông báo + chuông rung */
+.notif-panel { transform-origin: top right; -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%); }
+.notif-panel.notif-in { animation: notifIn .55s cubic-bezier(.2, .9, .25, 1.15) both; }
+.notif-panel.notif-out { animation: notifOut .3s cubic-bezier(.5, 0, .9, .4) both; pointer-events: none; }
+@keyframes notifIn {
+  0% { opacity: 0; transform: translateY(-8px) scale(.35, .12); filter: blur(10px); border-radius: 40px; box-shadow: 0 0 0 1px rgba(214, 170, 100, .8), 0 0 40px 8px rgba(214, 170, 100, .5); }
+  45% { opacity: 1; transform: scale(1.03, 1.02); filter: blur(0); border-radius: 14px; }
+  70% { transform: scale(.992); }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+@keyframes notifOut { 0% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-8px) scale(.4, .1); filter: blur(8px); border-radius: 40px; } }
+.notif-panel.notif-in:not(.settled) .notif-panel-header, .notif-panel.notif-in:not(.settled) .notif-item { animation: notifRow .5s cubic-bezier(.2, .8, .2, 1) both; }
+.notif-panel.notif-in:not(.settled) .notif-panel-header { animation-delay: .12s; }
+.notif-panel.notif-in:not(.settled) .notif-item:nth-child(2) { animation-delay: .18s; } .notif-panel.notif-in:not(.settled) .notif-item:nth-child(3) { animation-delay: .25s; }
+.notif-panel.notif-in:not(.settled) .notif-item:nth-child(4) { animation-delay: .32s; } .notif-panel.notif-in:not(.settled) .notif-item:nth-child(n+5) { animation-delay: .38s; }
+@keyframes notifRow { from { opacity: 0; transform: translateX(24px); filter: blur(5px); } to { opacity: 1; transform: none; filter: none; } }
+.icon-btn-bell.bell-ring svg { transform-origin: 50% 8%; animation: bellRing .9s cubic-bezier(.3, .6, .3, 1) both; }
+.icon-btn-bell.bell-ring .badge-dot { animation: badgePop .9s ease-out both; }
+@keyframes bellRing { 0% { transform: rotate(0); } 12% { transform: rotate(22deg); } 28% { transform: rotate(-18deg); } 44% { transform: rotate(13deg); } 60% { transform: rotate(-9deg); } 76% { transform: rotate(5deg); } 100% { transform: rotate(0); } }
+@keyframes badgePop { 0% { transform: scale(1); box-shadow: 0 0 0 2px var(--color-bg), 0 0 0 0 rgba(214, 170, 100, .8); } 30% { transform: scale(1.9); } 100% { transform: scale(1); box-shadow: 0 0 0 2px var(--color-bg), 0 0 0 14px rgba(214, 170, 100, 0); } }
+@media (prefers-reduced-motion: reduce) { .notif-panel.notif-in, .notif-panel.notif-out, .notif-panel.notif-in .notif-panel-header, .notif-panel.notif-in .notif-item, .icon-btn-bell.bell-ring svg, .icon-btn-bell.bell-ring .badge-dot { animation: none !important; } }
 .notif-panel-header {
   display: flex;
   align-items: center;
@@ -655,6 +676,7 @@ main { flex: 1; }
 /* ===== 2026-10-04: Ô TÌM KIẾM LIQUID GLASS (cùng ngôn ngữ với khung đồng bộ góc màn hình) =====
    Nền kính mờ nhiều lớp, viền "specular" sáng góc trên-trái, ánh sáng đồng chuyển động chậm bên trong, vòng sáng khi gõ; câu gợi ý ẩn/hiện thay phiên. */
 .search-overlay {
+  z-index: 600;   /* trên bảng thông báo (500) để không bị che */
   animation: sOverlayIn .6s ease both;
   background:
     radial-gradient(900px 480px at 50% 6%, rgba(176, 141, 87, 0.18), transparent 62%),
@@ -732,10 +754,10 @@ main { flex: 1; }
 @keyframes sLiquid { 0% { transform: translate(-4%, -2%) rotate(0deg) scale(1); } 50% { transform: translate(5%, 3%) rotate(8deg) scale(1.08); } 100% { transform: translate(-2%, 5%) rotate(-6deg) scale(1.02); } }
 @keyframes sSpin { to { transform: rotate(360deg); } }
 /* nền sáng */
-html[data-theme="light"] .search-overlay { background: radial-gradient(900px 480px at 50% 6%, rgba(176, 141, 87, 0.20), transparent 62%), rgba(235, 232, 226, 0.55); }
+html[data-theme="light"] .search-overlay { background: radial-gradient(900px 480px at 50% 6%, rgba(176, 141, 87, 0.28), transparent 62%), rgba(70, 58, 38, 0.38); }
 html[data-theme="light"] .search-panel {
   background: linear-gradient(140deg, rgba(255, 255, 255, 0.96) 0%, rgba(252, 250, 246, 0.90) 50%, rgba(255, 255, 255, 0.94) 100%);
-  box-shadow: 0 1px 1px rgba(255, 255, 255, 0.9) inset, 0 30px 70px -16px rgba(60, 50, 30, 0.35), 0 6px 18px rgba(60, 50, 30, 0.12), 0 0 0 1px rgba(60, 50, 30, 0.06);
+  box-shadow: 0 1px 1px rgba(255, 255, 255, 0.95) inset, 0 34px 80px -14px rgba(40, 30, 10, 0.55), 0 8px 22px rgba(40, 30, 10, 0.22), 0 0 0 1px rgba(120, 95, 50, 0.28);
 }
 html[data-theme="light"] .search-panel::before { background: linear-gradient(135deg, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0.4) 40%, rgba(255, 255, 255, 0.2) 62%, rgba(255, 255, 255, 0.9)); }
 html[data-theme="light"] .search-box kbd { background: rgba(60, 50, 30, 0.06); box-shadow: 0 0 0 1px rgba(60, 50, 30, 0.12); }
@@ -749,6 +771,15 @@ html[data-theme="light"] .search-result-item:hover { background: rgba(60, 50, 30
 .search-box > *:nth-child(2) { animation-delay: .3s; } .search-box > *:nth-child(3) { animation-delay: .38s; }
 .search-results.first .search-result-item, .search-results.first .search-chips { animation: sRise .5s cubic-bezier(.2, .8, .2, 1) both; }
 .search-results.first .search-result-item:nth-of-type(2) { animation-delay: .06s; } .search-results.first .search-result-item:nth-of-type(3) { animation-delay: .12s; } .search-results.first .search-result-item:nth-of-type(4) { animation-delay: .18s; } .search-results.first .search-result-item:nth-of-type(n+5) { animation-delay: .24s; }
+/* nút ESC: rê chuột → chữ ESC xoay mờ đi, dấu × xoay vào, nền chuyển sắc đồng; bấm = đóng */
+.search-box kbd.k-btn { position: relative; display: inline-grid; place-items: center; min-width: 46px; height: 28px; cursor: pointer; overflow: hidden; user-select: none; transition: background .25s ease, box-shadow .25s ease, transform .25s cubic-bezier(.2, 1.3, .4, 1), color .2s ease; }
+.search-box kbd.k-btn > span { grid-area: 1 / 1; display: grid; place-items: center; transition: transform .35s cubic-bezier(.2, .9, .25, 1.2), opacity .25s ease, filter .25s ease; }
+.search-box kbd.k-btn .k-x { opacity: 0; transform: rotate(-120deg) scale(.3); filter: blur(3px); }
+.search-box kbd.k-btn .k-x svg { width: 14px; height: 14px; }
+.search-box kbd.k-btn:hover, .search-box kbd.k-btn:focus-visible { background: rgba(214, 170, 100, 0.22); color: var(--color-bronze); transform: scale(1.1); outline: none; box-shadow: 0 0 0 1px rgba(214, 170, 100, 0.55), 0 0 18px rgba(214, 170, 100, 0.4); }
+.search-box kbd.k-btn:hover .k-esc, .search-box kbd.k-btn:focus-visible .k-esc { opacity: 0; transform: rotate(120deg) scale(.3); filter: blur(3px); }
+.search-box kbd.k-btn:hover .k-x, .search-box kbd.k-btn:focus-visible .k-x { opacity: 1; transform: none; filter: none; }
+.search-box kbd.k-btn:active { transform: scale(.94); }
 /* nút xoá (×) của ô tìm kiếm: vẽ lại nét mảnh màu đồng thay cho dấu × xanh mặc định của trình duyệt */
 .search-box input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; margin-left: 6px; cursor: pointer; opacity: .75; transition: opacity .15s ease, transform .2s ease;
   background: center / 14px 14px no-repeat url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23B08D57' stroke-width='2.2' stroke-linecap='round'><path d='M6 6l12 12M18 6L6 18'/></svg>"); }

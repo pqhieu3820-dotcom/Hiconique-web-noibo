@@ -456,6 +456,14 @@
     ph = document.createElement('div'); ph.className = 'search-ph'; ph.setAttribute('aria-hidden', 'true'); wrap.appendChild(ph);
     input.placeholder = '';
     input.addEventListener('input', function () { wrap.classList.toggle('has-value', !!input.value); });
+    // nút ESC: rê chuột vào thì chữ ESC xoay thành dấu × — bấm vào là đóng ô tìm kiếm
+    var kbd = overlay.querySelector('.search-box kbd');
+    if (kbd && !kbd.classList.contains('k-btn')) {
+      kbd.classList.add('k-btn'); kbd.setAttribute('role', 'button'); kbd.setAttribute('tabindex', '0'); kbd.setAttribute('aria-label', 'Đóng tìm kiếm'); kbd.title = 'Đóng (Esc)';
+      kbd.innerHTML = '<span class="k-esc">ESC</span><span class="k-x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span>';
+      kbd.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); closeSearch(); });
+      kbd.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); closeSearch(); } });
+    }
   }
   function phPhrases() {
     var list = [
@@ -509,6 +517,7 @@
     if (!overlay) return;
     if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
     overlay.classList.remove('closing');
+    Array.prototype.forEach.call(document.querySelectorAll('.notif-panel'), function (n) { n.hidden = true; });   // đóng bảng thông báo nếu đang mở
     overlay.hidden = false;
     searchFilter = '';
     if (input) { input.value = ''; input.placeholder = ''; }
@@ -1356,15 +1365,32 @@
     panel.hidden = true;
     document.body.appendChild(panel);
 
+    // 2026-10-04: hiệu ứng bảng thông báo — chuông rung lắc + chấm báo toé sáng, bảng "bung" ra từ chính chiếc chuông (mờ nhoè → nét, nảy nhẹ), các dòng thông báo
+    // lần lượt trượt vào; đóng thì co ngược về chuông. (css/portal.css: notifIn / notifOut / bellRing)
+    var panelTimer = null, settleTimer = null;
+    function openPanel() {
+      clearTimeout(panelTimer); clearTimeout(settleTimer);
+      panel.classList.remove('notif-out', 'settled');
+      position(); render(); panel.hidden = false;
+      var br = bell.getBoundingClientRect(), pr = panel.getBoundingClientRect();
+      panel.style.transformOrigin = Math.round(br.left + br.width / 2 - pr.left) + 'px -10px';
+      panel.classList.remove('notif-in'); void panel.offsetWidth; panel.classList.add('notif-in');
+      bell.classList.remove('bell-ring'); void bell.offsetWidth; bell.classList.add('bell-ring');
+      settleTimer = setTimeout(function () { panel.classList.add('settled'); }, 1000);   // sau đó vẽ lại danh sách không chạy lại hiệu ứng
+    }
+    function closePanel() {
+      if (panel.hidden || panel.classList.contains('notif-out')) return;
+      clearTimeout(settleTimer); panel.classList.remove('notif-in'); panel.classList.add('notif-out');
+      panelTimer = setTimeout(function () { panel.hidden = true; panel.classList.remove('notif-out', 'settled'); }, 300);
+    }
     bell.addEventListener('click', function (e) {
       e.preventDefault();
       e.stopPropagation();
-      if (panel.hidden) { position(); render(); panel.hidden = false; }
-      else { panel.hidden = true; }
+      if (panel.hidden || panel.classList.contains('notif-out')) openPanel(); else closePanel();
     });
     panel.addEventListener('click', function (e) { e.stopPropagation(); });
-    document.addEventListener('click', function () { panel.hidden = true; });
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') panel.hidden = true; });
+    document.addEventListener('click', function () { closePanel(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closePanel(); });
 
     function position() {
       var r = bell.getBoundingClientRect();
