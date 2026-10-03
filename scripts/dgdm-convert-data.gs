@@ -43,7 +43,7 @@ function dgdmConvertData() {
     const cur = sh.getRange(2, uC, n, 1).getValues(), old = sh.getRange(2, oC, n, 1).getValues(), outU = [], outO = []; let changed = 0, filled = 0;
     for (let i = 0; i < n; i++) {
       const c = String(cur[i][0]).trim(), o = String(old[i][0]).trim();
-      if (o) { outO.push([o]); outU.push([cur[i][0]]); filled++; unitCount[String(cur[i][0]).trim()] = (unitCount[String(cur[i][0]).trim()] || 0) + 1; continue; }
+      if (o) { const fx = (c === o && unitMap[o] && unitMap[o] !== o) ? unitMap[o] : cur[i][0]; if (String(fx) !== String(cur[i][0])) changed++; outO.push([o]); outU.push([fx]); filled++; const fk = String(fx).trim(); unitCount[fk] = (unitCount[fk] || 0) + 1; continue; }   // bù dòng đã có ĐVT cũ nhưng ĐVT chưa đổi (lần chạy lỗi trước)
       const nu = unitMap[c] || c; outO.push([c]); outU.push([nu]); if (nu !== c) changed++;
       unitCount[nu] = (unitCount[nu] || 0) + 1;
     }
@@ -66,10 +66,10 @@ function dgdmConvertData() {
     }
   });
   // --- 3. danh mục sống
-  if (oldLayout && uv[0].map(dgNorm_).indexOf(dgNorm_('Số dòng đang dùng')) === -1) {
+  if (oldLayout) {
     const rows = [['ĐVT chuẩn (mới)', 'Ghi chú điều kiện đo (mới)', 'Số dòng đang dùng']];
     std.forEach(function (s) { rows.push([s[0], stdNotes[s[0]] || '', unitCount[s[0]] || 0]); });
-    const c0 = uSh.getLastColumn() + 1; uSh.getRange(1, c0, rows.length, 3).setValues(rows);   // ghi sang CỘT MỚI bên phải, không xoá nội dung cũ (người dùng tự xoá cột cũ sau)
+    const hiNew = uv[0].map(dgNorm_).indexOf(dgNorm_('ĐVT chuẩn (mới)')), c0 = hiNew !== -1 ? hiNew + 1 : uSh.getLastColumn() + 1; uSh.getRange(1, c0, rows.length, 3).setValues(rows);   // ghi sang CỘT MỚI bên phải, không xoá nội dung cũ (người dùng tự xoá cột cũ sau)
     const extra = Object.keys(unitCount).filter(function (u) { return std.every(function (s) { return s[0] !== u; }); });
     L('DGDM-Đơn vị tính: viết lại ' + std.length + ' ĐVT chuẩn' + (extra.length ? ' — CÒN ĐVT ngoài danh sách: ' + extra.join(', ') : ' (không còn ĐVT ngoài danh sách)'));
   }
