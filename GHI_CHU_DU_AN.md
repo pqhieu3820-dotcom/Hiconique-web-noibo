@@ -88,6 +88,11 @@
 - `dgdm-db.js`: form thêm/sửa dùng ô CHỌN từ danh mục chuẩn (`specFor`): Tỉnh, ĐVT (tab Đơn vị tính), Nhóm tài nguyên, Loại (VL/M/NC), Hạng mục, Giai đoạn, Loại đơn giá (CT/TG/NCK/SB); combo (chọn hoặc gõ) cho Nguồn, Loại nhà... Mỗi cột có dòng giải thích (`HELP`, `HELP_MA`) + hộp "Bảng giải thích viết tắt & mã" (`glossHtml`, `GLOSS_COMMON` — nghĩa C4/BT/HD/TCD/MEP là quy ước dự đoán, cần người dùng xác nhận).
 - Mã TỰ SINH theo thông tin đã chọn (`AUTO`): Mã công việc = Hạng mục + số kế tiếp; Mã tài nguyên = Nhóm + số kế tiếp; Nhân công khoán SB-NC-[loại nhà]; Phần thô SB-TH-[loại nhà] (+ Mã trọn gói SB-TG-…); Mã hạng mục/Mã nhóm gợi ý tiền tố. Ô Mã khoá sẵn, CLICK ĐÚP để sửa tay. Đối chiếu bảng (`findSame`): báo/chặn lưu khi trùng mã; cảnh báo khi trùng tên công tác/vật tư. sw v260.
 
+## 2026-10-04 — Rà soát toàn bộ trang Đơn giá – Định mức (sw v262)
+- Lỗi/chậm đã sửa trong `dgdm-db.js`: (1) phản hồi cũ đến sau ghi đè phản hồi mới khi bấm tab/tìm nhanh → `reqId`; (2) mọi lần đổi tab/trang đều gọi Apps Script → bộ nhớ đệm `CACHE` (hiện ngay bản đã xem + cập nhật ngầm, xoá khi ghi/Tải lại); (3) sau sửa/xoá không còn tải lại cả bảng (vá dòng tại chỗ, chớp sáng dòng vừa sửa); (4) treo vô hạn → hết giờ 60s + nút "Thử lại"; (5) bấm ra ngoài/Esc làm mất form đang gõ → chỉ đóng khi chưa gõ, ×/Huỷ/Esc hỏi lại; (6) danh mục chuẩn (`dgdm_ref`) lưu cục bộ 1 ngày → mở form tức thì; (7) mã tự sinh từ bảng không đối chiếu lại thừa (tiết kiệm 1 lượt đọc sheet).
+- Thêm: "Thêm & nhập tiếp" (giữ tỉnh/hạng mục/nhóm), nhân bản tự tạo mã mới, nút "Xuất CSV" (theo bộ lọc, mọi trang), tiêu đề phụ hiện cả tổng toàn bảng, tooltip tab.
+- Còn lại (phía máy chủ): `getDgdmRows_` đọc cả sheet mỗi lần (7.446–14.688 dòng) ~ vài giây — muốn nhanh hơn nữa cần lưu đệm phía Apps Script.
+
 # Ghi chú dự án — đọc trước khi làm việc
 
 File này tồn tại để không phải hỏi lại các thông tin dưới đây mỗi khi đổi máy hoặc mở đoạn

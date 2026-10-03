@@ -109,6 +109,8 @@
     .db-gl-b { max-height: 220px; overflow: auto; padding: 0 12px 10px; }
     .db-gl-t { width: 100%; border-collapse: collapse; font-size: .75rem; line-height: 1.5; }
     .db-gl-t th { text-align: left; vertical-align: top; white-space: nowrap; padding: 4px 12px 4px 0; color: var(--es-text); } .db-gl-t td { padding: 4px 0; color: var(--es-muted); }
+    .db-table tbody tr.flash td { animation: dbFlash 1.4s ease-out; }
+    @keyframes dbFlash { 0% { background: color-mix(in srgb, var(--es-bronze) 38%, var(--es-surface)); } 100% { background: var(--es-surface); } }
     .db-conv { margin: 0 0 12px; padding: 9px 12px; border-radius: 10px; font-size: .8125rem; line-height: 1.5; background: color-mix(in srgb, var(--es-bronze) 10%, transparent); border: 1px solid color-mix(in srgb, var(--es-bronze) 30%, transparent); }
     .db-chk { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: .8125rem; cursor: pointer; }
     .db-chk input { width: 16px; height: 16px; accent-color: var(--es-bronze); }
@@ -183,6 +185,7 @@
           <div class="db-pop" id="dbColPop" hidden><h5>Cột hiển thị <button type="button" class="es-x" id="dbColAll" style="float:right;font-size:.6875rem;width:auto;padding:0 6px;text-transform:none;letter-spacing:0">hiện hết</button></h5><div id="dbColList"></div></div>
         </div>
         <button type="button" class="db-ib" id="dbDens" title="Giãn dòng / gọn dòng"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>Giãn dòng</button>
+        <button type="button" class="db-ib" id="dbExport" title="Xuất CSV theo bộ lọc đang xem (mọi trang)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg> Xuất CSV</button>
         <button type="button" class="db-ib" id="dbReload" title="Tải lại từ Google Sheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5M3 21v-5h5"/></svg>Tải lại</button>
         <button type="button" class="es-btn es-btn-primary" id="dbAdd" hidden>+ Thêm dòng <span class="db-key" style="color:inherit;border-color:currentColor;opacity:.7">N</span></button>
       </div>
