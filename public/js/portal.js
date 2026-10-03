@@ -1647,6 +1647,7 @@
   function initBrandLinks() {
     Array.prototype.forEach.call(document.querySelectorAll('.site-header .brand'), function (a) {
       if (a.__brandAnim) return; a.__brandAnim = true;
+      a.addEventListener('mouseenter', function () { a.setAttribute('data-bh', String(1 + Math.floor(Math.random() * 10))); });   // 10 kiểu hiệu ứng rê chuột, ngẫu nhiên mỗi lần rê vào
       a.addEventListener('click', function (e) {
         if (e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
         if (a.classList.contains('brand-go')) { e.preventDefault(); return; }
