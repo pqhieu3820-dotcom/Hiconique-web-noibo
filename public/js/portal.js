@@ -1675,7 +1675,7 @@
       if (!tip) {
         tip = document.createElement('div'); tip.className = 'brand-tip float'; tip.setAttribute('role', 'tooltip');
         tip.innerHTML = '<b class="bt-title">Về trang chủ</b>' +
-          '<span class="bt-row"><kbd>Bấm</kbd><span>Về trang chủ (logo chạy ngẫu nhiên 1 trong 10 hiệu ứng rồi chuyển trang; đang ở trang chủ thì cuộn mượt lên đầu).</span></span>' +
+          '<span class="bt-row"><kbd>Bấm</kbd><span>Về trang chủ (đang ở trang chủ thì cuộn mượt lên đầu).</span></span>' +
           '<span class="bt-row"><kbd>Ctrl / ⌘ + bấm</kbd><span>Mở trang chủ ở <b>tab mới</b> — mở ngay, không chờ hiệu ứng.</span></span>';
         document.body.appendChild(tip);
       }
