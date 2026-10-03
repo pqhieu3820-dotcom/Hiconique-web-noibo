@@ -561,6 +561,9 @@ html.theme-fade, html.theme-fade *, html.theme-fade *::before, html.theme-fade *
 .bt-row b { color: var(--color-text); font-weight: 600; }
 .bt-row kbd { align-self: flex-start; font: 600 .625rem var(--font-mono, monospace); padding: 2px 7px; border-radius: 6px; background: color-mix(in srgb, var(--color-bronze) 14%, transparent); color: var(--color-bronze); border: 0; box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-bronze) 30%, transparent); }
 .brand-info:hover .bt-row, .brand-info.show .bt-row { animation: notifRow .45s cubic-bezier(.2, .8, .2, 1) both; } .brand-info:hover .bt-row:nth-of-type(2), .brand-info.show .bt-row:nth-of-type(2) { animation-delay: .1s; }
+.brand-tip.float { position: fixed; top: 0; left: 0; margin: 0; transform-origin: 0 0; transform: translateY(6px) scale(.94); transition: opacity .2s ease, transform .3s cubic-bezier(.2, 1.3, .4, 1), filter .2s ease, visibility 0s linear .3s; }
+.brand-tip.float::before { display: none; }
+.brand-tip.float.show { opacity: 1; visibility: visible; transform: none; filter: none; transition-delay: 0s; }
 @media (prefers-reduced-motion: reduce) { .avatar, .avatar.avatar-pop, .avatar::after, .user-menu-panel.um-in, .user-menu-panel.um-out, .user-menu-panel.um-in > *, .brand-tip, .bt-row { animation: none !important; transition: none !important; } }
 
 /* ===== CHUẨN HÌNH DẠNG AVATAR TOÀN HỆ THỐNG (chốt cứng 2026-09-11) =====

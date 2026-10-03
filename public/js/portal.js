@@ -1666,21 +1666,29 @@
   }
   initBrandLinks();
 
-  // 2026-10-04: dấu "i" nhỏ cạnh logo — rê chuột (hoặc bấm trên điện thoại) hiện thẻ giải thích chức năng của logo
+  // 2026-10-04: rê chuột vào chữ "HICONIQUE" cạnh logo → thẻ giải thích chức năng đi theo con chuột (rê sang hình logo thì ẩn)
   function initBrandInfo() {
-    Array.prototype.forEach.call(document.querySelectorAll('.site-header .brand'), function (a) {
-      if (a.__brandInfo || !a.parentNode) return; a.__brandInfo = true;
-      var wrap = document.createElement('span'); wrap.className = 'brand-info';
-      wrap.innerHTML = '<button type="button" class="brand-info-btn" aria-label="Chức năng của logo" aria-describedby="brandTip"><span>i</span></button>' +
-        '<span class="brand-tip" id="brandTip" role="tooltip">' +
-          '<b class="bt-title">Về trang chủ</b>' +
+    if (!window.matchMedia || !matchMedia('(hover: hover)').matches) return;
+    var tip = null;
+    Array.prototype.forEach.call(document.querySelectorAll('.site-header .brand .brand-name'), function (nm) {
+      if (nm.__brandInfo) return; nm.__brandInfo = true;
+      if (!tip) {
+        tip = document.createElement('div'); tip.className = 'brand-tip float'; tip.setAttribute('role', 'tooltip');
+        tip.innerHTML = '<b class="bt-title">Về trang chủ</b>' +
           '<span class="bt-row"><kbd>Bấm</kbd><span>Về trang chủ (logo chạy ngẫu nhiên 1 trong 10 hiệu ứng rồi chuyển trang; đang ở trang chủ thì cuộn mượt lên đầu).</span></span>' +
-          '<span class="bt-row"><kbd>Ctrl / ⌘ + bấm</kbd><span>Mở trang chủ ở <b>tab mới</b> — mở ngay, không chờ hiệu ứng.</span></span>' +
-        '</span>';
-      a.parentNode.insertBefore(wrap, a.nextSibling);
-      var btn = wrap.querySelector('.brand-info-btn');
-      btn.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); wrap.classList.toggle('show'); });   // điện thoại: bấm để xem
-      document.addEventListener('click', function () { wrap.classList.remove('show'); });
+          '<span class="bt-row"><kbd>Ctrl / ⌘ + bấm</kbd><span>Mở trang chủ ở <b>tab mới</b> — mở ngay, không chờ hiệu ứng.</span></span>';
+        document.body.appendChild(tip);
+      }
+      function move(e) {
+        var w = tip.offsetWidth, h = tip.offsetHeight, x = e.clientX + 16, y = e.clientY + 18;
+        if (x + w > innerWidth - 8) x = innerWidth - w - 8;
+        if (y + h > innerHeight - 8) y = e.clientY - h - 14;
+        tip.style.left = Math.max(8, x) + 'px'; tip.style.top = Math.max(8, y) + 'px';
+      }
+      nm.addEventListener('mouseenter', function (e) { move(e); tip.classList.add('show'); });
+      nm.addEventListener('mousemove', move);
+      nm.addEventListener('mouseleave', function () { tip.classList.remove('show'); });
+      nm.addEventListener('click', function () { tip.classList.remove('show'); });
     });
   }
   initBrandInfo();
