@@ -1581,6 +1581,16 @@ function dgdmWrite_(ss, d) {
       for (const h in exp) { const i = ci(h); if (i === -1 || !same(cur[i], exp[h])) return 'Dòng ' + n + ' đã bị đổi bởi người khác (cột ' + h + ') — tải lại danh sách rồi làm lại.'; }
       return '';
     };
+    // 2026-10-04: ưu tiên tìm theo MÃ (Tỉnh/Thành + Mã) — số dòng chỉ là lớp tìm thứ hai: nếu dòng đó không còn khớp (sheet bị chèn/xoá/sắp xếp lại) thì dò theo mã trên cả sheet
+    const locate = function (n0) {
+      const e0 = checkExpect(n0); if (!e0) return { n: n0 };
+      const keys = Object.keys(exp).filter(function (h) { return ci(h) !== -1 && String(exp[h]).trim() !== ''; });
+      if (!keys.length || lastRow() <= info.hr) return { err: e0 };
+      const allv = sh.getRange(info.hr + 1, 1, lastRow() - info.hr, info.lc).getValues(), hit = [];
+      allv.forEach(function (r, i) { if (keys.every(function (h) { return same(r[ci(h)], exp[h]); })) hit.push(info.hr + 1 + i); });
+      if (hit.length === 1) return { n: hit[0] };
+      return { err: hit.length ? 'Có ' + hit.length + ' dòng trùng mã — tải lại danh sách rồi chọn đúng dòng.' : e0 };
+    };
     const textCols = function () { return info.headers.map(function (h, i) { return /^mã/i.test(dgNorm_(h)) || /spec|tên|tổ chức|nội dung|url/i.test(h) ? i : -1; }).filter(function (i) { return i !== -1; }); };
     const conv = function (h, v) { return (v === '' || v == null) ? '' : (priceDbIsNumCol_(h) ? dgdmToNumber_(v) : v); };
     // các dòng cùng "mặt hàng" ở mọi tỉnh (khớp theo Mã cũ; dòng mới không có Mã cũ thì khớp theo mã mới)
@@ -1591,7 +1601,7 @@ function dgdmWrite_(ss, d) {
     };
     let res = { ok: true };
     if (op === 'update') {
-      const n = parseInt(d.row, 10), err = checkExpect(n); if (err) return { ok: false, error: err };
+      const loc = locate(parseInt(d.row, 10)); if (loc.err) return { ok: false, error: loc.err }; const n = loc.n;
       const cur = rowVals(n), targets = d.all && pI !== -1 ? siblings(cur) : [n], changes = [];
       Object.keys(vals).forEach(function (h) {
         const i = ci(h); if (i === -1) return;
@@ -1634,7 +1644,7 @@ function dgdmWrite_(ss, d) {
       dgdmLog_(ss, actor, 'THÊM' + (newRows.length > 1 ? ' (×' + newRows.length + ' tỉnh)' : ''), sh.getName(), start, (pI !== -1 ? (d.all ? 'mọi tỉnh' : targets[0]) + ' · ' : '') + (ma || code || String(newRows[0][0])), heads.map(function (h, i) { return newRows[0][i] === '' ? '' : h + '=' + newRows[0][i]; }).filter(String).join(' | '));
       res.added = newRows.length; res.skipped = skipped.length;
     } else if (op === 'delete') {
-      const n = parseInt(d.row, 10), err = checkExpect(n); if (err) return { ok: false, error: err };
+      const loc = locate(parseInt(d.row, 10)); if (loc.err) return { ok: false, error: loc.err }; const n = loc.n;
       const cur = rowVals(n), targets = d.all && pI !== -1 ? siblings(cur) : [n];
       targets.slice().sort(function (a, b) { return b - a; }).forEach(function (t) {
         const rv = rowVals(t);
