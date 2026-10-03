@@ -208,13 +208,28 @@
     'DGDM-Nhân công khoán': { re: /^SB-NC-[A-Z0-9]+$/, hint: 'SB-NC-[loại nhà], VD SB-NC-C4', loai: 'SB' },
     'DGDM-Phần thô và trọn gói': { re: /^SB-TH-[A-Z0-9]+$/, hint: 'SB-TH-[loại nhà] (Mã trọn gói: SB-TG-[loại nhà]), VD SB-TH-C4 / SB-TG-C4', loai: 'SB' }
   };
-  var CAT = { hm: null, gr: null };
+  // mã tự sinh theo thông tin đã chọn (cột phụ thuộc → mã); partial = chỉ gợi ý tiền tố, người dùng gõ nốt
+  var CODEF = { 'DGDM-Giai đoạn hạng mục': 'Mã hạng mục', 'DGDM-Nhóm tài nguyên': 'Mã nhóm' };
+  var NAMEF = { 'DGDM-Mã công việc công tác': 'Công tác', 'DGDM-Vật tư thiết bị': 'Vật tư/thiết bị', 'DGDM-Giai đoạn hạng mục': 'Tên hạng mục', 'DGDM-Nhóm tài nguyên': 'Tên nhóm' };
+  var AUTO = {
+    'DGDM-Mã công việc công tác': { deps: ['Hạng mục'], ph: 'Chọn Hạng mục để tự tạo mã', make: function (f) { var k = f('Hạng mục') ? f('Hạng mục').value.trim() : ''; return k ? nextCode(k + '-', 3) : ''; } },
+    'DGDM-Vật tư thiết bị': { deps: ['Nhóm tài nguyên'], ph: 'Chọn Nhóm tài nguyên để tự tạo mã', make: function (f) { var k = f('Nhóm tài nguyên') ? f('Nhóm tài nguyên').value.trim() : ''; return k ? nextCode(k + '-', /^NC-/.test(k) ? 2 : 4) : ''; } },
+    'DGDM-Nhân công khoán': { deps: ['Loại nhà'], ph: 'Chọn Loại nhà để tự tạo mã', make: function (f) { var v = f('Loại nhà') ? f('Loại nhà').value.trim().toUpperCase().replace(/\s+/g, '') : ''; return v ? 'SB-NC-' + v : ''; } },
+    'DGDM-Phần thô và trọn gói': { deps: ['Loại nhà'], ph: 'Chọn Loại nhà để tự tạo mã', make: function (f) {
+      var v = f('Loại nhà') ? f('Loại nhà').value.trim().toUpperCase().replace(/\s+/g, '') : '';
+      if (f('Mã trọn gói')) f('Mã trọn gói').value = v ? 'SB-TG-' + v : '';
+      return v ? 'SB-TH-' + v : ''; } },
+    'DGDM-Giai đoạn hạng mục': { deps: ['Mã GĐ'], partial: true, ph: 'VD TH-BT (Mã GĐ + 2 chữ)', make: function (f) { var v = f('Mã GĐ') ? f('Mã GĐ').value.trim().toUpperCase() : ''; return v ? v + '-' : ''; } },
+    'DGDM-Nhóm tài nguyên': { deps: ['Loại'], partial: true, ph: 'VD VL-BT (Loại + 2 ký tự)', make: function (f) { var v = f('Loại') ? f('Loại').value.trim().toUpperCase() : ''; return v ? v + '-' : ''; } }
+  };
+  var CAT = { hm: null, gr: null, gd: null };
   function loadCats() {
     if (CAT.hm) return Promise.resolve(CAT);
     var get = function (s) { return jget(API + '?action=getDgdmRows&sheet=' + encodeURIComponent(s) + '&limit=500').then(function (d) { return d; }); };
     return Promise.all([get('DGDM-Giai đoạn hạng mục'), get('DGDM-Nhóm tài nguyên')]).then(function (r) {
       var a = r[0], b = r[1], ix = function (d, n) { return (d.headers || []).indexOf(n); };
       CAT.hm = {}; (a.rows || []).forEach(function (x) { var k = String(x.v[ix(a, 'Mã hạng mục')] || '').trim(); if (k) CAT.hm[k] = { gd: String(x.v[ix(a, 'Mã GĐ')] || ''), name: String(x.v[ix(a, 'Tên giai đoạn')] || '') + ' – ' + String(x.v[ix(a, 'Tên hạng mục')] || '') }; });
+      CAT.gd = {}; (a.rows || []).forEach(function (x) { var k = String(x.v[ix(a, 'Mã GĐ')] || '').trim(); if (k && !CAT.gd[k]) CAT.gd[k] = String(x.v[ix(a, 'Tên giai đoạn')] || ''); });
       CAT.gr = {}; (b.rows || []).forEach(function (x) { var k = String(x.v[ix(b, 'Mã nhóm')] || '').trim(); if (k) CAT.gr[k] = { loai: String(x.v[ix(b, 'Loại')] || ''), name: String(x.v[ix(b, 'Tên nhóm')] || '') }; });
       return CAT;
     });
@@ -228,28 +243,70 @@
       return prefix + String(max + 1).padStart(digits, '0');
     });
   }
-  function wireConv(ov, isAdd) {
-    var c = CONV[st.data.sheet]; if (!c) return;
-    var f = function (h) { return ov.querySelector('[data-h="' + h + '"]'); }, ma = f('Mã'), note = document.createElement('div');
-    note.className = 'db-conv'; note.innerHTML = '<b>Quy ước mã:</b> ' + esc(c.hint) + (c.key ? ' — nhập <b>' + esc(c.key) + '</b> để tự gợi ý mã kế tiếp.' : '');
-    ov.querySelector('.db-form').before(note);
-    if (isAdd && c.loai && f('Loại đơn giá') && !f('Loại đơn giá').value) f('Loại đơn giá').value = c.loai;
-    if (!c.key || !f(c.key)) return;
-    loadCats().then(function (cat) {
-      var key = f(c.key), dl = document.createElement('datalist'), src = c.key === 'Hạng mục' ? cat.hm : cat.gr;
-      dl.id = 'dbDl' + Date.now(); dl.innerHTML = Object.keys(src).map(function (k) { return '<option value="' + esc(k) + '">' + esc(src[k].name) + '</option>'; }).join('');
-      ov.appendChild(dl); key.setAttribute('list', dl.id); key.setAttribute('autocomplete', 'off');
-      var apply = function () {
-        var k = key.value.trim().toUpperCase(); key.value = k; var it = src[k]; if (!it) return;
-        if (f('Nhóm')) f('Nhóm').value = it.name;
-        if (c.key === 'Hạng mục' && f('Giai đoạn')) f('Giai đoạn').value = it.gd;
-        if (!isAdd || (ma.value && ma.dataset.auto !== '1')) return;
-        var digits = c.digits || (it.loai === 'NC' || /^NC-/.test(k) ? 2 : 4);
-        ma.placeholder = 'Đang tìm số kế tiếp…';
-        nextCode(k + '-', digits).then(function (code) { if (!ma.value || ma.dataset.auto === '1') { ma.value = code; ma.dataset.auto = '1'; } ma.placeholder = ''; }, function () { ma.placeholder = ''; });
+  // đối chiếu với bảng: các dòng (tỉnh đang chọn) có cùng giá trị ở cột field, trừ chính dòng đang sửa
+  function findSame(field, value, exceptRow) {
+    var url = API + '?action=getDgdmRows&sheet=' + encodeURIComponent(st.data.sheet) + '&province=' + encodeURIComponent(st.prov) + '&q=' + encodeURIComponent(value) + '&limit=200';
+    return jget(url).then(function (d) {
+      var ci = (d.headers || []).indexOf(field), ni = (d.headers || []).indexOf(NAMEF[st.data.sheet] || '');
+      return (d.rows || []).filter(function (r) { return norm(r.v[ci]) === norm(value) && (!exceptRow || r.r !== exceptRow.r); }).map(function (r) { return { r: r, name: ni !== -1 ? String(r.v[ni] || '') : '', code: String(r.v[(d.headers || []).indexOf(CODEF[st.data.sheet] || 'Mã')] || '') }; });
+    });
+  }
+  function wireConv(ov, isAdd, row) {
+    var sh = st.data.sheet, c = CONV[sh], cf = CODEF[sh] || 'Mã', au = AUTO[sh];
+    var f = function (h) { return ov.querySelector('[data-h="' + h + '"]'); }, ma = f(cf), nf = NAMEF[sh] ? f(NAMEF[sh]) : null;
+    if (c) {
+      var note = document.createElement('div');
+      note.className = 'db-conv'; note.innerHTML = '<b>Quy ước mã:</b> ' + esc(c.hint) + (au && !au.partial ? ' — chọn thông tin ở dưới, <b>mã tự hiện</b> và được đối chiếu với bảng để không trùng; <b>click đúp</b> vào ô Mã để sửa tay.' : '');
+      ov.querySelector('.db-form').before(note);
+    }
+    if (isAdd && c && c.loai && f('Loại đơn giá') && !f('Loại đơn giá').value) f('Loại đơn giá').value = c.loai;
+    if (!ma) return;
+    var stl = document.createElement('small'); stl.className = 'db-codest'; ma.closest('label').appendChild(stl);
+    var manual = !isAdd || !au, seq = 0;
+    var setSt = function (msg, cls) { stl.textContent = msg; stl.className = 'db-codest ' + (cls || ''); };
+    if (isAdd && au && !au.partial) {
+      ma.readOnly = true; ma.classList.add('db-auto'); ma.placeholder = au.ph; ma.title = 'Click đúp để sửa tay';
+      ma.addEventListener('dblclick', function () { manual = true; ma.readOnly = false; ma.classList.remove('db-auto'); ma.focus(); ma.select(); setSt('Đang sửa tay — mã sẽ được đối chiếu khi bạn rời ô', 'warn'); });
+    } else if (au) ma.placeholder = au.ph;
+    var check = function () {
+      var code = ma.value.trim(); ma.dataset.dup = '';
+      if (!code || (au && au.partial && /-$/.test(code))) { setSt(''); return Promise.resolve(); }
+      var my = ++seq; setSt('Đang đối chiếu với bảng…', '');
+      return findSame(cf, code, isAdd ? null : row).then(function (hit) {
+        if (my !== seq) return;
+        if (hit.length) { ma.dataset.dup = '1'; setSt('⚠ Mã đã có trong bảng' + (hit[0].name ? ' (“' + hit[0].name + '”)' : '') + ' — chọn số khác', 'bad'); }
+        else setSt('✔ Mã chưa trùng với dòng nào trong bảng', 'ok');
+      }, function () { if (my === seq) setSt('Không đối chiếu được (mạng) — hệ thống kiểm tra lại khi lưu', 'warn'); });
+    };
+    ma.addEventListener('input', function () { ma.dataset.auto = ''; setSt(''); if (au && au.partial) manual = true; });   // gõ tay vào ô mã gợi ý-tiền-tố thì thôi tự ghi đè
+    ma.addEventListener('change', check); ma.addEventListener('blur', function () { if (!ma.readOnly) check(); });
+    if (nf) {
+      var nst = document.createElement('small'); nst.className = 'db-codest'; nf.closest('label').appendChild(nst);
+      var nseq = 0;
+      var nameCheck = function () {
+        var v = nf.value.trim(); nst.textContent = ''; nst.className = 'db-codest'; if (v.length < 3) return;
+        var my = ++nseq;
+        findSame(NAMEF[sh], v, isAdd ? null : row).then(function (hit) {
+          if (my !== nseq || !hit.length) return;
+          nst.className = 'db-codest warn'; nst.textContent = '⚠ Trùng tên với mã ' + hit[0].code + ' — kiểm tra xem có phải việc đã có không';
+        }, function () { /* bỏ qua */ });
       };
-      key.addEventListener('change', apply); key.addEventListener('blur', apply);
-      ma.addEventListener('input', function () { ma.dataset.auto = ''; });
+      nf.addEventListener('blur', nameCheck);
+    }
+    var recompute = function () {
+      if (!au || !isAdd || manual) return;
+      Promise.resolve(au.make(f)).then(function (code) { if (manual) return; ma.value = code || ''; ma.dataset.auto = '1'; if (au.partial) { if (!code) setSt(''); else ma.focus(); } else check(); }, function () { setSt('Không tạo được mã tự động — click đúp để nhập tay', 'warn'); });
+    };
+    loadCats().then(function (cat) {
+      (au ? au.deps : []).forEach(function (d) {
+        var el = f(d); if (!el) return;
+        ['change', 'blur'].forEach(function (ev) { el.addEventListener(ev, function () {
+          var k = el.value.trim();
+          if (d === 'Hạng mục' && cat.hm[k]) { if (f('Nhóm')) f('Nhóm').value = cat.hm[k].name; if (f('Giai đoạn')) f('Giai đoạn').value = cat.hm[k].gd; }
+          if (d === 'Nhóm tài nguyên' && cat.gr[k]) { if (f('Nhóm')) f('Nhóm').value = cat.gr[k].name; if (f('Loại') && cat.gr[k].loai) f('Loại').value = cat.gr[k].loai; }
+          recompute();
+        }); });
+      });
     }).catch(function () {});
   }
   function convError(vals) {
@@ -268,16 +325,127 @@
     if (!Object.keys(ex).length) { var j = h.findIndex(function (x) { return x !== ''; }); if (j !== -1) ex[h[j]] = row.v[j]; }
     return ex;
   }
+  // ---------- 2026-10-04: ô CHỌN từ danh mục chuẩn + giải thích từng cột + bảng viết tắt + MÃ TỰ SINH có kiểm tra trùng ----------
+  var REF = null, REFP = null;
+  function loadRefs() {
+    if (REF) return Promise.resolve(REF);
+    if (REFP) return REFP;
+    var get = function (s) { return jget(API + '?action=getDgdmRows&sheet=' + encodeURIComponent(s) + '&limit=500').catch(function () { return { headers: [], rows: [] }; }); };
+    REFP = Promise.all([loadCats(), get('DGDM-Đơn vị tính'), get('DGDM-Nguồn')]).then(function (r) {
+      var u = r[1], so = r[2], ui = (u.headers || []).indexOf('ĐVT chuẩn'); if (ui < 0) ui = 0;
+      var units = [], seen = {};
+      (u.rows || []).forEach(function (x) { var v = String(x.v[ui] == null ? '' : x.v[ui]).trim(); if (v && !seen[v]) { seen[v] = 1; units.push(v); } });
+      var sources = (so.rows || []).map(function (x) { return { v: String(x.v[0] == null ? '' : x.v[0]).trim(), l: String(x.v[1] == null ? '' : x.v[1]).trim() }; }).filter(function (o) { return o.v; });
+      REF = { cat: r[0], units: units, sources: sources };
+      return REF;
+    }).catch(function () { REFP = null; return null; });
+    return REFP;
+  }
+  var LOAI_TN = [{ v: 'VL', l: 'VL — Vật liệu' }, { v: 'M', l: 'M — Máy thi công / thiết bị' }, { v: 'NC', l: 'NC — Nhân công' }];
+  var LOAI_DG = [{ v: 'CT', l: 'CT — Đơn giá công tác hoàn chỉnh (theo định mức)' }, { v: 'TG', l: 'TG — Trọn gói (theo m² sàn)' }, { v: 'NCK', l: 'NCK — Nhân công khoán' }, { v: 'SB', l: 'SB — Đơn giá sơ bộ theo m² sàn' }];
+  var OPEN_COLS = ['loại nhà', 'phần thô điển hình', 'trọn gói điển hình', 'nhóm chi phí dự toán', 'đưa vào phần mềm dự toán?', 'vùng', 'vùng giá cần tách'];
+  // giải thích từng cột (khoá = tên cột viết thường)
+  var HELP = {
+    'tỉnh/thành': 'Tỉnh/thành áp dụng giá. Mỗi tỉnh có 1 dòng riêng cho cùng một mã; muốn tạo cho mọi tỉnh thì tích ô “Thêm cho mọi tỉnh” ở cuối form.',
+    'mã hiệu đm': 'Mã hiệu định mức chuẩn để nhập/xuất sang phần mềm dự toán: theo Định mức xây dựng của Nhà nước (VD AF.11110) hoặc thư viện ETA / G8 / F1. Việc chưa có trong ĐM Nhà nước dùng mã nội bộ, nguồn HICONIQUE.',
+    'nhóm': 'Nhóm công việc/vật tư để lọc và gom báo giá. Tự điền theo Hạng mục / Nhóm tài nguyên đã chọn.',
+    'hạng mục': 'Hạng mục thi công (VD BT = Bê tông, XD = Xây). Mã công việc được tạo tự động từ mã hạng mục này.',
+    'giai đoạn': 'Giai đoạn của dự án (VD TK = Thiết kế, TH = Phần thô). Tự điền theo Hạng mục.',
+    'công tác': 'Tên công tác thi công — viết ngắn gọn, đúng như ghi trong dự toán. Hệ thống báo nếu trùng tên công tác đã có.',
+    'phạm vi/spec': 'Phạm vi công việc đã bao gồm + quy cách kỹ thuật chính (mác, kích thước, vật liệu, điều kiện thi công).',
+    'ghi chú loại trừ': 'Những việc/chi phí KHÔNG nằm trong đơn giá này (để tránh tính trùng hoặc thiếu).',
+    'vl thấp': 'Đơn giá VẬT LIỆU thấp nhất ghi nhận tại tỉnh, cho 1 ĐVT. Đơn vị: đồng.', 'vl cao': 'Đơn giá VẬT LIỆU cao nhất ghi nhận tại tỉnh, cho 1 ĐVT. Đơn vị: đồng.',
+    'nc thấp': 'Đơn giá NHÂN CÔNG thấp nhất ghi nhận tại tỉnh, cho 1 ĐVT. Đơn vị: đồng.', 'nc cao': 'Đơn giá NHÂN CÔNG cao nhất ghi nhận tại tỉnh, cho 1 ĐVT. Đơn vị: đồng.',
+    'dght thấp': 'Đơn giá hoàn thiện (DGHT) thấp = vật liệu + nhân công, cho 1 ĐVT. Đơn vị: đồng.', 'dght cao': 'Đơn giá hoàn thiện (DGHT) cao = vật liệu + nhân công, cho 1 ĐVT. Đơn vị: đồng.',
+    'ncc/đơn vị chào giá': 'Nhà cung cấp / đơn vị đã chào giá, hoặc nguồn của mức giá này.',
+    'loại đơn giá': 'Phân loại đơn giá: CT công tác, TG trọn gói, NCK nhân công khoán, SB sơ bộ theo m². Tự điền theo từng bảng.',
+    'loại nhà': 'Loại công trình áp dụng đơn giá sơ bộ (chọn trong danh sách hoặc gõ mã mới). Mã đơn giá được tạo tự động từ ô này.',
+    'mã trọn gói': 'Mã đơn giá trọn gói tương ứng, dạng SB-TG-[loại nhà]. Tự tạo theo Loại nhà.',
+    'phần thô điển hình': 'Mô tả công trình điển hình dùng để tính đơn giá phần thô.', 'trọn gói điển hình': 'Mô tả công trình điển hình dùng để tính đơn giá trọn gói.',
+    'quy mô/spec giả định': 'Quy mô và quy cách giả định khi lập đơn giá sơ bộ (số tầng, diện tích, mức hoàn thiện…).',
+    'phần thô thấp': 'Đơn giá phần thô thấp nhất, theo m² sàn. Đơn vị: đồng/m².', 'phần thô cao': 'Đơn giá phần thô cao nhất, theo m² sàn. Đơn vị: đồng/m².',
+    'trọn gói thấp': 'Đơn giá trọn gói thấp nhất, theo m² sàn. Đơn vị: đồng/m².', 'trọn gói cao': 'Đơn giá trọn gói cao nhất, theo m² sàn. Đơn vị: đồng/m².',
+    'giá thấp': 'Giá thấp nhất ghi nhận tại tỉnh, cho 1 ĐVT. Đơn vị: đồng.', 'giá cao': 'Giá cao nhất ghi nhận tại tỉnh, cho 1 ĐVT. Đơn vị: đồng.',
+    'vật tư/thiết bị': 'Tên vật tư/thiết bị đầy đủ (kèm chủng loại chính). Hệ thống báo nếu trùng tên đã có.',
+    'nhóm tài nguyên': 'Nhóm tài nguyên (VD VL-BT = vật liệu bê tông). Mã vật tư được tạo tự động từ nhóm này.',
+    'loại': 'Loại tài nguyên: VL vật liệu · M máy/thiết bị · NC nhân công.',
+    'spec kỹ thuật tối thiểu': 'Yêu cầu kỹ thuật tối thiểu để mức giá này hợp lệ (tiêu chuẩn, mác, kích thước…).',
+    'ncc/brand giao tại tỉnh': 'Nhà cung cấp / thương hiệu có giao hàng tại tỉnh này.',
+    'nguồn': 'Nguồn của mức giá (mã nguồn S01…, xem tab Nguồn).',
+    'mã gđ': 'Mã giai đoạn 2 chữ cái, duy nhất (VD TK, TH).', 'tên giai đoạn': 'Tên đầy đủ của giai đoạn.',
+    'mã hạng mục': 'Mã hạng mục dạng [Mã GĐ]-[2 chữ], VD TH-BT. Tự gợi ý theo Mã GĐ; click đúp để sửa tay.', 'tên hạng mục': 'Tên đầy đủ của hạng mục.',
+    'phạm vi công việc': 'Phạm vi các công việc thuộc hạng mục này.', 'nhóm chi phí dự toán': 'Nhóm chi phí khi lập dự toán (VD chi phí xây dựng, chi phí tư vấn).',
+    'đưa vào phần mềm dự toán?': 'Có đưa hạng mục này vào phần mềm dự toán (ETA/G8/F1) khi xuất hay không.', 'mã cũ tương ứng': 'Mã cũ trước khi đổi quy ước, dùng để đối chiếu.',
+    'đvt chuẩn': 'Đơn vị tính chuẩn dùng thống nhất toàn hệ thống.', 'đvt cũ trên app': 'Cách ghi cũ của đơn vị này trên app (để đổi sang chuẩn).', 'chuyển thành': 'ĐVT chuẩn sẽ thay thế cho cách ghi cũ.', 'ghi chú điều kiện đo': 'Điều kiện đo bóc áp dụng cho đơn vị này.',
+    'mã nhóm': 'Mã nhóm tài nguyên dạng [Loại]-[2 ký tự], VD VL-BT. Tự gợi ý theo Loại; click đúp để sửa tay.', 'tên nhóm': 'Tên đầy đủ của nhóm tài nguyên.', 'ví dụ': 'Ví dụ vật tư/nhân công thuộc nhóm.',
+    'vùng': 'Vùng địa lý/vùng giá của tỉnh.', 'vùng giá cần tách': 'Các tỉnh/khu vực có mức giá khác nhau cần tách riêng.', 'mã tỉnh': 'Mã tỉnh 3 chữ cái (VD HPH = Hải Phòng).'
+  };
+  var HELP_MA = {
+    'DGDM-Mã công việc công tác': 'Quy ước [Giai đoạn]-[Hạng mục]-[STT 3 số]. VD TH-BT-001 = Phần thô – Bê tông – việc số 1. Số 900–999 dành cho việc phát sinh (VO). Chọn Hạng mục, mã tự sinh; click đúp để sửa tay.',
+    'DGDM-Vật tư thiết bị': 'Quy ước [Loại]-[Nhóm 2 ký tự]-[STT]. VD VL-BT-0001 = Vật liệu – Bê tông – số 1 (VL, M: 4 số; NC: 2 số). Chọn Nhóm tài nguyên, mã tự sinh; click đúp để sửa tay.',
+    'DGDM-Nhân công khoán': 'Quy ước SB-NC-[loại nhà], VD SB-NC-C4 = Sơ bộ – Nhân công – nhà cấp 4. Chọn Loại nhà, mã tự sinh; click đúp để sửa tay.',
+    'DGDM-Phần thô và trọn gói': 'Quy ước SB-TH-[loại nhà], VD SB-TH-C4 = Sơ bộ – Phần thô – nhà cấp 4 (mã trọn gói: SB-TG-[loại nhà]). Chọn Loại nhà, mã tự sinh; click đúp để sửa tay.'
+  };
+  var GLOSS_COMMON = [
+    ['ĐVT', 'Đơn vị tính (m², m³, kg, bộ, công…). Chọn trong danh sách chuẩn ở tab “Đơn vị tính”.'],
+    ['ĐM', 'Định mức — mức hao phí vật liệu, nhân công, máy cho 1 đơn vị công tác.'],
+    ['Mã hiệu ĐM', 'Mã định mức chuẩn (Định mức xây dựng của Nhà nước hoặc thư viện phần mềm dự toán ETA, G8, F1).'],
+    ['VL · NC · M', 'Vật liệu · Nhân công · Máy thi công.'],
+    ['DGHT', 'Đơn giá hoàn thiện = vật liệu + nhân công cho 1 ĐVT.'],
+    ['Thấp / Cao', 'Mức giá thấp nhất / cao nhất ghi nhận tại tỉnh (đồng).'],
+    ['NCC', 'Nhà cung cấp.'], ['Spec', 'Quy cách kỹ thuật (chủng loại, kích thước, tiêu chuẩn).'],
+    ['VO', 'Variation Order — việc phát sinh ngoài hợp đồng (mã số 900–999).'],
+    ['SB', 'Sơ bộ — đơn giá ước tính theo m² sàn.'], ['TH · TG', 'Phần thô · Trọn gói.'],
+    ['CT · NCK', 'Công tác (hoàn chỉnh) · Nhân công khoán.'],
+    ['C4 · BT · HD · TCD · MEP', 'Loại nhà: C4 nhà cấp 4 · BT biệt thự · HD nhà phố hiện đại · TCD tân cổ điển · MEP cơ điện (điện – nước – điều hòa).']
+  ];
+  function glossHtml() {
+    var cat = REF && REF.cat, rows = GLOSS_COMMON.map(function (g) { return '<tr><th>' + esc(g[0]) + '</th><td>' + esc(g[1]) + '</td></tr>'; }).join('');
+    var sh = st.data.sheet;
+    if (cat && cat.gd && /Mã công việc|Giai đoạn/.test(sh)) rows += '<tr><th>Mã giai đoạn</th><td>' + Object.keys(cat.gd).map(function (k) { return '<b>' + esc(k) + '</b> ' + esc(cat.gd[k]); }).join(' · ') + '</td></tr>';
+    if (cat && cat.hm && sh === 'DGDM-Mã công việc công tác') rows += '<tr><th>Mã hạng mục</th><td>' + Object.keys(cat.hm).map(function (k) { return '<b>' + esc(k) + '</b> ' + esc(cat.hm[k].name); }).join('<br>') + '</td></tr>';
+    if (cat && cat.gr && /Vật tư|Nhóm tài nguyên/.test(sh)) rows += '<tr><th>Mã nhóm tài nguyên</th><td>' + Object.keys(cat.gr).map(function (k) { return '<b>' + esc(k) + '</b> ' + esc(cat.gr[k].name); }).join('<br>') + '</td></tr>';
+    return '<details class="db-gloss"><summary>Bảng giải thích viết tắt &amp; mã</summary><div class="db-gl-b"><table class="db-gl-t"><tbody>' + rows + '</tbody></table></div></details>';
+  }
+  function distinctOf(h) {
+    var i = (st.data.headers || []).indexOf(h), seen = {}, out = [];
+    (st.data.rows || []).forEach(function (r) { var v = String(r.v[i] == null ? '' : r.v[i]).trim(); if (v && !seen[v]) { seen[v] = 1; out.push({ v: v, l: v }); } });
+    return out;
+  }
+  function specFor(h) {
+    var sh = st.data.sheet, n = norm(h), cat = REF && REF.cat, help = (n === 'mã' ? HELP_MA[sh] : '') || HELP[n] || '', mk = function (t, opts) { return { t: t, opts: opts, help: help }; };
+    if (n === 'tỉnh/thành') return mk('select', (st.data.provinces || []).map(function (p) { return { v: p, l: p }; }));
+    if (!REF) return mk('text');
+    if (n === 'đvt' && sh !== 'DGDM-Đơn vị tính') return mk('select', REF.units.map(function (u) { return { v: u, l: u }; }));
+    if (n === 'nguồn' && sh !== 'DGDM-Nguồn' && REF.sources.length) return mk('combo', REF.sources.map(function (o) { return { v: o.v, l: o.v + (o.l ? ' — ' + o.l : '') }; }));
+    if (n === 'nhóm tài nguyên' && sh === 'DGDM-Vật tư thiết bị' && cat) return mk('select', Object.keys(cat.gr).map(function (k) { return { v: k, l: k + ' — ' + cat.gr[k].name }; }));
+    if (n === 'loại' && (sh === 'DGDM-Vật tư thiết bị' || sh === 'DGDM-Nhóm tài nguyên')) return mk('select', LOAI_TN);
+    if (n === 'hạng mục' && sh === 'DGDM-Mã công việc công tác' && cat) return mk('select', Object.keys(cat.hm).map(function (k) { return { v: k, l: k + ' — ' + cat.hm[k].name }; }));
+    if (n === 'giai đoạn' && sh === 'DGDM-Mã công việc công tác' && cat && cat.gd) return mk('select', Object.keys(cat.gd).map(function (k) { return { v: k, l: k + ' — ' + cat.gd[k] }; }));
+    if (n === 'loại đơn giá') return mk('select', LOAI_DG);
+    if (OPEN_COLS.indexOf(n) !== -1) return mk('combo', distinctOf(h));
+    return mk('text');
+  }
   var SEC_TITLES = { id: 'Định danh & phân loại', desc: 'Mô tả chi tiết', val: 'Giá & số liệu' };
   function fieldHtml(x, i, isAdd, row, src, pi) {
-    var v = isAdd ? (i === pi ? st.prov : (src ? src.v[i] : '')) : row.v[i], val = v == null ? '' : String(v), k = kindOf(x);
-    var long = k === 'note' || val.length > 70 || k === 'name' && val.length > 40;
+    var v = isAdd ? (i === pi ? st.prov : (src ? src.v[i] : '')) : row.v[i], val = v == null ? '' : String(v), k = kindOf(x), sp = specFor(x);
+    var long = sp.t === 'text' && (k === 'note' || val.length > 70 || k === 'name' && val.length > 40);
     var dis = !isAdd && i === pi ? ' disabled' : '';
     var cls = 'db-f' + (k === 'note' ? ' full' : (long || k === 'name') ? ' wide' : '');
-    return '<label class="' + cls + '"><span class="es-label">' + esc(x) + (k === 'price' ? ' <i>(số)</i>' : '') + '</span>' +
-      (long ? '<textarea class="es-input db-ta" data-h="' + esc(x) + '"' + dis + '>' + esc(val) + '</textarea>' : '<input class="es-input' + (k === 'price' ? ' num' : '') + '" data-h="' + esc(x) + '" value="' + esc(val) + '"' + dis + (k === 'price' ? ' inputmode="decimal"' : '') + '>') + '</label>';
+    var ctl;
+    if (sp.t === 'select') {
+      var has = false, opts = sp.opts.map(function (o) { if (o.v === val) has = true; return '<option value="' + esc(o.v) + '"' + (o.v === val ? ' selected' : '') + '>' + esc(o.l) + '</option>'; }).join('');
+      if (val && !has) opts = '<option value="' + esc(val) + '" selected>' + esc(val) + ' (giá trị hiện có)</option>' + opts;
+      ctl = '<select class="es-input db-sel" data-h="' + esc(x) + '"' + dis + '><option value="">— Chọn —</option>' + opts + '</select>';
+    } else if (sp.t === 'combo') {
+      var dl = 'dbL' + i;
+      ctl = '<input class="es-input db-combo" data-h="' + esc(x) + '" value="' + esc(val) + '" list="' + dl + '" autocomplete="off" placeholder="Chọn hoặc gõ…"' + dis + '><datalist id="' + dl + '">' + sp.opts.map(function (o) { return '<option value="' + esc(o.v) + '">' + esc(o.l) + '</option>'; }).join('') + '</datalist>';
+    } else if (long) ctl = '<textarea class="es-input db-ta" data-h="' + esc(x) + '"' + dis + '>' + esc(val) + '</textarea>';
+    else ctl = '<input class="es-input' + (k === 'price' ? ' num' : '') + '" data-h="' + esc(x) + '" value="' + esc(val) + '"' + dis + (k === 'price' ? ' inputmode="decimal"' : '') + '>';
+    return '<label class="' + cls + '"><span class="es-label">' + esc(x) + (k === 'price' ? ' <i>(số)</i>' : '') + '</span>' + ctl + (sp.help ? '<small class="db-help">' + esc(sp.help) + '</small>' : '') + '</label>';
   }
-  function openForm(row, src) {
+  function openForm(row, src) { loadRefs().then(function () { openForm_(row, src); }, function () { openForm_(row, src); }); }
+  function openForm_(row, src) {
     var h = st.data.headers, pi = provCol(), isAdd = !row, hasProv = pi !== -1, idx = row ? (st.data.rows || []).indexOf(row) : -1;
     var secs = { id: '', desc: '', val: '' };
     h.forEach(function (x, i) {
@@ -300,7 +468,8 @@
     ov.querySelector('.es-x').onclick = close; ov.querySelector('[data-x]').onclick = close;
     ov.addEventListener('mousedown', function (e) { if (e.target === ov) close(); });
     var first = ov.querySelector('.db-form input:not([disabled]), .db-form textarea:not([disabled])'); if (first) { first.focus(); try { first.select(); } catch (e) { /* bỏ qua */ } }
-    wireConv(ov, isAdd);
+    wireConv(ov, isAdd, row);
+    ov.querySelector('.db-form').before(Object.assign(document.createElement('div'), { innerHTML: glossHtml() }).firstChild);
     var save = function (btn, goNext) {
       var vals = {}, changed = {};
       ov.querySelectorAll('[data-h]').forEach(function (el) { if (el.disabled) return; var k = el.dataset.h; vals[k] = el.value.trim(); });
@@ -308,6 +477,7 @@
       var all = $('dbAll') && $('dbAll').checked, u = user(), actor = u ? (u.name || u.id) : '';
       var openAfter = function (n) { var nr = (st.data.rows || [])[n]; if (nr) openForm(nr); };
       var cerr = convError(isAdd ? vals : changed); if (cerr) { toast(cerr, true); return; }
+      var mcode = ov.querySelector('[data-h="' + (CODEF[st.data.sheet] || 'Mã') + '"]'); if (mcode && mcode.dataset.dup === '1' && (isAdd || (CODEF[st.data.sheet] || 'Mã') in changed)) { toast('Mã này đã có trong bảng — hãy đổi số khác (click đúp ô Mã để sửa).', true); return; }
       if (!isAdd && !Object.keys(changed).length) { close(); if (goNext) openAfter(idx + 1); return; }
       var label = btn.textContent; btn.disabled = true; btn.textContent = 'Đang lưu…';
       var done = function (r) {
@@ -357,7 +527,7 @@
     try { var qp = new URLSearchParams(location.search); if (qp.get('sheet')) st.sheet = qp.get('sheet'); if (qp.get('q')) st.q = qp.get('q'); } catch (e) { /* bỏ qua */ }   // mở từ kết quả tìm kiếm chung
     if (!st.sheet) st.sheet = 'DGDM-Mã công việc công tác';   // mở sẵn sheet mặc định — không chờ danh sách sheet
     setProvFor(st.sheet);
-    loadRows();   // tải dòng và danh sách tab SONG SONG (trước đây nối đuôi nhau: danh sách sheet → dòng → dòng lần 2 có tỉnh)
+    loadRows().then(function () { loadRefs(); });   // tải dòng và danh sách tab SONG SONG (trước đây nối đuôi nhau: danh sách sheet → dòng → dòng lần 2 có tỉnh)
     loadSheets().catch(function (e) { if (window.console) console.error('DGDM:', e); });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();

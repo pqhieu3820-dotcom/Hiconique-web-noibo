@@ -84,6 +84,10 @@
 - Cột # đổi thành STT 1,2,3… theo danh sách đang xem (offset+vị trí), không hiện số dòng Sheet (r.r vẫn dùng ngầm để sửa/xoá). sw v257.
 - Bỏ chữ "v2" ở ghi chú Quy ước mã (form chuẩn). sw v256.
 
+## 2026-10-04 — Form Đơn giá định mức: ô chọn + giải thích + mã tự sinh
+- `dgdm-db.js`: form thêm/sửa dùng ô CHỌN từ danh mục chuẩn (`specFor`): Tỉnh, ĐVT (tab Đơn vị tính), Nhóm tài nguyên, Loại (VL/M/NC), Hạng mục, Giai đoạn, Loại đơn giá (CT/TG/NCK/SB); combo (chọn hoặc gõ) cho Nguồn, Loại nhà... Mỗi cột có dòng giải thích (`HELP`, `HELP_MA`) + hộp "Bảng giải thích viết tắt & mã" (`glossHtml`, `GLOSS_COMMON` — nghĩa C4/BT/HD/TCD/MEP là quy ước dự đoán, cần người dùng xác nhận).
+- Mã TỰ SINH theo thông tin đã chọn (`AUTO`): Mã công việc = Hạng mục + số kế tiếp; Mã tài nguyên = Nhóm + số kế tiếp; Nhân công khoán SB-NC-[loại nhà]; Phần thô SB-TH-[loại nhà] (+ Mã trọn gói SB-TG-…); Mã hạng mục/Mã nhóm gợi ý tiền tố. Ô Mã khoá sẵn, CLICK ĐÚP để sửa tay. Đối chiếu bảng (`findSame`): báo/chặn lưu khi trùng mã; cảnh báo khi trùng tên công tác/vật tư. sw v260.
+
 # Ghi chú dự án — đọc trước khi làm việc
 
 File này tồn tại để không phải hỏi lại các thông tin dưới đây mỗi khi đổi máy hoặc mở đoạn
