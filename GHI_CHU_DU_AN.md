@@ -36,6 +36,15 @@
 - **2026-10-03 người dùng ĐÃ khoá**: Sheet database chính + folder cài Agent → "Bị hạn chế" (đã kiểm tra: API vẫn đọc/ghi bình thường vì Apps Script chạy bằng tài khoản chủ). Folder Agent hạn chế → nhân viên khác muốn tải Agent phải được thêm email (Người xem). Sheet "Database đơn giá 34 tỉnh" người dùng chốt để nguyên.
 - **NGƯỜI DÙNG PHẢI TỰ LÀM (Claude không có quyền)**: (1) Google Sheet database chính + Sheet "Database đơn giá 34 tỉnh" + folder cài Agent đang chia sẻ **"Bất kỳ ai có đường liên kết — Người chỉnh sửa"** → đổi sang **Bị hạn chế** (Sheet) / **Người xem** (folder Agent); (2) chuyển repo GitHub sang **Private**; (3) mọi người đổi mật khẩu (mật khẩu cũ từng lộ qua API).
 
+## ⭐ QUAN TRỌNG — SHEET `TT-Danh mục` + TRANG TÀI LIỆU (2026-10-03, Apps Script v154, sw v219)
+
+- **`TT-Danh mục`** = MỘT sheet gom MỌI danh sách chọn của trang Tài liệu + nhóm TT- (mỗi danh sách 1 cột, hàng 1 = tên danh sách, giống `TC-Danh mục TC`), thay cho dropdown gắn cứng trên sheet. Tạo tự động (`ttCatalogRead_`/`ttCatalogCreate_`), nằm cuối nhóm TT-. Đã gộp sẵn mọi danh mục đang có trong `TT-Tài liệu`.
+  - Cột WEB ĐỌC/GHI TRỰC TIẾP (sửa trên Sheet có hiệu lực ≤15s): **Danh mục tài liệu** (thứ tự cột = thứ tự các khung danh mục trên trang Tài liệu; thêm/xoá/kéo thứ tự ở form "Quản lý danh mục" cũng ghi về đây — trước đây chỉ lưu localStorage từng máy), **Nhãn link tài liệu**, **Tình trạng thiết bị**, **Đơn vị tính thiết bị** (trang Tài sản).
+  - Cột có "(chỉ xem)": chỉ tham chiếu (code web dùng cố định) — Loại tài liệu, Phòng ban, Nguồn tài liệu, Nhóm/Trạng thái SPC, Nhóm thiết bị, Loại thông báo. Cột thêm tay tên bất kỳ vẫn giữ.
+  - API: `getTtCatalog` (đọc, mảng {id,name,edit,values}) · `setTtCatalog` {id, values} (ghi 1 cột; chỉ manager trở lên) · `ttCatalogInit` (công khai, idempotent: chỉ tạo sheet nếu chưa có). Client: `TaskManager.loadCatalog / getCatalog(id, mặc định) / setCatalog`.
+  - **Dropdown cũ trên sheet (cột Danh mục của TT-Tài liệu, kiểu "Dropdown" của Bảng) KHÔNG xoá được bằng code** — người dùng tự đổi kiểu cột thành văn bản thường (hoặc để nguyên, ghi vẫn được, chỉ hiện tam giác đỏ). Dropdown của TT-Thiết bị (applyEquipmentDropdowns) và TT-Thông báo (VALUE_MAP) giữ nguyên chưa đụng.
+- **Trang Tài liệu (wiki.html)**: mỗi danh mục hiện tối đa **8 tài liệu**, nhiều hơn → khung có thanh trượt (`fitColumns` đo chiều cao 8 dòng thật). Thêm **▲▼** từng dòng + **"Sắp xếp nhanh"** (theo mã hiệu / tên / mới cập nhật / cũ nhất; nút tổng cho tất cả danh mục có hộp xác nhận, nút ⇅ ở tiêu đề từng danh mục). Thứ tự lưu ở cột mới **`Thứ tự`** (`order`) của TT-Tài liệu; tài liệu chưa có Thứ tự (mới thêm) lên đầu, sau đó theo Thứ tự tăng dần. Tiêu đề danh mục có số lượng; kéo-thả sang danh mục khác dùng `data-cat`.
+
 # Ghi chú dự án — đọc trước khi làm việc
 
 File này tồn tại để không phải hỏi lại các thông tin dưới đây mỗi khi đổi máy hoặc mở đoạn

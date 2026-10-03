@@ -235,7 +235,8 @@
       'staff-monitor': { loaders: ['loadStaffActivity', 'loadAppUsage'] }, 'finance': { loaders: ['loadFinanceAccess', 'loadUnits'] },
       'orders': { loaders: ['loadUnits'] }, 'payslip': { loaders: ['loadSalaryComponents'] }, 'commission': { loaders: ['loadSalaryComponents'] },
       'estimate': { loaders: ['loadDtqt'], reload: true }, 'quality': { loaders: ['loadQlcl'], reload: true },
-      'khai-toan': { loaders: ['loadFinanceAccess'] }, 'timesheet': { loaders: ['getAttendanceLocations', 'getWorkSchedule'] }
+      'khai-toan': { loaders: ['loadFinanceAccess'] }, 'timesheet': { loaders: ['getAttendanceLocations', 'getWorkSchedule'] },
+      'wiki': { loaders: ['loadCatalog'] }
     };
     function pageKey() { var m = location.pathname.match(/\/pages\/([^\/.]+)/); return m ? m[1] : null; }
     function runExtras(done) {

@@ -52,6 +52,11 @@
   var STATUSES = ['Đang dùng', 'Dự phòng', 'Đang sửa', 'Hỏng', 'Thanh lý'];
   // Đơn vị tính chuẩn (dropdown) — PHẢI khớp EQUIPMENT_UNITS trong gsheets-api-v2.js (dropdown trên Sheet). Chọn "Khác…" để nhập đơn vị riêng.
   var UNITS = ['cái', 'chiếc', 'bộ', 'cặp', 'đôi', 'hộp', 'thùng', 'cây', 'cuộn', 'ram', 'tờ', 'quyển', 'chai', 'lọ', 'gói', 'túi', 'bao', 'kg', 'lít', 'm', 'm²', 'm³', 'tấm', 'thanh', 'viên'];
+  // 2026-10-03: Tình trạng + Đơn vị tính lấy từ sheet TT-Danh mục (sửa tại chỗ để mọi chỗ đang giữ 2 mảng này đều thấy); chưa tải được thì dùng danh sách mặc định ở trên
+  function syncCatalog() {
+    if (!TM || !TM.getCatalog) return;
+    [[STATUSES, 'equipStatus'], [UNITS, 'equipUnit']].forEach(function (p) { var c = TM.getCatalog(p[1], []); if (c.length) { p[0].length = 0; Array.prototype.push.apply(p[0], c); } });
+  }
   var EMPTY_CAT = { name: '', prefix: '', tpl: [] };   // form "Thêm mới" chưa chọn nhóm — chưa hiện gì theo nhóm
   // Icon cảnh báo dùng chung toàn app (giống overdue task ở projects.js) — không dùng emoji
   var WARN_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;vertical-align:-2px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
@@ -642,6 +647,7 @@
     try { var qp = new URLSearchParams(location.search).get('q'); if (qp) { state.q = qp; $('eqSearch').value = qp; } } catch (x) { /* bỏ qua */ }
     render();
     TM.loadEquipment(function () { fillSelects(); render(); });
+    if (TM.loadCatalog) TM.loadCatalog(function () { syncCatalog(); fillSelects(); render(); });
     if (TM.loadPcReports) TM.loadPcReports(function () { if (!$('eqModal').classList.contains('active')) render(); });
     window.addEventListener('hiconique:data-refreshed', function () { if (!$('eqModal').classList.contains('active')) render(); });
     setInterval(function () { if (!$('eqModal').classList.contains('active') && document.visibilityState === 'visible') TM.loadEquipment(function () { render(); }); if (TM.loadPcReports && document.visibilityState === 'visible' && !$('eqModal').classList.contains('active')) TM.loadPcReports(function () { render(); }); }, 60000);

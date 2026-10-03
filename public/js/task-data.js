@@ -530,6 +530,7 @@ var TaskManager = (function() {
     notices: 'hiconique_notices',
     documents: 'hiconique_documents',
     docCategories: 'hiconique_doc_categories',
+    ttCatalog: 'hiconique_tt_catalog',
     payslips: 'hiconique_payslips',
     commissions: 'hiconique_commissions',
     commissionRates: 'hiconique_commission_rates',
@@ -981,7 +982,7 @@ var TaskManager = (function() {
       projects: 'getProjects', tasks: 'getTasks', members: 'getMembers',
       proposals: 'getProposals', timesheet: 'getTimesheet',
       notifications: 'getNotifications', notices: 'getNotices',
-      documents: 'getDocuments', payslips: 'getPayslips',
+      documents: 'getDocuments', payslips: 'getPayslips', ttCatalog: 'getTtCatalog',
       commissions: 'getCommissions', commissionRates: 'getCommissionRates',
       priceCatalog: 'getPriceCatalog', financeEntries: 'getFinanceEntries',
       lightingStandards: 'getLightingStandards', lightingLamps: 'getLightingLamps',
@@ -2724,16 +2725,69 @@ var TaskManager = (function() {
     return true;
   }
 
+  // ===================== Danh mục dùng chung (sheet TT-Danh mục, 2026-10-03) =====================
+  // MỌI danh sách chọn của trang Tài liệu + nhóm TT- nằm ở 1 sheet; web đọc về máy (cache localStorage) và dùng chung cho mọi người/mọi máy.
+  // Chưa tải được (mạng/Apps Script bản cũ) → dùng danh sách mặc định/bản cũ trên máy, KHÔNG làm hỏng trang.
+  function loadCatalog(callback) {
+    getFromGSheets('ttCatalog', function (items) {
+      if (items && items.length) localStorage.setItem(STORAGE_KEYS.ttCatalog, JSON.stringify(items));
+      if (callback) callback();
+    });
+  }
+  function getCatalog(id, defaults) {
+    var all = getAll(STORAGE_KEYS.ttCatalog), hit = all.filter(function (x) { return x.id === id; })[0];
+    return hit && hit.values && hit.values.length ? hit.values.slice() : (defaults || []).slice();
+  }
+  // Ghi 1 danh sách lên sheet (hàng đợi ghi bền vững như mọi lệnh khác) + cập nhật cache ngay để màn hình đổi liền
+  function setCatalog(id, values, user) {
+    if (!canManageNotifications(user)) return null;
+    var all = getAll(STORAGE_KEYS.ttCatalog), hit = all.filter(function (x) { return x.id === id; })[0];
+    if (hit) hit.values = values.slice(); else all.push({ id: id, name: id, edit: true, values: values.slice() });
+    try { localStorage.setItem(STORAGE_KEYS.ttCatalog, JSON.stringify(all)); } catch (e) { /* bỏ qua */ }
+    callGSheetsAPI('setTtCatalog', { id: id, values: values });
+    return values;
+  }
+
   // Wiki document links (public/pages/wiki.html)
+  // Danh mục: thứ tự theo sheet TT-Danh mục (cột "Danh mục tài liệu"), danh mục chưa có trong đó xếp cuối. Trong 1 danh mục: tài liệu CHƯA có Thứ tự (mới thêm) lên đầu
+  // đúng như trước, sau đó tới tài liệu đã xếp theo Thứ tự tăng dần (nút ▲▼ / "Sắp xếp nhanh" ghi cột Thứ tự trên Sheet).
   function getDocuments() {
     var docs = getAll(STORAGE_KEYS.documents);
     var byCategory = {};
-    var order = [];
+    var seen = [];
     docs.forEach(function(d) {
-      if (!byCategory[d.category]) { byCategory[d.category] = []; order.push(d.category); }
+      if (!byCategory[d.category]) { byCategory[d.category] = []; seen.push(d.category); }
       byCategory[d.category].push(d);
     });
-    return order.map(function(cat) { return { category: cat, items: byCategory[cat] }; });
+    var order = [], cats = getAll(STORAGE_KEYS.ttCatalog).length ? getCatalog('docCategories', []) : [];
+    cats.forEach(function (c) { if (byCategory[c] && order.indexOf(c) === -1) order.push(c); });
+    seen.forEach(function (c) { if (order.indexOf(c) === -1) order.push(c); });
+    function ord(d) { var n = parseFloat(d.order); return isNaN(n) ? null : n; }
+    return order.map(function(cat) {
+      var items = byCategory[cat].map(function (d, i) { return { d: d, i: i }; });
+      items.sort(function (x, y) {
+        var a = ord(x.d), b = ord(y.d);
+        if (a === null && b === null) return x.i - y.i;
+        if (a === null) return -1;
+        if (b === null) return 1;
+        return a - b || x.i - y.i;
+      });
+      return { category: cat, items: items.map(function (x) { return x.d; }) };
+    });
+  }
+
+  // Đặt thứ tự mới cho 1 danh mục: ids = mã tài liệu theo thứ tự mong muốn → ghi Thứ tự 1..n (chỉ những tài liệu có thứ tự thay đổi)
+  function setDocumentOrder(ids, user) {
+    if (!canManageNotifications(user)) return 0;
+    var n = 0, all = getAll(STORAGE_KEYS.documents), today = new Date().toISOString().slice(0, 10);
+    ids.forEach(function (id, i) {
+      var d = all.filter(function (x) { return x.id === id; })[0];
+      if (!d || parseFloat(d.order) === i + 1) return;
+      update(STORAGE_KEYS.documents, id, { order: i + 1 });
+      syncToGSheets('documents', 'update', { order: i + 1 }, id);
+      n++;
+    });
+    return n;
   }
 
   function createDocument(data, user) {
@@ -2773,20 +2827,28 @@ var TaskManager = (function() {
     return result;
   }
 
-  // Danh mục chung (dropdown "Danh mục" khi thêm tài liệu) — CEO/Manager thêm/xoá được,
-  // lưu riêng trong localStorage của máy (không đồng bộ qua Google Sheets).
+  // Danh mục chung (ô chọn "Danh mục" khi thêm tài liệu) — CEO/Manager thêm/xoá/đổi thứ tự được; lưu ở sheet TT-Danh mục (dùng chung mọi máy).
+  // Danh mục đang có tài liệu nhưng chưa nằm trong sheet vẫn hiện (xếp cuối) để không mất lựa chọn nào.
   function getDocCategories() {
-    var list = getAll(STORAGE_KEYS.docCategories);
-    // Đã kéo sắp xếp tay (setDocCategoryOrder) → giữ đúng thứ tự người dùng; chưa thì xếp A→Z như cũ
-    if (localStorage.getItem('hiconique_doc_categories_ordered') === '1') return list.slice();
-    return list.slice().sort(function (a, b) { return a.localeCompare(b, 'vi'); });
+    var base;
+    if (getAll(STORAGE_KEYS.ttCatalog).length) base = getCatalog('docCategories', DEFAULT_DOC_CATEGORIES);
+    else {   // chưa tải được sheet: bản cũ lưu trên máy (A→Z hoặc đã kéo sắp xếp)
+      var list = getAll(STORAGE_KEYS.docCategories);
+      base = localStorage.getItem('hiconique_doc_categories_ordered') === '1' ? list.slice() : list.slice().sort(function (a, b) { return a.localeCompare(b, 'vi'); });
+    }
+    getAll(STORAGE_KEYS.documents).forEach(function (d) { if (d.category && base.indexOf(d.category) === -1) base.push(d.category); });
+    return base;
+  }
+  function saveDocCategories_(list, user) {
+    save(STORAGE_KEYS.docCategories, list);   // bản dự phòng trên máy
+    return setCatalog('docCategories', list, user);
   }
   function setDocCategoryOrder(names, user) {
     if (!canManageNotifications(user)) return null;
-    var cur = getAll(STORAGE_KEYS.docCategories), out = [];
+    var cur = getDocCategories(), out = [];
     (names || []).forEach(function (n) { if (cur.indexOf(n) !== -1 && out.indexOf(n) === -1) out.push(n); });
     cur.forEach(function (n) { if (out.indexOf(n) === -1) out.push(n); });
-    save(STORAGE_KEYS.docCategories, out); try { localStorage.setItem('hiconique_doc_categories_ordered', '1'); } catch (e) { }
+    saveDocCategories_(out, user);
     return out;
   }
 
@@ -2794,19 +2856,19 @@ var TaskManager = (function() {
     if (!canManageNotifications(user)) return null;
     name = String(name || '').trim();
     if (!name) return null;
-    var list = getAll(STORAGE_KEYS.docCategories);
+    var list = getDocCategories();
     var exists = list.some(function (c) { return c.toLowerCase() === name.toLowerCase(); });
     if (exists) return list;
     list.push(name);
-    save(STORAGE_KEYS.docCategories, list);
+    saveDocCategories_(list, user);
     return list;
   }
 
   function deleteDocCategory(name, user) {
     if (!canManageNotifications(user)) return null;
-    var list = getAll(STORAGE_KEYS.docCategories);
+    var list = getDocCategories();
     var filtered = list.filter(function (c) { return c.toLowerCase() !== String(name || '').toLowerCase(); });
-    save(STORAGE_KEYS.docCategories, filtered);
+    saveDocCategories_(filtered, user);
     return filtered;
   }
 
@@ -4318,6 +4380,10 @@ var TaskManager = (function() {
     updateDocument: updateDocument,
     deleteDocument: deleteDocument,
     getDocCategories: getDocCategories,
+    loadCatalog: loadCatalog,
+    getCatalog: getCatalog,
+    setCatalog: setCatalog,
+    setDocumentOrder: setDocumentOrder,
     setDocCategoryOrder: setDocCategoryOrder,
     addDocCategory: addDocCategory,
     deleteDocCategory: deleteDocCategory,

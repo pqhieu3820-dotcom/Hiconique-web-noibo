@@ -81,6 +81,10 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5M3 21v-5h5"/></svg>
             Đồng bộ từ Drive
           </button>
+          <button class="dc-btn" id="docSortBtn" type="button" title="Sắp xếp lại thứ tự tài liệu trong tất cả danh mục">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3"/></svg>
+            Sắp xếp nhanh
+          </button>
         </div>
       </div>
 
@@ -105,7 +109,7 @@
        định nghĩa .btn-*). Định nghĩa riêng bộ class .doc-* ngay trong trang
        này (không phụ thuộc file ngoài) theo đúng tông màu đồng/vàng
        (--color-bronze) toàn hệ thống. */
-    .doc-admin-bar { max-width: 520px; }
+    .doc-admin-bar { max-width: 820px; }
     .doc-toggle-btn {
       display: inline-flex; align-items: center; gap: 8px;
       padding: 10px 18px; border-radius: 8px; border: 1px solid var(--color-bronze);
@@ -153,6 +157,25 @@
     .wiki-col-del { background: none; border: none; color: var(--color-text-faint); font-size: 0.6875rem; cursor: pointer; padding: 0; margin-left: 8px; }
     .wiki-col-del:hover { color: var(--color-destructive); }
     .wiki-col li a { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    /* 2026-10-03: mỗi danh mục hiện tối đa 8 tài liệu; nhiều hơn → khung có thanh trượt (chiều cao do JS đo theo 8 dòng thật, xem fitColumns) */
+    .wiki-col ul.wiki-ul-scroll { overflow-y: auto; overscroll-behavior: contain; padding-right: 6px; scrollbar-width: thin; scrollbar-color: var(--color-bronze) transparent; }
+    .wiki-col ul.wiki-ul-scroll::-webkit-scrollbar { width: 6px; }
+    .wiki-col ul.wiki-ul-scroll::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--color-bronze) 60%, transparent); border-radius: 6px; }
+    .wiki-col h3 { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .wiki-col h3 .wiki-col-n { font-family: var(--font-mono); font-size: 0.6875rem; font-weight: 500; color: var(--color-text-faint); margin-left: 8px; }
+    .wiki-col h3 .wiki-col-title { min-width: 0; }
+    .wiki-sort-btn { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 4px; background: none; border: 1px solid var(--color-border); border-radius: 6px; color: var(--color-text-faint); font-family: 'Inter', sans-serif; font-size: 0.6875rem; font-weight: 500; padding: 3px 8px; cursor: pointer; transition: border-color .15s ease, color .15s ease; }
+    .wiki-sort-btn:hover { border-color: var(--color-bronze); color: var(--color-bronze); }
+    .wiki-sort-btn svg { width: 12px; height: 12px; }
+    .wiki-mv { display: inline-flex; flex-direction: column; margin-right: 8px; vertical-align: middle; }
+    .wiki-mv button { background: none; border: none; padding: 1px 4px; line-height: 1; font-size: 0.6875rem; color: var(--color-text-faint); cursor: pointer; }
+    .wiki-mv button:hover:not(:disabled) { color: var(--color-bronze); }
+    .wiki-mv button:disabled { opacity: .25; cursor: default; }
+    .wiki-act { display: inline-flex; align-items: center; flex: 0 0 auto; }
+    .wiki-sort-menu { position: absolute; z-index: 950; min-width: 230px; padding: 6px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 10px; box-shadow: 0 12px 32px rgba(0,0,0,.28); }
+    .wiki-sort-menu .wsm-h { padding: 6px 10px 4px; font-size: 0.625rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--color-text-faint); }
+    .wiki-sort-menu button { display: block; width: 100%; text-align: left; background: none; border: none; border-radius: 6px; padding: 8px 10px; font-family: 'Inter', sans-serif; font-size: 0.8125rem; color: var(--color-text); cursor: pointer; }
+    .wiki-sort-menu button:hover { background: var(--color-surface-2); color: var(--color-bronze); }
     .wiki-search-bar {
       display: flex; align-items: center; gap: 10px;
       max-width: 420px; padding: 10px 14px;
@@ -405,12 +428,14 @@
       }
 
       wrap.innerHTML = groups.map(function (g) {
-        return '<div class="wiki-col"><h3>' + escapeHtml(g.category) + '</h3><ul>' +
-          g.items.map(function (d) {
+        return '<div class="wiki-col" data-cat="' + escapeHtml(g.category) + '"><h3><span class="wiki-col-title">' + escapeHtml(g.category) + '<span class="wiki-col-n">' + g.items.length + '</span></span>' +
+          (canManage && g.items.length > 1 ? '<button type="button" class="wiki-sort-btn" data-sortcat="' + escapeHtml(g.category) + '" title="Sắp xếp nhanh danh mục này"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3"/></svg>Sắp xếp</button>' : '') +
+          '</h3><ul>' +
+          g.items.map(function (d, di) {
             var dl = TaskManager.getDocLinks(d), multi = dl.length > 1;
             return '<li><a href="' + (multi ? '#' : escapeHtml(d.url || '#')) + '"' + (multi ? ' data-multi="' + escapeHtml(d.id) + '"' : ' target="_blank" rel="noopener"') + '>' +
               '<span>' + (d.code ? '<span class="wiki-doc-code">' + escapeHtml(TaskManager.canonDocCode ? TaskManager.canonDocCode(d.code) : d.code) + '</span>' : (canManage ? '<span class="wiki-doc-tag">Chưa có mã</span>' : '')) + escapeHtml(d.name) + (multi ? ' <span class="wiki-doc-tag">' + dl.length + ' link</span>' : '') + '</span>' +
-              (canManage ? '<span><button type="button" class="wiki-col-edit" data-edit-id="' + escapeHtml(d.id) + '">Sửa</button><button type="button" class="wiki-col-del" data-id="' + escapeHtml(d.id) + '">Xoá</button></span>' : '<span>&rarr;</span>') +
+              (canManage ? '<span class="wiki-act">' + (g.items.length > 1 ? '<span class="wiki-mv"><button type="button" class="wiki-up" data-mv="-1" data-id="' + escapeHtml(d.id) + '" title="Đưa lên"' + (di === 0 ? ' disabled' : '') + '>▲</button><button type="button" class="wiki-dn" data-mv="1" data-id="' + escapeHtml(d.id) + '" title="Đưa xuống"' + (di === g.items.length - 1 ? ' disabled' : '') + '>▼</button></span>' : '') + '<button type="button" class="wiki-col-edit" data-edit-id="' + escapeHtml(d.id) + '">Sửa</button><button type="button" class="wiki-col-del" data-id="' + escapeHtml(d.id) + '">Xoá</button></span>' : '<span>&rarr;</span>') +
             '</a></li>';
           }).join('') +
         '</ul></div>';
@@ -441,10 +466,85 @@
           if (d) openDocForm(d);
         });
       });
+      wrap.querySelectorAll('.wiki-mv button').forEach(function (btn) {
+        btn.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); moveDoc(btn.dataset.id, parseInt(btn.dataset.mv, 10)); });
+      });
+      wrap.querySelectorAll('.wiki-sort-btn').forEach(function (btn) {
+        btn.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); openSortMenu(btn, btn.dataset.sortcat); });
+      });
       if (canManage) bindDocDrag(wrap);
       refreshBadge();
       applySearch();
     }
+
+    // ---- 2026-10-03: Sắp xếp vị trí tài liệu (▲▼ từng dòng + "Sắp xếp nhanh" theo mã/tên/ngày), lưu cột Thứ tự trên Sheet ----
+    function categoryItems(cat) { var g = TaskManager.getDocuments().filter(function (x) { return x.category === cat; })[0]; return g ? g.items.slice() : []; }
+    function applyOrder(items) { var n = TaskManager.setDocumentOrder(items.map(function (d) { return d.id; }), Auth.getCurrentUser()); render(); return n; }
+    function moveDoc(id, dir) {
+      var d = allDocs().filter(function (x) { return x.id === id; })[0]; if (!d) return;
+      var items = categoryItems(d.category), i = items.findIndex(function (x) { return x.id === id; }), j = i + dir;
+      if (i < 0 || j < 0 || j >= items.length) return;
+      var t = items[i]; items[i] = items[j]; items[j] = t;
+      applyOrder(items);
+    }
+    var SORT_MODES = [
+      ['code', 'Theo mã hiệu (A → Z, STT tăng dần)'],
+      ['name', 'Theo tên tài liệu (A → Z)'],
+      ['newest', 'Mới cập nhật lên trước'],
+      ['oldest', 'Cũ nhất lên trước']
+    ];
+    function sortKey(d, mode) {
+      if (mode === 'code') { var c = normCode(d.code || ''); return c ? [0, c] : [1, '']; }
+      if (mode === 'name') return [0, String(d.name || '')];
+      var dt = String(d.updatedAt || d.createdAt || ''); return [dt ? 0 : 1, dt];
+    }
+    function sortItems(items, mode) {
+      var idx = {}; items.forEach(function (d, i) { idx[d.id] = i; });
+      return items.slice().sort(function (a, b) {
+        var ka = sortKey(a, mode), kb = sortKey(b, mode);
+        if (ka[0] !== kb[0]) return ka[0] - kb[0];   // tài liệu thiếu mã / thiếu ngày luôn xuống cuối
+        var r = mode === 'newest' ? (ka[1] < kb[1] ? 1 : ka[1] > kb[1] ? -1 : 0) : String(ka[1]).localeCompare(String(kb[1]), 'vi', { numeric: true, sensitivity: 'base' });
+        return r || idx[a.id] - idx[b.id];
+      });
+    }
+    function runSort(mode, cat) {
+      var cats = cat ? [cat] : TaskManager.getDocuments().map(function (g) { return g.category; }), n = 0;
+      cats.forEach(function (c) { n += TaskManager.setDocumentOrder(sortItems(categoryItems(c), mode).map(function (d) { return d.id; }), Auth.getCurrentUser()); });
+      render();
+    }
+    var sortMenuEl = null;
+    function closeSortMenu() { if (sortMenuEl) { sortMenuEl.remove(); sortMenuEl = null; } document.removeEventListener('pointerdown', onSortOutside, true); }
+    function onSortOutside(e) { if (sortMenuEl && !sortMenuEl.contains(e.target) && !e.target.closest('#docSortBtn, .wiki-sort-btn')) closeSortMenu(); }
+    function openSortMenu(anchor, cat) {
+      var again = sortMenuEl && sortMenuEl._anchor === anchor; closeSortMenu(); if (again) return;
+      var m = document.createElement('div'); m.className = 'wiki-sort-menu'; m._anchor = anchor;
+      m.innerHTML = '<div class="wsm-h">' + (cat ? 'Sắp xếp danh mục «' + escapeHtml(cat) + '»' : 'Sắp xếp TẤT CẢ danh mục') + '</div>' + SORT_MODES.map(function (x) { return '<button type="button" data-mode="' + x[0] + '">' + x[1] + '</button>'; }).join('');
+      document.body.appendChild(m);
+      var r = anchor.getBoundingClientRect();
+      m.style.top = (window.scrollY + r.bottom + 6) + 'px';
+      m.style.left = Math.max(8, Math.min(window.scrollX + r.left, window.scrollX + document.documentElement.clientWidth - m.offsetWidth - 8)) + 'px';
+      m.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-mode]'); if (!b) return; var mode = b.dataset.mode; closeSortMenu();
+        if (cat) runSort(mode, cat);
+        else showConfirmDialog('Sắp xếp lại thứ tự tài liệu trong <b>tất cả danh mục</b> ' + escapeHtml(SORT_MODES.filter(function (x) { return x[0] === mode; })[0][1].toLowerCase()) + '?<br><span style="color:var(--color-text-faint)">Vị trí hiện tại sẽ được thay bằng thứ tự mới (lưu lên Google Sheet).</span>', function () { runSort(mode, null); }, 'Sắp xếp');
+      });
+      sortMenuEl = m; document.addEventListener('pointerdown', onSortOutside, true);
+    }
+
+    // ---- 2026-10-03: mỗi danh mục hiện tối đa 8 tài liệu, nhiều hơn → khung cuộn. Đo chiều cao thật của 8 dòng (dòng dài xuống hàng cao hơn) ----
+    var VISIBLE_DOCS = 8;
+    function fitColumns() {
+      document.querySelectorAll('#wikiCols .wiki-col').forEach(function (col) {
+        var ul = col.querySelector('ul'); if (!ul) return;
+        ul.style.maxHeight = ''; ul.classList.remove('wiki-ul-scroll');
+        var lis = Array.prototype.filter.call(ul.children, function (li) { return !li.hidden; });
+        if (lis.length <= VISIBLE_DOCS) return;
+        var h = lis[VISIBLE_DOCS - 1].offsetTop + lis[VISIBLE_DOCS - 1].offsetHeight - lis[0].offsetTop;
+        if (h > 0) { ul.style.maxHeight = (h + 2) + 'px'; ul.classList.add('wiki-ul-scroll'); }
+      });
+    }
+    var fitTimer = null;
+    window.addEventListener('resize', function () { clearTimeout(fitTimer); fitTimer = setTimeout(fitColumns, 150); });
 
     // Kéo-thả tài liệu sang danh mục khác: giữ chuột (hoặc ngón tay) trên 1 tài liệu → kéo tới khung danh mục khác → thả → hộp xác nhận → chuyển danh mục
     var dragJustEnded = false;
@@ -470,7 +570,7 @@
           li.classList.remove('dragging'); if (ghost) ghost.remove(); document.body.classList.remove('wiki-dragging'); if (target) target.classList.remove('wiki-drop');
           dragJustEnded = true; setTimeout(function () { dragJustEnded = false; }, 60);
           if (!target) return;
-          var d = allDocs().filter(function (x) { return x.id === docId; })[0], to = target.querySelector('h3').textContent, from = fromCol.querySelector('h3').textContent;
+          var d = allDocs().filter(function (x) { return x.id === docId; })[0], to = target.getAttribute('data-cat'), from = fromCol.getAttribute('data-cat');
           if (!d) return;
           showConfirmDialog('Chuyển tài liệu <b>' + escapeHtml((d.code ? d.code + ' ' : '') + d.name) + '</b><br>từ danh mục <b>' + escapeHtml(from) + '</b> sang <b>' + escapeHtml(to) + '</b>?', function () { TaskManager.updateDocument(docId, { category: to }, Auth.getCurrentUser()); render(); }, 'Chuyển');
         };
@@ -484,7 +584,7 @@
       var anyVisible = false;
 
       cols.forEach(function (col) {
-        var catMatches = !q || col.querySelector('h3').textContent.toLowerCase().indexOf(q) !== -1;
+        var catMatches = !q || String(col.getAttribute('data-cat') || '').toLowerCase().indexOf(q) !== -1;
         var itemsVisible = 0;
         col.querySelectorAll('li').forEach(function (li) {
           var name = li.querySelector('span').textContent.toLowerCase();
@@ -498,6 +598,7 @@
       });
 
       document.getElementById('wikiSearchEmpty').style.display = (cols.length && !anyVisible) ? 'block' : 'none';
+      fitColumns();
     }
 
     function renderCategorySelect() {
@@ -590,6 +691,8 @@
 
     // ---------- Một mã - nhiều link ----------
     var LINK_LABELS = ['Thuyết minh', 'Slide', 'Bản vẽ', 'Bảng tính', 'PDF', 'Video', 'Hình ảnh', 'Tài liệu', 'Khác'];
+    // 2026-10-03: nhãn link lấy từ sheet TT-Danh mục (cột "Nhãn link tài liệu"); chưa tải được thì dùng danh sách mặc định ở trên (sửa tại chỗ để mọi chỗ đang giữ mảng này đều thấy)
+    function syncLinkLabels() { var c = (window.TaskManager && TaskManager.getCatalog) ? TaskManager.getCatalog('linkLabels', []) : []; if (c.length) { LINK_LABELS.length = 0; Array.prototype.push.apply(LINK_LABELS, c); } }
     function labelByMime(mime) {
       mime = String(mime || '');
       if (/google-apps\.document|wordprocessingml|msword/.test(mime)) return 'Thuyết minh';
@@ -940,6 +1043,7 @@
       document.getElementById('docAddBtn').addEventListener('click', function () { openDocForm(null); });
       document.getElementById('docCtlBtn').addEventListener('click', openControl);
       document.getElementById('docSyncBtn').addEventListener('click', openSync);
+      document.getElementById('docSortBtn').addEventListener('click', function (e) { openSortMenu(e.currentTarget, null); });
     }
 
     function refreshBadge() {
@@ -951,6 +1055,8 @@
       if (typeof TaskManager === 'undefined') { setTimeout(boot, 150); return; }
       render();
       initAdmin();
+      // danh mục dùng chung (sheet TT-Danh mục): tải xong thì vẽ lại theo thứ tự danh mục + nhãn link mới
+      if (TaskManager.loadCatalog) TaskManager.loadCatalog(function () { syncLinkLabels(); render(); });
       document.getElementById('docSearchInput').addEventListener('input', applySearch);
       // Google Sheets fetch resolves async after initData() — re-render once it lands
       setTimeout(function () { render(); applySearch(); }, 1200);

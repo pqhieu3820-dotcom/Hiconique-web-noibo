@@ -255,7 +255,7 @@ const FIELD_MAP = {
   ],
   documents: [
     ['Mã TL', 'id'], ['Mã hiệu', 'code'], ['Danh mục', 'category'], ['Tên tài liệu', 'name'], ['Đường liên kết', 'url'],
-    ['Nguồn', 'source'], ['Mã file Drive', 'driveId'], ['Danh sách link', 'links'],
+    ['Nguồn', 'source'], ['Mã file Drive', 'driveId'], ['Danh sách link', 'links'], ['Thứ tự', 'order'],
     ['Người tạo', 'createdBy'], ['Ngày tạo', 'createdAt'], ['Ngày cập nhật', 'updatedAt']
   ],
   spcStandards: [
@@ -959,7 +959,7 @@ function doPost(e) { return secureEntry_(e); }
 //  4) Không bao giờ trả cột mật khẩu. CCCD/STK/ngân hàng/lương/%lương/ngày sinh/quê chỉ trả cho chính chủ hoặc cấp admin; chưa đăng nhập
 //     chỉ nhận id+tên. Sổ tài chính / chỉ số cân đối chỉ trả cho admin hoặc người được cấp quyền tài chính; phiếu lương chỉ thấy của mình.
 //  5) Chống tự nâng quyền (updateMember: không tự đổi cấp bậc/lương/trạng thái), chống dò mật khẩu (8 lần sai → khoá 15 phút/email).
-var SEC_PUBLIC_ = { ping: 1, login: 1, addMember: 1, getMembers: 1, getPcReports: 1, upsertPcReport: 1, upsertAppUsage: 1 };
+var SEC_PUBLIC_ = { ttCatalogInit: 1, ping: 1, login: 1, addMember: 1, getMembers: 1, getPcReports: 1, upsertPcReport: 1, upsertAppUsage: 1 };
 var SEC_PRIVATE_MEMBER_FIELDS_ = ['cccd', 'bank', 'bankAccount', 'baseSalary', 'salaryPercent', 'dob', 'hometown'];
 var SEC_FINANCE_READS_ = { getFinanceEntries: 1, getBsSnapshots: 1 };
 // HIỆU NĂNG: Script Properties đọc 1 lần/lần thực thi (getProperties gộp), HMAC ~1ms; dữ liệu đọc vẫn dùng chung cache 15s như cũ,
@@ -1098,6 +1098,7 @@ var SEC_FINANCE_WRITES_ = /^((add|update|delete)BsSnapshot|deleteFinanceEntry)$/
 function secWriteGate_(action, auth) {
   if (!auth) return null;
   if (/^(add|delete)FinanceAccess$/.test(action) && auth.level !== 'founder') return 'Chỉ Founder được cấp/thu hồi quyền tài chính';
+  if (action === 'setTtCatalog' && !(auth.admin || auth.roleLevel === 'manager')) return 'Chỉ quản lý trở lên được sửa danh mục';
   if (SEC_ADMIN_ACTIONS_.test(action) && !auth.admin) return 'Chỉ cấp Founder/CEO/Giám đốc được chạy lệnh này';
   if (SEC_FINANCE_WRITES_.test(action) && !secFinanceAllowed_(auth)) return 'Không có quyền thao tác Sổ tài chính';
   return null;
@@ -1133,6 +1134,7 @@ function secureEntry_(e) {
   try {
     if (action === 'login') return jsonOut_(JSON.stringify(secLogin_(p)));
     if (action === 'changePassword') return jsonOut_(JSON.stringify(secChangePassword_(p, auth)));
+    if (action === 'ttCatalogInit') { const had = !!findSheet(getSS_(), TT_CATALOG_SHEET_); ttCatalogRead_(getSS_()); return jsonOut_(JSON.stringify({ ok: true, created: !had })); }   // idempotent: chỉ tạo sheet TT-Danh mục nếu chưa có
     if (action === 'whoami') return jsonOut_(JSON.stringify({ auth: !!auth, uid: auth ? auth.uid : null, enforce: secEnforce_() }));
     if (action === 'secAdmin') return jsonOut_(JSON.stringify(secAdmin_(p, auth)));
     if (action === 'secSelfTest') {   // tự kiểm cơ chế vé + băm (thành viên giả, không đọc/ghi Sheet)
@@ -1735,6 +1737,89 @@ function dgdmConvertData() {
   L('XONG chuyển đổi dữ liệu.');
 }
 
+// ===================== TT-Danh mục (2026-10-03) =====================
+// MỘT sheet gom MỌI danh sách chọn (dropdown) của trang Tài liệu và nhóm TT-: mỗi danh sách 1 cột (hàng 1 = tên danh sách), giống TC-Danh mục TC.
+// Thay cho dropdown gắn cứng trên sheet (khó thêm/bớt, báo lỗi "không có trong dropdown"). Thêm/xoá/đổi thứ tự = sửa thẳng các ô của cột;
+// cột có "(chỉ xem)" chỉ để tham chiếu (code web đang dùng cố định), cột còn lại WEB ĐỌC TRỰC TIẾP (sửa trên Sheet có hiệu lực sau ≤15 giây).
+// Cột thêm tay (tên bất kỳ) vẫn được giữ và trả về web như danh sách chỉ xem. Không bao giờ xoá cột/ô ngoài danh sách đang ghi.
+var TT_CATALOG_SHEET_ = 'TT-Danh mục';
+var TT_CATALOG_DEFS_ = [
+  { id: 'docCategories', name: 'Danh mục tài liệu', edit: true, vals: ['Template chung', 'SPC · Quy chuẩn kỹ thuật', 'Sổ tay nhân sự', 'Brand & Marketing'] },
+  { id: 'linkLabels', name: 'Nhãn link tài liệu', edit: true, vals: ['Thuyết minh', 'Slide', 'Bản vẽ', 'Bảng tính', 'PDF', 'Video', 'Hình ảnh', 'Tài liệu', 'Khác'] },
+  { id: 'docTypes', name: 'Loại tài liệu (chỉ xem)', edit: false, vals: ['SOP — Quy trình thao tác chuẩn', 'WIN — Hướng dẫn công việc', 'POL — Chính sách/Quy định', 'FRM — Biểu mẫu', 'CHK — Danh mục kiểm tra', 'SPC — Tiêu chuẩn kỹ thuật', 'TPL — Tệp mẫu'] },
+  { id: 'departments', name: 'Phòng ban (chỉ xem)', edit: false, vals: ['BOD — Ban Giám đốc', 'HRM — Nhân sự', 'ACC — Kế toán & Tài chính', 'ADM — Hành chính & Công nghệ', 'LEG — Pháp chế & Hợp đồng', 'BIZ — Kinh doanh', 'MKT — Truyền thông', 'CUS — Chăm sóc Khách hàng', 'DES — Thiết kế Ý tưởng & 3D', 'DRW — Kỹ thuật Triển khai 2D', 'BIM — Quản lý Dữ liệu số', 'RND — Nghiên cứu Kỹ thuật', 'QS — Dự toán & Bóc tách', 'PUR — Cung ứng & Mua hàng', 'WHS — Kho bãi & Vận tải', 'MFG — Xưởng sản xuất', 'CON — Quản lý Thi công', 'HSE — An toàn & Môi trường', 'QAC — Quản lý Chất lượng'] },
+  { id: 'docSource', name: 'Nguồn tài liệu (chỉ xem)', edit: false, vals: ['manual — Nhập tay trên web', 'drive — Đồng bộ từ Google Drive'] },
+  { id: 'spcSection', name: 'Nhóm quy chuẩn SPC (chỉ xem)', edit: false, vals: ['height — Quy chuẩn chiều cao (có giá trị mm)', 'material — Đặc tính vật liệu'] },
+  { id: 'spcStatus', name: 'Trạng thái quy chuẩn SPC (chỉ xem)', edit: false, vals: ['pending — Chờ duyệt thêm mới', 'approved — Đã duyệt', 'rejected — Bị từ chối'] },
+  { id: 'equipCategory', name: 'Nhóm thiết bị (chỉ xem)', edit: false, vals: null },
+  { id: 'equipStatus', name: 'Tình trạng thiết bị', edit: true, vals: null },
+  { id: 'equipUnit', name: 'Đơn vị tính thiết bị', edit: true, vals: null },
+  { id: 'noticeType', name: 'Loại thông báo (chỉ xem)', edit: false, vals: ['payroll — Lương thưởng', 'attendance — Chấm công', 'general — Chung'] }
+];
+function ttCatalogKey_(h) { return normalizeName(String(h || '').replace(/\(.*?\)/g, '')); }
+function ttCatalogDefs_() {
+  return TT_CATALOG_DEFS_.map(function (d) {
+    const v = d.vals || (d.id === 'equipCategory' ? EQUIPMENT_CATEGORIES : d.id === 'equipStatus' ? EQUIPMENT_STATUSES : EQUIPMENT_UNITS);
+    return { id: d.id, name: d.name, edit: d.edit, vals: v.slice() };
+  });
+}
+function ttCatalogCreate_(ss) {
+  return withScriptLock_(function () {
+    let sh = findSheet(ss, TT_CATALOG_SHEET_);
+    if (sh) return sh;
+    const defs = ttCatalogDefs_();
+    // Danh mục tài liệu: gộp thêm mọi danh mục ĐANG có trong sheet TT-Tài liệu để không mất cái nào
+    try {
+      const seen = {}; defs[0].vals.forEach(function (x) { seen[x] = 1; });
+      getAllData(ss, SHEETS.documents).forEach(function (d) { const c = String(d.category || '').trim(); if (c && !seen[c]) { seen[c] = 1; defs[0].vals.push(c); } });
+    } catch (e) { Logger.log('ttCatalogCreate_ docs: ' + e); }
+    sh = ss.insertSheet(TT_CATALOG_SHEET_);
+    let maxLen = 0; defs.forEach(function (d) { maxLen = Math.max(maxLen, d.vals.length); });
+    const rows = [defs.map(function (d) { return d.name; })];
+    for (let i = 0; i < maxLen; i++) rows.push(defs.map(function (d) { return d.vals[i] !== undefined ? d.vals[i] : ''; }));
+    sh.getRange(1, 1, rows.length, defs.length).setValues(rows);
+    sh.getRange(1, 1, 1, defs.length).setFontWeight('bold').setBackground('#22272E').setFontColor('#FFFFFF');
+    sh.setFrozenRows(1);
+    try { sh.autoResizeColumns(1, defs.length); } catch (e) { /* bỏ qua */ }
+    SHEET_MEMO_ = null;
+    return sh;
+  });
+}
+function ttCatalogRead_(ss) {
+  const sh = findSheet(ss, TT_CATALOG_SHEET_) || ttCatalogCreate_(ss);
+  const last = sh.getLastRow(), lastCol = sh.getLastColumn();
+  if (last < 1 || lastCol < 1) return [];
+  const vals = sh.getRange(1, 1, last, lastCol).getValues(), byKey = {};
+  TT_CATALOG_DEFS_.forEach(function (d) { byKey[ttCatalogKey_(d.name)] = d; });
+  const out = [];
+  for (let c = 0; c < lastCol; c++) {
+    const head = String(vals[0][c] || '').trim(); if (!head) continue;
+    const seen = {}, list = [];
+    for (let r = 1; r < last; r++) { const v = String(vals[r][c] == null ? '' : vals[r][c]).trim(); if (v && !seen[v]) { seen[v] = 1; list.push(v); } }
+    const def = byKey[ttCatalogKey_(head)];
+    out.push({ id: def ? def.id : 'col_' + ttCatalogKey_(head), name: head, edit: !!(def && def.edit), values: list });
+  }
+  return out;
+}
+// Ghi lại 1 cột (theo id danh sách): thay toàn bộ giá trị của cột đó, giữ nguyên các cột khác. data = {id, values:[...]}
+function ttCatalogSet_(ss, data) {
+  data = data || {};
+  const def = TT_CATALOG_DEFS_.filter(function (d) { return d.id === data.id; })[0];
+  if (!def || !def.edit) return { error: 'Danh sách này không sửa được từ web' };
+  const values = (Array.isArray(data.values) ? data.values : []).map(function (x) { return String(x == null ? '' : x).trim(); }).filter(function (x, i, a) { return x && a.indexOf(x) === i; }).slice(0, 500);
+  const sh = findSheet(ss, TT_CATALOG_SHEET_) || ttCatalogCreate_(ss);
+  return withScriptLock_(function () {
+    const lastCol = Math.max(sh.getLastColumn(), 1), heads = sh.getRange(1, 1, 1, lastCol).getValues()[0], key = ttCatalogKey_(def.name);
+    let col = 0;
+    for (let c = 0; c < heads.length; c++) if (ttCatalogKey_(heads[c]) === key) { col = c + 1; break; }
+    if (!col) { col = lastCol + (String(heads[lastCol - 1] || '').trim() ? 1 : 0); sh.getRange(1, col).setValue(def.name).setFontWeight('bold').setBackground('#22272E').setFontColor('#FFFFFF'); }
+    const rows = Math.max(sh.getLastRow() - 1, values.length, 1), grid = [];
+    for (let i = 0; i < rows; i++) grid.push([values[i] !== undefined ? values[i] : '']);
+    sh.getRange(2, col, rows, 1).setValues(grid);
+    return { success: true, id: def.id, count: values.length };
+  });
+}
+
 // 2026-10-02: các bảng mới DTQT-/QLCL- dùng chung 1 bộ xử lý (get/add/update/delete + addBatch cho mã công việc & đơn giá tỉnh)
 var GEN_COLL_ = [['DtqtEstimate', 'dtqtEstimates'], ['DtqtCode', 'dtqtCodes'], ['DtqtPrice', 'dtqtPrices'], ['DtqtSettlement', 'dtqtSettlements'], ['QlclTask', 'qlclTasks'], ['QlclRecord', 'qlclRecords']];
 function genericColl_(ss, action, params) {
@@ -1745,6 +1830,8 @@ function genericColl_(ss, action, params) {
   if (action === 'dgdmApplyFormV2') return dgdmApplyFormV2_(ss, JSON.parse(params.data));
   if (action === 'dgdmSyncConventionV2') return dgdmSyncConventionV2_(ss, JSON.parse(params.data));
   if (action === 'getSheetLayout') return getSheetLayout_(ss);
+  if (action === 'getTtCatalog') return ttCatalogRead_(ss);
+  if (action === 'setTtCatalog') return ttCatalogSet_(ss, JSON.parse(params.data));
   if (action === 'dgdmImportTypical') return dgdmImportTypical_(ss, JSON.parse(params.data));
   if (action === 'dgdmDeleteTemplateSheets') return dgdmDeleteTemplateSheets_(ss, JSON.parse(params.data));
   if (action === 'applySheetLayout') return applySheetLayout_(ss, JSON.parse(params.data));
@@ -5538,7 +5625,7 @@ var SHEET_PRIORITY_ = {
   TLCC: ['Chấm công', 'Phiếu lương', 'Giờ làm việc', 'Địa điểm chấm công', 'Cơ cấu lương', 'Hoa hồng dự án', 'Mức hoa hồng'],
   TC: ['Tài chính công ty', 'Đơn hàng', 'Công nợ khách hàng', 'Chỉ số cân đối kế toán', 'Bảng giá dịch vụ', 'Danh mục TC', 'Đơn vị tính', 'Quyền truy cập'],
   KH: ['Khách hàng', 'Chăm sóc'],
-  TT: ['Thông báo', 'Bảng tin', 'Tài liệu', 'Quy chuẩn kỹ thuật', 'Thiết bị', 'Máy đã báo', 'Thiết bị đăng ký thông báo'],
+  TT: ['Thông báo', 'Bảng tin', 'Tài liệu', 'Quy chuẩn kỹ thuật', 'Thiết bị', 'Máy đã báo', 'Thiết bị đăng ký thông báo', 'Danh mục'],
   DTQT: ['Dự toán', 'Mã công việc', 'Đơn giá tỉnh', 'Thanh quyết toán'],
   QLCL: ['Danh mục công việc', 'Hồ sơ nghiệm thu'],
   BIM: ['Sản phẩm', 'Vật liệu', 'Nhà cung cấp', 'BOQ', 'Issue'],
