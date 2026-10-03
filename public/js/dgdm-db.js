@@ -304,6 +304,8 @@
           var k = el.value.trim();
           if (d === 'Hạng mục' && cat.hm[k]) { if (f('Nhóm')) f('Nhóm').value = cat.hm[k].name; if (f('Giai đoạn')) f('Giai đoạn').value = cat.hm[k].gd; }
           if (d === 'Nhóm tài nguyên' && cat.gr[k]) { if (f('Nhóm')) f('Nhóm').value = cat.gr[k].name; if (f('Loại') && cat.gr[k].loai) f('Loại').value = cat.gr[k].loai; }
+          // đổi bất kỳ thông tin gốc nào → LUÔN tạo lại mã (kể cả đã click đúp sửa tay trước đó), khoá ô mã trở lại
+          if (isAdd && au) { manual = false; if (!au.partial) { ma.readOnly = true; ma.classList.add('db-auto'); } }
           recompute();
         }); });
       });
