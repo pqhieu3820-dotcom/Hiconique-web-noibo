@@ -91,7 +91,7 @@
       pi = h.indexOf('Tỉnh/Thành');
       cols = h.map(function (x, k) { return { h: x, i: k, k: kindOf(x) }; }).filter(function (c) { return c.h !== '' && (c.i !== pi || !st.prov) && hid.indexOf(c.h) === -1; });
       var pin = cols.filter(function (c) { return c.k === 'code'; })[0];
-      $('dbHead').innerHTML = '<tr><th class="db-rn">#</th>' + cols.map(function (c) { return '<th class="' + (c.k === 'price' || c.k === 'num' ? 'num' : '') + (pin && c.i === pin.i ? ' db-pin' : '') + '">' + esc(c.h) + '</th>'; }).join('') + '<th class="db-act-h"></th></tr>';
+      $('dbHead').innerHTML = '<tr><th class="db-rn">STT</th>' + cols.map(function (c) { return '<th class="' + (c.k === 'price' || c.k === 'num' ? 'num' : '') + (pin && c.i === pin.i ? ' db-pin' : '') + '">' + esc(c.h) + '</th>'; }).join('') + '<th class="db-act-h"></th></tr>';
     } else $('dbHead').innerHTML = '';
     var n = cols.length || 6;
     for (i = 0; i < 9; i++) { tr += '<tr class="db-skel"><td class="db-rn"></td>'; for (j = 0; j < n; j++) tr += '<td><i style="width:' + (30 + ((i * 7 + j * 13) % 60)) + '%"></i></td>'; tr += '</tr>'; }
@@ -131,9 +131,9 @@
     $('dbColList').innerHTML = (d.headers || []).filter(function (x, i) { return x !== '' && !(i === pi && st.prov); }).map(function (x) { return '<label><input type="checkbox" data-col="' + esc(x) + '"' + (hid.indexOf(x) === -1 ? ' checked' : '') + '> ' + esc(x) + '</label>'; }).join('');
     // đầu bảng + thân bảng
     var pin = cols.filter(function (c) { return c.k === 'code'; })[0];
-    $('dbHead').innerHTML = '<tr><th class="db-rn">#</th>' + cols.map(function (c) { return '<th class="' + (c.k === 'price' || c.k === 'num' ? 'num' : '') + (pin && c.i === pin.i ? ' db-pin' : '') + '">' + esc(c.h) + '</th>'; }).join('') + (ro ? '' : '<th class="db-act-h"></th>') + '</tr>';
+    $('dbHead').innerHTML = '<tr><th class="db-rn">STT</th>' + cols.map(function (c) { return '<th class="' + (c.k === 'price' || c.k === 'num' ? 'num' : '') + (pin && c.i === pin.i ? ' db-pin' : '') + '">' + esc(c.h) + '</th>'; }).join('') + (ro ? '' : '<th class="db-act-h"></th>') + '</tr>';
     var rows = (d.rows || []).map(function (r, ri) {
-      return '<tr data-r="' + r.r + '" data-i="' + ri + '"><td class="db-rn">' + r.r + '</td>' + cols.map(function (c) {
+      return '<tr data-r="' + r.r + '" data-i="' + ri + '"><td class="db-rn">' + ((d.offset || 0) + ri + 1) + '</td>' + cols.map(function (c) {
         var txt = fmtCell(c.h, r.v[c.i]), cls = 'k-' + c.k + (c.k === 'price' || c.k === 'num' ? ' num' : '') + (pin && c.i === pin.i ? ' db-pin' : '');
         var inner = (c.k === 'name' || c.k === 'note') ? '<div>' + esc(txt) + '</div>' : esc(txt);
         return '<td class="' + cls + '"' + (txt.length > 40 ? ' title="' + esc(txt) + '"' : '') + '>' + inner + '</td>';
@@ -152,6 +152,8 @@
     Array.prototype.forEach.call(trs, function (t, k) { t.classList.toggle('sel', k === i); });
     if (scroll) trs[i].scrollIntoView({ block: 'nearest' });
   }
+  // 2026-10-04: số thứ tự hiển thị = 1, 2, 3… theo danh sách đang xem (đúng tỉnh/bộ lọc đang chọn), KHÔNG dùng số dòng thật trong Google Sheet (r.r vẫn dùng ngầm để sửa/xoá đúng dòng)
+  function stt(row) { var i = (st.data.rows || []).indexOf(row); return (st.data.offset || 0) + (i < 0 ? 0 : i) + 1; }
   function rowAt(tr) { var rn = +tr.dataset.r; return (st.data.rows || []).filter(function (x) { return x.r === rn; })[0]; }
   function bind() {
     var t, q = $('dbQ');
@@ -286,7 +288,7 @@
       : '<label class="db-chk"><input type="checkbox" id="dbAll"> Áp dụng thay đổi các cột <b>không phải giá</b> (tên, ĐVT, mã, nhóm…) cho <b>cùng mã ở mọi tỉnh</b></label>') : '';
     var hasNext = !isAdd && idx !== -1 && idx < (st.data.rows || []).length - 1;
     var ov = document.createElement('div'); ov.className = 'es-overlay';
-    ov.innerHTML = '<div class="es-modal db-modal"><h2><span>' + (isAdd ? (src ? 'Nhân bản thành dòng mới' : 'Thêm dòng mới') : 'Sửa dòng ' + row.r) + ' — ' + esc(st.data.sheet.replace(/^DGDM-/, '')) + (st.prov ? ' · ' + esc(st.prov) : '') + '</span><button class="es-x" type="button">×</button></h2>' +
+    ov.innerHTML = '<div class="es-modal db-modal"><h2><span>' + (isAdd ? (src ? 'Nhân bản thành dòng mới' : 'Thêm dòng mới') : 'Sửa dòng ' + stt(row)) + ' — ' + esc(st.data.sheet.replace(/^DGDM-/, '')) + (st.prov ? ' · ' + esc(st.prov) : '') + '</span><button class="es-x" type="button">×</button></h2>' +
       '<div class="db-form">' + body + '</div>' + opt +
       '<div class="db-foot"><span class="es-note">Nhật ký thay đổi tự ghi · <span class="db-key">Ctrl</span>+<span class="db-key">Enter</span> lưu · <span class="db-key">Esc</span> đóng</span><span class="es-spacer"></span><button class="es-btn" type="button" data-x>Huỷ</button>' +
       (hasNext ? '<button class="es-btn" type="button" id="dbSaveNext" title="Lưu rồi mở dòng kế tiếp">Lưu &amp; dòng kế tiếp ›</button>' : '') +
@@ -331,7 +333,7 @@
   function askDelete(row) {
     var h = st.data.headers, pi = provCol(), mi = h.indexOf('Mã'), label = (mi !== -1 ? row.v[mi] + ' — ' : '') + (row.v[h.findIndex(function (x, i) { return x && i !== pi && i !== mi && typeof row.v[i] === 'string' && row.v[i].length > 2; })] || '');
     var ov = document.createElement('div'); ov.className = 'es-overlay';
-    ov.innerHTML = '<div class="es-modal" style="max-width:520px"><h2><span>Xoá dòng ' + row.r + '?</span><button class="es-x" type="button">×</button></h2><p style="margin:0 0 10px;font-size:.875rem">' + esc(String(label).slice(0, 160)) + '</p>' +
+    ov.innerHTML = '<div class="es-modal" style="max-width:520px"><h2><span>Xoá dòng ' + stt(row) + '?</span><button class="es-x" type="button">×</button></h2><p style="margin:0 0 10px;font-size:.875rem">' + esc(String(label).slice(0, 160)) + '</p>' +
       (pi !== -1 && mi !== -1 ? '<label class="db-chk"><input type="checkbox" id="dbDelAll"> Xoá mã <b>' + esc(row.v[mi]) + '</b> ở <b>mọi tỉnh</b></label>' : '') +
       '<p class="es-note" style="margin:10px 0 0">Dòng bị xoá được lưu nguyên vào “Nhật ký thay đổi” để khôi phục khi cần.</p>' +
       '<div class="db-foot"><span class="es-spacer"></span><button class="es-btn" type="button" data-x>Huỷ</button><button class="es-btn es-btn-danger" type="button" id="dbDelOk">Xoá</button></div></div>';

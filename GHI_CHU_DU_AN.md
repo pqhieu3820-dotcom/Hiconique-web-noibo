@@ -78,6 +78,7 @@
 
 ## 2026-10-04 — Đơn giá định mức tải nhanh + khung cột cố định
 - `dgdm-db.js`: khung cột cố định (FRAME trong code cho 3 sheet danh mục + `dgdm_hdr` nhớ lại tên cột sau mỗi lần tải) → đầu bảng và dòng khung hiện ngay khi chờ Google Sheet. Bỏ chuỗi tải nối đuôi (danh sách sheet → dòng → dòng lần 2 để biết tỉnh): nay mở sẵn sheet mặc định, tải dòng và danh sách tab SONG SONG, đoán tỉnh (nhớ lần chọn trước `dgdm_prov`, mặc định Hải Phòng nếu sheet có cột Tỉnh/Thành) nên chỉ còn 1 lượt tải. Cột mới trên Sheet vẫn cập nhật khi dữ liệu về.
+- Cột # đổi thành STT 1,2,3… theo danh sách đang xem (offset+vị trí), không hiện số dòng Sheet (r.r vẫn dùng ngầm để sửa/xoá). sw v257.
 - Bỏ chữ "v2" ở ghi chú Quy ước mã (form chuẩn). sw v256.
 
 # Ghi chú dự án — đọc trước khi làm việc
