@@ -607,7 +607,7 @@ html.theme-fade, html.theme-fade *, html.theme-fade *::before, html.theme-fade *
 @keyframes magGlint { 0%, 100% { filter: none; } 40% { filter: drop-shadow(0 0 4px rgba(255, 215, 150, .95)); } }
 /* 2026-10-04: rê chuột nhẹ cho ⟳ làm mới, mặt trời/mặt trăng, chuông */
 .header-reload-btn svg { overflow: visible; transition: transform .6s cubic-bezier(.3, .8, .3, 1); }
-.header-reload-btn:not(.spinning):hover svg { transform: rotate(200deg) scale(1.1); }
+.header-reload-btn:not(.spinning):hover svg { animation: reloadHover 1.1s cubic-bezier(.4, 0, .3, 1) infinite; }
 .header-reload-btn:not(.spinning):active svg { transform: rotate(360deg) scale(.9); transition-duration: .2s; }
 .theme-toggle svg * { transform-box: fill-box; transform-origin: center; }
 .theme-toggle:hover .icon-sun circle { animation: sunCore 1.1s ease-in-out; }
@@ -620,6 +620,19 @@ html.theme-fade, html.theme-fade *, html.theme-fade *::before, html.theme-fade *
 @keyframes moonSway { 0%, 100% { transform: none; } 30% { transform: rotate(-18deg) translateY(-1px); } 65% { transform: rotate(10deg); } }
 @keyframes bellSway { 0%, 100% { transform: none; } 20% { transform: rotate(14deg); } 40% { transform: rotate(-11deg); } 60% { transform: rotate(7deg); } 80% { transform: rotate(-3deg); } }
 @keyframes dotBeat { 0%, 100% { transform: scale(1); } 40% { transform: scale(1.35); } }
+/* 2026-10-04: giữ chuột trên nút thì hiệu ứng LẶP LẠI liên tục cho tới khi rê ra */
+@keyframes reloadHover { 0% { transform: none; } 70%, 100% { transform: rotate(360deg); } 35% { transform: rotate(180deg) scale(1.12); } }
+.brand[data-bh]:not([data-bh="1"]):not(.brand-go):hover .brand-mark { animation-iteration-count: infinite !important; }
+.brand[data-bh="5"]:not(.brand-go):hover .brand-mark { animation-timing-function: linear !important; }
+.brand[data-bh="7"]:not(.brand-go):hover .brand-mark, .brand[data-bh="10"]:not(.brand-go):hover .brand-mark { animation-iteration-count: infinite !important; animation-direction: alternate !important; animation-fill-mode: both !important; }
+.brand[data-bh="1"]:not(.brand-go):hover .brand-mark::after { animation-iteration-count: infinite !important; }
+.user-menu-meta div:hover svg, .user-menu-link:hover svg, .user-menu-link:hover svg *, .user-menu-link:hover::after { animation-iteration-count: infinite !important; }
+[data-search-toggle]:hover svg, [data-search-toggle]:hover svg circle,
+.theme-toggle:hover .icon-sun circle, .theme-toggle:hover .icon-sun path, .theme-toggle:hover .icon-moon path,
+.icon-btn-bell:not(.bell-ring):hover svg, .icon-btn-bell:not(.bell-ring):hover .badge-dot { animation-iteration-count: infinite !important; }
+.theme-toggle:hover .icon-sun path { animation-direction: alternate !important; }
+.avatar:not(.is-open):hover { animation: avatarHover 1.2s ease-in-out infinite; }
+@keyframes avatarHover { 0%, 100% { transform: scale(1.08) rotate(-4deg); } 50% { transform: scale(1.12) rotate(4deg); } }
 @media (prefers-reduced-motion: reduce) { .header-reload-btn svg, .theme-toggle svg *, .icon-btn-bell svg, .icon-btn-bell .badge-dot { animation: none !important; transition: none !important; } [data-search-toggle] svg, [data-search-toggle] svg circle { animation: none !important; } .user-menu-meta svg, .user-menu-link svg, .user-menu-link svg *, .user-menu-link::after { animation: none !important; } .avatar, .avatar.avatar-pop, .avatar::after, .user-menu-panel.um-in, .user-menu-panel.um-out, .user-menu-panel.um-in > *, .brand-tip, .bt-row { animation: none !important; transition: none !important; } }
 
 /* ===== CHUẨN HÌNH DẠNG AVATAR TOÀN HỆ THỐNG (chốt cứng 2026-09-11) =====
