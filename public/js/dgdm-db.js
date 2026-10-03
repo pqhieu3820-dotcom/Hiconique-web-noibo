@@ -327,6 +327,7 @@
   function boot() {
     if (!API) { $('dbBody').innerHTML = '<tr><td class="es-empty" style="padding:30px">Chưa cấu hình API.</td></tr>'; return; }
     bind();
+    try { var qp = new URLSearchParams(location.search); if (qp.get('sheet')) st.sheet = qp.get('sheet'); if (qp.get('q')) st.q = qp.get('q'); } catch (e) { /* bỏ qua */ }   // mở từ kết quả tìm kiếm chung
     loadSheets().then(loadRows).catch(function (e) { if (window.console) console.error('DGDM:', e); $('dbBody').innerHTML = '<tr><td class="es-empty" style="padding:30px">Không tải được danh sách sheet (kiểm tra kết nối).</td></tr>'; });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();

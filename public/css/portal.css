@@ -652,6 +652,87 @@ main { flex: 1; }
 .search-hint { padding: 8px 20px 12px; font-size: 0.6875rem; color: var(--color-text-faint); }
 .search-results { max-height: 70vh; }
 
+/* ===== 2026-10-04: Ô TÌM KIẾM LIQUID GLASS (cùng ngôn ngữ với khung đồng bộ góc màn hình) =====
+   Nền kính mờ nhiều lớp, viền "specular" sáng góc trên-trái, ánh sáng đồng chuyển động chậm bên trong, vòng sáng khi gõ; câu gợi ý ẩn/hiện thay phiên. */
+.search-overlay {
+  background:
+    radial-gradient(900px 480px at 50% 6%, rgba(176, 141, 87, 0.18), transparent 62%),
+    radial-gradient(700px 420px at 12% 90%, rgba(90, 120, 190, 0.12), transparent 60%),
+    rgba(8, 10, 14, 0.66);
+  -webkit-backdrop-filter: blur(20px) saturate(135%); backdrop-filter: blur(20px) saturate(135%);
+}
+.search-panel {
+  position: relative; isolation: isolate; width: min(720px, 92vw);
+  border: 0; border-radius: 26px;
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.13) 0%, rgba(255, 255, 255, 0.05) 48%, rgba(255, 255, 255, 0.10) 100%), rgba(20, 23, 28, 0.84);
+  -webkit-backdrop-filter: blur(30px) saturate(170%); backdrop-filter: blur(30px) saturate(170%);
+  box-shadow: 0 1px 1px rgba(255, 255, 255, 0.45) inset, 0 -1px 1px rgba(255, 255, 255, 0.10) inset, 0 30px 80px -14px rgba(0, 0, 0, 0.6), 0 8px 22px rgba(0, 0, 0, 0.28);
+  animation: sGlassIn .5s cubic-bezier(.2, .9, .25, 1.12) both;
+  transition: box-shadow .35s ease;
+}
+/* viền sáng dạng gradient (sáng ở góc trên-trái, mờ dần xuống góc dưới-phải) */
+.search-panel::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.3px; pointer-events: none; z-index: 2;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.14) 38%, rgba(255, 255, 255, 0.07) 62%, rgba(255, 255, 255, 0.65));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+/* ánh sáng lỏng chuyển động chậm bên trong kính */
+.search-panel::after {
+  content: ""; position: absolute; inset: -30%; z-index: -1; pointer-events: none; opacity: .75;
+  background:
+    radial-gradient(38% 30% at 22% 28%, rgba(214, 170, 100, 0.30), transparent 70%),
+    radial-gradient(34% 28% at 78% 70%, rgba(120, 150, 230, 0.20), transparent 70%),
+    radial-gradient(30% 26% at 60% 20%, rgba(255, 255, 255, 0.10), transparent 70%);
+  animation: sLiquid 14s ease-in-out infinite alternate;
+}
+.search-panel:focus-within {
+  box-shadow: 0 1px 1px rgba(255, 255, 255, 0.55) inset, 0 -1px 1px rgba(255, 255, 255, 0.12) inset, 0 0 0 1px rgba(214, 170, 100, 0.40), 0 0 46px 6px rgba(214, 170, 100, 0.20), 0 30px 80px -14px rgba(0, 0, 0, 0.62);
+}
+.search-box { padding: 20px 26px; gap: 16px; }
+.search-box svg { width: 22px; height: 22px; filter: drop-shadow(0 0 8px rgba(214, 170, 100, 0.55)); transition: transform .4s cubic-bezier(.2, 1.3, .4, 1); }
+.search-panel:focus-within .search-box svg { transform: scale(1.12) rotate(-8deg); }
+.search-box input { font-size: 1.125rem; font-weight: 500; letter-spacing: .005em; width: 100%; position: relative; z-index: 1; caret-color: var(--color-bronze); outline: none; }
+.search-box kbd {
+  border-radius: 8px; border: 0; background: rgba(255, 255, 255, 0.08); color: var(--color-text-muted);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.28) inset, 0 0 0 1px rgba(255, 255, 255, 0.10);
+}
+.search-results { border-top: 1px solid rgba(255, 255, 255, 0.10); background: transparent; }
+.search-chip { background: rgba(255, 255, 255, 0.05); border-color: rgba(255, 255, 255, 0.12); backdrop-filter: blur(6px); }
+.search-result-item { margin: 0 8px; padding: 10px 14px; border-radius: 12px; transition: background .15s ease, transform .15s ease; }
+.search-result-item:hover { background: rgba(255, 255, 255, 0.07); }
+.search-result-item.active { background: linear-gradient(90deg, rgba(214, 170, 100, 0.20), rgba(214, 170, 100, 0.08)); box-shadow: 0 0 0 1px rgba(214, 170, 100, 0.28) inset; transform: translateX(2px); }
+.search-result-group, .search-chips { padding-left: 24px; padding-right: 24px; }
+.search-hint { padding-left: 24px; }
+.search-loading { display: flex; align-items: center; gap: 10px; padding: 12px 24px 4px; font-size: 0.75rem; color: var(--color-text-muted); }
+.search-loading i { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(214, 170, 100, 0.25); border-top-color: var(--color-bronze); animation: sSpin .8s linear infinite; }
+
+/* câu gợi ý động: lần lượt hiện lên (rõ dần, mờ→nét) rồi bay nhẹ lên và tan đi, câu mới thế chỗ */
+.search-field { position: relative; flex: 1; min-width: 0; display: flex; align-items: center; }
+.search-ph { position: absolute; left: 0; right: 0; top: 50%; height: 1.6em; transform: translateY(-50%); pointer-events: none; overflow: hidden; font-size: 1.0625rem; color: var(--color-text-faint); white-space: nowrap; text-overflow: ellipsis; transition: opacity .2s ease; }
+.search-field.has-value .search-ph { opacity: 0; }
+.ph-line { position: absolute; left: 0; right: 0; top: 0; overflow: hidden; text-overflow: ellipsis; opacity: 0; }
+.ph-line b { font-weight: 600; color: var(--color-bronze); }
+.ph-line.in { animation: sPhIn .75s cubic-bezier(.2, .8, .2, 1) forwards; }
+.ph-line.out { animation: sPhOut .55s ease-in forwards; }
+@keyframes sPhIn { from { opacity: 0; transform: translateY(12px); filter: blur(7px); } to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes sPhOut { from { opacity: 1; transform: none; filter: blur(0); } to { opacity: 0; transform: translateY(-12px); filter: blur(7px); } }
+@keyframes sGlassIn { from { opacity: 0; transform: translateY(-14px) scale(.96); filter: blur(8px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes sLiquid { 0% { transform: translate(-4%, -2%) rotate(0deg) scale(1); } 50% { transform: translate(5%, 3%) rotate(8deg) scale(1.08); } 100% { transform: translate(-2%, 5%) rotate(-6deg) scale(1.02); } }
+@keyframes sSpin { to { transform: rotate(360deg); } }
+/* nền sáng */
+html[data-theme="light"] .search-overlay { background: radial-gradient(900px 480px at 50% 6%, rgba(176, 141, 87, 0.20), transparent 62%), rgba(235, 232, 226, 0.55); }
+html[data-theme="light"] .search-panel {
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.94) 0%, rgba(255, 255, 255, 0.78) 50%, rgba(255, 255, 255, 0.92) 100%);
+  box-shadow: 0 1px 1px rgba(255, 255, 255, 0.9) inset, 0 30px 70px -16px rgba(60, 50, 30, 0.35), 0 6px 18px rgba(60, 50, 30, 0.12), 0 0 0 1px rgba(60, 50, 30, 0.06);
+}
+html[data-theme="light"] .search-panel::before { background: linear-gradient(135deg, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0.4) 40%, rgba(255, 255, 255, 0.2) 62%, rgba(255, 255, 255, 0.9)); }
+html[data-theme="light"] .search-box kbd { background: rgba(60, 50, 30, 0.06); box-shadow: 0 0 0 1px rgba(60, 50, 30, 0.12); }
+html[data-theme="light"] .search-results { border-top-color: rgba(60, 50, 30, 0.10); }
+html[data-theme="light"] .search-chip { background: rgba(255, 255, 255, 0.6); border-color: rgba(60, 50, 30, 0.14); }
+html[data-theme="light"] .search-result-item:hover { background: rgba(60, 50, 30, 0.05); }
+@media (prefers-reduced-motion: reduce) { .search-panel, .search-panel::after, .ph-line.in, .ph-line.out { animation: none; } .ph-line.in { opacity: 1; } }
+
 @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
 
 /* ---------- Hero ---------- */

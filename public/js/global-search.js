@@ -14,7 +14,7 @@
 (function () {
   'use strict';
 
-  var GROUP_ORDER = ['Trang & công cụ', 'Tài sản & vật tư', 'Dự án', 'Công việc', 'Khách hàng', 'Đồng nghiệp', 'Tài liệu', 'Bảng tin'];
+  var GROUP_ORDER = ['Trang & công cụ', 'Tài sản & vật tư', 'Dự án', 'Công việc', 'Khách hàng', 'Đồng nghiệp', 'Tài liệu', 'Bảng tin', 'Đề xuất', 'Đơn hàng & công nợ', 'Bảng giá dịch vụ', 'Quy chuẩn SPC', 'Máy tính đã báo', 'Đơn giá – định mức'];
   var pages = [];
   var index = null;          // mảng mục đã chuẩn hoá
   var lastWarm = 0;
@@ -132,6 +132,38 @@
     safe(function () { return t.getNotices(); }, []).forEach(function (n) {
       push('Bảng tin', n.title, String(n.message || '').slice(0, 90), '/pages/notices.html', [n.title, n.message]);
     });
+
+    // 2026-10-04: mở rộng "tìm mọi thứ" — đề xuất, đơn hàng/công nợ, bảng giá dịch vụ, quy chuẩn SPC, máy tính đã báo (đều lọc theo quyền; KHÔNG có lương/CCCD/số tài khoản)
+    var PROP_STATUS = { pending: 'Chờ duyệt', approved: 'Đã duyệt', rejected: 'Từ chối' };
+    safe(function () { return t.getProposals(); }, []).forEach(function (p) {
+      if (!mgr && !(u && p.requesterId === u.id)) return;
+      push('Đề xuất', p.title, [PROP_STATUS[p.status] || p.status, memberName(p.requesterId), p.type].filter(Boolean).join(' · '), '/pages/tasks-manager.html',
+        [p.title, p.description, p.type, PROP_STATUS[p.status] || p.status, memberName(p.requesterId)]);
+    });
+    var fin = !!(u && safe(function () { return t.canManageFinance(u); }, false));
+    if (fin) {
+      safe(function () { return t.getOrders(); }, []).forEach(function (o) {
+        if (o.deletedAt) return;
+        push('Đơn hàng & công nợ', (o.orderNumber || o.id) + (o.clientName ? ' — ' + o.clientName : ''), [o.status, o.clientPhone].filter(Boolean).join(' · '), '/pages/orders.html',
+          [o.orderNumber, o.id, o.clientName, o.clientPhone, o.clientAddress, o.note, o.status]);
+      });
+      safe(function () { return t.getReceivables ? t.getReceivables() : []; }, []).forEach(function (r) {
+        if (r.deletedAt) return;
+        push('Đơn hàng & công nợ', 'Công nợ: ' + (r.clientName || r.id), [r.description, r.orderNumber, r.status].filter(Boolean).join(' · '), '/pages/finance.html',
+          [r.clientName, r.description, r.orderNumber, r.note, r.status]);
+      });
+    }
+    safe(function () { return t.getPriceCatalog(); }, []).forEach(function (c) {
+      push('Bảng giá dịch vụ', c.name, [c.category, c.unit].filter(Boolean).join(' · '), '/pages/pricing.html', [c.name, c.category, c.unit, c.note]);
+    });
+    safe(function () { return t.getSpcStandards(u); }, []).forEach(function (s) {
+      push('Quy chuẩn SPC', s.title || s.code, [s.code, s.section === 'height' ? 'Chiều cao' : 'Vật liệu'].filter(Boolean).join(' · '), '/pages/spc.html', [s.title, s.code, s.note, s.section]);
+    });
+    if (mgr) {
+      safe(function () { return t.getPcReports(); }, []).forEach(function (r) {
+        push('Máy tính đã báo', r.hostname, [r.brand, r.model, memberName(r.memberId)].filter(Boolean).join(' · '), '/pages/equipment.html', [r.hostname, r.brand, r.model, r.os, memberName(r.memberId)]);
+      });
+    }
     return out;
   }
 
@@ -231,6 +263,12 @@
     warm: warm,
     norm: norm,
     setPages: function (list) { pages = list || []; index = null; },
+    sample: function () {   // vài tên THẬT để gợi ý động ở ô tìm kiếm (dự án, tài sản, tài liệu, đồng nghiệp)
+      if (!index) rebuild();
+      var by = {}; index.forEach(function (it) { if (it.title && it.title.length < 38) (by[it.group] = by[it.group] || []).push(it.title); });
+      function pick(g) { var a = by[g] || []; return a.length ? a[Math.floor(Math.random() * a.length)] : ''; }
+      return { project: pick('Dự án'), equip: pick('Tài sản & vật tư'), doc: pick('Tài liệu'), member: pick('Đồng nghiệp'), task: pick('Công việc') };
+    },
     groupOrder: GROUP_ORDER
   };
 })();

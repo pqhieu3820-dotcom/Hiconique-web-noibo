@@ -343,7 +343,18 @@
     { title: 'Thông báo', sub: 'Tin tức và thông báo nội bộ', url: '/pages/notices.html', keywords: 'bang tin' },
     { title: 'Team', sub: 'Danh bạ nhân sự', url: '/pages/team.html', keywords: 'nhan su nhan vien' },
     { title: 'Thông tin cá nhân', sub: 'Hồ sơ, đổi mật khẩu', url: '/pages/profile.html', keywords: 'ho so mat khau' },
-    { title: 'Dashboard của tôi', sub: 'Tổng quan công việc cá nhân', url: '/pages/my-dashboard.html', keywords: 'tong quan' }
+    { title: 'Dashboard của tôi', sub: 'Tổng quan công việc cá nhân', url: '/pages/my-dashboard.html', keywords: 'tong quan' },
+    // 2026-10-04: lối tắt hành động — gõ việc muốn làm là ra trang tương ứng
+    { title: 'Thêm tài liệu mới', sub: 'Trang Tài liệu → Thêm tài liệu (mã hiệu tự động)', url: '/pages/wiki.html', keywords: 'them tai lieu moi tao tai lieu ma hieu quy trinh bieu mau upload' },
+    { title: 'Sắp xếp tài liệu', sub: 'Kéo thả đổi vị trí, sắp xếp nhanh theo mã/tên/ngày', url: '/pages/wiki.html', keywords: 'sap xep tai lieu keo tha thu tu danh muc' },
+    { title: 'Tạo công việc / giao việc', sub: 'Task Manager', url: '/pages/tasks-manager.html', keywords: 'tao cong viec giao viec them task moi' },
+    { title: 'Gửi đề xuất (nghỉ phép, mua sắm…)', sub: 'Task Manager → Đề xuất', url: '/pages/tasks-manager.html', keywords: 'de xuat nghi phep mua sam xin phep tam ung' },
+    { title: 'Đổi mật khẩu', sub: 'Thông tin cá nhân', url: '/pages/profile.html', keywords: 'doi mat khau password bao mat tai khoan' },
+    { title: 'Đăng ký thiết bị nhận thông báo', sub: 'Thông báo đẩy trên máy tính / điện thoại', url: '/pages/notices.html', keywords: 'thiet bi nhan thong bao push dang ky dien thoai may tinh chuong' },
+    { title: 'Tải HICONIQUE Agent', sub: 'Ứng dụng cài trên máy tính công ty', url: '/pages/staff-monitor.html', keywords: 'agent cai dat tai ung dung may tinh hieu suat' },
+    { title: 'Nhập thêm mã công việc / vật tư', sub: 'Đơn giá – Định mức → Thêm dòng', url: '/pages/dgdm.html', keywords: 'them ma cong viec ma vat tu don gia dinh muc nhan cong khoan' },
+    { title: 'Xem dòng tiền / sổ quỹ', sub: 'Tài chính công ty', url: '/pages/finance.html', keywords: 'dong tien so quy thu chi cong no' },
+    { title: 'Xuất báo giá cho khách', sub: 'Bảng giá dịch vụ → xuất Excel/PDF', url: '/pages/pricing.html', keywords: 'bao gia xuat pdf excel khach hang' }
   ];
 
   var SEARCH_ICON_ARROW = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>';
@@ -359,36 +370,127 @@
     document.head.appendChild(sc);
   }
 
-  function drawSearchResults(query) {
-    var r = window.HiconiqueSearch.search(query, { group: searchFilter });
+  // ---- 2026-10-04: tìm trong CƠ SỞ ĐƠN GIÁ – ĐỊNH MỨC (mã công việc, vật tư, nhân công — hàng chục nghìn dòng, nằm trên Google Sheet nên tìm từ xa) ----
+  var REMOTE_G = 'Đơn giá – định mức';
+  var remote = { q: '', items: [], loading: false, timer: null, seq: 0 };
+  var DG_SHEETS = [['DGDM-Mã công việc công tác', 'Mã công việc'], ['DGDM-Vật tư thiết bị', 'Vật tư thiết bị'], ['DGDM-Nhân công khoán', 'Nhân công khoán']];
+  function dgItems(res) {
+    var out = [];
+    res.forEach(function (d, i) {
+      if (!d || !d.rows || !d.headers) return;
+      var h = d.headers, ix = function (re) { for (var k = 0; k < h.length; k++) if (re.test(h[k])) return k; return -1; };
+      var ci = h.indexOf('Mã'), ni = ix(/^tên/i), ui = ix(/^đvt|^đơn vị/i), pi = ix(/mức điển hình|đơn giá|^vl|thấp/i);
+      d.rows.forEach(function (r) {
+        var code = ci !== -1 ? r.v[ci] : '', name = ni !== -1 ? r.v[ni] : '', unit = ui !== -1 ? r.v[ui] : '', price = pi !== -1 ? r.v[pi] : '';
+        if (!code && !name) return;
+        out.push({ group: REMOTE_G, title: (code ? code + ' — ' : '') + (name || ''), url: '/pages/dgdm.html?sheet=' + encodeURIComponent(DG_SHEETS[i][0]) + '&q=' + encodeURIComponent(code || name),
+          sub: [DG_SHEETS[i][1], unit, typeof price === 'number' && price ? price.toLocaleString('vi-VN') + ' đ' : ''].filter(Boolean).join(' · ') });
+      });
+    });
+    return out;
+  }
+  function fetchRemote(q) {
+    clearTimeout(remote.timer);
+    var api = (typeof GSHEETS_CONFIG !== 'undefined' && GSHEETS_CONFIG.API_URL) || '';
+    if (q.length < 3 || !api) { remote.seq++; remote.q = ''; remote.items = []; remote.loading = false; return; }
+    if (remote.q === q) return;
+    remote.q = q; remote.items = []; remote.loading = true;
+    remote.timer = setTimeout(function () {
+      var seq = ++remote.seq;
+      Promise.all(DG_SHEETS.map(function (sh) {
+        return fetch(api + '?action=getDgdmRows&sheet=' + encodeURIComponent(sh[0]) + '&province=' + encodeURIComponent('Hải Phòng') + '&q=' + encodeURIComponent(q) + '&offset=0&limit=5', { redirect: 'follow' })
+          .then(function (r) { return r.json(); }).catch(function () { return null; });
+      })).then(function (res) {
+        if (seq !== remote.seq) return;
+        remote.items = dgItems(res); remote.loading = false;
+        if (overlay && !overlay.hidden && input && input.value.trim() === q) drawSearchResults(q, true);
+      });
+    }, 650);
+  }
+
+  function drawSearchResults(query, keepSel) {
+    var showRemote = remote.q === query;
+    var r = window.HiconiqueSearch.search(query, { group: searchFilter === REMOTE_G ? '__none__' : searchFilter });
+    var rItems = showRemote ? remote.items : [], groups = r.groups.slice(), total = r.total;
+    if (rItems.length) { groups.push({ name: REMOTE_G, count: rItems.length }); total += rItems.length; }
+    var loadingRow = showRemote && remote.loading ? '<p class="search-loading"><i></i>Đang tìm thêm trong cơ sở đơn giá – định mức…</p>' : '';
     resultsBox.hidden = false;
-    if (!r.total) {
-      resultsBox.innerHTML = '<p class="search-empty">Không tìm thấy kết quả cho "' + escapeHtml(query) + '"<br><small>Thử gõ ít từ hơn — không cần gõ dấu, sai chính tả nhẹ vẫn tìm được.</small></p>';
+    if (!total) {
+      resultsBox.innerHTML = loadingRow || '<p class="search-empty">Không tìm thấy kết quả cho "' + escapeHtml(query) + '"<br><small>Thử gõ ít từ hơn — không cần gõ dấu, sai chính tả nhẹ vẫn tìm được.</small></p>';
       return;
     }
     var html = '<div class="search-chips">' +
-      '<button type="button" class="search-chip' + (searchFilter ? '' : ' active') + '" data-search-group="">Tất cả <b>' + r.total + '</b></button>' +
-      r.groups.map(function (g) {
+      '<button type="button" class="search-chip' + (searchFilter ? '' : ' active') + '" data-search-group="">Tất cả <b>' + total + '</b></button>' +
+      groups.map(function (g) {
         return '<button type="button" class="search-chip' + (searchFilter === g.name ? ' active' : '') + '" data-search-group="' + escapeHtml(g.name) + '">' + escapeHtml(g.name) + ' <b>' + g.count + '</b></button>';
       }).join('') + '</div>';
-    var lastGroup = null;
-    r.items.forEach(function (item) {
+    var items = searchFilter === REMOTE_G ? rItems : r.items.concat(searchFilter ? [] : rItems), lastGroup = null;
+    items.forEach(function (item) {
       if (!searchFilter && item.group !== lastGroup) { html += '<p class="search-result-group">' + escapeHtml(item.group) + '</p>'; lastGroup = item.group; }
       html += '<a class="search-result-item" href="' + escapeHtml(item.url) + '">' + SEARCH_ICON_ARROW +
         '<span class="search-result-text"><strong>' + escapeHtml(item.title) + '</strong><small>' + escapeHtml(item.sub) + '</small></span></a>';
     });
-    html += '<p class="search-hint">↑ ↓ để chọn · Enter để mở · Esc để đóng · phím tắt: / hoặc Ctrl+K</p>';
+    html += loadingRow + '<p class="search-hint">↑ ↓ để chọn · Enter để mở · Esc để đóng · phím tắt: / hoặc Ctrl+K</p>';
+    var prevHref = keepSel ? (resultsBox.querySelector('.search-result-item.active') || {}).href : null;
     resultsBox.innerHTML = html;
-    var first = resultsBox.querySelector('.search-result-item');
+    var sel = prevHref ? Array.prototype.filter.call(resultsBox.querySelectorAll('.search-result-item'), function (n) { return n.href === prevHref; })[0] : null;
+    var first = sel || resultsBox.querySelector('.search-result-item');
     if (first) first.classList.add('active');
   }
 
   function renderSearchResults(query) {
     if (!resultsBox) return;
     var q = query.trim();
-    if (!q) { resultsBox.hidden = true; resultsBox.innerHTML = ''; return; }
-    withSearchModule(function () { drawSearchResults(q); });
+    if (!q) { fetchRemote(''); resultsBox.hidden = true; resultsBox.innerHTML = ''; return; }
+    withSearchModule(function () { fetchRemote(q); drawSearchResults(q); });
   }
+
+  // ---- 2026-10-04: gợi ý động ở ô tìm kiếm — các câu ví dụ ẩn/hiện lần lượt thay phiên (một số lấy tên THẬT từ dữ liệu của công ty) ----
+  var ph = null, phTimer = null, phList = [], phIdx = 0;
+  function setupField() {
+    if (!input || input.parentNode.classList.contains('search-field')) return;
+    var wrap = document.createElement('div'); wrap.className = 'search-field';
+    input.parentNode.insertBefore(wrap, input); wrap.appendChild(input);
+    ph = document.createElement('div'); ph.className = 'search-ph'; ph.setAttribute('aria-hidden', 'true'); wrap.appendChild(ph);
+    input.placeholder = '';
+    input.addEventListener('input', function () { wrap.classList.toggle('has-value', !!input.value); });
+  }
+  function phPhrases() {
+    var list = [
+      'Tìm <b>tài sản</b>: máy thủy bình, giàn giáo, ván khuôn…',
+      'Tìm <b>dự án</b>, <b>công việc</b> đang làm',
+      'Gõ <b>không dấu</b> cũng được: “gian giao”, “may thuy binh”',
+      'Tìm <b>mã công việc</b>, <b>vật tư</b>: “TH-BT”, “xi mang”',
+      'Tìm <b>khách hàng</b>, <b>đơn hàng</b>, công nợ…',
+      'Tìm <b>tài liệu</b>, quy trình, biểu mẫu: “POL-001”',
+      'Thử gõ việc muốn làm: “đổi mật khẩu”, “thêm tài liệu”, “báo giá”',
+      'Tìm <b>đồng nghiệp</b> theo tên, chức vụ, email…',
+      'Tìm <b>quy chuẩn SPC</b>, <b>bảng giá dịch vụ</b>, đề xuất…'
+    ];
+    var smp = {}; try { smp = window.HiconiqueSearch ? window.HiconiqueSearch.sample() : {}; } catch (e) { smp = {}; }
+    function q(x) { return String(x).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+    if (smp.project) list.push('Thử tìm <b>dự án</b> “' + q(smp.project) + '”');
+    if (smp.equip) list.push('Thử tìm <b>tài sản</b> “' + q(smp.equip) + '”');
+    if (smp.doc) list.push('Thử tìm <b>tài liệu</b> “' + q(smp.doc) + '”');
+    if (smp.member) list.push('Thử tìm <b>đồng nghiệp</b> “' + q(smp.member) + '”');
+    if (smp.task) list.push('Thử tìm <b>công việc</b> “' + q(smp.task) + '”');
+    for (var i = list.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = list[i]; list[i] = list[j]; list[j] = t; }
+    return list;
+  }
+  function showPh() {
+    if (!ph || !phList.length) return;
+    var old = ph.querySelector('.ph-line.in');
+    if (old) { old.classList.remove('in'); old.classList.add('out'); setTimeout(function () { if (old.parentNode) old.remove(); }, 650); }
+    var el = document.createElement('span'); el.className = 'ph-line in'; el.innerHTML = phList[phIdx++ % phList.length]; ph.appendChild(el);
+  }
+  function startPh() {
+    setupField(); stopPh();
+    phList = phPhrases(); phIdx = 0; if (ph) ph.innerHTML = '';
+    if (input && input.parentNode) input.parentNode.classList.toggle('has-value', !!input.value);
+    showPh();
+    if (!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) phTimer = setInterval(showPh, 3600);
+  }
+  function stopPh() { if (phTimer) { clearInterval(phTimer); phTimer = null; } }
 
   function moveActive(delta) {
     var items = resultsBox ? resultsBox.querySelectorAll('.search-result-item') : [];
@@ -405,15 +507,17 @@
     if (!overlay) return;
     overlay.hidden = false;
     searchFilter = '';
-    if (input) { input.value = ''; input.placeholder = 'Tìm tài sản, dự án, công việc, khách hàng, tài liệu, đồng nghiệp…'; }
+    if (input) { input.value = ''; input.placeholder = ''; }
     if (resultsBox) { resultsBox.hidden = true; resultsBox.innerHTML = ''; }
+    fetchRemote('');
     setTimeout(function () { input && input.focus(); }, 30);
     // nạp nền các nguồn chưa có trong máy (tài sản, khách hàng), xong thì vẽ lại nếu người dùng đã gõ
-    withSearchModule(function () { window.HiconiqueSearch.warm(function () { if (input && input.value.trim()) drawSearchResults(input.value.trim()); }); });
+    withSearchModule(function () { startPh(); window.HiconiqueSearch.warm(function () { if (input && input.value.trim()) drawSearchResults(input.value.trim(), true); }); });
   }
   function closeSearch() {
     if (!overlay) return;
     overlay.hidden = true;
+    stopPh();
   }
 
   toggle.forEach(function (btn) { btn.addEventListener('click', openSearch); });
