@@ -265,11 +265,29 @@
       '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
         '<button type="button" id="pdpLater" style="flex:1;min-width:120px;height:40px;border-radius:10px;border:1px solid var(--color-border,#333);background:transparent;color:inherit;font-weight:600;cursor:pointer;">Để sau</button>' +
         '<a href="/pages/notices.html#devices" style="flex:1;min-width:120px;height:40px;border-radius:10px;border:1px solid var(--color-border,#333);display:inline-flex;align-items:center;justify-content:center;color:inherit;text-decoration:none;font-weight:600;font-size:.875rem;">Quản lý thiết bị</a>' +
+        (isSupported() && !thisRegistered ? '<button type="button" id="pdpAsk" style="flex:1 1 100%;height:40px;border-radius:10px;border:1px solid var(--color-bronze,#B08D57);background:transparent;color:var(--color-bronze,#B08D57);font-weight:700;cursor:pointer;">Yêu cầu cấp phép lại</button>' : '') +
         (canHere ? '<button type="button" id="pdpNow" style="flex:1 1 100%;height:42px;border-radius:10px;border:none;background:var(--color-bronze,#B08D57);color:#0B0D10;font-weight:700;cursor:pointer;">Bật thông báo trên thiết bị này</button>' : '') +
       '</div><div style="font-size:.6875rem;color:var(--color-text-faint,#777);margin-top:10px;">Thông báo này sẽ nhắc lại mỗi ngày cho tới khi đủ 2 thiết bị.</div></div>';
     document.body.appendChild(ov);
     var close = function () { ov.remove(); };
     document.getElementById('pdpLater').addEventListener('click', close);
+    // 2026-10-04: nút "Yêu cầu cấp phép lại" — hỏi lại quyền thông báo; nếu trình duyệt đã CHẶN (không hỏi lại được) thì hướng dẫn mở khoá
+    // và TỰ phát hiện khi người dùng vừa bật lại quyền (không cần tải lại trang) để đăng ký thiết bị luôn.
+    var ask = document.getElementById('pdpAsk'), hintEl = document.getElementById('pdpHint'), watching = false;
+    var onOk = function () { if (ask) { ask.textContent = 'Đã bật trên thiết bị này ✓'; ask.disabled = true; } hintEl.textContent = 'Thiết bị này đã nhận thông báo.'; setTimeout(close, 1500); };
+    var tryAsk = function () {
+      if (ask) { ask.disabled = true; ask.textContent = 'Đang yêu cầu…'; }
+      enableAndWait(user).then(function (r) {
+        if (r.ok) return onOk();
+        if (ask) { ask.disabled = false; ask.textContent = r.reason === 'denied' ? 'Tôi đã cho phép — thử lại' : 'Yêu cầu cấp phép lại'; }
+        hintEl.textContent = r.reason === 'denied' ? 'Trình duyệt đang CHẶN nên không hỏi lại được. Bấm biểu tượng ổ khoá (hoặc ⓘ) cạnh địa chỉ web → Thông báo → Cho phép. Làm xong trang tự nhận, không cần tải lại. Trên điện thoại: Cài đặt trình duyệt/ứng dụng → Thông báo → bật cho HICONIQUE.' : reasonText(r.reason);
+        if (r.reason === 'denied' && !watching && navigator.permissions && navigator.permissions.query) {
+          watching = true;
+          navigator.permissions.query({ name: 'notifications' }).then(function (ps) { ps.onchange = function () { if (ps.state === 'granted') tryAsk(); }; }).catch(function () {});
+        }
+      });
+    };
+    if (ask) ask.addEventListener('click', tryAsk);
     var now = document.getElementById('pdpNow');
     if (now) now.addEventListener('click', function () {
       now.disabled = true; now.textContent = 'Đang bật…';
