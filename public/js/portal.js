@@ -1667,8 +1667,13 @@
   initBrandLinks();
 
   // 2026-10-04: rê chuột vào chữ "HICONIQUE" cạnh logo → thẻ giải thích chức năng đi theo con chuột (rê sang hình logo thì ẩn)
+  // 2026-10-04: chỉ coi là "có chuột" khi sự kiện con trỏ thật sự là chuột (điện thoại/máy tính bảng chạm → pointerType=touch/pen thì tắt hết hiệu ứng & thẻ rê chuột)
+  var mouseUser = !!(window.matchMedia && matchMedia('(hover: hover) and (pointer: fine)').matches);
+  ['pointerdown', 'pointermove', 'pointerover'].forEach(function (t) {
+    document.addEventListener(t, function (e) { if (e.pointerType) mouseUser = (e.pointerType === 'mouse'); }, true);
+  });
+  document.addEventListener('touchstart', function () { mouseUser = false; }, { capture: true, passive: true });
   function initBrandInfo() {
-    if (!window.matchMedia || !matchMedia('(hover: hover)').matches) return;
     var tip = null;
     Array.prototype.forEach.call(document.querySelectorAll('.site-header .brand .brand-name'), function (nm) {
       if (nm.__brandInfo) return; nm.__brandInfo = true;
@@ -1685,29 +1690,44 @@
         if (y + h > innerHeight - 8) y = e.clientY - h - 14;
         tip.style.left = Math.max(8, x) + 'px'; tip.style.top = Math.max(8, y) + 'px';
       }
-      nm.addEventListener('mouseenter', function (e) { move(e); tip.classList.add('show'); });
-      nm.addEventListener('mousemove', move);
+      nm.addEventListener('mouseenter', function (e) { if (!mouseUser) return; move(e); tip.classList.add('show'); });
+      nm.addEventListener('mousemove', function (e) { if (mouseUser) move(e); });
       nm.addEventListener('mouseleave', function () { tip.classList.remove('show'); });
       nm.addEventListener('click', function () { tip.classList.remove('show'); });
     });
   }
   initBrandInfo();
 
-  // 2026-10-04: giữ chuột trên nút → mỗi vòng lặp vẫn chạy đúng tốc độ gốc, nhưng giữa hai vòng nghỉ ~1s (dừng ở tư thế nghỉ rồi chạy tiếp)
+  // 2026-10-04: giữ chuột trên nút → hiệu ứng lặp đúng tốc độ gốc, nghỉ ~1s giữa hai vòng; rê ra thì chạy nốt vòng hiện tại về tư thế nghỉ rồi mới tắt (không bị khựng giữa chừng)
   (function () {
     var HOST = '.brand, .user-menu-meta div, .user-menu-link, [data-search-toggle], .header-reload-btn, .theme-toggle, .icon-btn-bell, .avatar';
     var GAP = 1000;
-    document.addEventListener('animationiteration', function (e) {
-      var el = e.target && e.target.closest ? e.target.closest(HOST) : null;
-      if (!el || el.__hvGap || !el.matches(':hover') || !el.getAnimations) return;
-      var loops = el.getAnimations({ subtree: true }).filter(function (a) { var t = a.effect && a.effect.getTiming(); return t && t.iterations === Infinity && a.playState === 'running'; });
-      if (!loops.length) return;
-      loops.forEach(function (a) { a.pause(); });
-      el.__hvGap = setTimeout(function () { el.__hvGap = 0; loops.forEach(function (a) { try { a.play(); } catch (x) {} }); }, GAP);
+    function hostOf(t) { return t && t.closest ? t.closest(HOST) : null; }
+    function loops(el) {
+      return el.getAnimations ? el.getAnimations({ subtree: true }).filter(function (a) { var t = a.effect && a.effect.getTiming(); return t && t.iterations === Infinity; }) : [];
+    }
+    function off(el) { clearTimeout(el.__hvGap); clearTimeout(el.__hvFb); el.__hvGap = 0; el.__hvLeave = false; el.classList.remove('hv-on'); }
+    document.addEventListener('mouseover', function (e) {
+      var el = hostOf(e.target);
+      if (!mouseUser || !el || (e.relatedTarget && el.contains(e.relatedTarget))) return;
+      clearTimeout(el.__hvFb); el.__hvLeave = false;
+      el.classList.add('hv-on');
     }, true);
     document.addEventListener('mouseout', function (e) {
-      var el = e.target && e.target.closest ? e.target.closest(HOST) : null;
-      if (el && !el.contains(e.relatedTarget) && el.__hvGap) { clearTimeout(el.__hvGap); el.__hvGap = 0; }
+      var el = hostOf(e.target);
+      if (!el || (e.relatedTarget && el.contains(e.relatedTarget))) return;
+      if (el.__hvGap || !loops(el).length) { off(el); return; }   // đang nghỉ giữa 2 vòng (tư thế nghỉ) hoặc không lặp → tắt ngay
+      el.__hvLeave = true;
+      el.__hvFb = setTimeout(function () { off(el); }, 3500);
+    }, true);
+    document.addEventListener('animationiteration', function (e) {
+      var el = hostOf(e.target);
+      if (!el || el.__hvGap || !el.classList.contains('hv-on')) return;
+      if (el.__hvLeave) { off(el); return; }
+      var ls = loops(el).filter(function (a) { return a.playState === 'running'; });
+      if (!ls.length) return;
+      ls.forEach(function (a) { a.pause(); });
+      el.__hvGap = setTimeout(function () { el.__hvGap = 0; ls.forEach(function (a) { try { a.play(); } catch (x) {} }); }, GAP);
     }, true);
   })();
 
