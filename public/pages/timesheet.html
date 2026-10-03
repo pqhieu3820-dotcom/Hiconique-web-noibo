@@ -373,6 +373,8 @@
     .ts-shift-done svg { width: 14px; height: 14px; }
     .ts-checkin-status.working { background: var(--ts-success-light); color: var(--ts-success); }
     .ts-checkin-status.idle { background: var(--color-bg); color: var(--ts-muted); }
+    #tsDetailLateEarly[hidden], #tsRmDetailLateEarly[hidden], .ts-checkin-status[hidden] { display: none !important; }
+    .ts-stat-mo { color: var(--ts-faint, var(--ts-muted)); font-weight: 500; font-size: .75em; margin-left: 2px; white-space: nowrap; }
     .ts-checkin-status.late, .ts-checkin-status.early { background: rgba(160,72,72,0.12); color: #A04848; }
 
     /* Modal "Setup thời gian làm việc" — chỉ Founder/CEO sửa được, người
@@ -1169,25 +1171,25 @@
         <div class="ts-stat-icon green">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         </div>
-        <div><div class="ts-stat-value" id="tsTotalDays">0</div><div class="ts-stat-label">Ngày làm việc</div></div>
+        <div><div class="ts-stat-value" id="tsTotalDays">0</div><div class="ts-stat-label">Ngày làm việc<span class="ts-stat-mo"></span></div></div>
       </div>
       <div class="ts-stat-card">
         <div class="ts-stat-icon bronze">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         </div>
-        <div><div class="ts-stat-value" id="tsTotalHours">0h</div><div class="ts-stat-label">Tổng giờ làm</div></div>
+        <div><div class="ts-stat-value" id="tsTotalHours">0h</div><div class="ts-stat-label">Tổng giờ làm<span class="ts-stat-mo"></span></div></div>
       </div>
       <div class="ts-stat-card">
         <div class="ts-stat-icon amber">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         </div>
-        <div><div class="ts-stat-value" id="tsOvertime">0h</div><div class="ts-stat-label">Giờ tăng ca</div></div>
+        <div><div class="ts-stat-value" id="tsOvertime">0h</div><div class="ts-stat-label">Giờ tăng ca<span class="ts-stat-mo"></span></div></div>
       </div>
       <div class="ts-stat-card">
         <div class="ts-stat-icon blue">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
         </div>
-        <div><div class="ts-stat-value" id="tsAvgHours">0h</div><div class="ts-stat-label">TB / ngày</div></div>
+        <div><div class="ts-stat-value" id="tsAvgHours">0h</div><div class="ts-stat-label">TB / ngày<span class="ts-stat-mo"></span></div></div>
       </div>
     </div>
 
@@ -2171,7 +2173,7 @@
           status.innerHTML = '<div class="ts-shift-done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>Đã hoàn thành chấm công hôm nay</div>' +
             '<div class="ts-shifts"><div class="ts-shift"><span class="ts-shift-name">Ca sáng</span><span class="ts-shift-time">' + record.morningCheckin + ' – ' + record.morningCheckout + '</span></div>' +
             '<div class="ts-shift"><span class="ts-shift-name">Ca chiều</span><span class="ts-shift-time">' + record.afternoonCheckin + ' – ' + record.afternoonCheckout + '</span></div></div>' +
-            ((record.isLate || record.isEarly) ? '<div class="ts-shift-tags">' + (record.isLate ? '<span class="ts-shift-tag">Đi muộn</span>' : '') + (record.isEarly ? '<span class="ts-shift-tag">Về sớm</span>' : '') + '</div>' : '');
+            ((record.isLate || record.isEarly) ? '<div class="ts-shift-tags">' + lateEarlyList(record, ws).map(function (x) { return '<span class="ts-shift-tag">' + x + '</span>'; }).join('') + '</div>' : '');
           return;
         }
 
@@ -2189,8 +2191,9 @@
         if (inTime) {
           btn.className = 'ts-checkin-btn out';
           btn.disabled = false;
-          status.className = 'ts-checkin-status working' + (record.isLate ? ' late' : '');
-          status.textContent = 'Đang làm ca ' + label.toLowerCase() + ' từ ' + inTime + (record.isLate ? ' (đi muộn)' : '');
+          var lateNow = !!record.isLate && isLateOrEarly(shift, 'in', inTime, ws);   // chỉ báo muộn nếu CA ĐANG LÀM vào muộn
+          status.className = 'ts-checkin-status working' + (lateNow ? ' late' : '');
+          status.textContent = 'Đang làm ca ' + label.toLowerCase() + ' từ ' + inTime + (lateNow ? ' (đi muộn)' : '');
         } else {
           btn.className = 'ts-checkin-btn in';
           btn.disabled = false;
@@ -2259,6 +2262,38 @@
       return !!end && time < end;
     }
 
+    // 2026-10-03: tách rõ đi muộn / về sớm theo TỪNG CA (trước đây chỉ có cờ cả ngày nên đi muộn ca sáng trông như muộn cả ngày).
+    // Tính lại từ giờ vào/ra từng ca so với giờ làm việc chuẩn; cờ cả ngày chỉ dùng để quyết định có hiện hay không.
+    var TS_DEFAULT_WS = { morningStart: '07:30', morningEnd: '11:30', afternoonStart: '13:30', afternoonEnd: '17:30' };
+    function lateEarlyList(record, ws) {
+      var out = [];
+      if (!record || !(record.isLate || record.isEarly)) return out;
+      ws = ws || workScheduleCache || TS_DEFAULT_WS;
+      if (record.isLate) {
+        if (record.morningCheckin && isLateOrEarly('morning', 'in', record.morningCheckin, ws)) out.push('Đi muộn ca sáng');
+        if (record.afternoonCheckin && isLateOrEarly('afternoon', 'in', record.afternoonCheckin, ws)) out.push('Đi muộn ca chiều');
+      }
+      if (record.isEarly) {
+        if (record.morningCheckout && isLateOrEarly('morning', 'out', record.morningCheckout, ws)) out.push('Về sớm ca sáng');
+        if (record.afternoonCheckout && isLateOrEarly('afternoon', 'out', record.afternoonCheckout, ws)) out.push('Về sớm ca chiều');
+      }
+      if (!out.length) { if (record.isLate) out.push('Đi muộn'); if (record.isEarly) out.push('Về sớm'); }
+      return out;
+    }
+    // chip đỏ ở khung chi tiết ngày: chỉ hiện khi CÓ nội dung (ẩn hẳn, không để lại ô hồng rỗng)
+    function applyLateEarlyChip(el, record) {
+      if (!el) return;
+      el.textContent = ''; el.hidden = true;
+      if (!record || !(record.isLate || record.isEarly)) return;
+      loadWorkSchedule(function (ws) {
+        var list = lateEarlyList(record, ws);
+        if (!list.length) return;
+        el.className = 'ts-checkin-status ' + (list.some(function (x) { return x.indexOf('muộn') !== -1; }) ? 'late' : 'early');
+        el.textContent = list.join(' · ') + (record.lateEarlyNote ? ' — ' + record.lateEarlyNote : '');
+        el.hidden = false;
+      });
+    }
+
     // 2026-09-21: bảng nhập lý do hiện GIỮA MÀN HÌNH thay vì chỉ đổi nhãn +
     // viền đỏ ô ghi chú nhỏ ở sidebar — ô đó dễ bị bỏ qua vì nằm khuất phía
     // trên, người dùng bấm "Chấm công" xong không hiểu sao không chạy. Dùng
@@ -2308,11 +2343,14 @@
       });
     }
 
+    // 2026-10-03: 4 thông số trên đầu trang tính THEO TỪNG THÁNG đang xem ở lịch (đổi tháng ở lịch thì số đổi theo), không cộng dồn mọi tháng
     function updateStats() {
       var entries = getEntries();
-      var totalDays = 0, totalHours = 0, overtimeHours = 0;
+      var totalDays = 0, totalHours = 0, overtimeHours = 0, ym = calYear + '-' + String(calMonth).padStart(2, '0') + '-';
+      Array.prototype.forEach.call(document.querySelectorAll('.ts-stat-mo'), function (el) { el.textContent = ' · T' + calMonth + '/' + calYear; });
       for (var i = 0; i < entries.length; i++) {
         var r = entries[i];
+        if (String(r.date || '').indexOf(ym) !== 0) continue;
         if (r.checkoutTime) {
           totalDays++;
           totalHours += parseFloat(r.totalHours) || 0;
@@ -2407,6 +2445,7 @@
 
     // Calendar — weeks start on Monday (ISO)
     function renderCalendar() {
+      updateStats();
       var grid = document.getElementById('tsCalGrid');
       var title = document.getElementById('tsCalTitle');
       title.textContent = 'Tháng ' + calMonth + '/' + calYear;
@@ -2521,16 +2560,7 @@
       var noteEditBtn = document.getElementById('tsDetailNoteEditBtn');
       var lateEarlyEl = document.getElementById('tsDetailLateEarly');
 
-      if (record && (record.isLate || record.isEarly)) {
-        var parts = [];
-        if (record.isLate) parts.push('Đi muộn');
-        if (record.isEarly) parts.push('Về sớm');
-        lateEarlyEl.className = 'ts-checkin-status ' + (record.isLate ? 'late' : 'early');
-        lateEarlyEl.textContent = parts.join(' · ') + (record.lateEarlyNote ? ' — ' + record.lateEarlyNote : '');
-        lateEarlyEl.hidden = false;
-      } else {
-        lateEarlyEl.hidden = true;
-      }
+      applyLateEarlyChip(lateEarlyEl, record);
 
       // Hiện riêng từng ca (morningCheckin/morningCheckout/afternoonCheckin/
       // afternoonCheckout) thay vì mirror checkinTime/checkoutTime cũ (chỉ
@@ -2773,8 +2803,7 @@
               ot = e.checkoutTime ? (parseFloat(e.overtimeHours) || 0) : '';
               note = e.note || '';
               var leParts = [];
-              if (e.isLate) leParts.push('Đi muộn');
-              if (e.isEarly) leParts.push('Về sớm');
+              leParts = lateEarlyList(e);
               lateEarly = leParts.join(' + ') + (leParts.length && e.lateEarlyNote ? ' (' + e.lateEarlyNote + ')' : '');
               if (note.indexOf(TS_AUTO_CHECKOUT_TAG) !== -1) {
                 status = 'Quên check-out';
@@ -3109,16 +3138,7 @@
       var badge = document.getElementById('tsRmDetailBadge');
       var lateEarlyEl = document.getElementById('tsRmDetailLateEarly');
 
-      if (record && (record.isLate || record.isEarly)) {
-        var parts = [];
-        if (record.isLate) parts.push('Đi muộn');
-        if (record.isEarly) parts.push('Về sớm');
-        lateEarlyEl.className = 'ts-checkin-status ' + (record.isLate ? 'late' : 'early');
-        lateEarlyEl.textContent = parts.join(' · ') + (record.lateEarlyNote ? ' — ' + record.lateEarlyNote : '');
-        lateEarlyEl.hidden = false;
-      } else {
-        lateEarlyEl.hidden = true;
-      }
+      applyLateEarlyChip(lateEarlyEl, record);
 
       document.getElementById('tsRmDetailIn').textContent = (record && record.morningCheckin) || '—';
       document.getElementById('tsRmDetailOut').textContent = (record && record.morningCheckout) || '—';
